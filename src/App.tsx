@@ -1,26 +1,69 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 /**
  * sebcat-vj — Control UI (Window B)
  *
  * This is a minimal placeholder for the future VJ control surface.
  * It:
- * - Exposes a single slider (“Crossfade”) to prove out the controls window
+ * - Exposes a couple of sliders (Crossfade + Scene A Brightness) to prove out the controls window
  * - Is keyboard-accessible and screen-reader-friendly
- * - Forwards the value to the backend via `forward_controls_event`
+ * - Forwards the values to the backend via `forward_controls_event`
  * - Will later expand into scene selection, parameter panels, MIDI/OSC/audio config, etc.
  */
 
+type BackendParameter = {
+  id: string;
+  value: number;
+  target: number;
+  transition_speed: number;
+  curve: "linear" | "ease" | "exp";
+};
+
 function App() {
   const [crossfade, setCrossfade] = useState(0.5);
+  const [sceneABrightness, setSceneABrightness] = useState(1);
+  const [backendParameters, setBackendParameters] = useState<
+    BackendParameter[] | null
+  >(null);
+  const [isLoadingParams, setIsLoadingParams] = useState(false);
+  const [paramError, setParamError] = useState<string | null>(null);
+  const [isClearing, setIsClearing] = useState(false);
+
+  /**
+   * Apply backend parameters to local slider state.
+   * This keeps the live controls in sync with the canonical backend
+   * values when the app first mounts or when we refresh.
+   */
+  function applyBackendParamsToSliders(params: BackendParameter[]) {
+    for (const param of params) {
+      if (param.id === "crossfade") {
+        const clamped = Math.max(0, Math.min(1, param.value));
+        setCrossfade(clamped);
+      } else if (param.id === "scene_a_brightness") {
+        const clamped = Math.max(0, Math.min(2, param.value));
+        setSceneABrightness(clamped);
+      }
+    }
+  }
 
   async function handleCrossfadeChange(next: number) {
     setCrossfade(next);
 
-    // Fire-and-forget call into the backend. The backend will forward this
-    // event to the renderer window as `renderer:crossfade`, with the payload
-    // as a JSON string (for now just `{ value: number }`).
+    // 1) Update backend Parameter Server
+    try {
+      await invoke("set_parameter", {
+        id: "crossfade",
+        value: next,
+        app: undefined,
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to set crossfade parameter", error);
+    }
+
+    // 2) Forward event to renderer window for live updates
     try {
       await invoke("forward_controls_event", {
         event: "crossfade",
@@ -33,6 +76,116 @@ function App() {
       console.error("Failed to forward crossfade event", error);
     }
   }
+
+  async function handleSceneABrightnessChange(next: number) {
+    setSceneABrightness(next);
+
+    // 1) Update backend Parameter Server
+    try {
+      await invoke("set_parameter", {
+        id: "scene_a_brightness",
+        value: next,
+        app: undefined,
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to set Scene A brightness parameter", error);
+    }
+
+    // 2) Forward event to renderer window for live updates
+    try {
+      await invoke("forward_controls_event", {
+        event: "scene_a_brightness",
+        payload: JSON.stringify({ value: next }),
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to forward Scene A brightness event", error);
+    }
+  }
+
+  async function refreshBackendParameters() {
+    setIsLoadingParams(true);
+    setParamError(null);
+
+    try {
+      const response = (await invoke("get_parameters")) as BackendParameter[];
+      setBackendParameters(response);
+      // Keep sliders in sync with backend state on refresh.
+      applyBackendParamsToSliders(response);
+    } catch (error) {
+      setParamError("Failed to load parameters from backend");
+      // eslint-disable-next-line no-console
+      console.error("Failed to get_parameters", error);
+    } finally {
+      setIsLoadingParams(false);
+    }
+  }
+
+  async function handleClearParameters() {
+    setIsClearing(true);
+    setParamError(null);
+
+    try {
+      await invoke("clear_parameters");
+      setBackendParameters([]);
+    } catch (error) {
+      setParamError("Failed to clear parameters in backend");
+      // eslint-disable-next-line no-console
+      console.error("Failed to clear_parameters", error);
+    } finally {
+      setIsClearing(false);
+    }
+  }
+
+  useEffect(() => {
+    // Initial load of backend parameters on mount.
+    void refreshBackendParameters();
+
+    // Subscribe to live parameter change events from the backend so that
+    // the inspector stays up-to-date without manual refresh.
+    let unlisten: (() => void) | undefined;
+
+    void (async () => {
+      try {
+        unlisten = await listen<BackendParameter>(
+          "parameter_changed",
+          (event) => {
+            const updated = event.payload;
+
+            // Keep local sliders synced with backend parameter changes.
+            applyBackendParamsToSliders([updated]);
+
+            setBackendParameters((current) => {
+              if (!current || current.length === 0) {
+                return [updated];
+              }
+
+              const existingIndex = current.findIndex(
+                (p) => p.id === updated.id,
+              );
+              if (existingIndex === -1) {
+                return [...current, updated];
+              }
+
+              const next = current.slice();
+              next[existingIndex] = updated;
+              return next;
+            });
+          },
+        );
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error("Failed to subscribe to parameter_changed events", error);
+      }
+    })();
+
+    return () => {
+      if (unlisten) {
+        unlisten();
+      }
+    };
+  }, []);
 
   return (
     <div
@@ -215,11 +368,78 @@ function App() {
                 to validate messaging and parameter wiring.
               </p>
             </div>
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.5rem",
+                marginTop: "1.1rem",
+              }}
+            >
+              <label
+                htmlFor="scene-a-brightness"
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "baseline",
+                  gap: "0.5rem",
+                  fontSize: "0.85rem",
+                  fontWeight: 500,
+                }}
+              >
+                <span>Scene A Brightness</span>
+                <span
+                  style={{
+                    fontVariantNumeric: "tabular-nums",
+                    fontSize: "0.8rem",
+                    opacity: 0.8,
+                  }}
+                >
+                  {sceneABrightness.toFixed(2)}
+                </span>
+              </label>
+
+              <input
+                id="scene-a-brightness"
+                type="range"
+                min={0}
+                max={2}
+                step={0.01}
+                value={sceneABrightness}
+                onChange={(event) => {
+                  const next = Number(event.currentTarget.value);
+                  void handleSceneABrightnessChange(next);
+                }}
+                style={{
+                  width: "100%",
+                  accentColor: "#22c55e",
+                  cursor: "pointer",
+                }}
+                aria-valuemin={0}
+                aria-valuemax={2}
+                aria-valuenow={sceneABrightness}
+                aria-label="Scene A brightness"
+              />
+
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "0.78rem",
+                  opacity: 0.8,
+                  lineHeight: 1.5,
+                }}
+              >
+                Adjusts the brightness of Scene&nbsp;A in the renderer. This
+                parameter is forwarded independently from the crossfade value to
+                validate multi-parameter control.
+              </p>
+            </div>
           </div>
         </section>
 
         <aside
-          aria-label="Upcoming panels"
+          aria-label="Backend parameter inspector"
           style={{
             flex: "0 1 320px",
             borderRadius: "0.75rem",
@@ -242,22 +462,156 @@ function App() {
               opacity: 0.85,
             }}
           >
-            Roadmap (this window)
+            Backend parameters
           </h2>
-          <ul
+
+          <p
             style={{
-              margin: "0.35rem 0 0",
-              paddingLeft: "1.1rem",
-              lineHeight: 1.55,
-              opacity: 0.9,
+              margin: "0.3rem 0 0.4rem",
+              opacity: 0.85,
+              lineHeight: 1.4,
             }}
           >
-            <li>Scene selection &amp; switching</li>
-            <li>Parameter panels (Leva-like)</li>
-            <li>MIDI learn &amp; mappings</li>
-            <li>OSC &amp; audio input configuration</li>
-            <li>Preset / project management</li>
-          </ul>
+            Live view of the backend Parameter Server. Values shown here are the
+            backend&apos;s canonical state, not the renderer&apos;s local copy.
+          </p>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              marginTop: "0.1rem",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                void refreshBackendParameters();
+              }}
+              style={{
+                padding: "0.25rem 0.6rem",
+                fontSize: "0.78rem",
+                borderRadius: "999px",
+                border: "1px solid rgba(148,163,184,0.6)",
+                background: "transparent",
+                color: "#e5e7eb",
+                cursor: "pointer",
+              }}
+            >
+              {isLoadingParams ? "Refreshing…" : "Refresh"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                void handleClearParameters();
+              }}
+              style={{
+                padding: "0.25rem 0.6rem",
+                fontSize: "0.78rem",
+                borderRadius: "999px",
+                border: "1px solid rgba(248,113,113,0.7)",
+                background: "transparent",
+                color: "#fecaca",
+                cursor: "pointer",
+              }}
+            >
+              {isClearing ? "Clearing…" : "Clear"}
+            </button>
+          </div>
+
+          {paramError ? (
+            <p
+              style={{
+                marginTop: "0.45rem",
+                color: "#fca5a5",
+                fontSize: "0.78rem",
+              }}
+            >
+              {paramError}
+            </p>
+          ) : null}
+
+          <div
+            style={{
+              marginTop: "0.45rem",
+              maxHeight: 220,
+              overflowY: "auto",
+              paddingRight: "0.25rem",
+            }}
+          >
+            {backendParameters === null && !isLoadingParams ? (
+              <p
+                style={{
+                  opacity: 0.8,
+                  fontSize: "0.78rem",
+                }}
+              >
+                No parameters loaded yet.
+              </p>
+            ) : backendParameters && backendParameters.length === 0 ? (
+              <p
+                style={{
+                  opacity: 0.8,
+                  fontSize: "0.78rem",
+                }}
+              >
+                Parameter store is currently empty.
+              </p>
+            ) : (
+              <ul
+                style={{
+                  listStyle: "none",
+                  margin: 0,
+                  padding: 0,
+                  fontFamily:
+                    "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+                }}
+              >
+                {(backendParameters ?? []).map((param) => (
+                  <li
+                    key={param.id}
+                    style={{
+                      padding: "0.3rem 0",
+                      borderBottom: "1px solid rgba(148,163,184,0.18)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.08rem",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "0.8rem",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {param.id}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.78rem",
+                        opacity: 0.85,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      value: {param.value.toFixed(3)} — target:{" "}
+                      {param.target.toFixed(3)}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.74rem",
+                        opacity: 0.75,
+                      }}
+                    >
+                      speed: {param.transition_speed.toFixed(3)}, curve:{" "}
+                      {param.curve}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </aside>
       </main>
     </div>

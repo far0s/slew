@@ -2,7 +2,7 @@
 
 ## Overview
 
-A custom, modular VJ engine built on **Tauri**, using a dual-window architecture:
+A custom, modular VJ engine built on **Tauri (v2.x)**, using a dual-window architecture:
 
 - **Window A**: High-performance visual renderer (r3f + WebGPU + TSL).
 - **Window B**: Control UI (React).

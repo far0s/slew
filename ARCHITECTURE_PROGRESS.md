@@ -31,7 +31,7 @@ _Last updated: Phase 1 dual-window bootstrap and initial event wiring._
 
 #### Window A — Renderer
 
-- Status: 🧪 (window created, basic event listener stubbed)
+- Status: 🧪 (window created, basic event listeners + r3f scene stubbed)
 - Goal:
   - Borderless/fullscreen window
   - Dedicated r3f + WebGPU render loop
@@ -39,22 +39,32 @@ _Last updated: Phase 1 dual-window bootstrap and initial event wiring._
   - Supports Scene A/B layering and crossfade
 - Current state:
   - Created as a separate Tauri window with label `renderer` and URL `/renderer`
-  - Renders a simple React-based placeholder view
-  - Listens for `renderer:crossfade` events from the backend and visualizes the value
+  - Renders a simple React-based scene using `@react-three/fiber`:
+    - Scene A: rotating cube whose rotation speed and brightness are driven by parameters
+    - Scene B: larger warm-colored cube
+  - Listens for:
+    - `renderer:crossfade` events and uses the value to:
+      - Update a local `crossfade` parameter
+      - Approximate a dual-scene crossfade by fading Scene A out and Scene B in
+    - `renderer:scene_a_brightness` events and uses the value to update Scene A brightness
 - Notes:
   - Must avoid heavy devtools/inspection to protect FPS
-  - Needs a clean subscription to Parameter Server and integration with r3f/WebGPU
+  - Needs a clean subscription to Parameter Server and integration with WebGPU + real render targets
 
 #### Window B — Control UI
 
-- Status: 🧪 (basic layout + crossfade control implemented)
+- Status: 🧪 (basic layout + initial parameter controls implemented)
 - Goal:
   - SPA dashboard for scenes, parameters, inputs, transitions
   - Drives backend/Parameter Server and indirectly Window A
 - Current state:
   - Uses the default React entrypoint (`/`) as the **Controls** window
-  - Implements a basic but accessible layout with a single “Crossfade” slider
-  - Slider forwards updates to the backend via `forward_controls_event`
+  - Implements a basic but accessible layout with:
+    - “Crossfade” slider (0–100%) → drives scene blend in renderer
+    - “Scene A Brightness” slider (0–2) → drives Scene A emissive intensity in renderer
+  - Forwards updates to the backend via `forward_controls_event`:
+    - `event: "crossfade", payload: { value }`
+    - `event: "scene_a_brightness", payload: { value }`
 - Notes:
   - Needs initial routing and richer layout for scenes/parameters
   - Must follow your accessibility/performance rules (keyboard, focus, no dead zones, etc.)
@@ -80,7 +90,7 @@ _Last updated: Phase 1 dual-window bootstrap and initial event wiring._
 
 ### 2.2 Parameter Server
 
-- Status: 🧩 Designed, not implemented
+- Status: 🧪 Backend stub implemented (in-memory + simple persistence)
 - Central responsibilities:
   - Manage canonical parameter state for:
     - Visual parameters
@@ -96,11 +106,27 @@ _Last updated: Phase 1 dual-window bootstrap and initial event wiring._
     - `transitionSpeed: number`
     - `curve: "linear" | "ease" | "exp"`
 
+- Current implementation:
+  - Rust-side `Parameter` struct with fields: `id`, `value`, `target`, `transition_speed`, `curve`
+  - In-memory `ParameterStore` backed by a global mutex
+  - JSON-based persistence:
+    - Snapshot of all parameters stored at app startup/shutdown points (currently on `set_parameter`) under the app config directory as `parameters.json`
+    - On app startup, parameters are loaded from disk into the in-memory store
+  - Commands exposed to frontends:
+    - `get_parameters()` → full list of parameters
+    - `get_parameter(id)` → single parameter or `null`
+    - `set_parameter(id, value)` → upserts parameter and emits a change event
+    - `clear_parameters()` → clears in-memory store and deletes persisted file
+  - Events:
+    - `parameter_changed` → emitted on `set_parameter` with full `Parameter` payload
+    - `parameters_cleared` → emitted on `clear_parameters` with empty payload
+
 - Requirements:
   - Live transitions (smoothed changes from `value` → `target`)
   - Integration with modulators (LFO, random, audio followers, etc.)
   - Integration with external inputs (OSC/MIDI/audio)
   - Sync-safe between windows
+  - Persist and restore parameter state across restarts
 
 ### 2.3 Scene System
 
@@ -229,25 +255,42 @@ Planned breakdown:
        - Renderer window listens for `renderer:crossfade` and updates local state / visualization
 
 3. **Renderer bootstrap**
-   - ⏳ Install and wire up `react-three-fiber` and WebGPU backend (with fallback strategy if needed)
-   - ⏳ Implement **Scene A**:
+   - 🧪 Install and wire up `react-three-fiber` (WebGPU backend still pending)
+   - 🧪 Implement **Scene A**:
      - Rotating cube
-     - Expose parameters: `rotationSpeed`, `color`
+     - Parameters (local to renderer for now, but hydrated from backend on startup):
+       - `rotationSpeed` (derived from crossfade)
+       - `sceneABrightness` (driven independently from Controls)
    - 🧪 Current state:
-     - Renderer window shows a simple crossfade visualization bar driven by events
+     - Renderer window shows:
+       - A rotating Scene A cube and a larger Scene B cube
+       - A visual crossfade between scenes using material opacity:
+         - Scene A opacity: `1 - crossfade`
+         - Scene B opacity: `crossfade`
+       - At 0%/100% only one scene is rendered to avoid depth artifacts
+     - On startup, renderer:
+       - Calls `get_parameters()` once to hydrate from backend Parameter Server
+       - Maps `crossfade` and `scene_a_brightness` parameter values into local renderer parameters
+       - Falls back to defaults if the backend store is empty or persistence file is missing
 
 4. **Crossfade prototype**
    - ⏳ Add **Scene B**:
      - Different visual (e.g. color pulsing cube or simple TSL shader)
    - ⏳ Render both scenes to separate render targets
    - ⏳ Implement crossfade uniform `u_crossfade` in post-pass
-   - 🧪 Control `u_crossfade` from a slider in Window B via events:
-     - Logical wiring (controls → backend → renderer) is in place; uniform binding to real render targets is still pending
+   - 🧪 Current approximation:
+     - Both scenes are rendered in a single Canvas and crossfaded via opacity:
+       - Scene A opacity: `1 - crossfade`
+       - Scene B opacity: `crossfade`
+       - Scene A is hidden when crossfade ≈ 1; Scene B is hidden when crossfade ≈ 0
+   - 🧪 Control of crossfade from Window B via events is in place:
+     - Controls → backend (`forward_controls_event` + `set_parameter`) → renderer (`renderer:crossfade`)
+     - Uniform binding to real render targets is still pending
 
 **Open questions (Phase 1):**
 
-- ❓ WebGPU-only vs WebGL fallback: what is the desired behavior for machines without WebGPU?
-- ❓ Any initial preference for scene organization? (filesystem naming, IDs, etc.)
+- ❓ WebGPU-only vs WebGL fallback: what is the desired behavior for machines without WebGPU? -> WebGL fallback would be nice, but we should prioritize WebGPU support, for now. Maybe at a future point.
+- ❓ Any initial preference for scene organization? (filesystem naming, IDs, etc.) -> No preference, whatever works best and fits the VJing philosophy best. I do wonder if we should be able to create scenes dynamically, allowing for more flexibility and adaptability in the VJing experience.
 
 ---
 
@@ -490,7 +533,14 @@ Currently mostly baseline assumptions; update as choices are made.
    - Assumption: Event-based messaging is the primary backbone for all state sync.
    - Implemented so far:
      - A generic `forward_controls_event` Rust command that re-emits events as `renderer:{event}` to all windows.
-     - Controls window uses this to send crossfade updates; renderer window subscribes to `renderer:crossfade`.
+     - Controls window uses this to send:
+       - Crossfade updates (`event: "crossfade"`, handled as `renderer:crossfade`)
+       - Scene A brightness updates (`event: "scene_a_brightness"`, handled as `renderer:scene_a_brightness`)
+     - Renderer subscribes to both event streams and updates its local parameter model accordingly.
+     - Backend Parameter Server emits:
+       - `parameter_changed` events with full `Parameter` payloads on `set_parameter`
+       - `parameters_cleared` events when all parameters are cleared
+     - Controls window subscribes to `parameter_changed` to keep its backend inspector in sync without polling.
 4. **TypeScript**
    - Frontend: TypeScript everywhere.
    - Backend: idiomatic Rust.
