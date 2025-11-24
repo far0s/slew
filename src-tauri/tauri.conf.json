@@ -12,9 +12,28 @@
   "app": {
     "windows": [
       {
-        "title": "sebcat-vj",
-        "width": 800,
-        "height": 600
+        "label": "renderer",
+        "title": "sebcat-vj — Renderer",
+        "width": 1280,
+        "height": 720,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": false,
+        "visible": true,
+        "center": true,
+        "url": "/renderer"
+      },
+      {
+        "label": "controls",
+        "title": "sebcat-vj — Controls",
+        "width": 1200,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "visible": true,
+        "center": true,
+        "url": "/"
       }
     ],
     "security": {

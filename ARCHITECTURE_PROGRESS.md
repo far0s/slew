@@ -3,6 +3,8 @@
 This document tracks implementation progress relative to `ARCHITECTURE.md`.  
 It is meant to be **LLM-friendly**: concise, structured, and easy to rehydrate in new sessions.
 
+_Last updated: Phase 1 dual-window bootstrap and initial event wiring._
+
 ---
 
 ## 0. Meta
@@ -29,24 +31,32 @@ It is meant to be **LLM-friendly**: concise, structured, and easy to rehydrate i
 
 #### Window A — Renderer
 
-- Status: ⏳
+- Status: 🧪 (window created, basic event listener stubbed)
 - Goal:
   - Borderless/fullscreen window
   - Dedicated r3f + WebGPU render loop
   - Receives parameter/uniform updates from backend
   - Supports Scene A/B layering and crossfade
+- Current state:
+  - Created as a separate Tauri window with label `renderer` and URL `/renderer`
+  - Renders a simple React-based placeholder view
+  - Listens for `renderer:crossfade` events from the backend and visualizes the value
 - Notes:
   - Must avoid heavy devtools/inspection to protect FPS
-  - Needs a clean subscription to Parameter Server
+  - Needs a clean subscription to Parameter Server and integration with r3f/WebGPU
 
 #### Window B — Control UI
 
-- Status: ⏳
+- Status: 🧪 (basic layout + crossfade control implemented)
 - Goal:
   - SPA dashboard for scenes, parameters, inputs, transitions
   - Drives backend/Parameter Server and indirectly Window A
+- Current state:
+  - Uses the default React entrypoint (`/`) as the **Controls** window
+  - Implements a basic but accessible layout with a single “Crossfade” slider
+  - Slider forwards updates to the backend via `forward_controls_event`
 - Notes:
-  - Needs initial routing and layout
+  - Needs initial routing and richer layout for scenes/parameters
   - Must follow your accessibility/performance rules (keyboard, focus, no dead zones, etc.)
 
 ---
@@ -79,7 +89,6 @@ It is meant to be **LLM-friendly**: concise, structured, and easy to rehydrate i
     - Modulation sources
   - Ensure all parameters are **transitionable signals** (not raw numbers)
 - Target base structure:
-
   - For each parameter:
     - `id: string`
     - `value: number`
@@ -191,41 +200,49 @@ Initially all items are ⏳; update to 🧪 or ✅ as we implement.
 
 ### Phase 1 — Foundations
 
-> - Set up Tauri project  
-> - Create Window A + Window B  
-> - Basic inter-window messaging  
-> - Basic react-three-fiber WebGPU renderer  
-> - One demo scene  
-> - Crossfade uniform proof-of-concept  
+> - Set up Tauri project
+> - Create Window A + Window B
+> - Basic inter-window messaging
+> - Basic react-three-fiber WebGPU renderer
+> - One demo scene
+> - Crossfade uniform proof-of-concept
 
-**Status:** ⏳
+**Status:** 🧪 (Tauri + dual windows + basic event wiring done; rendering still placeholder)
 
 Planned breakdown:
 
 1. **Project bootstrap**
-   - ⏳ Initialize Tauri project (TypeScript + Vite + React)
-   - ⏳ Configure 2 windows (renderer + controls) in Tauri config
-   - ⏳ Entrypoints:
-     - `/src/windows/renderer/main.tsx`
-     - `/src/windows/controls/main.tsx`
+   - ✅ Initialize Tauri project (TypeScript + Vite + React) using create-tauri-app
+   - ✅ Flatten project so the Tauri app lives at the repo root
+   - ✅ Configure 2 windows (renderer + controls) in Tauri config:
+     - `renderer` → URL `/renderer`, borderless-style placeholder
+     - `controls` → URL `/`, standard window
+   - 🧪 Entrypoints:
+     - Single React entry at `src/main.tsx` dispatches between renderer/controls based on `window.location.pathname`
 
 2. **Inter-window messaging (minimal)**
-   - ⏳ Define event for parameter updates (e.g. slider value)
-   - ⏳ Implement a proof-of-concept:
-     - Slider in Window B updates a numeric value in Window A (even if only logged to console)
+   - ✅ Define backend command `forward_controls_event(app, event, payload)` in Rust:
+     - Forwards events from Controls to Renderer as `renderer:{event}`
+   - ✅ Implement a proof-of-concept:
+     - Slider in Window B (“Crossfade”) updates a numeric value in Window A via:
+       - Controls → `forward_controls_event("crossfade", "{ value: number }")`
+       - Renderer window listens for `renderer:crossfade` and updates local state / visualization
 
 3. **Renderer bootstrap**
    - ⏳ Install and wire up `react-three-fiber` and WebGPU backend (with fallback strategy if needed)
-   - 🧪 Implement **Scene A**:
+   - ⏳ Implement **Scene A**:
      - Rotating cube
      - Expose parameters: `rotationSpeed`, `color`
+   - 🧪 Current state:
+     - Renderer window shows a simple crossfade visualization bar driven by events
 
 4. **Crossfade prototype**
    - ⏳ Add **Scene B**:
      - Different visual (e.g. color pulsing cube or simple TSL shader)
    - ⏳ Render both scenes to separate render targets
    - ⏳ Implement crossfade uniform `u_crossfade` in post-pass
-   - ⏳ Control `u_crossfade` from a slider in Window B via events
+   - 🧪 Control `u_crossfade` from a slider in Window B via events:
+     - Logical wiring (controls → backend → renderer) is in place; uniform binding to real render targets is still pending
 
 **Open questions (Phase 1):**
 
@@ -236,10 +253,10 @@ Planned breakdown:
 
 ### Phase 2 — Input Layer
 
-> - Integrate Rust OSC module  
-> - Integrate Rust MIDI module  
-> - Integrate Rust audio capture + FFT  
-> - Expose input data to Parameter Server  
+> - Integrate Rust OSC module
+> - Integrate Rust MIDI module
+> - Integrate Rust audio capture + FFT
+> - Expose input data to Parameter Server
 
 **Status:** ⏳
 
@@ -281,9 +298,9 @@ Planned steps:
 
 ### Phase 3 — Parameter & Modulation Systems
 
-> - Implement Parameter Server with transitions  
-> - Add LFO, random, envelope followers  
-> - Build a simple modulation matrix  
+> - Implement Parameter Server with transitions
+> - Add LFO, random, envelope followers
+> - Build a simple modulation matrix
 
 **Status:** ⏳
 
@@ -337,11 +354,11 @@ Design notes:
 
 ### Phase 4 — Control UI
 
-> - Scene switching UI  
-> - Parameter panels (Leva-like or custom)  
-> - MIDI Learn UI  
-> - OSC routing UI  
-> - Audio input UI  
+> - Scene switching UI
+> - Parameter panels (Leva-like or custom)
+> - MIDI Learn UI
+> - OSC routing UI
+> - Audio input UI
 
 **Status:** ⏳
 
@@ -386,8 +403,8 @@ Planned minimal features:
 
 ### Phase 5 — Video Output
 
-> - Implement Syphon/Spout/NDI plugin  
-> - Allow Window A to be used as input inside Resolume/VDMX  
+> - Implement Syphon/Spout/NDI plugin
+> - Allow Window A to be used as input inside Resolume/VDMX
 
 **Status:** ⏳
 
@@ -413,9 +430,9 @@ Planned approach:
 
 ### Phase 6 — Scene/Ecosystem Expansion
 
-> - Add more scenes using TSL utilities  
-> - Add more input modalities  
-> - Add recording, multi-display, presets, project saving  
+> - Add more scenes using TSL utilities
+> - Add more input modalities
+> - Add recording, multi-display, presets, project saving
 
 **Status:** ⏳
 
@@ -440,9 +457,9 @@ Early tracking ideas:
 
 ### Phase 7 — Polishing & Distribution
 
-> - Packaging for macOS + Windows  
-> - UX cleanup  
-> - Error handling  
+> - Packaging for macOS + Windows
+> - UX cleanup
+> - Error handling
 
 **Status:** ⏳
 
@@ -471,9 +488,17 @@ Currently mostly baseline assumptions; update as choices are made.
    - Assumption: Parameter Server lives in the backend to prevent drift between windows.
 3. **Messaging**
    - Assumption: Event-based messaging is the primary backbone for all state sync.
+   - Implemented so far:
+     - A generic `forward_controls_event` Rust command that re-emits events as `renderer:{event}` to all windows.
+     - Controls window uses this to send crossfade updates; renderer window subscribes to `renderer:crossfade`.
 4. **TypeScript**
    - Frontend: TypeScript everywhere.
    - Backend: idiomatic Rust.
+5. **Window model**
+   - Chosen: Two logical Tauri windows configured in `tauri.conf.json`:
+     - `renderer` (`/renderer`) — dedicated to visuals (currently a placeholder with crossfade bar).
+     - `controls` (`/`) — control UI (currently a basic layout with a crossfade slider).
+   - Both windows share the same bundled frontend and dispatch to different React roots based on `window.location.pathname`.
 
 As decisions are made, add them here with timestamps/short notes.
 
@@ -500,15 +525,27 @@ Update and answer these over time; future LLM sessions will rely on them.
 
 ## 6. Next Actions (for LLM or human dev)
 
-Short-term, concrete steps to move from ⏳ to 🧪/✅:
+Short-term, concrete steps to move from 🧪 to ✅ for Phase 1:
 
-1. Bootstrap Tauri + Vite + React + TypeScript project.
-2. Configure 2 windows (renderer + controls) and wire basic HTML roots.
-3. Implement:
-   - Minimal renderer window with a placeholder r3f canvas.
-   - Minimal control window with a single slider.
-4. Wire a single event:
-   - Slider in controls updates a value in renderer (log it).
-5. Revisit this document:
-   - Mark completed items ✅
-   - Add any architectural deviations or new decisions to section 4.
+1. **Renderer integration**
+   - Install and configure `react-three-fiber` with a WebGPU-first (with fallback) renderer.
+   - Replace the current renderer placeholder with:
+     - A `<Canvas>`-based scene.
+     - A simple rotating cube (Scene A) whose parameters can be driven by the Parameter Server later.
+
+2. **Crossfade rendering**
+   - Introduce a second scene (Scene B) and render to separate render targets.
+   - Bind the existing crossfade value (currently just visualized in UI) to a real uniform `u_crossfade` that blends Scene A/B.
+   - Keep the current event wiring (controls → backend → renderer) as the source of truth for the crossfade value.
+
+3. **Parameter plumbing preparation**
+   - Define a minimal in-memory parameter model in the renderer that can later be replaced by the true backend Parameter Server.
+   - Ensure the crossfade event updates both:
+     - The visual blend in the render pipeline.
+     - A parameter representation that can be swapped out.
+
+4. **Housekeeping**
+   - Keep validating that `npm run tauri dev` from the repo root works after each change.
+   - Update this document as:
+     - r3f/WebGPU integration lands (mark parts of Phase 1 “Renderer bootstrap” as 🧪/✅).
+     - Scene A/B and real crossfade rendering are implemented.
