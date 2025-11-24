@@ -24,12 +24,22 @@ type BackendParameter = {
 function App() {
   const [crossfade, setCrossfade] = useState(0.5);
   const [sceneABrightness, setSceneABrightness] = useState(1);
+  const [rotationSpeed, setRotationSpeed] = useState(0.6);
+  const [sceneAWobble, setSceneAWobble] = useState(0);
   const [backendParameters, setBackendParameters] = useState<
     BackendParameter[] | null
   >(null);
   const [isLoadingParams, setIsLoadingParams] = useState(false);
   const [paramError, setParamError] = useState<string | null>(null);
   const [isClearing, setIsClearing] = useState(false);
+
+  const DEFAULTS = {
+    crossfade: 0.5,
+    sceneABrightness: 1,
+    rotationSpeed: 0.6,
+    sceneAWobble: 0,
+  } as const;
+  const [isResettingDefaults, setIsResettingDefaults] = useState(false);
 
   /**
    * Apply backend parameters to local slider state.
@@ -44,6 +54,12 @@ function App() {
       } else if (param.id === "scene_a_brightness") {
         const clamped = Math.max(0, Math.min(2, param.value));
         setSceneABrightness(clamped);
+      } else if (param.id === "rotationSpeed") {
+        const clamped = Math.max(0, Math.min(5, param.value));
+        setRotationSpeed(clamped);
+      } else if (param.id === "scene_a_wobble") {
+        const clamped = Math.max(0, Math.min(1, param.value));
+        setSceneAWobble(clamped);
       }
     }
   }
@@ -52,6 +68,8 @@ function App() {
     setCrossfade(next);
 
     // 1) Update backend Parameter Server
+    // NOTE: `value` is treated as the new target; backend will smooth
+    // the runtime value towards this target over time.
     try {
       await invoke("set_parameter", {
         id: "crossfade",
@@ -63,7 +81,9 @@ function App() {
       console.error("Failed to set crossfade parameter", error);
     }
 
-    // 2) Forward event to renderer window for live updates
+    // 2) Forward event to renderer window for live updates.
+    // This event communicates the new requested target; the renderer
+    // should prefer listening to backend-smoothed values when available.
     try {
       await invoke("forward_controls_event", {
         event: "crossfade",
@@ -81,6 +101,8 @@ function App() {
     setSceneABrightness(next);
 
     // 1) Update backend Parameter Server
+    // NOTE: `value` is treated as the new target; backend will smooth
+    // the runtime value towards this target over time.
     try {
       await invoke("set_parameter", {
         id: "scene_a_brightness",
@@ -92,7 +114,9 @@ function App() {
       console.error("Failed to set Scene A brightness parameter", error);
     }
 
-    // 2) Forward event to renderer window for live updates
+    // 2) Forward event to renderer window for live updates.
+    // This event communicates the new requested target; the renderer
+    // should prefer listening to backend-smoothed values when available.
     try {
       await invoke("forward_controls_event", {
         event: "scene_a_brightness",
@@ -129,12 +153,50 @@ function App() {
     try {
       await invoke("clear_parameters");
       setBackendParameters([]);
+      // Also reset local slider state to known client-side defaults.
+      setCrossfade(DEFAULTS.crossfade);
+      setSceneABrightness(DEFAULTS.sceneABrightness);
+      setRotationSpeed(DEFAULTS.rotationSpeed);
+      setSceneAWobble(DEFAULTS.sceneAWobble);
     } catch (error) {
       setParamError("Failed to clear parameters in backend");
       // eslint-disable-next-line no-console
       console.error("Failed to clear_parameters", error);
     } finally {
       setIsClearing(false);
+    }
+  }
+
+  async function handleResetDefaults() {
+    setIsResettingDefaults(true);
+    setParamError(null);
+
+    const defaults: Array<{ id: string; value: number }> = [
+      { id: "crossfade", value: DEFAULTS.crossfade },
+      { id: "scene_a_brightness", value: DEFAULTS.sceneABrightness },
+      { id: "rotationSpeed", value: DEFAULTS.rotationSpeed },
+      { id: "scene_a_wobble", value: DEFAULTS.sceneAWobble },
+    ];
+
+    try {
+      // Push defaults to backend Parameter Server
+      await Promise.all(
+        defaults.map(({ id, value }) =>
+          invoke("set_parameter", { id, value, app: undefined }),
+        ),
+      );
+
+      // Update local sliders to match defaults
+      setCrossfade(DEFAULTS.crossfade);
+      setSceneABrightness(DEFAULTS.sceneABrightness);
+      setRotationSpeed(DEFAULTS.rotationSpeed);
+      setSceneAWobble(DEFAULTS.sceneAWobble);
+    } catch (error) {
+      setParamError("Failed to reset parameters to defaults");
+      // eslint-disable-next-line no-console
+      console.error("Failed to reset defaults", error);
+    } finally {
+      setIsResettingDefaults(false);
     }
   }
 
@@ -256,7 +318,7 @@ function App() {
         <section
           aria-label="Primary controls"
           style={{
-            flex: "0 1 480px",
+            flex: "0 1 520px",
             borderRadius: "0.75rem",
             border: "1px solid rgba(255,255,255,0.08)",
             background:
@@ -435,13 +497,174 @@ function App() {
                 validate multi-parameter control.
               </p>
             </div>
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.5rem",
+                marginTop: "1.1rem",
+              }}
+            >
+              <label
+                htmlFor="rotation-speed"
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "baseline",
+                  gap: "0.5rem",
+                  fontSize: "0.85rem",
+                  fontWeight: 500,
+                }}
+              >
+                <span>Rotation speed</span>
+                <span
+                  style={{
+                    fontVariantNumeric: "tabular-nums",
+                    fontSize: "0.8rem",
+                    opacity: 0.8,
+                  }}
+                >
+                  {rotationSpeed.toFixed(2)}
+                </span>
+              </label>
+
+              <input
+                id="rotation-speed"
+                type="range"
+                min={0}
+                max={5}
+                step={0.05}
+                value={rotationSpeed}
+                onChange={(event) => {
+                  const next = Number(event.currentTarget.value);
+                  setRotationSpeed(next);
+                  void (async () => {
+                    try {
+                      await invoke("set_parameter", {
+                        id: "rotationSpeed",
+                        value: next,
+                        app: undefined,
+                      });
+                    } catch (error) {
+                      // eslint-disable-next-line no-console
+                      console.error(
+                        "Failed to set rotationSpeed parameter",
+                        error,
+                      );
+                    }
+                  })();
+                }}
+                style={{
+                  width: "100%",
+                  accentColor: "#6366f1",
+                  cursor: "pointer",
+                }}
+                aria-valuemin={0}
+                aria-valuemax={5}
+                aria-valuenow={rotationSpeed}
+                aria-label="Scene rotation speed"
+              />
+
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "0.78rem",
+                  opacity: 0.8,
+                  lineHeight: 1.5,
+                }}
+              >
+                Controls the cube rotation speed in the renderer as a separate
+                backend parameter, smoothed by the same transition engine.
+              </p>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.5rem",
+                marginTop: "1.1rem",
+              }}
+            >
+              <label
+                htmlFor="scene-a-wobble"
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "baseline",
+                  gap: "0.5rem",
+                  fontSize: "0.85rem",
+                  fontWeight: 500,
+                }}
+              >
+                <span>Scene A Wobble</span>
+                <span
+                  style={{
+                    fontVariantNumeric: "tabular-nums",
+                    fontSize: "0.8rem",
+                    opacity: 0.8,
+                  }}
+                >
+                  {sceneAWobble.toFixed(2)}
+                </span>
+              </label>
+
+              <input
+                id="scene-a-wobble"
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={sceneAWobble}
+                onChange={(event) => {
+                  const next = Number(event.currentTarget.value);
+                  setSceneAWobble(next);
+                  void (async () => {
+                    try {
+                      await invoke("set_parameter", {
+                        id: "scene_a_wobble",
+                        value: next,
+                        app: undefined,
+                      });
+                    } catch (error) {
+                      // eslint-disable-next-line no-console
+                      console.error(
+                        "Failed to set scene_a_wobble parameter",
+                        error,
+                      );
+                    }
+                  })();
+                }}
+                style={{
+                  width: "100%",
+                  accentColor: "#ec4899",
+                  cursor: "pointer",
+                }}
+                aria-valuemin={0}
+                aria-valuemax={1}
+                aria-valuenow={sceneAWobble}
+                aria-label="Scene A wobble"
+              />
+
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "0.78rem",
+                  opacity: 0.8,
+                  lineHeight: 1.5,
+                }}
+              >
+                Adds a subtle wobble to Scene&nbsp;A, driven as a backend
+                parameter and smoothed by the same transition engine.
+              </p>
+            </div>
           </div>
         </section>
 
         <aside
           aria-label="Backend parameter inspector"
           style={{
-            flex: "0 1 320px",
+            flex: "0 1 360px",
             borderRadius: "0.75rem",
             border: "1px dashed rgba(255,255,255,0.18)",
             background:
@@ -505,6 +728,24 @@ function App() {
             <button
               type="button"
               onClick={() => {
+                void handleResetDefaults();
+              }}
+              style={{
+                padding: "0.25rem 0.6rem",
+                fontSize: "0.78rem",
+                borderRadius: "999px",
+                border: "1px solid rgba(96,165,250,0.7)",
+                background: "transparent",
+                color: "#bfdbfe",
+                cursor: "pointer",
+              }}
+            >
+              {isResettingDefaults ? "Resetting…" : "Reset to defaults"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
                 void handleClearParameters();
               }}
               style={{
@@ -560,56 +801,158 @@ function App() {
                 Parameter store is currently empty.
               </p>
             ) : (
-              <ul
-                style={{
-                  listStyle: "none",
-                  margin: 0,
-                  padding: 0,
-                  fontFamily:
-                    "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-                }}
-              >
-                {(backendParameters ?? []).map((param) => (
-                  <li
-                    key={param.id}
-                    style={{
-                      padding: "0.3rem 0",
-                      borderBottom: "1px solid rgba(148,163,184,0.18)",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "0.08rem",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: "0.8rem",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {param.id}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "0.78rem",
-                        opacity: 0.85,
-                        fontVariantNumeric: "tabular-nums",
-                      }}
-                    >
-                      value: {param.value.toFixed(3)} — target:{" "}
-                      {param.target.toFixed(3)}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "0.74rem",
-                        opacity: 0.75,
-                      }}
-                    >
-                      speed: {param.transition_speed.toFixed(3)}, curve:{" "}
-                      {param.curve}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <h3
+                  style={{
+                    padding: "0.25rem 0",
+                    margin: 0,
+                    fontSize: "0.8rem",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.08,
+                    opacity: 0.8,
+                  }}
+                >
+                  Scene A
+                </h3>
+                <ul
+                  style={{
+                    listStyle: "none",
+                    margin: 0,
+                    padding: 0,
+                    fontFamily:
+                      "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+                  }}
+                >
+                  {(backendParameters ?? [])
+                    .filter((param) =>
+                      [
+                        "crossfade",
+                        "scene_a_brightness",
+                        "scene_a_wobble",
+                      ].includes(param.id),
+                    )
+                    .sort((a, b) => {
+                      const order = [
+                        "crossfade",
+                        "scene_a_brightness",
+                        "scene_a_wobble",
+                      ];
+                      return order.indexOf(a.id) - order.indexOf(b.id);
+                    })
+                    .map((param) => (
+                      <li
+                        key={param.id}
+                        style={{
+                          padding: "0.3rem 0",
+                          borderBottom: "1px solid rgba(148,163,184,0.18)",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.08rem",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: "0.8rem",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {param.id}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "0.78rem",
+                            opacity: 0.85,
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          value: {param.value.toFixed(3)} — target:{" "}
+                          {param.target.toFixed(3)}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "0.74rem",
+                            opacity: 0.75,
+                          }}
+                        >
+                          speed: {param.transition_speed.toFixed(3)}, curve:{" "}
+                          {param.curve}
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+
+                <h3
+                  style={{
+                    padding: "0.35rem 0 0.1rem",
+                    margin: "0.4rem 0 0",
+                    fontSize: "0.8rem",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.08,
+                    opacity: 0.8,
+                  }}
+                >
+                  Global / Other
+                </h3>
+                <ul
+                  style={{
+                    listStyle: "none",
+                    margin: 0,
+                    padding: 0,
+                    fontFamily:
+                      "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+                  }}
+                >
+                  {(backendParameters ?? [])
+                    .filter(
+                      (param) =>
+                        ![
+                          "crossfade",
+                          "scene_a_brightness",
+                          "scene_a_wobble",
+                        ].includes(param.id),
+                    )
+                    .map((param) => (
+                      <li
+                        key={param.id}
+                        style={{
+                          padding: "0.3rem 0",
+                          borderBottom: "1px solid rgba(148,163,184,0.18)",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.08rem",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: "0.8rem",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {param.id}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "0.78rem",
+                            opacity: 0.85,
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          value: {param.value.toFixed(3)} — target:{" "}
+                          {param.target.toFixed(3)}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "0.74rem",
+                            opacity: 0.75,
+                          }}
+                        >
+                          speed: {param.transition_speed.toFixed(3)}, curve:{" "}
+                          {param.curve}
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+              </>
             )}
           </div>
         </aside>

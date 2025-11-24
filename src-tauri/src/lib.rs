@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -16,12 +17,12 @@ use tauri::{AppHandle, Emitter, Manager};
 /// frontend can evolve independently; later this can be tightened to enums.
 pub type ParameterId = String;
 
-/// Basic numeric parameter model. This mirrors the architectural idea of
-/// "transitionable signals", but omits transitions for now; we're focused on
-/// wiring and API shape.
+/// Basic numeric parameter model using transitionable signals.
 ///
-/// Transition behavior (value → target with speed/curve) will be implemented
-/// in a later phase.
+/// - `value`: current runtime value exposed to renderer/controls
+/// - `target`: desired value set by UI / modulation / inputs
+/// - `transition_speed`: approximate seconds to move from value → target
+/// - `curve`: easing behavior (currently only Linear is implemented)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Parameter {
     pub id: ParameterId,
@@ -29,6 +30,18 @@ pub struct Parameter {
     pub target: f64,
     pub transition_speed: f64,
     pub curve: ParameterCurve,
+}
+
+impl Parameter {
+    /// Convenience helper to update transition-related fields while keeping
+    /// the public API surface explicit.
+    pub fn with_transition(self, transition_speed: f64, curve: ParameterCurve) -> Self {
+        Self {
+            transition_speed,
+            curve,
+            ..self
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,6 +64,8 @@ impl Default for ParameterCurve {
 struct ParameterStore {
     /// Parameters keyed by ID.
     parameters: HashMap<ParameterId, Parameter>,
+    /// Last time the transition tick ran.
+    last_tick: Option<Instant>,
 }
 
 impl ParameterStore {
@@ -62,28 +77,99 @@ impl ParameterStore {
         self.parameters.get(id).cloned()
     }
 
-    fn set(&mut self, id: ParameterId, value: f64) -> Parameter {
-        // For now, "set" updates both `value` and `target` immediately.
-        // When transitions are implemented, `value` would be updated over time
-        // towards `target` instead.
+    /// Set the *target* of a parameter.
+    ///
+    /// - If the parameter does not exist, it is created with per-ID transition
+    ///   defaults and `value == target`.
+    /// - If it exists, only `target` is updated; `value` will be moved towards
+    ///   `target` over time by the transition tick.
+    fn set_target(&mut self, id: ParameterId, target: f64) -> Parameter {
         let entry = self
             .parameters
             .entry(id.clone())
-            .or_insert_with(|| Parameter {
-                id,
-                value,
-                target: value,
-                transition_speed: 1.0,
-                curve: ParameterCurve::Linear,
-            });
+            .or_insert_with(|| default_parameter_for_id(id, target));
 
-        entry.value = value;
-        entry.target = value;
+        entry.target = target;
         entry.clone()
     }
 
     fn clear(&mut self) {
         self.parameters.clear();
+        self.last_tick = None;
+    }
+
+    /// Advance all parameters towards their targets by `dt` seconds.
+    ///
+    /// Returns a Vec of parameters that actually changed `value`.
+    fn tick(&mut self, dt: f64) -> Vec<Parameter> {
+        if self.parameters.is_empty() {
+            return Vec::new();
+        }
+
+        let mut changed: Vec<Parameter> = Vec::new();
+
+        for p in self.parameters.values_mut() {
+            // Skip parameters that are already at their target (within epsilon).
+            if (p.value - p.target).abs() < 1e-5 {
+                p.value = p.target;
+                continue;
+            }
+
+            // If transition_speed is zero or negative, snap immediately.
+            if p.transition_speed <= 0.0 {
+                p.value = p.target;
+                changed.push(p.clone());
+                continue;
+            }
+
+            // Compute how far to move this tick.
+            // transition_speed is interpreted as "seconds to reach target".
+            let t = (dt / p.transition_speed).clamp(0.0, 1.0);
+
+            let new_value = match p.curve {
+                ParameterCurve::Linear | ParameterCurve::Ease | ParameterCurve::Exp => {
+                    // For now all curves are linear; curve-specific behavior
+                    // can be added later without changing the public API.
+                    p.value + (p.target - p.value) * t
+                }
+            };
+
+            // Avoid tiny oscillations near the target.
+            if (new_value - p.target).abs() < 1e-5 {
+                p.value = p.target;
+            } else {
+                p.value = new_value;
+            }
+
+            changed.push(p.clone());
+        }
+
+        changed
+    }
+}
+
+/// Create a parameter with per-ID defaults for transition behavior.
+/// This lets us tune e.g. crossfade to be slower than brightness, without
+/// hardcoding logic all over the codebase.
+fn default_parameter_for_id(id: ParameterId, initial_value: f64) -> Parameter {
+    // Per-parameter defaults:
+    // - crossfade: slower transition (e.g. ~0.8s) for visible fades
+    // - scene_a_brightness: quicker response
+    // - scene_a_wobble: medium-fast, kept responsive for live tweaking
+    // - fallback: medium-fast
+    let (transition_speed, curve) = match id.as_str() {
+        "crossfade" => (0.8_f64, ParameterCurve::Linear),
+        "scene_a_brightness" => (0.3_f64, ParameterCurve::Linear),
+        "scene_a_wobble" => (0.4_f64, ParameterCurve::Linear),
+        _ => (0.4_f64, ParameterCurve::Linear),
+    };
+
+    Parameter {
+        id,
+        value: initial_value,
+        target: initial_value,
+        transition_speed,
+        curve,
     }
 }
 
@@ -145,6 +231,60 @@ fn save_parameters_to_disk(app: &AppHandle) {
     }
 }
 
+/// ----------------------------------------------------------------------------
+/// Transition tick loop
+/// ----------------------------------------------------------------------------
+
+/// Minimum interval between ticks. We aim for ~60 Hz but tolerate slower ticks.
+const PARAMETER_TICK_INTERVAL_MS: u64 = 16;
+
+/// Start a simple background thread that periodically advances parameters
+/// towards their targets and emits `parameter_changed` events when values
+/// actually change.
+///
+/// This keeps the existing API surface:
+/// - Controls still call `set_parameter`
+/// - Renderer/controls still listen to `parameter_changed`
+///
+/// but the underlying values now move smoothly over time.
+fn start_parameter_tick_loop(app: AppHandle) {
+    std::thread::spawn(move || {
+        let mut last_tick = Instant::now();
+
+        loop {
+            let now = Instant::now();
+            let dt = now
+                .duration_since(last_tick)
+                .as_secs_f64()
+                // Clamp to avoid huge jumps after sleep/standby.
+                .min(0.25);
+            last_tick = now;
+
+            // Advance parameters and collect those that changed.
+            let changed: Vec<Parameter> = with_parameter_store(|store| {
+                // Track last_tick inside the store for potential future use.
+                store.last_tick = Some(now);
+                store.tick(dt)
+            });
+
+            if !changed.is_empty() {
+                // Emit events and persist the updated snapshot.
+                for p in &changed {
+                    if let Err(error) = app.emit("parameter_changed", p) {
+                        eprintln!(
+                            "Failed to emit parameter_changed event for {}: {error}",
+                            p.id
+                        );
+                    }
+                }
+                save_parameters_to_disk(&app);
+            }
+
+            std::thread::sleep(Duration::from_millis(PARAMETER_TICK_INTERVAL_MS));
+        }
+    });
+}
+
 /// Simple demo command kept from the scaffold for now.
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -190,30 +330,25 @@ fn get_parameter(id: String) -> Option<Parameter> {
     with_parameter_store(|store| store.get(&id))
 }
 
-/// Set a parameter's value by ID.
+/// Set a parameter's *target* by ID.
 ///
-/// This will create the parameter if it does not exist yet, and currently
-/// updates both `value` and `target` immediately. When transitions are
-/// implemented, this API will likely update `target` and let a tick loop
-/// move `value` over time.
+/// This will create the parameter if it does not exist yet, and **only**
+/// updates the `target` field. The `value` field will be moved towards
+/// `target` over time by the transition tick loop.
 ///
-/// The updated `Parameter` is returned so the caller can render the canonical
-/// state (including curve/speed if they care).
+/// The updated `Parameter` (after updating `target`) is returned so the
+/// caller can render the canonical state (including curve/speed if they care).
 #[tauri::command]
 fn set_parameter(app: AppHandle, id: String, value: f64) -> Parameter {
-    let updated = with_parameter_store(|store| store.set(id.clone(), value));
+    let updated = with_parameter_store(|store| store.set_target(id.clone(), value));
 
-    // Persist to disk.
+    // Persist the new target to disk immediately so restarts preserve intent.
     save_parameters_to_disk(&app);
 
-    // Emit a change event so interested frontends (e.g. Controls window)
-    // can update live without polling `get_parameters`.
-    //
-    // Event name is `parameter_changed`, payload is the full Parameter.
-    if let Err(error) = app.emit("parameter_changed", &updated) {
-        eprintln!("Failed to emit parameter_changed event for {id}: {error}");
-    }
-
+    // We do *not* emit `parameter_changed` here for the target change alone;
+    // the tick loop will emit events as `value` moves. Frontends that care
+    // about target values can read them from the returned struct or via
+    // `get_parameters`.
     updated
 }
 
@@ -238,6 +373,14 @@ pub fn run() {
             // Load parameters from disk into the in-memory store on startup
             // so renderer/controls can hydrate from canonical state.
             load_parameters_from_disk(app);
+
+            // Start the background transition tick loop once the app is ready.
+            // This loop:
+            // - Moves parameter `value` towards `target`
+            // - Emits `parameter_changed` for parameters whose value changed
+            // - Persists updated parameters to disk
+            start_parameter_tick_loop(app.handle().clone());
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

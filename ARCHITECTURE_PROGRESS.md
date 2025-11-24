@@ -90,7 +90,7 @@ _Last updated: Phase 1 dual-window bootstrap and initial event wiring._
 
 ### 2.2 Parameter Server
 
-- Status: 🧪 Backend stub implemented (in-memory + simple persistence)
+- Status: 🧪 Backend implemented (in-memory + persistence + transition tick loop)
 - Central responsibilities:
   - Manage canonical parameter state for:
     - Visual parameters
@@ -110,19 +110,32 @@ _Last updated: Phase 1 dual-window bootstrap and initial event wiring._
   - Rust-side `Parameter` struct with fields: `id`, `value`, `target`, `transition_speed`, `curve`
   - In-memory `ParameterStore` backed by a global mutex
   - JSON-based persistence:
-    - Snapshot of all parameters stored at app startup/shutdown points (currently on `set_parameter`) under the app config directory as `parameters.json`
+    - Snapshot of all parameters stored to disk as `parameters.json` under the app config directory
     - On app startup, parameters are loaded from disk into the in-memory store
+  - Background transition tick:
+    - A backend thread runs at ~60 Hz
+    - For each parameter where `value != target`, advances `value` toward `target` according to `transition_speed` and `curve` (currently treated as linear)
+    - Emits `parameter_changed` events for parameters whose `value` changed during a tick
+    - Persists the updated parameter list to disk after emitting
+    - Per-parameter transition defaults via `default_parameter_for_id`:
+      - `crossfade` → `transition_speed ≈ 0.8`
+      - `scene_a_brightness` → `transition_speed ≈ 0.3`
+      - `scene_a_wobble` → `transition_speed ≈ 0.4`
+      - Others (e.g. `rotationSpeed`) → `transition_speed ≈ 0.4`
   - Commands exposed to frontends:
     - `get_parameters()` → full list of parameters
     - `get_parameter(id)` → single parameter or `null`
-    - `set_parameter(id, value)` → upserts parameter and emits a change event
+    - `set_parameter(id, value)`:
+      - Interprets `value` as the **target**
+      - Upserts the parameter (using per-ID defaults) and updates `target` only
+      - Does not emit `parameter_changed` directly; tick loop emits as `value` moves
     - `clear_parameters()` → clears in-memory store and deletes persisted file
   - Events:
-    - `parameter_changed` → emitted on `set_parameter` with full `Parameter` payload
+    - `parameter_changed` → emitted from the tick loop with full `Parameter` payload when `value` changes
     - `parameters_cleared` → emitted on `clear_parameters` with empty payload
 
 - Requirements:
-  - Live transitions (smoothed changes from `value` → `target`)
+  - Live transitions (smoothed changes from `value` → `target`) ✅ basic linear implementation in place
   - Integration with modulators (LFO, random, audio followers, etc.)
   - Integration with external inputs (OSC/MIDI/audio)
   - Sync-safe between windows
@@ -223,6 +236,9 @@ _Last updated: Phase 1 dual-window bootstrap and initial event wiring._
 
 Mapped from `ARCHITECTURE.md` roadmap.  
 Initially all items are ⏳; update to 🧪 or ✅ as we implement.
+
+**Current highlight:**  
+We now have a basic multi-parameter Scene A exercising backend transitions (`crossfade`, `rotationSpeed`, `scene_a_brightness`, `scene_a_wobble`), a reset-to-defaults path in the Controls UI, and a parameter inspector grouped by scene vs global parameters.
 
 ### Phase 1 — Foundations
 
@@ -345,53 +361,144 @@ Planned steps:
 > - Add LFO, random, envelope followers
 > - Build a simple modulation matrix
 
-**Status:** ⏳
+**Status:** 🧪 (Parameter Server with transitions implemented; modulation engine still pending)
 
-Design notes:
+Implementation status:
 
 1. **Parameter model (MVP)**
-   - For each parameter:
+   - ✅ Struct exists in Rust backend as:
      - `id: string`
-     - `label?: string`
-     - `group?: string` (for UI grouping)
      - `value: number`
      - `target: number`
-     - `transitionSpeed: number`
+     - `transition_speed: number`
      - `curve: "linear" | "ease" | "exp"`
-     - `min?: number`
-     - `max?: number`
-     - `default?: number`
+
+   - ⏳ Optional metadata fields (`label`, `group`, `min`, `max`, `default`) are **not** implemented yet.
+   - ✅ `curve` enum is present but the backend currently treats all curves as **linear**. This is sufficient for the first transition pass.
 
 2. **Parameter Server responsibilities**
-   - ⏳ Canonical parameter storage in backend
-   - ⏳ Apply transitions on a periodic tick
-   - ⏳ Provide subscription / snapshot API for:
-     - Renderer
-     - Control UI
-   - ⏳ Accept changes from:
-     - UI actions
-     - Modulation engine
-     - Input engines
+   - ✅ Canonical parameter storage in backend:
+     - Implemented as a global in-memory `ParameterStore` keyed by `id`.
+     - Backed by JSON persistence (`parameters.json`) on disk.
+   - ✅ Apply transitions on a periodic tick:
+     - **Current behavior:**
+       - A backend timer loop (~60 Hz) runs in a background thread:
+         - Iterates parameters in `ParameterStore`.
+         - For each parameter where `value != target`, moves `value` toward `target` according to `transition_speed` using a simple linear interpolation.
+         - Emits `parameter_changed` events only when `value` actually changes (with an epsilon to avoid noise near the target).
+       - This applies to all numeric parameters, including:
+         - `crossfade`
+         - `scene_a_brightness`
+         - `scene_a_wobble`
+         - `rotationSpeed` (and any future parameters, via the default branch).
+     - ✅ `set_parameter` now updates **`target` only**, and the tick loop is the sole owner of changing `value`.
+   - ✅ Provide subscription / snapshot API for:
+     - Renderer:
+       - Uses `get_parameters` initially to hydrate values for:
+         - `crossfade`
+         - `rotationSpeed` (if present)
+         - `scene_a_brightness`
+         - `scene_a_wobble`
+       - Subscribes to:
+         - Backend `parameter_changed` events to follow smoothed values for these parameters.
+         - Direct `renderer:crossfade` and `renderer:scene_a_brightness` events as a fallback / low-latency UI path.
+       - Behavior for `rotationSpeed`:
+         - If a backend `rotationSpeed` parameter is present (via `get_parameters` or `parameter_changed`), the renderer treats it as the **authoritative** value and stops deriving rotation from `crossfade`.
+         - If no backend `rotationSpeed` parameter exists, the renderer derives a local `rotationSpeed` from the current `crossfade` value as a documented fallback.
+     - Control UI:
+       - Uses `get_parameters` on mount + explicit "Refresh".
+       - Subscribes to `parameter_changed` and updates the inspector live.
+       - Uses `set_parameter` for:
+         - `crossfade`
+         - `scene_a_brightness`
+         - `rotationSpeed`
+         - `scene_a_wobble`
+   - ✅ Accept changes from:
+     - UI actions:
+       - `set_parameter(id, value)` is called from Controls for:
+         - `crossfade`
+         - `scene_a_brightness`
+         - `rotationSpeed`
+         - `scene_a_wobble`
+       - Controls also call `forward_controls_event` as a UI fallback path for:
+         - `crossfade` → `renderer:crossfade`
+         - `scene_a_brightness` → `renderer:scene_a_brightness`
+     - ⏳ Modulation engine:
+       - Not implemented yet; future modulators will likely write to parameter `target` or to dedicated modulation slots.
+     - ⏳ Input engines:
+       - OSC/MIDI/audio paths are not wired yet.
 
-3. **Modulation engine (v1)**
-   - LFO:
-     - Types: `sine`, `triangle` (initially)
-     - Params: `rate`, `depth`, `phase`, `offset`
-   - Random:
-     - Smoothed random or noise
-   - Envelope followers:
-     - From audio amplitude / bands
-   - Modulation matrix:
-     - Map: `modulatorId → parameterId` with:
-       - `mode: "add" | "mul"`
-       - `scale: number`
+3. **Transition wiring (current focus: Scene A parameters)**
+   - **Contract:**
+     - Controls:
+       - `set_parameter("<id>", next)` sets `target = next` and lets the backend tick interpolate `value`.
+       - For `crossfade` and `scene_a_brightness`, Controls also send `forward_controls_event` so the renderer can respond quickly even if the backend event stream is temporarily unavailable.
+       - A “Reset to defaults” action:
+         - Calls `set_parameter` for:
+           - `"crossfade"`
+           - `"scene_a_brightness"`
+           - `"rotationSpeed"`
+           - `"scene_a_wobble"`
+         - Synchronizes local slider state to these defaults.
+       - A “Clear” action:
+         - Calls `clear_parameters`
+         - Resets sliders to defaults.
+     - Renderer:
+       - On startup, `get_parameters` returns the current runtime `value` for:
+         - `crossfade`
+         - `rotationSpeed`
+         - `scene_a_brightness`
+         - `scene_a_wobble`
+       - Subscribes to:
+         - `parameter_changed` and, when `id` matches one of the above, updates its local `RendererParameters` accordingly.
+         - `renderer:crossfade` and `renderer:scene_a_brightness` as a UI fallback path.
+       - `rotationSpeed` handling:
+         - If a backend `rotationSpeed` parameter is observed (via hydration or `parameter_changed`), the renderer sets a `useBackendRotationSpeed` flag and treats backend values as authoritative.
+         - If no backend `rotationSpeed` parameter is observed, the renderer derives `rotationSpeed` from `crossfade` locally:
+           - Base speed ≈ `0.6`
+           - Slight variation based on how far `crossfade` is from 0.5.
+   - **Scene coverage:**
+     - We now exercise transitions on a **multi-parameter Scene A**:
+       - `crossfade`
+       - `rotationSpeed`
+       - `scene_a_brightness`
+       - `scene_a_wobble`
+     - Scene A cube:
+       - Uses backend-smoothed `rotationSpeed` (or derived fallback).
+       - Uses backend-smoothed `scene_a_brightness` to drive emissive intensity.
+       - Uses backend-smoothed `scene_a_wobble` to drive sinusoidal position wobble.
+       - Uses backend-smoothed `crossfade` for opacity.
+
+4. **Modulation engine (v1)**
+   - ❌ Not started yet; no LFO/random/envelope followers implemented.
+   - **Design (unchanged):**
+     - LFO:
+       - Types: `sine`, `triangle` (initially)
+       - Params: `rate`, `depth`, `phase`, `offset`
+     - Random:
+       - Smoothed random or noise
+     - Envelope followers:
+       - From audio amplitude / bands
+     - Modulation matrix:
+       - Map: `modulatorId → parameterId` with:
+         - `mode: "add" | "mul"`
+         - `scale: number`
+   - **Near-term dependency:**
+     - Tick loop for parameters will likely also serve as the timing source for basic modulators.
 
 **Open questions (Phase 3):**
 
 - ❓ Tick source:
-  - Use renderer frame time for updates?
-  - Or central backend timer with deltaTime?
+  - Prefer a central backend timer with a fixed update step (e.g. ~60 Hz) so:
+    - Transitions continue even if renderer window is minimized or closed.
+    - Modulation and parameter evolution are not tied to renderer FPS.
+  - Renderer frame time may still be used for purely visual-only transitions (e.g. shader-only effects not backed by the Parameter Server).
 - ❓ Where should modulation math live predominantly (backend vs renderer)?
+  - Leaning toward **backend** for:
+    - Deterministic behavior across multiple renderers.
+    - Single source of truth for stateful modulators.
+  - Renderer may still host:
+    - Purely visual micro-animations that don't need to be shared or persisted.
 
 ---
 
@@ -575,27 +682,55 @@ Update and answer these over time; future LLM sessions will rely on them.
 
 ## 6. Next Actions (for LLM or human dev)
 
-Short-term, concrete steps to move from 🧪 to ✅ for Phase 1:
+Short-term, concrete steps building on the current Parameter Server + Scene A:
 
-1. **Renderer integration**
-   - Install and configure `react-three-fiber` with a WebGPU-first (with fallback) renderer.
-   - Replace the current renderer placeholder with:
-     - A `<Canvas>`-based scene.
-     - A simple rotating cube (Scene A) whose parameters can be driven by the Parameter Server later.
+1. **Tighten Parameter Server ↔ renderer integration**
+   - Clarify and enforce `rotationSpeed` semantics:
+     - Keep the existing behavior where:
+       - If a backend `rotationSpeed` parameter exists (via `get_parameters` or `parameter_changed`), the renderer uses it exclusively (`useBackendRotationSpeed = true`).
+       - If it does not exist, the renderer derives `rotationSpeed` from `crossfade` as a fallback.
+     - Add or refine inline comments in the renderer code to:
+       - Explicitly document this behavior.
+       - Make it clear that any future scene or input that wants authoritative control over rotation should create/set the `rotationSpeed` parameter via `set_parameter`.
+   - Keep the dual-path crossfade behavior:
+     - Backend-smoothed `parameter_changed` is preferred when available.
+     - `renderer:crossfade` remains as a UI fallback (do not break existing sliders).
 
-2. **Crossfade rendering**
-   - Introduce a second scene (Scene B) and render to separate render targets.
-   - Bind the existing crossfade value (currently just visualized in UI) to a real uniform `u_crossfade` that blends Scene A/B.
-   - Keep the current event wiring (controls → backend → renderer) as the source of truth for the crossfade value.
+2. **Add one more visual parameter to validate transitions further**
+   - Introduce a simple additional visual parameter for Scene A or B, for example:
+     - `scene_a_tint` (color tint intensity) or
+     - A boolean-ish “FX toggle” represented as a numeric parameter (0 or 1) such as `scene_a_fx_intensity`.
+   - Wire it end-to-end:
+     - Add backend default and transition behavior (similar to `scene_a_brightness`).
+     - Add a slider in Controls (with defaults, reset-to-defaults, inspector entry).
+     - Use the parameter in the renderer material (e.g., blending between two colors or enabling a subtle effect).
+   - Use this to further exercise:
+     - Parameter Server tick behavior.
+     - Persistence.
+     - Inspector grouping and live updates.
 
-3. **Parameter plumbing preparation**
-   - Define a minimal in-memory parameter model in the renderer that can later be replaced by the true backend Parameter Server.
-   - Ensure the crossfade event updates both:
-     - The visual blend in the render pipeline.
-     - A parameter representation that can be swapped out.
+3. **Start sketching the Scene System**
+   - In TypeScript (frontend), introduce early scaffolding (types / placeholders) for a future Scene System, without breaking the current dual-scene setup:
+     - Define a minimal scene descriptor type, e.g.:
+       - `SceneId`
+       - `registeredParameters: string[]`
+       - Optional labels / ordering.
+     - Add comments describing how scenes will:
+       - Register their parameters with the Parameter Server (or at least declare which IDs they care about).
+       - Allow the Controls UI to show scene-scoped parameter groups automatically.
+   - In this document and code comments:
+     - Note that Scene A currently drives and consumes:
+       - `crossfade`
+       - `rotationSpeed`
+       - `scene_a_brightness`
+       - `scene_a_wobble`
+     - Outline how additional scenes (beyond A/B) could be added while:
+       - Reusing the existing Parameter Server.
+       - Sharing or reusing parameter IDs where appropriate (e.g. global crossfade).
+       - Keeping the current dual-window behavior, sliders, and persistence stable.
 
 4. **Housekeeping**
-   - Keep validating that `npm run tauri dev` from the repo root works after each change.
-   - Update this document as:
-     - r3f/WebGPU integration lands (mark parts of Phase 1 “Renderer bootstrap” as 🧪/✅).
-     - Scene A/B and real crossfade rendering are implemented.
+   - After each incremental change (especially when adding new parameters or scene scaffolding), run TypeScript/Rust diagnostics to keep the codebase green.
+   - Keep this document updated as:
+     - Additional Scene A/B parameters are added and exercised.
+     - Scene System scaffolding lands (mark relevant parts of Phase 3 “Scene System integration” as 🧪/✅ once started).

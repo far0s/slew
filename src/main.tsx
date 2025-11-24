@@ -5,6 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
+import type { Event as TauriEvent } from "@tauri-apps/api/event";
 
 /**
  * Entry point for the Tauri app.
@@ -43,7 +44,11 @@ type BackendParameter = {
   curve: "linear" | "ease" | "exp";
 };
 
-type RendererParameterKey = "crossfade" | "rotationSpeed" | "sceneABrightness";
+type RendererParameterKey =
+  | "crossfade"
+  | "rotationSpeed"
+  | "sceneABrightness"
+  | "sceneAWobble";
 
 /**
  * Ultra-minimal parameter abstraction local to the renderer.
@@ -54,6 +59,7 @@ type RendererParameters = {
   crossfade: number;
   rotationSpeed: number;
   sceneABrightness: number;
+  sceneAWobble: number;
 };
 
 /**
@@ -82,6 +88,11 @@ function updateRendererParam(
         ...current,
         sceneABrightness: value,
       };
+    case "sceneAWobble":
+      return {
+        ...current,
+        sceneAWobble: value,
+      };
     default: {
       // Exhaustive check for future keys.
       return current;
@@ -93,21 +104,33 @@ function SceneA({
   rotationSpeed,
   opacity,
   brightness,
+  wobble,
 }: {
   rotationSpeed: number;
   opacity: number;
   brightness: number;
+  wobble: number;
 }) {
   // Basic rotating cube representing Scene A. Rotation speed is provided
   // explicitly as a parameter, and opacity is used for the crossfade.
   const meshRef = React.useRef<THREE.Mesh | null>(null);
+  const timeRef = React.useRef(0);
 
   useFrame((_, delta) => {
     if (!meshRef.current) return;
     // Speed in radians per second; clamp delta to avoid huge jumps on tab switch.
     const clampedDelta = Math.min(delta, 1 / 30);
+    timeRef.current += clampedDelta;
+
+    const wobbleAmount = Math.max(0, Math.min(1, wobble));
+    const wobbleOffsetX = wobbleAmount * 0.15 * Math.sin(timeRef.current * 1.3);
+    const wobbleOffsetY = wobbleAmount * 0.1 * Math.cos(timeRef.current * 0.9);
+
     meshRef.current.rotation.y += rotationSpeed * clampedDelta;
     meshRef.current.rotation.x += rotationSpeed * 0.4 * clampedDelta;
+
+    meshRef.current.position.x = wobbleOffsetX;
+    meshRef.current.position.y = wobbleOffsetY;
   });
 
   const clampedBrightness = Math.max(0, Math.min(2, brightness));
@@ -150,16 +173,21 @@ function RendererRoot() {
    *
    * This is a placeholder abstraction standing in for the future
    * backend Parameter Server:
-   * - crossfade: 0..1, driven by the Controls window
-   * - rotationSpeed: derived from crossfade for now, but modeled
-   *   explicitly so it can later be driven independently.
+   * - crossfade: 0..1, driven by the Controls window or backend-smoothed value
+   * - rotationSpeed: can be driven independently
+   * - sceneABrightness: emissive intensity for Scene A
+   * - sceneAWobble: 0..1, controls wobble strength for Scene A
    */
   const [params, setParams] = useState<RendererParameters>({
     crossfade: 0.5,
     rotationSpeed: 0.6,
     sceneABrightness: 1,
+    sceneAWobble: 0,
   });
   const [hasHydratedFromBackend, setHasHydratedFromBackend] = useState(false);
+  const [useBackendSmoothedCrossfade, setUseBackendSmoothedCrossfade] =
+    useState(false);
+  const [useBackendRotationSpeed, setUseBackendRotationSpeed] = useState(false);
 
   /**
    * Centralized parameter update helper.
@@ -181,6 +209,13 @@ function RendererRoot() {
 
     void (async () => {
       unlisten = await listen<string>("renderer:crossfade", (event) => {
+        // If we're currently driven by backend-smoothed crossfade values,
+        // keep listening to this event only as a fallback, but ignore it
+        // while the backend stream is healthy.
+        if (useBackendSmoothedCrossfade) {
+          return;
+        }
+
         try {
           const parsed = JSON.parse(event.payload ?? "{}") as CrossfadePayload;
 
@@ -190,12 +225,15 @@ function RendererRoot() {
             // Update crossfade via the central helper.
             applyParamUpdate("crossfade", clamped);
 
-            // For now, derive rotationSpeed from crossfade to show
-            // how multiple parameters can be related. Later, this
-            // can be driven by its own input or modulation.
-            const baseSpeed = 0.6;
-            const variation = (clamped - 0.5) * 0.4;
-            applyParamUpdate("rotationSpeed", baseSpeed + variation);
+            // When there is no dedicated backend rotationSpeed parameter,
+            // we still derive a local rotation speed from crossfade as a
+            // fallback. If a backend rotationSpeed is present, the
+            // backend-driven path will override this.
+            if (!useBackendRotationSpeed) {
+              const baseSpeed = 0.6;
+              const variation = (clamped - 0.5) * 0.4;
+              applyParamUpdate("rotationSpeed", baseSpeed + variation);
+            }
           }
         } catch (error) {
           // eslint-disable-next-line no-console
@@ -209,7 +247,7 @@ function RendererRoot() {
         unlisten();
       }
     };
-  }, [applyParamUpdate]);
+  }, [applyParamUpdate, useBackendSmoothedCrossfade, useBackendRotationSpeed]);
 
   // Listen for Scene A brightness events.
   useEffect(() => {
@@ -268,15 +306,32 @@ function RendererRoot() {
             if (param.id === "crossfade") {
               const clamped = Math.max(0, Math.min(1, param.value));
               applyParamUpdate("crossfade", clamped);
-
-              const baseSpeed = 0.6;
-              const variation = (clamped - 0.5) * 0.4;
-              applyParamUpdate("rotationSpeed", baseSpeed + variation);
+            } else if (param.id === "rotationSpeed") {
+              const clamped = Math.max(0, Math.min(5, param.value));
+              setUseBackendRotationSpeed(true);
+              applyParamUpdate("rotationSpeed", clamped);
             } else if (param.id === "scene_a_brightness") {
               const clamped = Math.max(0, Math.min(2, param.value));
               applyParamUpdate("sceneABrightness", clamped);
+            } else if (param.id === "scene_a_wobble") {
+              const clamped = Math.max(0, Math.min(1, param.value));
+              applyParamUpdate("sceneAWobble", clamped);
             }
           });
+
+          // If there was no explicit rotationSpeed parameter, fall back to
+          // the crossfade-derived speed after hydration.
+          if (!useBackendRotationSpeed) {
+            const crossfadeParam = backendParams.find(
+              (p) => p.id === "crossfade",
+            );
+            if (crossfadeParam) {
+              const clamped = Math.max(0, Math.min(1, crossfadeParam.value));
+              const baseSpeed = 0.6;
+              const variation = (clamped - 0.5) * 0.4;
+              applyParamUpdate("rotationSpeed", baseSpeed + variation);
+            }
+          }
         }
       } catch (error) {
         // eslint-disable-next-line no-console
@@ -289,6 +344,69 @@ function RendererRoot() {
       }
     })();
   }, [applyParamUpdate, hasHydratedFromBackend]);
+
+  /**
+   * Listen for backend Parameter Server events so the renderer can
+   * follow smoothed values (e.g. crossfade transitions computed in Rust).
+   *
+   * We keep the direct `renderer:crossfade` path as a fallback and
+   * default to backend-driven values once we see a matching parameter.
+   */
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    void (async () => {
+      try {
+        unlisten = await listen<BackendParameter>(
+          "parameter_changed",
+          (event: TauriEvent<BackendParameter>) => {
+            const updated = event.payload;
+
+            if (!updated) return;
+
+            if (updated.id === "crossfade") {
+              const clamped = Math.max(0, Math.min(1, updated.value));
+
+              // Prefer backend-smoothed crossfade when available.
+              setUseBackendSmoothedCrossfade(true);
+
+              applyParamUpdate("crossfade", clamped);
+
+              // Only derive rotationSpeed from crossfade if there is no
+              // dedicated backend rotationSpeed parameter in use.
+              if (!useBackendRotationSpeed) {
+                const baseSpeed = 0.6;
+                const variation = (clamped - 0.5) * 0.4;
+                applyParamUpdate("rotationSpeed", baseSpeed + variation);
+              }
+            } else if (updated.id === "rotationSpeed") {
+              const clamped = Math.max(0, Math.min(5, updated.value));
+              setUseBackendRotationSpeed(true);
+              applyParamUpdate("rotationSpeed", clamped);
+            } else if (updated.id === "scene_a_brightness") {
+              const clamped = Math.max(0, Math.min(2, updated.value));
+              applyParamUpdate("sceneABrightness", clamped);
+            } else if (updated.id === "scene_a_wobble") {
+              const clamped = Math.max(0, Math.min(1, updated.value));
+              applyParamUpdate("sceneAWobble", clamped);
+            }
+          },
+        );
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error(
+          "Renderer failed to subscribe to backend parameter_changed events",
+          error,
+        );
+      }
+    })();
+
+    return () => {
+      if (unlisten) {
+        unlisten();
+      }
+    };
+  }, [applyParamUpdate, useBackendRotationSpeed]);
 
   const percent = Math.round(params.crossfade * 100);
 
@@ -372,6 +490,7 @@ function RendererRoot() {
                 rotationSpeed={params.rotationSpeed}
                 opacity={1 - params.crossfade}
                 brightness={params.sceneABrightness}
+                wobble={params.sceneAWobble}
               />
             )}
 
