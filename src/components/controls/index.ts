@@ -7,3 +7,5 @@ export {
   SceneControlStrip,
   type SceneControlStripProps,
 } from "./SceneControlStrip";
+export { MidiPanel, type MidiPanelProps } from "./MidiPanel";
+export { MidiLearnButton, type MidiLearnButtonProps } from "./MidiLearnButton";

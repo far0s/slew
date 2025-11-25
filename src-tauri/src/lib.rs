@@ -9,6 +9,9 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 
+// Input layer modules
+pub mod midi;
+
 /// ----------------------------------------------------------------------------
 /// Minimal Parameter Server (backend-local, in-memory)
 /// ----------------------------------------------------------------------------
@@ -199,7 +202,8 @@ static PARAMETER_STORE: Lazy<Arc<Mutex<ParameterStore>>> =
     Lazy::new(|| Arc::new(Mutex::new(ParameterStore::default())));
 
 /// Public API to access the global store.
-fn with_parameter_store<F, R>(f: F) -> R
+/// Made pub(crate) so input modules (e.g., midi) can update parameters directly.
+pub(crate) fn with_parameter_store<F, R>(f: F) -> R
 where
     F: FnOnce(&mut ParameterStore) -> R,
 {
@@ -411,6 +415,9 @@ pub fn run() {
             // so renderer/controls can hydrate from canonical state.
             load_parameters_from_disk(app);
 
+            // Initialize the MIDI engine
+            midi::init_midi_engine(app.handle().clone());
+
             // Start the background transition tick loop once the app is ready.
             // This loop:
             // - Moves parameter `value` towards `target`
@@ -486,7 +493,18 @@ pub fn run() {
             get_parameter,
             set_parameter,
             clear_parameters,
-            set_scene_pairing
+            set_scene_pairing,
+            // MIDI commands
+            midi::list_midi_devices,
+            midi::open_midi_device,
+            midi::close_midi_device,
+            midi::start_midi_learn,
+            midi::cancel_midi_learn,
+            midi::get_midi_learn_state,
+            midi::get_midi_mappings,
+            midi::set_midi_mapping,
+            midi::remove_midi_mapping,
+            midi::clear_midi_mappings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

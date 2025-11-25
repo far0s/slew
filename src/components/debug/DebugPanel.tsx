@@ -3,6 +3,7 @@ import type { BackendParameter } from "../../controls/controlsParameters";
 import { BackendInspector } from "./BackendInspector";
 import { DebugLogs, type LogEntry } from "./DebugLogs";
 import { DebugMetrics, type DebugMetricsData } from "./DebugMetrics";
+import { MidiPanel } from "../controls/MidiPanel";
 import styles from "./DebugPanel.module.css";
 
 export interface DebugPanelProps {
@@ -46,12 +47,17 @@ export function DebugPanel({
   return (
     <Tabs.Root defaultValue="parameters" className={styles.container}>
       <Tabs.List className={styles.tabList} aria-label="Debug panel tabs">
+        <Tabs.Trigger value="midi" className={styles.tabTrigger}>
+          MIDI
+        </Tabs.Trigger>
         <Tabs.Trigger value="parameters" className={styles.tabTrigger}>
           Parameters
         </Tabs.Trigger>
         <Tabs.Trigger value="logs" className={styles.tabTrigger}>
           Logs
-          {logs.length > 0 && <span className={styles.badge}>{logs.length}</span>}
+          {logs.length > 0 && (
+            <span className={styles.badge}>{logs.length}</span>
+          )}
         </Tabs.Trigger>
         <Tabs.Trigger value="metrics" className={styles.tabTrigger}>
           Metrics
@@ -59,6 +65,10 @@ export function DebugPanel({
       </Tabs.List>
 
       <div className={styles.tabBody}>
+        <Tabs.Content value="midi" className={styles.tabContent}>
+          <MidiPanel />
+        </Tabs.Content>
+
         <Tabs.Content value="parameters" className={styles.tabContent}>
           <BackendInspector
             backendParameters={backendParameters}

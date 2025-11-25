@@ -32,7 +32,8 @@ Legend:
 - ✅ Scene Control UI with Active/Next selection, crossfade buttons, and progress indicators
 - ✅ Live scene previews (per-scene and global renderer preview with crossfade blending)
 - 🧩 Modulation engine designed (simple renderer-side LFO implemented for Scene A tint)
-- ⏳ Input engines (OSC / MIDI / audio) and video-output layer
+- 🧪 Input engines: MIDI implemented (device enumeration, Learn mode, mappings); OSC and audio pending
+- ⏳ Video-output layer (Syphon/Spout/NDI)
 
 ---
 
@@ -578,41 +579,108 @@ Planned breakdown:
 > - Integrate Rust audio capture + FFT
 > - Expose input data to Parameter Server
 
-**Status:** ⏳
+**Status:** 🧪 (MIDI input implemented; OSC and Audio pending)
 
-Planned steps:
+---
 
-1. **Backend stubs**
-   - ⏳ Create modules:
-     - `/rust/plugins/osc`
-     - `/rust/plugins/midi`
-     - `/rust/plugins/audio`
-   - 🧪 Provide minimal functions:
-     - `start_*`, `stop_*`
-     - Dummy events to prove wiring to frontend
+#### 2.1 MIDI Input — ✅ Implemented
 
-2. **Real input integration**
-   - ⏳ Wire OSC:
-     - Bind port
-     - Map OSC addresses to internal channels
-   - ⏳ Wire MIDI:
-     - Enumerate devices
-     - Receive CC/Note events
-   - ⏳ Wire audio:
-     - Capture device input
-     - Run FFT to extract bands and loudness
+**Backend (Rust):**
 
-3. **Expose to Parameter Server**
-   - ⏳ Define internal data structures for:
-     - OSC channels
-     - MIDI controllers
-     - Audio bands
-   - ⏳ Allow these to act as modulation sources for parameters
+- Added `midir` crate (v0.10) for cross-platform MIDI I/O
+- Created `src-tauri/src/midi.rs` module with:
+  - Device enumeration (`list_midi_devices`)
+  - Connection management (`open_midi_device`, `close_midi_device`)
+  - Message parsing (CC, Note On/Off, Pitch Bend)
+  - MIDI Learn state machine (`start_midi_learn`, `cancel_midi_learn`)
+  - Mapping storage and persistence (`midi_mappings.json`)
+  - Direct Parameter Server integration (CC values → `set_target`)
 
-**Open questions (Phase 2):**
+**Tauri Commands:**
 
-- ❓ Preferred Rust crates for OSC and audio? (If you have strong preferences.) -> no preferences
-- ❓ OS development priority (e.g., macOS-first)? -> macOS first (very little chance we'll use Windows or Linux, but you never know, if it's low effort we can add support).
+- `list_midi_devices` — List available MIDI input devices
+- `open_midi_device(device_id)` — Open a device for input
+- `close_midi_device(device_id)` — Close a device
+- `start_midi_learn(parameter_id)` — Enter learn mode for a parameter
+- `cancel_midi_learn` — Cancel learn mode
+- `get_midi_learn_state` — Get current learn state
+- `get_midi_mappings` — Get all mappings
+- `set_midi_mapping(mapping)` — Add/update a mapping
+- `remove_midi_mapping(parameter_id)` — Remove a mapping
+- `clear_midi_mappings` — Clear all mappings
+
+**Events Emitted:**
+
+- `midi_message` — Raw MIDI for activity indicators
+- `midi_devices_changed` — Device connect/disconnect
+- `midi_learn_state_changed` — Learn mode changes
+- `midi_learn_complete` — Mapping captured
+
+**Frontend (React):**
+
+- Created `src/inputs/midi.ts` with:
+  - TypeScript types matching Rust structs
+  - API wrapper functions for all Tauri commands
+  - React hooks:
+    - `useMidiDevices()` — Device listing and connection
+    - `useMidiLearn()` — Learn mode management
+    - `useMidiMappings()` — Mapping CRUD
+    - `useMidiActivity()` — Activity monitoring
+
+- Created UI components:
+  - `MidiPanel` — Full MIDI management panel with:
+    - Activity indicator (pulses on input)
+    - Collapsible device list with connect/disconnect buttons
+    - Collapsible mappings list with remove buttons
+  - `MidiLearnButton` — Per-parameter Learn button showing:
+    - "Learn" when no mapping
+    - Current mapping (e.g., "CC1@1") when mapped
+    - "Waiting…" with pulse animation when learning
+
+- Integrated into Debug panel as first tab ("MIDI")
+
+**Files Created/Modified:**
+
+- `src-tauri/Cargo.toml` — Added `midir` and `log` crates
+- `src-tauri/src/lib.rs` — Added midi module import, init, and command registration
+- `src-tauri/src/midi.rs` — NEW: Complete MIDI engine
+- `src/inputs/midi.ts` — NEW: TypeScript types and hooks
+- `src/components/controls/MidiPanel.tsx` — NEW: MIDI management UI
+- `src/components/controls/MidiPanel.module.css` — NEW: Panel styles
+- `src/components/controls/MidiLearnButton.tsx` — NEW: Learn button component
+- `src/components/controls/MidiLearnButton.module.css` — NEW: Button styles
+- `src/components/controls/index.ts` — Added exports
+- `src/components/debug/DebugPanel.tsx` — Added MIDI tab
+
+---
+
+#### 2.2 OSC Input — ⏳ Planned
+
+**Planned approach:**
+
+- Add `rosc` crate for OSC message parsing
+- Create UDP listener on configurable port
+- Route incoming OSC messages to parameters via address patterns
+- UI: Port configuration, address→parameter mapping editor
+
+---
+
+#### 2.3 Audio Input — ⏳ Planned
+
+**Planned approach:**
+
+- Add `cpal` crate for audio capture
+- Add `rustfft` for FFT processing
+- Extract: RMS loudness, frequency bands (bass/mid/treble), beat detection
+- Expose as virtual parameters or dedicated events
+- UI: Device selector, level meters, band visualization
+
+---
+
+**Resolved questions (Phase 2):**
+
+- ✅ Preferred Rust crates: `midir` for MIDI (confirmed working), `rosc` for OSC, `cpal`+`rustfft` for audio
+- ✅ OS priority: macOS first (cross-platform support via chosen crates)
 
 ---
 
@@ -1028,16 +1096,20 @@ Short-term, concrete steps building on the current Parameter Server + Scene A/B/
      - Real-time parameter updates from Controls state
    - Both optimized for performance (reduced DPR, low-power GPU preference)
 
-4. **Input Layer (OSC / MIDI / Audio)**
-   - Wire up OSC input to drive parameters
-   - Add MIDI Learn UI for parameter binding
-   - Implement audio input with level meters and band energy
-   - Use this to further exercise:
-     - Parameter Server tick behavior.
-     - Persistence.
-     - Inspector grouping and live updates.
+4. **~~MIDI Input~~** ✅ DONE
+   - Backend: `midi.rs` module with device enumeration, connection management, message parsing
+   - MIDI Learn state machine with mapping persistence
+   - Direct integration with Parameter Server (CC → `set_target`)
+   - Frontend: `useMidiDevices`, `useMidiLearn`, `useMidiMappings`, `useMidiActivity` hooks
+   - UI: `MidiPanel` with device list and mappings, `MidiLearnButton` for per-parameter Learn
+   - Integrated into Debug panel as "MIDI" tab
 
-5. **Start sketching the Scene System**
+5. **Input Layer — Remaining (OSC / Audio)**
+   - Wire up OSC input to drive parameters (next priority)
+   - Implement audio input with level meters and band energy
+   - Add `MidiLearnButton` to scene control sliders for full MIDI mapping workflow
+
+6. **Start sketching the Scene System**
    - In TypeScript (frontend), introduce early scaffolding (types / placeholders) for a future Scene System, without breaking the current dual-scene setup:
      - Define a minimal scene descriptor type, e.g.:
        - `SceneId`
@@ -1057,7 +1129,7 @@ Short-term, concrete steps building on the current Parameter Server + Scene A/B/
        - Sharing or reusing parameter IDs where appropriate (e.g. global crossfade).
        - Keeping the current dual-window behavior, sliders, and persistence stable.
 
-6. **Housekeeping**
+7. **Housekeeping**
    - After each incremental change (especially when adding new parameters or scene scaffolding), run TypeScript/Rust diagnostics to keep the codebase green.
    - Keep this document updated as:
      - Additional Scene A/B parameters are added and exercised.
