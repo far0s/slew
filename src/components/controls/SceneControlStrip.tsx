@@ -4,6 +4,8 @@ import { ChevronDownIcon } from "@radix-ui/react-icons";
 import type { SceneId } from "../../scenes/sceneTypes";
 import type { SetSceneId } from "../../controls/scenePairing";
 import { setScenePairingOnBackend } from "../../controls/scenePairing";
+import type { SceneProps } from "../../scenes/sceneComponents";
+import { ScenePreview } from "./ScenePreview";
 import styles from "./SceneControlStrip.module.css";
 
 export interface SceneControlStripProps {
@@ -13,6 +15,10 @@ export interface SceneControlStripProps {
   setNextSceneId: SetSceneId;
   crossfade: number;
   onCrossfadeChange: (value: number) => Promise<void>;
+  /** Scene params for the active scene preview */
+  activeSceneParams?: SceneProps["params"];
+  /** Scene params for the next scene preview */
+  nextSceneParams?: SceneProps["params"];
 }
 
 const SCENE_OPTIONS: { value: SceneId; label: string }[] = [
@@ -112,6 +118,7 @@ function CrossfadeProgress({ value, isActive }: CrossfadeProgressProps) {
  *
  * The main scene control panel showing:
  * - Active and Next scene selection dropdowns
+ * - Live 3D previews for each scene
  * - Crossfade progress indicators for each scene
  * - Crossfade buttons to transition between scenes
  *
@@ -131,6 +138,8 @@ export function SceneControlStrip({
   setNextSceneId,
   crossfade,
   onCrossfadeChange,
+  activeSceneParams,
+  nextSceneParams,
 }: SceneControlStripProps) {
   // Disable pairing controls while crossfading to avoid mid-transition changes
   const isCrossfading = crossfade > 0.01 && crossfade < 0.99;
@@ -171,73 +180,95 @@ export function SceneControlStrip({
 
   return (
     <section aria-label="Scene control strip" className={styles.container}>
-      <header className={styles.header}>
-        <div className={styles.headerRow}>
-          <h2 className={styles.title}>Scene control</h2>
-        </div>
-      </header>
+      <div className={styles.scenePairRow}>
+        {/* Active Scene Column */}
+        <div className={styles.sceneColumn}>
+          <div className={styles.scenePairRow}>
+            <div className={styles.sceneColumn}>
+              <div className={styles.sceneColumnHeader}>
+                <p className={styles.sceneLabel}>
+                  <span className={styles.sceneLabelText}>Active</span>
+                  <CrossfadeProgress value={crossfade} isActive />
+                </p>
+              </div>
 
-      <div className={styles.content}>
-        <div className={styles.scenePairRow}>
-          {/* Active Scene Column */}
-          <div className={styles.sceneColumn}>
-            <p className={styles.sceneLabel}>
-              <span className={styles.sceneLabelText}>Active</span>
-              <CrossfadeProgress value={crossfade} isActive />
-            </p>
+              <div className={styles.sceneColumnBody}>
+                {/* Controls */}
+                <div className={styles.sceneColumnControls}>
+                  <div className={styles.sceneSelectRow}>
+                    <SceneSelect
+                      value={activeSceneId}
+                      disabled={isCrossfading || isActiveLocked}
+                      ariaLabel="Active scene"
+                      excludeSceneId={nextSceneId}
+                      onValueChange={handleActiveSceneChange}
+                    />
+                  </div>
 
-            <div className={styles.sceneSelectRow}>
-              <SceneSelect
-                value={activeSceneId}
-                disabled={isCrossfading || isActiveLocked}
-                ariaLabel="Active scene"
-                excludeSceneId={nextSceneId}
-                onValueChange={handleActiveSceneChange}
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={handleCrossfadeToActive}
-              disabled={isCrossfading || isActiveLocked}
-              className={styles.crossfadeButton}
-            >
-              Crossfade to Active
-            </button>
-          </div>
-
-          {/* Next Scene Column */}
-          <div className={styles.sceneColumn}>
-            <p className={styles.sceneLabel}>
-              <span className={styles.sceneLabelText}>Next</span>
-              <CrossfadeProgress value={crossfade} isActive={false} />
-            </p>
-
-            <div
-              aria-label="Scene crossfade pairing"
-              className={styles.sceneControls}
-            >
-              <div className={styles.sceneSelectRow}>
-                <div className={styles.sceneSelectWrapper}>
-                  <SceneSelect
-                    value={nextSceneId}
-                    disabled={isCrossfading || isNextLocked}
-                    ariaLabel="Next scene"
-                    excludeSceneId={activeSceneId}
-                    onValueChange={handleNextSceneChange}
-                  />
+                  <button
+                    type="button"
+                    onClick={handleCrossfadeToActive}
+                    disabled={isCrossfading || isActiveLocked}
+                    className={styles.crossfadeButton}
+                  >
+                    Crossfade to Active
+                  </button>
                 </div>
               </div>
             </div>
+            <div className={styles.sceneColumn}>
+              {/* Preview */}
+              <div className={styles.sceneColumnPreview}>
+                <ScenePreview
+                  sceneId={activeSceneId}
+                  params={activeSceneParams}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
 
-            <button
-              type="button"
-              onClick={handleCrossfadeToNext}
-              disabled={isCrossfading || isNextLocked}
-              className={styles.crossfadeButton}
-            >
-              Crossfade to Next
-            </button>
+        {/* Next Scene Column */}
+        <div className={styles.sceneColumn}>
+          <div className={styles.scenePairRow}>
+            <div className={styles.sceneColumn}>
+              <div className={styles.sceneColumnHeader}>
+                <p className={styles.sceneLabel}>
+                  <span className={styles.sceneLabelText}>Next</span>
+                  <CrossfadeProgress value={crossfade} isActive={false} />
+                </p>
+              </div>
+
+              <div className={styles.sceneColumnBody}>
+                {/* Controls */}
+                <div className={styles.sceneColumnControls}>
+                  <div className={styles.sceneSelectRow}>
+                    <SceneSelect
+                      value={nextSceneId}
+                      disabled={isCrossfading || isNextLocked}
+                      ariaLabel="Next scene"
+                      excludeSceneId={activeSceneId}
+                      onValueChange={handleNextSceneChange}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleCrossfadeToNext}
+                    disabled={isCrossfading || isNextLocked}
+                    className={styles.crossfadeButton}
+                  >
+                    Crossfade to Next
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className={styles.sceneColumn}>
+              {/* Preview */}
+              <div className={styles.sceneColumnPreview}>
+                <ScenePreview sceneId={nextSceneId} params={nextSceneParams} />
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { AnimatePresence, motion } from "motion/react";
 import { type SceneId } from "./scenes/sceneTypes";
+import type { SceneProps } from "./scenes/sceneComponents";
 import {
   type BackendParameter,
   useControlsParameters,
@@ -11,6 +12,8 @@ import { SceneControlStrip } from "./components/controls/SceneControlStrip";
 import { SceneAControls } from "./components/controls/SceneAControls";
 import { SceneBControls } from "./components/controls/SceneBControls";
 import { SceneCControls } from "./components/controls/SceneCControls";
+import { RendererPreview } from "./components/controls/RendererPreview";
+
 import {
   DebugPanel,
   type LogEntry,
@@ -380,21 +383,52 @@ function App() {
     }
   }
 
+  /**
+   * Get the params object for a given scene ID (for preview rendering)
+   */
+  function getSceneParams(sceneId: SceneId): SceneProps["params"] {
+    switch (sceneId) {
+      case "sceneA":
+        return {
+          rotationSpeed,
+          sceneABrightness,
+          sceneAWobble,
+          sceneATint,
+        };
+      case "sceneB":
+        return {
+          sceneBBrightness,
+          sceneBRotationSpeed,
+          sceneBTint,
+          sceneBScale,
+        };
+      case "sceneC":
+        return {
+          sceneCBrightness,
+          sceneCPulseSpeed,
+          sceneCRotationSpeed,
+          sceneCTint,
+        };
+      default:
+        return {};
+    }
+  }
+
   return (
     <div className={styles.root}>
       <main className={styles.main}>
         {/* Scene control strip: top row, columns 1–4 */}
         <div className={styles.sceneControlStrip}>
-          <div className={styles.panel}>
-            <SceneControlStrip
-              activeSceneId={activeSceneId}
-              nextSceneId={nextSceneId}
-              setActiveSceneId={setActiveSceneId}
-              setNextSceneId={setNextSceneId}
-              crossfade={crossfade}
-              onCrossfadeChange={handleCrossfadeChange}
-            />
-          </div>
+          <SceneControlStrip
+            activeSceneId={activeSceneId}
+            nextSceneId={nextSceneId}
+            setActiveSceneId={setActiveSceneId}
+            setNextSceneId={setNextSceneId}
+            crossfade={crossfade}
+            onCrossfadeChange={handleCrossfadeChange}
+            activeSceneParams={getSceneParams(activeSceneId)}
+            nextSceneParams={getSceneParams(nextSceneId)}
+          />
         </div>
 
         {/* Active scene column: columns 1–2, row 2 */}
@@ -446,11 +480,15 @@ function App() {
         </div>
 
         {/* Preview + Debug column: column 5, spans both rows */}
-        <aside className={styles.previewColumn} aria-label="Preview and debug">
-          <div className={styles.previewBlock}>
-            <span>Renderer preview placeholder</span>
-          </div>
-
+        <aside className={styles.debugColumn} aria-label="Preview and debug">
+          <RendererPreview
+            activeSceneId={activeSceneId}
+            nextSceneId={nextSceneId}
+            crossfade={crossfade}
+            activeSceneParams={getSceneParams(activeSceneId)}
+            nextSceneParams={getSceneParams(nextSceneId)}
+            sceneATintLfoDepth={sceneATintLfoDepth}
+          />
           <DebugPanel
             backendParameters={backendParameters}
             isLoadingParams={isLoadingParams}

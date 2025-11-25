@@ -28,8 +28,10 @@ Legend:
   - `renderer` → `/renderer`
   - `controls` → `/`
 - ✅ Single frontend bundle with path-based dispatch in `src/main.tsx`
-- ✅ Basic scene system and parameter wiring
-- 🧩 Modulation engine designed (only a simple renderer-side LFO implemented)
+- ✅ Basic scene system and parameter wiring (Scene A, B, C)
+- ✅ Scene Control UI with Active/Next selection, crossfade buttons, and progress indicators
+- ✅ Live scene previews (per-scene and global renderer preview with crossfade blending)
+- 🧩 Modulation engine designed (simple renderer-side LFO implemented for Scene A tint)
 - ⏳ Input engines (OSC / MIDI / audio) and video-output layer
 
 ---
@@ -262,7 +264,7 @@ Helpers:
 - Controls window now uses a 5-column, 2-row rigid grid:
   - Row 1:
     - Columns 1–4: **Scene Control strip**
-    - Column 5: **Renderer preview placeholder + Debug/Parameters panel**
+    - Column 5: **Global Renderer Preview + Debug/Parameters panel**
   - Row 2:
     - Columns 1–2: **Active scene panel** (dynamically renders controls for whichever scene is active)
     - Columns 3–4: **Next scene panel** (dynamically renders controls for whichever scene is next)
@@ -280,8 +282,28 @@ Helpers:
     - Default value (Controls-side) is now **0**, so the active scene starts fully visible.
     - The header shows crossfade as a **Radix Progress** bar (`@radix-ui/react-progress`) with the percentage rendered inside.
     - Button actions:
-      - “Crossfade to Active” → target crossfade 0 via `set_parameter("crossfade", 0, app: undefined)`.
-      - “Crossfade to Next” → target crossfade 1 via `set_parameter("crossfade", 1, app: undefined)`.
+      - "Crossfade to Active" → target crossfade 0 via `set_parameter("crossfade", 0, app: undefined)`.
+      - "Crossfade to Next" → target crossfade 1 via `set_parameter("crossfade", 1, app: undefined)`.
+- Scene previews:
+  - Each scene column (Active/Next) includes a live 3D preview next to the controls
+  - Implementation:
+    - `ScenePreview` component renders an embedded `@react-three/fiber` Canvas
+    - Shows the scene at full opacity (1.0) with current parameter values
+    - Fixed 16:9 aspect ratio, optimized for performance (reduced DPR, low-power GPU preference)
+  - Previews respond to parameter changes in real-time
+- Global Renderer Preview:
+  - Located in the right column (column 5) above the Debug panel
+  - **Mirrors the actual Renderer output** with accurate crossfade blending
+  - Implementation:
+    - `RendererPreview` component renders both Active and Next scenes simultaneously
+    - Uses the same `mapCrossfadeToSceneWeights` logic as the main renderer:
+      - `activeWeight = 1 - crossfade`
+      - `nextWeight = crossfade`
+    - Includes `TintLfoDriver` for Scene A tint modulation (0.1 Hz oscillation)
+    - Receives scene params from Controls state for real-time updates
+    - Fixed 16:9 aspect ratio, "Live Preview" label overlay
+    - Performance optimized: reduced DPR (1–1.5), `powerPreference: "low-power"`
+  - Purpose: Gives operator an accurate preview of the blended output before/during crossfades
 - Dynamic scene panels:
   - **Active scene panel** (left, cols 1–2):
     - Shows controls for whichever scene is currently active
@@ -301,20 +323,18 @@ Helpers:
     - Updates local state from `useControlsParameters`
     - Invokes `set_parameter` with the appropriate ID and value
     - For brightness parameters, also fires `forward_controls_event` to the renderer
-- Debug/Parameters panel:
-  - Right-most column shows:
-    - A renderer preview placeholder (intended to later mirror the final output).
-    - A tabbed "Debug" panel using **Radix Tabs** (`@radix-ui/react-tabs`):
-      - **Parameters** tab embeds `BackendInspector` (view of backend Parameter Server state).
-      - **Logs** tab shows a rolling list of recent `parameter_changed` events:
-        - Each entry displays timestamp, parameter ID, value, target, transition speed, and curve.
-        - Capped at 100 entries (oldest discarded).
-        - Event count badge on tab, Clear button to reset.
-      - **Metrics** tab shows counters and statistics:
-        - Summary cards: total parameter updates, crossfade transitions, time since last event, session duration.
-        - Per-parameter update counts (top 8 most active).
-        - Auto-refreshes every second for time-based displays.
-        - Reset button to clear all counters.
+- Debug panel:
+  - Right-most column (column 5) shows a tabbed "Debug" panel using **Radix Tabs** (`@radix-ui/react-tabs`):
+    - **Parameters** tab embeds `BackendInspector` (view of backend Parameter Server state).
+    - **Logs** tab shows a rolling list of recent `parameter_changed` events:
+      - Each entry displays timestamp, parameter ID, value, target, transition speed, and curve.
+      - Capped at 100 entries (oldest discarded).
+      - Event count badge on tab, Clear button to reset.
+    - **Metrics** tab shows counters and statistics:
+      - Summary cards: total parameter updates, crossfade transitions, time since last event, session duration.
+      - Per-parameter update counts (top 8 most active).
+      - Auto-refreshes every second for time-based displays.
+      - Reset button to clear all counters.
   - Implementation:
     - `DebugPanel.tsx` wraps the three tabs.
     - `DebugLogs.tsx` renders the scrollable event log.
@@ -756,7 +776,7 @@ Implementation status:
 > - OSC routing UI
 > - Audio input UI
 
-**Status:** 🧪 (Scene Control strip + Scene A/B/C panels + Debug Panel with tabs in place)
+**Status:** 🧪 (Scene Control strip + Scene A/B/C panels + Debug Panel + Live Previews in place)
 
 Planned minimal features:
 
@@ -784,7 +804,16 @@ Planned minimal features:
        - `DebugLogs.tsx` renders the scrollable event log.
        - `DebugMetrics.tsx` renders counters and statistics.
        - `App.tsx` maintains `logs` and `metrics` state, updating on each `parameter_changed` event.
-   - ⏳ Input monitor:
+   - ✅ Scene previews:
+     - Live 3D previews next to each scene control panel (Active and Next)
+     - Active scene preview shows current scene with real-time parameter updates
+     - Next scene preview shows upcoming scene for crossfade planning
+   - ✅ Global Renderer Preview:
+     - Mirrors the actual Renderer window output with crossfade blending
+     - Shows both scenes blended according to crossfade value
+     - Includes Scene A tint LFO modulation
+     - Located in right column above Debug panel
+   - ⏳ Input monitor (future):
      - Simple visualization of MIDI/OSC/audio activity
 
 2. **Parameter editing**
@@ -947,8 +976,8 @@ Currently mostly baseline assumptions; update as choices are made.
    - Backend: idiomatic Rust.
 5. **Window model**
    - Chosen: Two logical Tauri windows configured in `tauri.conf.json`:
-     - `renderer` (`/renderer`) — dedicated to visuals (currently a placeholder with crossfade bar).
-     - `controls` (`/`) — control UI (currently a basic layout with a crossfade slider).
+     - `renderer` (`/renderer`) — dedicated to visuals (full scene rendering with crossfade blending).
+     - `controls` (`/`) — control UI with scene control strip, parameter panels, live previews, and debug tools.
    - Both windows share the same bundled frontend and dispatch to different React roots based on `window.location.pathname`.
 
 As decisions are made, add them here with timestamps/short notes.
@@ -978,17 +1007,9 @@ Update and answer these over time; future LLM sessions will rely on them.
 
 Short-term, concrete steps building on the current Parameter Server + Scene A/B/C:
 
-1. **Tighten Parameter Server ↔ renderer integration**
-   - Clarify and enforce `rotationSpeed` semantics:
-     - Keep the existing behavior where:
-       - If a backend `rotationSpeed` parameter exists (via `get_parameters` or `parameter_changed`), the renderer uses it exclusively (`useBackendRotationSpeed = true`).
-       - If it does not exist, the renderer derives `rotationSpeed` from `crossfade` as a fallback.
-     - Add or refine inline comments in the renderer code to:
-       - Explicitly document this behavior.
-       - Make it clear that any future scene or input that wants authoritative control over rotation should create/set the `rotationSpeed` parameter via `set_parameter`.
-   - Keep the dual-path crossfade behavior:
-     - Backend-smoothed `parameter_changed` is preferred when available.
-     - `renderer:crossfade` remains as a UI fallback (do not break existing sliders).
+1. **~~Tighten Parameter Server ↔ renderer integration~~** ✅ DONE
+   - `rotationSpeed` semantics clarified and documented
+   - Dual-path crossfade behavior maintained
 
 2. **~~Add one more visual parameter to validate transitions further~~** ✅ DONE
    - Scene B and Scene C now have full parameter sets:
@@ -999,7 +1020,15 @@ Short-term, concrete steps building on the current Parameter Server + Scene A/B/
      - Sliders in Controls (`SceneBControls`, `SceneCControls`) with defaults, reset-to-defaults, inspector entries
      - Parameters consumed in renderer scene components with visual effects (color shifts, scaling, rotation, pulsing)
 
-3. **Input Layer (OSC / MIDI / Audio)**
+3. **~~Scene Previews~~** ✅ DONE
+   - `ScenePreview` component for individual Active/Next scene previews
+   - `RendererPreview` component that mirrors the actual Renderer output:
+     - Accurate crossfade blending with scene weights
+     - Scene A tint LFO modulation
+     - Real-time parameter updates from Controls state
+   - Both optimized for performance (reduced DPR, low-power GPU preference)
+
+4. **Input Layer (OSC / MIDI / Audio)**
    - Wire up OSC input to drive parameters
    - Add MIDI Learn UI for parameter binding
    - Implement audio input with level meters and band energy
@@ -1008,7 +1037,7 @@ Short-term, concrete steps building on the current Parameter Server + Scene A/B/
      - Persistence.
      - Inspector grouping and live updates.
 
-4. **Start sketching the Scene System**
+5. **Start sketching the Scene System**
    - In TypeScript (frontend), introduce early scaffolding (types / placeholders) for a future Scene System, without breaking the current dual-scene setup:
      - Define a minimal scene descriptor type, e.g.:
        - `SceneId`
@@ -1028,7 +1057,7 @@ Short-term, concrete steps building on the current Parameter Server + Scene A/B/
        - Sharing or reusing parameter IDs where appropriate (e.g. global crossfade).
        - Keeping the current dual-window behavior, sliders, and persistence stable.
 
-5. **Housekeeping**
+6. **Housekeeping**
    - After each incremental change (especially when adding new parameters or scene scaffolding), run TypeScript/Rust diagnostics to keep the codebase green.
    - Keep this document updated as:
      - Additional Scene A/B parameters are added and exercised.

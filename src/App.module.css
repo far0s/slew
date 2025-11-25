@@ -82,8 +82,8 @@
   grid-row: 2 / span 1;
 }
 
-/* Preview + Debug column: column 5, spans both rows */
-.previewColumn {
+/* Debug column: column 5, spans both rows */
+.debugColumn {
   grid-column: 5 / span 1;
   grid-row: 1 / span 2;
   display: flex;
@@ -103,23 +103,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-}
-
-/* ==========================================================================
-   Preview Block Placeholder
-   ========================================================================== */
-
-.previewBlock {
-  flex: 0 0 auto;
-  min-height: 160px;
-  border-radius: 0.5rem;
-  border: 1px dashed rgb(148 163 184 / 0.6);
-  background: radial-gradient(circle at top, rgb(15 23 42 / 0.95), #020617);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-  color: rgb(248 250 252 / 0.8);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* ==========================================================================
