@@ -134,33 +134,21 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
 }
 
-/* Simple tab strip placeholder for Debug panel (including Parameters tab) */
+/* Radix Tabs tab list styling for Debug panel */
 .debugTabs {
   display: flex;
   flex-shrink: 0;
   border: 1px solid rgba(30, 64, 175, 0.7);
+  border-bottom: none;
   border-radius: 0.5rem 0.5rem 0 0;
   background: linear-gradient(
     to right,
     rgba(15, 23, 42, 0.95),
     rgba(15, 23, 42, 0.8)
   );
-}
-
-.debugTab {
-  flex: 0 0 auto;
-  padding: 0.4rem 0.75rem;
-  font-size: 0.75rem;
-  color: rgba(191, 219, 254, 0.8);
-  border-right: 1px solid rgba(30, 64, 175, 0.5);
-}
-
-.debugTabActive {
-  font-weight: 600;
-  color: #e5e7eb;
-  background: rgba(37, 99, 235, 0.3);
 }
 
 .debugBody {
@@ -171,6 +159,7 @@
   flex-direction: column;
   gap: 0.5rem;
   border: 1px solid rgba(30, 64, 175, 0.7);
+  border-top: none;
   border-radius: 0 0 0.5rem 0.5rem;
 }
 
@@ -203,4 +192,11 @@
   align-items: center;
   gap: 0.5rem;
   flex: 1;
+}
+
+/* Label text for form controls and parameter names */
+.label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
 }

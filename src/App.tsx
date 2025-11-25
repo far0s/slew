@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { type SceneId } from "./scenes/sceneTypes";
@@ -7,9 +7,14 @@ import {
   useControlsParameters,
 } from "./controls/controlsParameters.ts";
 import PrimaryControlsPanel from "./controls/PrimaryControlsPanel";
-import BackendInspector from "./controls/BackendInspector";
 import SceneAControls from "./controls/SceneAControls";
+import DebugPanel from "./controls/DebugPanel";
+import type { LogEntry } from "./controls/DebugLogs";
+import type { DebugMetricsData } from "./controls/DebugMetrics";
 import styles from "./AppShell.module.css";
+
+/** Maximum number of log entries to keep in memory */
+const MAX_LOG_ENTRIES = 100;
 
 function App() {
   const {
@@ -37,6 +42,92 @@ function App() {
 
   const [activeSceneId, setActiveSceneId] = useState<SceneId>("sceneA");
   const [nextSceneId, setNextSceneId] = useState<SceneId>("sceneB");
+
+  // Debug logs state
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const logIdCounter = useRef(0);
+
+  // Debug metrics state
+  const [metrics, setMetrics] = useState<DebugMetricsData>(() => ({
+    totalParameterUpdates: 0,
+    parameterUpdateCounts: {},
+    lastEventTime: null,
+    sessionStartTime: Date.now(),
+    crossfadeTransitions: 0,
+  }));
+
+  // Track previous crossfade value to detect transitions
+  const prevCrossfadeRef = useRef<number | null>(null);
+
+  const addLogEntry = useCallback((param: BackendParameter) => {
+    const entry: LogEntry = {
+      id: `log-${logIdCounter.current++}`,
+      timestamp: Date.now(),
+      parameterId: param.id,
+      value: param.value,
+      target: param.target,
+      transitionSpeed: param.transition_speed,
+      curve: param.curve,
+    };
+
+    setLogs((prev) => {
+      const next = [entry, ...prev];
+      // Keep only the most recent entries
+      if (next.length > MAX_LOG_ENTRIES) {
+        return next.slice(0, MAX_LOG_ENTRIES);
+      }
+      return next;
+    });
+  }, []);
+
+  const updateMetrics = useCallback((param: BackendParameter) => {
+    setMetrics((prev) => {
+      const newCounts = { ...prev.parameterUpdateCounts };
+      newCounts[param.id] = (newCounts[param.id] ?? 0) + 1;
+
+      // Detect crossfade transitions (when target changes to 0 or 1)
+      let crossfadeTransitions = prev.crossfadeTransitions;
+      if (param.id === "crossfade") {
+        const prevCrossfade = prevCrossfadeRef.current;
+        if (prevCrossfade !== null) {
+          // Count a transition when we start moving toward an endpoint
+          const wasAtEndpoint = prevCrossfade <= 0.01 || prevCrossfade >= 0.99;
+          const isMovingToEndpoint = param.target === 0 || param.target === 1;
+          if (
+            wasAtEndpoint &&
+            isMovingToEndpoint &&
+            param.target !== prevCrossfade
+          ) {
+            crossfadeTransitions++;
+          }
+        }
+        prevCrossfadeRef.current = param.value;
+      }
+
+      return {
+        ...prev,
+        totalParameterUpdates: prev.totalParameterUpdates + 1,
+        parameterUpdateCounts: newCounts,
+        lastEventTime: Date.now(),
+        crossfadeTransitions,
+      };
+    });
+  }, []);
+
+  const handleClearLogs = useCallback(() => {
+    setLogs([]);
+  }, []);
+
+  const handleResetMetrics = useCallback(() => {
+    setMetrics({
+      totalParameterUpdates: 0,
+      parameterUpdateCounts: {},
+      lastEventTime: null,
+      sessionStartTime: Date.now(),
+      crossfadeTransitions: 0,
+    });
+    prevCrossfadeRef.current = null;
+  }, []);
 
   async function handleCrossfadeChange(next: number) {
     setCrossfade(next);
@@ -135,7 +226,11 @@ function App() {
           "parameter_changed",
           (event) => {
             const updated = event.payload;
+
+            // Update sliders from backend
             applyBackendParamsToSliders([updated]);
+
+            // Update backend parameters list
             const current = backendParameters ?? [];
             const index = current.findIndex(
               (p: BackendParameter) => p.id === updated.id,
@@ -147,6 +242,12 @@ function App() {
               next[index] = updated;
               setBackendParameters(next);
             }
+
+            // Add to debug logs
+            addLogEntry(updated);
+
+            // Update metrics
+            updateMetrics(updated);
           },
         );
       } catch (error) {
@@ -218,35 +319,24 @@ function App() {
             <span>Renderer preview placeholder</span>
           </div>
 
-          <div className={styles.debugPanel}>
-            <div className={styles.debugTabs}>
-              <div
-                className={`${styles.debugTab} ${styles.debugTabActive}`}
-                aria-selected="true"
-              >
-                Parameters
-              </div>
-              <div className={styles.debugTab}>Logs</div>
-              <div className={styles.debugTab}>Metrics</div>
-            </div>
-
-            <div className={styles.debugBody}>
-              <BackendInspector
-                backendParameters={backendParameters}
-                isLoadingParams={isLoadingParams}
-                paramError={paramError}
-                onRefresh={() => {
-                  void refreshBackendParameters();
-                }}
-                onResetDefaults={() => {
-                  void handleResetDefaults();
-                }}
-                onClearParameters={() => {
-                  void handleClearParameters();
-                }}
-              />
-            </div>
-          </div>
+          <DebugPanel
+            backendParameters={backendParameters}
+            isLoadingParams={isLoadingParams}
+            paramError={paramError}
+            onRefresh={() => {
+              void refreshBackendParameters();
+            }}
+            onResetDefaults={() => {
+              void handleResetDefaults();
+            }}
+            onClearParameters={() => {
+              void handleClearParameters();
+            }}
+            logs={logs}
+            onClearLogs={handleClearLogs}
+            metrics={metrics}
+            onResetMetrics={handleResetMetrics}
+          />
         </aside>
       </main>
     </div>

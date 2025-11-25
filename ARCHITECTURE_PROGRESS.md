@@ -280,8 +280,22 @@ Helpers:
 - Debug/Parameters panel:
   - Right-most column shows:
     - A renderer preview placeholder (intended to later mirror the final output).
-    - A tabbed “Debug” card (Parameters/Logs/Metrics tabs):
-      - **Parameters** tab embeds the existing `BackendInspector` (view of backend Parameter Server state).
+    - A tabbed "Debug" panel using **Radix Tabs** (`@radix-ui/react-tabs`):
+      - **Parameters** tab embeds `BackendInspector` (view of backend Parameter Server state).
+      - **Logs** tab shows a rolling list of recent `parameter_changed` events:
+        - Each entry displays timestamp, parameter ID, value, target, transition speed, and curve.
+        - Capped at 100 entries (oldest discarded).
+        - Event count badge on tab, Clear button to reset.
+      - **Metrics** tab shows counters and statistics:
+        - Summary cards: total parameter updates, crossfade transitions, time since last event, session duration.
+        - Per-parameter update counts (top 8 most active).
+        - Auto-refreshes every second for time-based displays.
+        - Reset button to clear all counters.
+  - Implementation:
+    - `DebugPanel.tsx` wraps the three tabs.
+    - `DebugLogs.tsx` renders the scrollable event log.
+    - `DebugMetrics.tsx` renders counters and statistics.
+    - `App.tsx` maintains `logs: LogEntry[]` and `metrics: DebugMetricsData` state, updated on each `parameter_changed` event via `addLogEntry` and `updateMetrics` callbacks.
 
 **Scene Pairing UI:**
 
@@ -718,7 +732,7 @@ Implementation status:
 > - OSC routing UI
 > - Audio input UI
 
-**Status:** 🧪 (early Scene Control + Scene A panel + Debug/Parameters layout in place)
+**Status:** 🧪 (early Scene Control + Scene A panel + Debug Panel with tabs in place)
 
 Planned minimal features:
 
@@ -735,9 +749,16 @@ Planned minimal features:
    - 🧪 Parameter inspector:
      - Scene A panel with Scene A–specific sliders (brightness, wobble, rotation, tint, tint LFO depth) wired to the Parameter Server.
      - Scene B panel stubbed out as a placeholder for future per-scene controls.
-   - 🧪 Debug / backend inspector:
-     - Right-hand column Debug card with “Parameters / Logs / Metrics” tabs.
-     - Parameters tab embeds `BackendInspector` for a live view of backend state.
+   - ✅ Debug / backend inspector:
+     - Right-hand column Debug panel with **Radix Tabs** (`@radix-ui/react-tabs`):
+       - **Parameters tab:** Embeds `BackendInspector` for a live view of backend state.
+       - **Logs tab:** Rolling list of recent `parameter_changed` events with timestamp, value, target, and transition info. Capped at 100 entries. Includes event count badge and clear button.
+       - **Metrics tab:** Summary cards (total updates, crossfade transitions, time since last event, session duration) plus per-parameter update counts. Auto-refreshes every second for time-based displays.
+     - Implementation:
+       - `DebugPanel.tsx` wraps the three tabs using Radix Tabs.
+       - `DebugLogs.tsx` renders the scrollable event log.
+       - `DebugMetrics.tsx` renders counters and statistics.
+       - `App.tsx` maintains `logs` and `metrics` state, updating on each `parameter_changed` event.
    - ⏳ Input monitor:
      - Simple visualization of MIDI/OSC/audio activity
 
