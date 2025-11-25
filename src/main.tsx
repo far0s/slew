@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import RendererRoot from "./renderer/RendererRoot";
 import "./reset.css";
+import "./tailwind.css";
 
 const pathname = window.location.pathname;
 
@@ -14,20 +15,6 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
-
-if (pathname === "/renderer") {
-  root.render(
-    <React.StrictMode>
-      <RendererRoot />
-    </React.StrictMode>,
-  );
-} else {
-  root.render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>,
-  );
-}
 
 // Route based on pathname. Later we can refine this (e.g. hash, search params)
 // or read the window label from Tauri if needed.

@@ -62,7 +62,7 @@ export interface ControlsParametersState {
  */
 export function useControlsParameters(): ControlsParametersState {
   const DEFAULTS: ControlsDefaults = {
-    crossfade: 0.5,
+    crossfade: 0,
     sceneABrightness: 1,
     rotationSpeed: 0.6,
     sceneAWobble: 0,

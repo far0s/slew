@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global tweaks specific to sebcat-vj Controls window */
+
+/* Ensure the root fills the viewport and uses the shared font stack.
+   Note: reset.css already normalizes most elements; Tailwind builds on top. */
+
+:root {
+  color-scheme: dark;
+}
+
+/* Body baseline for both windows; the Controls shell will refine this via CSS Modules. */
+body {
+  @apply bg-black text-neutral-100 antialiased;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    sans-serif;
+}
+
+/* Make sure the Tauri root element fills the window; React layout components
+   (AppShell, RendererRoot) will handle internal flex layouts. */
+#root {
+  min-height: 100vh;
+}
+
+/* Utility class for subtle panel backgrounds in Controls.
+   Panels can opt into this via className or CSS Modules can @apply it. */
+.svj-panel {
+  @apply bg-neutral-900/80 border border-white/5 rounded-lg;
+}
+
+/* Utility for small, low-contrast captions / meta text. */
+.svj-caption {
+  @apply text-xs text-neutral-400;
+}

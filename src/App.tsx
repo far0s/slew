@@ -6,9 +6,10 @@ import {
   type BackendParameter,
   useControlsParameters,
 } from "./controls/controlsParameters.ts";
-import ScenePairingHeader from "./controls/ScenePairingHeader";
 import PrimaryControlsPanel from "./controls/PrimaryControlsPanel";
 import BackendInspector from "./controls/BackendInspector";
+import SceneAControls from "./controls/SceneAControls";
+import styles from "./AppShell.module.css";
 
 function App() {
   const {
@@ -52,24 +53,6 @@ function App() {
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error("[Controls] Failed to update crossfade", error);
-    }
-  }
-
-  async function handleSceneABrightnessChange(next: number) {
-    setSceneABrightness(next);
-    try {
-      await invoke("set_parameter", {
-        id: "scene_a_brightness",
-        value: next,
-        app: undefined,
-      });
-      await invoke("forward_controls_event", {
-        event: "scene_a_brightness",
-        payload: JSON.stringify({ value: next }),
-      });
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("[Controls] Failed to update scene_a_brightness", error);
     }
   }
 
@@ -178,112 +161,93 @@ function App() {
   }, []);
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        background: "#05060a",
-        color: "#f5f5f5",
-        fontFamily:
-          'system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
-      }}
-    >
-      <header
-        style={{
-          padding: "0.75rem 1.5rem",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "1rem",
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: "1.1rem",
-              letterSpacing: 0.02,
-              margin: 0,
-            }}
-          >
-            sebcat-vj — Controls
-          </h1>
-          <p
-            style={{
-              margin: "0.15rem 0 0",
-              fontSize: "0.8rem",
-              opacity: 0.75,
-            }}
-          >
-            Placeholder control UI. This window will drive parameters for the
-            renderer window.
-          </p>
+    <div className={styles.root}>
+      <main className={styles.main}>
+        {/* Top-row scene control / switching strip spanning columns 1–4 */}
+        <div className={styles.sceneControlStrip}>
+          <PrimaryControlsPanel
+            activeSceneId={activeSceneId}
+            nextSceneId={nextSceneId}
+            setActiveSceneId={setActiveSceneId}
+            setNextSceneId={setNextSceneId}
+            crossfade={crossfade}
+            handleCrossfadeChange={handleCrossfadeChange}
+          />
         </div>
 
-        <ScenePairingHeader
-          activeSceneId={activeSceneId}
-          nextSceneId={nextSceneId}
-          setActiveSceneId={setActiveSceneId}
-          setNextSceneId={setNextSceneId}
-        />
-      </header>
+        {/* Scene A column (columns 1–2, row 2) – placeholder for future Scene A-specific controls */}
+        <div className={`${styles.sceneColumn} ${styles.sceneAColumn}`}>
+          <section aria-label="Scene A controls" className={styles.panel}>
+            <h2 className={styles.panelTitle}>Scene A</h2>
+            <p className={styles.caption}>
+              Per-scene parameters for Scene&nbsp;A beneath the scene control
+              strip.
+            </p>
+            <SceneAControls
+              sceneABrightness={sceneABrightness}
+              rotationSpeed={rotationSpeed}
+              sceneAWobble={sceneAWobble}
+              sceneATint={sceneATint}
+              sceneATintLfoDepth={sceneATintLfoDepth}
+              setSceneABrightness={setSceneABrightness}
+              setRotationSpeed={setRotationSpeed}
+              setSceneAWobble={setSceneAWobble}
+              setSceneATint={setSceneATint}
+              setSceneATintLfoDepth={setSceneATintLfoDepth}
+            />
+          </section>
+        </div>
 
-      <main
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "stretch",
-          justifyContent: "center",
-          padding: "1.5rem",
-          gap: "1.5rem",
-        }}
-      >
-        <PrimaryControlsPanel
-          activeSceneId={activeSceneId}
-          nextSceneId={nextSceneId}
-          setScenePairingOnBackend={({ currentActive, currentNext }) => {
-            void import("./controls/scenePairing").then(
-              ({ setScenePairingOnBackend }) => {
-                void setScenePairingOnBackend({
-                  currentActive,
-                  currentNext,
-                  setActiveSceneId,
-                  setNextSceneId,
-                });
-              },
-            );
-          }}
-          crossfade={crossfade}
-          sceneABrightness={sceneABrightness}
-          rotationSpeed={rotationSpeed}
-          sceneAWobble={sceneAWobble}
-          sceneATint={sceneATint}
-          sceneATintLfoDepth={sceneATintLfoDepth}
-          setCrossfade={setCrossfade}
-          setSceneABrightness={setSceneABrightness}
-          setRotationSpeed={setRotationSpeed}
-          setSceneAWobble={setSceneAWobble}
-          setSceneATint={setSceneATint}
-          setSceneATintLfoDepth={setSceneATintLfoDepth}
-          handleCrossfadeChange={handleCrossfadeChange}
-          handleSceneABrightnessChange={handleSceneABrightnessChange}
-        />
+        {/* Scene B column (columns 3–4, row 2) – placeholder for future Scene B-specific controls */}
+        <div className={`${styles.sceneColumn} ${styles.sceneBColumn}`}>
+          <section
+            aria-label="Scene B controls placeholder"
+            className={styles.panel}
+          >
+            <h2 className={styles.panelTitle}>Scene B</h2>
+            <p className={styles.caption}>
+              Placeholder for Scene&nbsp;B-specific controls beneath the scene
+              control strip.
+            </p>
+          </section>
+        </div>
 
-        <BackendInspector
-          backendParameters={backendParameters}
-          isLoadingParams={isLoadingParams}
-          paramError={paramError}
-          onRefresh={() => {
-            void refreshBackendParameters();
-          }}
-          onResetDefaults={() => {
-            void handleResetDefaults();
-          }}
-          onClearParameters={() => {
-            void handleClearParameters();
-          }}
-        />
+        {/* Preview + Debug/Parameters column (column 5 spans both rows) */}
+        <aside className={styles.previewColumn} aria-label="Preview and debug">
+          <div className={styles.previewBlock}>
+            <span>Renderer preview placeholder</span>
+          </div>
+
+          <div className={styles.debugPanel}>
+            <div className={styles.debugTabs}>
+              <div
+                className={`${styles.debugTab} ${styles.debugTabActive}`}
+                aria-selected="true"
+              >
+                Parameters
+              </div>
+              <div className={styles.debugTab}>Logs</div>
+              <div className={styles.debugTab}>Metrics</div>
+            </div>
+
+            <div className={styles.debugBody}>
+              <BackendInspector
+                backendParameters={backendParameters}
+                isLoadingParams={isLoadingParams}
+                paramError={paramError}
+                onRefresh={() => {
+                  void refreshBackendParameters();
+                }}
+                onResetDefaults={() => {
+                  void handleResetDefaults();
+                }}
+                onClearParameters={() => {
+                  void handleClearParameters();
+                }}
+              />
+            </div>
+          </div>
+        </aside>
       </main>
     </div>
   );

@@ -1,6 +1,7 @@
 import React from "react";
 import { getSceneDescriptor, type ParameterId } from "../scenes/sceneTypes";
 import type { BackendParameter } from "./controlsParameters";
+import appShellStyles from "../AppShell.module.css";
 
 export interface BackendInspectorProps {
   backendParameters: BackendParameter[] | null;
@@ -51,10 +52,8 @@ export function BackendInspector({
     }
 
     return filtered.sort((a: BackendParameter, b: BackendParameter) => {
-      const aOrder =
-        orderMap.get(a.id as ParameterId) ?? Number.MAX_VALUE;
-      const bOrder =
-        orderMap.get(b.id as ParameterId) ?? Number.MAX_VALUE;
+      const aOrder = orderMap.get(a.id as ParameterId) ?? Number.MAX_VALUE;
+      const bOrder = orderMap.get(b.id as ParameterId) ?? Number.MAX_VALUE;
       return aOrder - bOrder;
     });
   }, [backendParameters]);
@@ -72,33 +71,20 @@ export function BackendInspector({
     const backendParams: BackendParameter[] = backendParameters ?? [];
 
     return backendParams.filter(
-      (param: BackendParameter) =>
-        !sceneAParamIds.has(param.id as ParameterId),
+      (param: BackendParameter) => !sceneAParamIds.has(param.id as ParameterId),
     );
   }, [backendParameters]);
 
   const renderBody = () => {
     if (backendParameters === null && !isLoadingParams) {
       return (
-        <p
-          style={{
-            opacity: 0.8,
-            fontSize: "0.78rem",
-          }}
-        >
-          No parameters loaded yet.
-        </p>
+        <p className={appShellStyles.caption}>No parameters loaded yet.</p>
       );
     }
 
     if (backendParameters && backendParameters.length === 0) {
       return (
-        <p
-          style={{
-            opacity: 0.8,
-            fontSize: "0.78rem",
-          }}
-        >
+        <p className={appShellStyles.caption}>
           Parameter store is currently empty.
         </p>
       );
@@ -106,131 +92,101 @@ export function BackendInspector({
 
     return (
       <>
-        <h3
-          style={{
-            padding: "0.25rem 0",
-            margin: 0,
-            fontSize: "0.8rem",
-            textTransform: "uppercase",
-            letterSpacing: 0.08,
-            opacity: 0.8,
-          }}
-        >
-          Scene A
-        </h3>
-        <ul
-          style={{
-            listStyle: "none",
-            margin: 0,
-            padding: 0,
-            fontFamily:
-              "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-          }}
-        >
-          {sceneAParams.map((param: BackendParameter) => (
-            <li
-              key={param.id}
+        {globalParams?.length > 0 && (
+          <>
+            <h3
               style={{
-                padding: "0.3rem 0",
-                borderBottom: "1px solid rgba(148,163,184,0.18)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.08rem",
+                padding: "0.35rem 0 0.1rem",
+                margin: "0.4rem 0 0",
+              }}
+              className={appShellStyles.panelTitle}
+            >
+              Global / Other
+            </h3>
+            <ul
+              style={{
+                listStyle: "none",
+                margin: 0,
+                padding: 0,
+                fontFamily:
+                  "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
               }}
             >
-              <span
-                style={{
-                  fontSize: "0.8rem",
-                  fontWeight: 500,
-                }}
-              >
-                {param.id}
-              </span>
-              <span
-                style={{
-                  fontSize: "0.78rem",
-                  opacity: 0.85,
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                value: {param.value.toFixed(3)} — target:{" "}
-                {param.target.toFixed(3)}
-              </span>
-              <span
-                style={{
-                  fontSize: "0.74rem",
-                  opacity: 0.75,
-                }}
-              >
-                speed: {param.transition_speed.toFixed(3)}, curve:{" "}
-                {param.curve}
-              </span>
-            </li>
-          ))}
-        </ul>
+              {globalParams.map((param: BackendParameter) => (
+                <li
+                  key={param.id}
+                  style={{
+                    padding: "0.3rem 0",
+                    borderBottom: "1px solid rgba(148,163,184,0.18)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.08rem",
+                  }}
+                >
+                  <span className={appShellStyles.label}>{param.id}</span>
+                  <span
+                    style={{
+                      fontSize: "0.78rem",
+                      opacity: 0.85,
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    value: {param.value.toFixed(3)} — target:{" "}
+                    {param.target.toFixed(3)}
+                  </span>
+                  <span className={appShellStyles.caption}>
+                    speed: {param.transition_speed.toFixed(3)}, curve:{" "}
+                    {param.curve}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
 
-        <h3
-          style={{
-            padding: "0.35rem 0 0.1rem",
-            margin: "0.4rem 0 0",
-            fontSize: "0.8rem",
-            textTransform: "uppercase",
-            letterSpacing: 0.08,
-            opacity: 0.8,
-          }}
-        >
-          Global / Other
-        </h3>
-        <ul
-          style={{
-            listStyle: "none",
-            margin: 0,
-            padding: 0,
-            fontFamily:
-              "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-          }}
-        >
-          {globalParams.map((param: BackendParameter) => (
-            <li
-              key={param.id}
+        {sceneAParams?.length > 0 && (
+          <>
+            <h3 className={appShellStyles.panelTitle}>Scene A</h3>
+            <ul
               style={{
-                padding: "0.3rem 0",
-                borderBottom: "1px solid rgba(148,163,184,0.18)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.08rem",
+                listStyle: "none",
+                margin: 0,
+                padding: 0,
+                fontFamily:
+                  "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
               }}
             >
-              <span
-                style={{
-                  fontSize: "0.8rem",
-                  fontWeight: 500,
-                }}
-              >
-                {param.id}
-              </span>
-              <span
-                style={{
-                  fontSize: "0.78rem",
-                  opacity: 0.85,
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                value: {param.value.toFixed(3)} — target:{" "}
-                {param.target.toFixed(3)}
-              </span>
-              <span
-                style={{
-                  fontSize: "0.74rem",
-                  opacity: 0.75,
-                }}
-              >
-                speed: {param.transition_speed.toFixed(3)}, curve:{" "}
-                {param.curve}
-              </span>
-            </li>
-          ))}
-        </ul>
+              {sceneAParams.map((param: BackendParameter) => (
+                <li
+                  key={param.id}
+                  style={{
+                    padding: "0.3rem 0",
+                    borderBottom: "1px solid rgba(148,163,184,0.18)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.08rem",
+                  }}
+                >
+                  <span className={appShellStyles.label}>{param.id}</span>
+                  <span
+                    style={{
+                      fontSize: "0.78rem",
+                      opacity: 0.85,
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    value: {param.value.toFixed(3)} — target:{" "}
+                    {param.target.toFixed(3)}
+                  </span>
+                  <span className={appShellStyles.caption}>
+                    speed: {param.transition_speed.toFixed(3)}, curve:{" "}
+                    {param.curve}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </>
     );
   };
@@ -238,62 +194,26 @@ export function BackendInspector({
   return (
     <aside
       aria-label="Backend parameter inspector"
+      className={appShellStyles.panel}
       style={{
-        flex: "0 1 360px",
-        borderRadius: "0.75rem",
-        border: "1px dashed rgba(255,255,255,0.18)",
-        background:
-          "linear-gradient(135deg, rgba(16,24,40,0.9), rgba(5,6,10,0.95))",
-        padding: "1.1rem 1.25rem 1.3rem",
+        flex: "1 1 360px",
         fontSize: "0.8rem",
-        display: "flex",
-        flexDirection: "column",
-        gap: "0.5rem",
       }}
     >
-      <h2
-        style={{
-          margin: 0,
-          fontSize: "0.9rem",
-          textTransform: "uppercase",
-          letterSpacing: 0.06,
-          opacity: 0.85,
-        }}
-      >
-        Backend parameters
-      </h2>
-
-      <p
-        style={{
-          margin: "0.3rem 0 0.4rem",
-          opacity: 0.85,
-          lineHeight: 1.4,
-        }}
-      >
-        Live view of the backend Parameter Server. Values shown here are the
-        backend&apos;s canonical state, not the renderer&apos;s local copy.
-      </p>
+      <h2 className={appShellStyles.panelTitle}>Backend parameters</h2>
 
       <div
+        className={appShellStyles.row}
         style={{
-          display: "flex",
           alignItems: "center",
-          gap: "0.5rem",
           marginTop: "0.1rem",
+          flex: 0,
         }}
       >
         <button
           type="button"
           onClick={onRefresh}
-          style={{
-            padding: "0.25rem 0.6rem",
-            fontSize: "0.78rem",
-            borderRadius: "999px",
-            border: "1px solid rgba(148,163,184,0.6)",
-            background: "transparent",
-            color: "#e5e7eb",
-            cursor: "pointer",
-          }}
+          className="rounded-full border border-slate-400/60 bg-transparent px-2 py-1 text-xs text-slate-100 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
           {isLoadingParams ? "Refreshing…" : "Refresh"}
         </button>
@@ -301,15 +221,7 @@ export function BackendInspector({
         <button
           type="button"
           onClick={onResetDefaults}
-          style={{
-            padding: "0.25rem 0.6rem",
-            fontSize: "0.78rem",
-            borderRadius: "999px",
-            border: "1px solid rgba(96,165,250,0.7)",
-            background: "transparent",
-            color: "#bfdbfe",
-            cursor: "pointer",
-          }}
+          className="rounded-full border border-sky-400/70 bg-transparent px-2 py-1 text-xs text-sky-200 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
           Reset to defaults
         </button>
@@ -317,15 +229,7 @@ export function BackendInspector({
         <button
           type="button"
           onClick={onClearParameters}
-          style={{
-            padding: "0.25rem 0.6rem",
-            fontSize: "0.78rem",
-            borderRadius: "999px",
-            border: "1px solid rgba(248,113,113,0.7)",
-            background: "transparent",
-            color: "#fecaca",
-            cursor: "pointer",
-          }}
+          className="rounded-full border border-red-400/70 bg-transparent px-2 py-1 text-xs text-red-200 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
           Clear
         </button>
@@ -346,9 +250,7 @@ export function BackendInspector({
       <div
         style={{
           marginTop: "0.45rem",
-          maxHeight: 220,
           overflowY: "auto",
-          paddingRight: "0.25rem",
         }}
       >
         {renderBody()}

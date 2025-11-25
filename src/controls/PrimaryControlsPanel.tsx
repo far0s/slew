@@ -1,34 +1,23 @@
-import { invoke } from "@tauri-apps/api/core";
+import * as Select from "@radix-ui/react-select";
+import * as Progress from "@radix-ui/react-progress";
+import { ChevronDownIcon } from "@radix-ui/react-icons";
 import type { SceneId } from "../scenes/sceneTypes";
+import appShellStyles from "../AppShell.module.css";
+import type { SetSceneId } from "./scenePairing";
+import { setScenePairingOnBackend } from "./scenePairing";
 
 export interface PrimaryControlsPanelProps {
   // Scene pairing state
   activeSceneId: SceneId;
   nextSceneId: SceneId;
-  setScenePairingOnBackend: (args: {
-    currentActive: SceneId;
-    currentNext: SceneId;
-  }) => void;
+  setActiveSceneId: SetSceneId;
+  setNextSceneId: SetSceneId;
 
-  // Parameter values
+  // Crossfade state
   crossfade: number;
-  sceneABrightness: number;
-  rotationSpeed: number;
-  sceneAWobble: number;
-  sceneATint: number;
-  sceneATintLfoDepth: number;
-
-  // Parameter setters (local UI state)
-  setCrossfade: (value: number) => void;
-  setSceneABrightness: (value: number) => void;
-  setRotationSpeed: (value: number) => void;
-  setSceneAWobble: (value: number) => void;
-  setSceneATint: (value: number) => void;
-  setSceneATintLfoDepth: (value: number) => void;
 
   // Actions
   handleCrossfadeChange: (value: number) => Promise<void>;
-  handleSceneABrightnessChange: (value: number) => Promise<void>;
 }
 
 /**
@@ -48,579 +37,282 @@ export function PrimaryControlsPanel(props: PrimaryControlsPanelProps) {
   const {
     activeSceneId,
     nextSceneId,
+    setActiveSceneId,
+    setNextSceneId,
     crossfade,
-    sceneABrightness,
-    rotationSpeed,
-    sceneAWobble,
-    sceneATint,
-    sceneATintLfoDepth,
-    setRotationSpeed,
-    setSceneAWobble,
-    setSceneATint,
-    setSceneATintLfoDepth,
     handleCrossfadeChange,
-    handleSceneABrightnessChange,
   } = props;
+
+  // Disable pairing controls while crossfading to avoid mid-transition changes
+  const isCrossfading = crossfade > 0.01 && crossfade < 0.99;
+
+  // At the endpoints, lock the corresponding scene combo:
+  // - When crossfade === 0 → Active scene is fully visible; its combo is locked.
+  // - When crossfade === 1 → Next scene is fully visible; its combo is locked.
+  const isActiveLocked = crossfade <= 0.01;
+  const isNextLocked = crossfade >= 0.99;
 
   return (
     <section
-      aria-label="Primary controls"
+      aria-label="Scene control strip"
+      className={appShellStyles.panel}
       style={{
-        flex: "0 1 520px",
-        borderRadius: "0.75rem",
-        border: "1px solid rgba(255,255,255,0.08)",
-        background:
-          "radial-gradient(circle at top left, #1b2735 0, #05060a 55%)",
-        padding: "1.25rem 1.5rem 1.5rem",
-        boxShadow:
-          "0 18px 35px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.02)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "1.25rem",
+        flex: "0 1 auto",
       }}
     >
-      <header>
-        <h2
-          style={{
-            fontSize: "0.95rem",
-            margin: 0,
-            letterSpacing: 0.03,
-            textTransform: "uppercase",
-            opacity: 0.9,
-          }}
-        >
-          Live Controls (Placeholder)
-        </h2>
-        <p
-          style={{
-            margin: "0.35rem 0 0",
-            fontSize: "0.8rem",
-            opacity: 0.8,
-          }}
-        >
-          In the prototype, these values will be pushed to the renderer via the
-          backend event bus.
-        </p>
+      <header className={appShellStyles.stack}>
+        <div className={appShellStyles.row}>
+          <h2 className={appShellStyles.panelTitle}>Scene control</h2>
+        </div>
       </header>
 
       <div
+        className={appShellStyles.stack}
         style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "1rem",
-          marginTop: "0.25rem",
+          marginTop: "0.5rem",
         }}
       >
-        {/* Crossfade block */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.5rem",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-              gap: "0.5rem",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.1rem",
-              }}
-            >
-              <span
+        <div className={appShellStyles.stack}>
+          <div className={appShellStyles.row}>
+            <div className={appShellStyles.stack} style={{ flex: 1, gap: 0 }}>
+              <p
                 style={{
-                  fontSize: "0.85rem",
-                  fontWeight: 500,
+                  marginBottom: "0.5rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
                 }}
               >
-                Crossfade
-              </span>
-              <span
-                style={{
-                  fontSize: "0.78rem",
-                  opacity: 0.8,
+                Active
+                <div
+                  style={{
+                    flex: 0.4,
+                    minWidth: "140px",
+                  }}
+                >
+                  <Progress.Root
+                    value={crossfade * 100}
+                    max={100}
+                    className="relative h-5 w-1/2 overflow-hidden rounded-full border border-slate-600/70 bg-slate-900/90"
+                  >
+                    <Progress.Indicator
+                      className="h-full w-full bg-sky-500/80 transition-transform duration-200 ease-out"
+                      style={{
+                        transform: `translateX(${crossfade * 100}%)`,
+                      }}
+                    />
+                    <span
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontVariantNumeric: "tabular-nums",
+                        fontSize: "0.75rem",
+                        color: "#e5e7eb",
+                        textShadow: "0 1px 2px rgba(15,23,42,0.9)",
+                      }}
+                    >
+                      {((1 - crossfade) * 100).toFixed(0)}%
+                    </span>
+                  </Progress.Root>
+                </div>
+              </p>
+              <div className={appShellStyles.row}>
+                <Select.Root
+                  value={activeSceneId}
+                  disabled={isCrossfading || isActiveLocked}
+                  onValueChange={(nextId: string) => {
+                    const id = nextId as SceneId;
+                    void setScenePairingOnBackend({
+                      currentActive: id,
+                      currentNext: nextSceneId,
+                      setActiveSceneId,
+                      setNextSceneId,
+                    });
+                  }}
+                >
+                  <Select.Trigger
+                    className="inline-flex flex-1 items-center justify-center gap-1 rounded-t-lg rounded-b-none border border-slate-500/70 bg-slate-900/90 px-3 py-1.5 text-xs text-slate-100 shadow-subtle disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                    aria-label="Active scene"
+                  >
+                    <Select.Value />
+                    <Select.Icon>
+                      <ChevronDownIcon />
+                    </Select.Icon>
+                  </Select.Trigger>
+                  <Select.Portal>
+                    <Select.Content
+                      className="z-50 overflow-hidden rounded-md border border-slate-700 bg-slate-950 text-xs text-slate-100 shadow-subtle-elevated"
+                      position="popper"
+                      sideOffset={4}
+                    >
+                      <Select.Viewport className="p-1">
+                        <Select.Item
+                          className="flex cursor-pointer select-none items-center gap-1 rounded px-2 py-1 data-[highlighted]:bg-slate-800 data-[highlighted]:text-slate-100 data-[state=checked]:font-semibold"
+                          value="sceneA"
+                        >
+                          <Select.ItemText>Scene A</Select.ItemText>
+                        </Select.Item>
+                        <Select.Item
+                          className="flex cursor-pointer select-none items-center gap-1 rounded px-2 py-1 data-[highlighted]:bg-slate-800 data-[highlighted]:text-slate-100 data-[state=checked]:font-semibold"
+                          value="sceneB"
+                        >
+                          <Select.ItemText>Scene B</Select.ItemText>
+                        </Select.Item>
+                        <Select.Item
+                          className="flex cursor-pointer select-none items-center gap-1 rounded px-2 py-1 data-[highlighted]:bg-slate-800 data-[highlighted]:text-slate-100 data-[state=checked]:font-semibold"
+                          value="sceneC"
+                        >
+                          <Select.ItemText>Scene C</Select.ItemText>
+                        </Select.Item>
+                      </Select.Viewport>
+                    </Select.Content>
+                  </Select.Portal>
+                </Select.Root>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  // Crossfade fully to the active scene (crossfade → 0).
+                  if (!isCrossfading) {
+                    void handleCrossfadeChange(0);
+                  }
                 }}
+                disabled={isCrossfading || isActiveLocked}
+                className="flex-1 rounded-b-lg rounded-t-none border border-slate-500/70 border-t-0 bg-slate-900/90 px-3 py-1.5 text-xs text-slate-100 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               >
-                Active → {activeSceneId.toUpperCase()} / Next →{" "}
-                {nextSceneId.toUpperCase()}
-              </span>
+                Crossfade to Active
+              </button>
             </div>
-            <span
-              style={{
-                fontVariantNumeric: "tabular-nums",
-                fontSize: "0.8rem",
-                opacity: 0.8,
-              }}
-            >
-              {(crossfade * 100).toFixed(0)}%
-            </span>
+            <div className={appShellStyles.stack} style={{ flex: 1, gap: 0 }}>
+              <p
+                style={{
+                  marginBottom: "0.5rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                Next
+                <div
+                  style={{
+                    flex: 0.4,
+                    minWidth: "140px",
+                  }}
+                >
+                  <Progress.Root
+                    value={crossfade * 100}
+                    max={100}
+                    className="relative h-5 w-1/2 overflow-hidden rounded-full border border-slate-600/70 bg-slate-900/90"
+                  >
+                    <Progress.Indicator
+                      className="h-full w-full bg-sky-500/80 transition-transform duration-200 ease-out"
+                      style={{
+                        transform: `translateX(${(crossfade - 1) * 100}%)`,
+                      }}
+                    />
+                    <span
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontVariantNumeric: "tabular-nums",
+                        fontSize: "0.75rem",
+                        color: "#e5e7eb",
+                        textShadow: "0 1px 2px rgba(15,23,42,0.9)",
+                      }}
+                    >
+                      {(crossfade * 100).toFixed(0)}%
+                    </span>
+                  </Progress.Root>
+                </div>
+              </p>
+              <div
+                aria-label="Scene crossfade pairing"
+                className={appShellStyles.stack}
+                style={{
+                  gap: "0.3rem",
+                }}
+              >
+                <div className={appShellStyles.row}>
+                  <div
+                    className={appShellStyles.row}
+                    style={{ gap: "0.35rem" }}
+                  >
+                    <Select.Root
+                      value={nextSceneId}
+                      disabled={isCrossfading || isNextLocked}
+                      onValueChange={(nextId: string) => {
+                        const id = nextId as SceneId;
+                        void setScenePairingOnBackend({
+                          currentActive: activeSceneId,
+                          currentNext: id,
+                          setActiveSceneId,
+                          setNextSceneId,
+                        });
+                      }}
+                    >
+                      <Select.Trigger
+                        className="inline-flex flex-1 items-center justify-center gap-1 rounded-t-lg rounded-b-none border border-slate-500/70 bg-slate-900/90 px-3 py-1.5 text-xs text-slate-100 shadow-subtle disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                        aria-label="Next scene"
+                      >
+                        <Select.Value />
+                        <Select.Icon>
+                          <ChevronDownIcon />
+                        </Select.Icon>
+                      </Select.Trigger>
+                      <Select.Portal>
+                        <Select.Content
+                          className="z-50 overflow-hidden rounded-md border border-slate-700 bg-slate-950 text-xs text-slate-100 shadow-subtle-elevated"
+                          position="popper"
+                          sideOffset={4}
+                        >
+                          <Select.Viewport className="p-1">
+                            <Select.Item
+                              className="flex cursor-pointer select-none items-center gap-1 rounded px-2 py-1 data-[highlighted]:bg-slate-800 data-[highlighted]:text-slate-100 data-[state=checked]:font-semibold"
+                              value="sceneA"
+                            >
+                              <Select.ItemText>Scene A</Select.ItemText>
+                            </Select.Item>
+                            <Select.Item
+                              className="flex cursor-pointer select-none items-center gap-1 rounded px-2 py-1 data-[highlighted]:bg-slate-800 data-[highlighted]:text-slate-100 data-[state=checked]:font-semibold"
+                              value="sceneB"
+                            >
+                              <Select.ItemText>Scene B</Select.ItemText>
+                            </Select.Item>
+                            <Select.Item
+                              className="flex cursor-pointer select-none items-center gap-1 rounded px-2 py-1 data-[highlighted]:bg-slate-800 data-[highlighted]:text-slate-100 data-[state=checked]:font-semibold"
+                              value="sceneC"
+                            >
+                              <Select.ItemText>Scene C</Select.ItemText>
+                            </Select.Item>
+                          </Select.Viewport>
+                        </Select.Content>
+                      </Select.Portal>
+                    </Select.Root>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  // Crossfade fully to the next scene (crossfade → 1).
+                  if (!isCrossfading) {
+                    void handleCrossfadeChange(1);
+                  }
+                }}
+                disabled={isCrossfading}
+                className="flex-1 rounded-b-lg rounded-t-none border border-slate-500/70 border-t-0 bg-slate-900/90 px-3 py-1.5 text-xs text-slate-100 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+              >
+                Crossfade to Next
+              </button>
+            </div>
           </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: "0.5rem",
-              marginTop: "0.1rem",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                // Crossfade fully to the active scene (crossfade → 0).
-                void handleCrossfadeChange(0);
-              }}
-              style={{
-                flex: 1,
-                padding: "0.4rem 0.6rem",
-                fontSize: "0.8rem",
-                borderRadius: "999px",
-                border: "1px solid rgba(248,250,252,0.6)",
-                background:
-                  crossfade < 0.5
-                    ? "rgba(15,23,42,0.95)"
-                    : "rgba(15,23,42,0.7)",
-                color: "#e5e7eb",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Crossfade to Active
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                // Crossfade fully to the next scene (crossfade → 1).
-                void handleCrossfadeChange(1);
-              }}
-              style={{
-                flex: 1,
-                padding: "0.4rem 0.6rem",
-                fontSize: "0.8rem",
-                borderRadius: "999px",
-                border: "1px solid rgba(248,250,252,0.6)",
-                background:
-                  crossfade > 0.5
-                    ? "rgba(15,23,42,0.95)"
-                    : "rgba(15,23,42,0.7)",
-                color: "#e5e7eb",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Crossfade to Next
-            </button>
-          </div>
-
-          <p
-            style={{
-              margin: 0,
-              fontSize: "0.78rem",
-              opacity: 0.8,
-              lineHeight: 1.5,
-            }}
-          >
-            Uses the backend Parameter Server to smoothly transition the global{" "}
-            <code>crossfade</code> parameter from 0 → 1 between the selected
-            Active/Next scenes. Click a button to start the transition; the
-            renderer follows the smoothed backend value.
-          </p>
-        </div>
-
-        {/* Scene A Brightness */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.25rem",
-            marginTop: "0.5rem",
-          }}
-        >
-          <label
-            htmlFor="scene-a-brightness"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-              gap: "0.5rem",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-            }}
-          >
-            <span>Scene A Brightness</span>
-            <span
-              style={{
-                fontVariantNumeric: "tabular-nums",
-                fontSize: "0.8rem",
-                opacity: 0.8,
-              }}
-            >
-              {sceneABrightness.toFixed(2)}
-            </span>
-          </label>
-
-          <input
-            id="scene-a-brightness"
-            type="range"
-            min={0}
-            max={2}
-            step={0.01}
-            value={sceneABrightness}
-            onChange={(event) => {
-              const next = Number(event.currentTarget.value);
-              void handleSceneABrightnessChange(next);
-            }}
-            style={{
-              width: "100%",
-              accentColor: "#22c55e",
-              cursor: "pointer",
-            }}
-            aria-valuemin={0}
-            aria-valuemax={2}
-            aria-valuenow={sceneABrightness}
-            aria-label="Scene A brightness"
-          />
-
-          <p
-            style={{
-              margin: 0,
-              fontSize: "0.78rem",
-              opacity: 0.8,
-              lineHeight: 1.5,
-            }}
-          >
-            Adjusts the brightness of Scene&nbsp;A in the renderer. This
-            parameter is forwarded independently from the crossfade value to
-            validate multi-parameter control.
-          </p>
-        </div>
-
-        {/* Rotation Speed */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.5rem",
-            marginTop: "1.1rem",
-          }}
-        >
-          <label
-            htmlFor="rotation-speed"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-              gap: "0.5rem",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-            }}
-          >
-            <span>Rotation speed</span>
-            <span
-              style={{
-                fontVariantNumeric: "tabular-nums",
-                fontSize: "0.8rem",
-                opacity: 0.8,
-              }}
-            >
-              {rotationSpeed.toFixed(2)}
-            </span>
-          </label>
-
-          <input
-            id="rotation-speed"
-            type="range"
-            min={0}
-            max={5}
-            step={0.05}
-            value={rotationSpeed}
-            onChange={(event) => {
-              const next = Number(event.currentTarget.value);
-              setRotationSpeed(next);
-              void (async () => {
-                try {
-                  await invoke("set_parameter", {
-                    id: "rotationSpeed",
-                    value: next,
-                    app: undefined,
-                  });
-                } catch (error) {
-                  // eslint-disable-next-line no-console
-                  console.error("Failed to set rotationSpeed parameter", error);
-                }
-              })();
-            }}
-            style={{
-              width: "100%",
-              accentColor: "#6366f1",
-              cursor: "pointer",
-            }}
-            aria-valuemin={0}
-            aria-valuemax={5}
-            aria-valuenow={rotationSpeed}
-            aria-label="Scene rotation speed"
-          />
-
-          <p
-            style={{
-              margin: 0,
-              fontSize: "0.78rem",
-              opacity: 0.8,
-              lineHeight: 1.5,
-            }}
-          >
-            Controls the cube rotation speed in the renderer as a separate
-            backend parameter, smoothed by the same transition engine.
-          </p>
-        </div>
-
-        {/* Scene A Wobble */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.5rem",
-            marginTop: "1.1rem",
-          }}
-        >
-          <label
-            htmlFor="scene-a-wobble"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-              gap: "0.5rem",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-            }}
-          >
-            <span>Scene A Wobble</span>
-            <span
-              style={{
-                fontVariantNumeric: "tabular-nums",
-                fontSize: "0.8rem",
-                opacity: 0.8,
-              }}
-            >
-              {sceneAWobble.toFixed(2)}
-            </span>
-          </label>
-
-          <input
-            id="scene-a-wobble"
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={sceneAWobble}
-            onChange={(event) => {
-              const next = Number(event.currentTarget.value);
-              setSceneAWobble(next);
-              void (async () => {
-                try {
-                  await invoke("set_parameter", {
-                    id: "scene_a_wobble",
-                    value: next,
-                    app: undefined,
-                  });
-                } catch (error) {
-                  // eslint-disable-next-line no-console
-                  console.error(
-                    "Failed to set scene_a_wobble parameter",
-                    error,
-                  );
-                }
-              })();
-            }}
-            style={{
-              width: "100%",
-              accentColor: "#22c55e",
-              cursor: "pointer",
-            }}
-            aria-valuemin={0}
-            aria-valuemax={1}
-            aria-valuenow={sceneAWobble}
-            aria-label="Scene A wobble"
-          />
-
-          <p
-            style={{
-              margin: 0,
-              fontSize: "0.78rem",
-              opacity: 0.8,
-              lineHeight: 1.5,
-            }}
-          >
-            Controls how much Scene&nbsp;A&apos;s cube wobbles in X/Y over time.
-          </p>
-        </div>
-
-        {/* Scene A Tint LFO Depth */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.5rem",
-            marginTop: "1.1rem",
-          }}
-        >
-          <label
-            htmlFor="scene-a-tint-lfo-depth"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-              gap: "0.5rem",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-            }}
-          >
-            <span>Scene A Tint LFO Depth</span>
-            <span
-              style={{
-                fontVariantNumeric: "tabular-nums",
-                fontSize: "0.8rem",
-                opacity: 0.8,
-              }}
-            >
-              {sceneATintLfoDepth.toFixed(2)}
-            </span>
-          </label>
-
-          <input
-            id="scene-a-tint-lfo-depth"
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={sceneATintLfoDepth}
-            onChange={(event) => {
-              const next = Number(event.currentTarget.value);
-              setSceneATintLfoDepth(next);
-              void (async () => {
-                try {
-                  await invoke("set_parameter", {
-                    id: "scene_a_tint_lfo_depth",
-                    value: next,
-                    app: undefined,
-                  });
-                } catch (error) {
-                  // eslint-disable-next-line no-console
-                  console.error(
-                    "Failed to set scene_a_tint_lfo_depth parameter",
-                    error,
-                  );
-                }
-              })();
-            }}
-            style={{
-              width: "100%",
-              accentColor: "#22c55e",
-              cursor: "pointer",
-            }}
-            aria-valuemin={0}
-            aria-valuemax={1}
-            aria-valuenow={sceneATintLfoDepth}
-            aria-label="Scene A tint LFO depth"
-          />
-
-          <p
-            style={{
-              margin: 0,
-              fontSize: "0.78rem",
-              opacity: 0.8,
-              lineHeight: 1.5,
-            }}
-          >
-            Controls how strongly a slow LFO modulates Scene&nbsp;A&apos;s tint
-            around the base value. 0 disables modulation; 1 uses full depth.
-          </p>
-        </div>
-
-        {/* Scene A Tint */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.5rem",
-            marginTop: "1.1rem",
-          }}
-        >
-          <label
-            htmlFor="scene-a-tint"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-              gap: "0.5rem",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-            }}
-          >
-            <span>Scene A Tint</span>
-            <span
-              style={{
-                fontVariantNumeric: "tabular-nums",
-                fontSize: "0.8rem",
-                opacity: 0.8,
-              }}
-            >
-              {sceneATint.toFixed(2)}
-            </span>
-          </label>
-
-          <input
-            id="scene-a-tint"
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={sceneATint}
-            onChange={(event) => {
-              const next = Number(event.currentTarget.value);
-              setSceneATint(next);
-              void (async () => {
-                try {
-                  await invoke("set_parameter", {
-                    id: "scene_a_tint",
-                    value: next,
-                    app: undefined,
-                  });
-                } catch (error) {
-                  // eslint-disable-next-line no-console
-                  console.error("Failed to set scene_a_tint parameter", error);
-                }
-              })();
-            }}
-            style={{
-              width: "100%",
-              accentColor: "#22d3ee",
-              cursor: "pointer",
-            }}
-            aria-valuemin={0}
-            aria-valuemax={1}
-            aria-valuenow={sceneATint}
-            aria-label="Scene A tint"
-          />
-
-          <p
-            style={{
-              margin: 0,
-              fontSize: "0.78rem",
-              opacity: 0.8,
-              lineHeight: 1.5,
-            }}
-          >
-            Blends Scene&nbsp;A between its base blue and a more cyan tint. This
-            is a numeric parameter (0–1) driven by the backend transition
-            engine.
-          </p>
         </div>
       </div>
     </section>

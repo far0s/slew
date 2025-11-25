@@ -199,8 +199,15 @@ Helpers:
 
 ### 2.5 Controls <→ backend wiring – ✅ (v1)
 
-- Global `reset.css` wired via the React entry point so both Controls and Renderer share consistent base styles.
-- Controls window now intended to occupy the primary display fully; Renderer targets the largest secondary display (or falls back to the primary) and runs fullscreen with no decorations.
+- Global `reset.css` wired via the React entry point so both Controls and Renderer share consistent base styles across windows.
+- Window placement (runtime, Rust side):
+  - Controls window: moves to the primary display and is sized to occupy the full monitor area.
+  - Renderer window: moves to the largest secondary display (by pixel area) if available, otherwise falls back to the primary; also sized to occupy that monitor.
+  - Dev builds: windows are positioned/sized as above but are _not_ forced into fullscreen (system chrome and dev tools remain usable).
+  - Production builds: both windows are additionally set to fullscreen on their target monitors; Renderer runs borderless with no decorations.
+- Renderer UI:
+  - React renderer window is now effectively “canvas-only”: no textual HUD or header UI, just the r3f `<Canvas>` filling the viewport with a dark blue background.
+  - High-level layout styling (full-viewport container, background color, font family) is handled via a small CSS module (`RendererRoot.module.css`).
 
 **Parameters (Controls → backend):**
 
@@ -230,16 +237,63 @@ Helpers:
   - `clear_parameters`
   - Resets sliders to defaults
 
+**Scene Control strip (Controls layout):**
+
+- Controls window now uses a 5-column rigid grid:
+  - Row 1:
+    - Columns 1–4: **Scene Control strip**
+    - Column 5: **Renderer preview placeholder + Debug/Parameters panel**
+  - Row 2:
+    - Columns 1–2: **Scene A panel**
+    - Columns 3–4: **Scene B panel (placeholder)**
+    - Column 5: continues Debug/Parameters.
+- Scene Control strip:
+  - Shows **Active** and **Next** scene combos:
+    - Each combo is a stacked pill:
+      - Top: Radix Select (`@radix-ui/react-select`) for scene choice.
+      - Bottom: button to “Crossfade to Active” / “Crossfade to Next”.
+    - Selects and buttons are disabled while crossfade is in motion (mid-range) to avoid mid-transition pairing changes.
+    - Additional lock rules:
+      - When `crossfade` is ~0 (active scene fully visible), the **Active** combo is disabled.
+      - When `crossfade` is ~1 (next scene fully visible), the **Next** combo is disabled.
+  - Crossfade:
+    - Default value (Controls-side) is now **0**, so the active scene starts fully visible.
+    - The header shows crossfade as a **Radix Progress** bar (`@radix-ui/react-progress`) with the percentage rendered inside.
+    - Button actions:
+      - “Crossfade to Active” → target crossfade 0 via `set_parameter("crossfade", 0, app: undefined)`.
+      - “Crossfade to Next” → target crossfade 1 via `set_parameter("crossfade", 1, app: undefined)`.
+- Scene A panel:
+  - Holds Scene A–specific parameter sliders (moved out of the Scene Control strip):
+    - `scene_a_brightness`
+    - `rotationSpeed`
+    - `scene_a_wobble`
+    - `scene_a_tint_lfo_depth`
+    - `scene_a_tint`
+  - Implementation:
+    - React component `SceneAControls` renders Radix Sliders for each parameter.
+    - For each change:
+      - Updates local state from `useControlsParameters`.
+      - Invokes `set_parameter` with the appropriate ID and value.
+      - For `scene_a_brightness`, also fires `forward_controls_event("scene_a_brightness", payload)` to the renderer.
+- Scene B panel:
+  - Currently a styled placeholder section for future Scene B–specific controls.
+- Debug/Parameters panel:
+  - Right-most column shows:
+    - A renderer preview placeholder (intended to later mirror the final output).
+    - A tabbed “Debug” card (Parameters/Logs/Metrics tabs):
+      - **Parameters** tab embeds the existing `BackendInspector` (view of backend Parameter Server state).
+
 **Scene Pairing UI:**
 
-- Active/Next `<select>` elements:
-  - Options driven by `SCENE_REGISTRY`
-- Logic:
-  - If selecting the same scene in both selects, automatically pick a fallback scene from the registry
+- Active/Next scene selection:
+  - Implemented via Radix Selects (`SceneId` options: `sceneA`, `sceneB`, `sceneC`).
+  - When a selection changes:
+    - Calls `set_scene_pairing(activeSceneId, nextSceneId)` through the existing `setScenePairingOnBackend` helper.
+    - Maintains the previous logic that prevents invalid “same scene for both” pairings (handled in the helper).
 - Backend:
-  - On any change, invokes `set_scene_pairing(activeSceneId, nextSceneId)`
+  - On any change, invokes `set_scene_pairing(activeSceneId, nextSceneId)`.
 - Renderer:
-  - Listens to `scene_pairing_changed` and updates `useSceneManager` selection
+  - Listens to `scene_pairing_changed` and updates `useSceneManager` selection.
 
 ---
 
@@ -664,17 +718,57 @@ Implementation status:
 > - OSC routing UI
 > - Audio input UI
 
-**Status:** ⏳
+**Status:** 🧪 (early Scene Control + Scene A panel + Debug/Parameters layout in place)
 
 Planned minimal features:
 
 1. **Layout & navigation**
-   - ⏳ Scene browser:
-     - List of scenes with current/next indicators
-   - ⏳ Parameter inspector:
-     - Grouped sliders, color pickers, toggles
+   - 🧪 Scene switching UI:
+     - Top-row **Scene Control strip** spanning columns 1–4:
+       - Active/Next scene selection via Radix Select.
+       - Per-side “Crossfade to Active/Next” buttons.
+       - Crossfade progress indicator using Radix Progress.
+       - Lock rules:
+         - While crossfade is mid-range, both combos and buttons are disabled.
+         - At crossfade ≈ 0, Active combo+CTA are disabled (scene is fully live).
+         - At crossfade ≈ 1, Next combo+CTA are disabled.
+   - 🧪 Parameter inspector:
+     - Scene A panel with Scene A–specific sliders (brightness, wobble, rotation, tint, tint LFO depth) wired to the Parameter Server.
+     - Scene B panel stubbed out as a placeholder for future per-scene controls.
+   - 🧪 Debug / backend inspector:
+     - Right-hand column Debug card with “Parameters / Logs / Metrics” tabs.
+     - Parameters tab embeds `BackendInspector` for a live view of backend state.
    - ⏳ Input monitor:
      - Simple visualization of MIDI/OSC/audio activity
+
+2. **Parameter editing**
+   - 🧪 Bi-directional updates with Parameter Server for Scene A parameters and `crossfade`.
+   - ⏳ Validation and clamping to min/max (some clamping already occurs in `applyBackendParamsToSliders`).
+   - Accessibility:
+     - Full keyboard support, visible focus, proper labels
+     - Inline error messages and focus-on-error behavior
+
+3. **MIDI Learn (MVP)**
+   - ⏳ Toggle to put a parameter in “learn” mode
+   - ⏳ Bind next incoming MIDI message to that parameter
+   - ⏳ Simple overview of mappings
+
+4. **Routing UIs**
+   - OSC:
+     - ⏳ Configure IP/port, namespaces, and mapping presets
+   - Audio:
+     - ⏳ Device selection
+     - ⏳ Level meters and band energy display
+
+**Accessibility/UX anchors from your rules:**
+
+- Full keyboard support with `:focus-visible` and `:focus-within` styling
+- No disabled zoom; correct mobile font sizes and hit targets
+- Errors inline next to fields; on submit, focus first error
+- Links vs buttons semantics preserved
+- Live feedback via polite `aria-live` regions where appropriate
+
+---
 
 2. **Parameter editing**
    - ⏳ Bi-directional updates with Parameter Server
