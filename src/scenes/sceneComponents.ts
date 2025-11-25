@@ -34,10 +34,23 @@ export interface SceneProps {
    * is responsible for mapping backend IDs → these props.
    */
   params?: Partial<{
+    // Scene A params
     rotationSpeed: number;
     sceneABrightness: number;
     sceneAWobble: number;
     sceneATint: number;
+
+    // Scene B params
+    sceneBBrightness: number;
+    sceneBRotationSpeed: number;
+    sceneBTint: number;
+    sceneBScale: number;
+
+    // Scene C params
+    sceneCBrightness: number;
+    sceneCPulseSpeed: number;
+    sceneCRotationSpeed: number;
+    sceneCTint: number;
   }>;
 }
 

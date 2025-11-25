@@ -27,7 +27,7 @@
 
    5-column rigid grid:
    - Row 1: Scene control strip (cols 1–4) + Preview/Debug (col 5)
-   - Row 2: Scene A (cols 1–2) + Scene B (cols 3–4) + Preview/Debug continues
+   - Row 2: Active scene (cols 1–2) + Next scene (cols 3–4) + Preview/Debug continues
    ========================================================================== */
 
 .main {
@@ -39,6 +39,7 @@
   justify-items: stretch;
   padding: 1.5rem;
   gap: 1.5rem;
+  overflow-y: auto;
 }
 
 /* Responsive: collapse to vertical stack on narrow viewports */
@@ -69,14 +70,14 @@
   gap: 1rem;
 }
 
-/* Scene A: columns 1–2, row 2 */
-.sceneAColumn {
+/* Active scene: columns 1–2, row 2 */
+.activeSceneColumn {
   grid-column: 1 / span 2;
   grid-row: 2 / span 1;
 }
 
-/* Scene B: columns 3–4, row 2 */
-.sceneBColumn {
+/* Next scene: columns 3–4, row 2 */
+.nextSceneColumn {
   grid-column: 3 / span 2;
   grid-row: 2 / span 1;
 }
@@ -132,6 +133,14 @@
   text-transform: uppercase;
   color: rgb(255 255 255 / 0.9);
   margin: 0;
+}
+
+.sceneRole {
+  font-weight: 400;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: rgb(255 255 255 / 0.5);
 }
 
 .caption {

@@ -25,6 +25,8 @@ interface SceneSelectProps {
   value: SceneId;
   disabled: boolean;
   ariaLabel: string;
+  /** Scene ID to exclude from the options (the other selector's current value) */
+  excludeSceneId: SceneId;
   onValueChange: (value: SceneId) => void;
 }
 
@@ -32,8 +34,14 @@ function SceneSelect({
   value,
   disabled,
   ariaLabel,
+  excludeSceneId,
   onValueChange,
 }: SceneSelectProps) {
+  // Filter out the scene that's already selected in the other dropdown
+  const availableOptions = SCENE_OPTIONS.filter(
+    (option) => option.value !== excludeSceneId,
+  );
+
   return (
     <Select.Root
       value={value}
@@ -53,7 +61,7 @@ function SceneSelect({
           sideOffset={4}
         >
           <Select.Viewport className={styles.selectViewport}>
-            {SCENE_OPTIONS.map((option) => (
+            {availableOptions.map((option) => (
               <Select.Item
                 key={option.value}
                 value={option.value}
@@ -91,7 +99,9 @@ function CrossfadeProgress({ value, isActive }: CrossfadeProgressProps) {
           className={styles.progressIndicator}
           style={{ transform: `translateX(${translateX}%)` }}
         />
-        <span className={styles.progressText}>{displayPercent.toFixed(0)}%</span>
+        <span className={styles.progressText}>
+          {displayPercent.toFixed(0)}%
+        </span>
       </Progress.Root>
     </div>
   );
@@ -109,6 +119,10 @@ function CrossfadeProgress({ value, isActive }: CrossfadeProgressProps) {
  * - While crossfading (mid-range), both combos and buttons are disabled
  * - At crossfade ≈ 0, Active combo+CTA are disabled (scene is fully live)
  * - At crossfade ≈ 1, Next combo+CTA are disabled
+ *
+ * Scene selection rules:
+ * - Each dropdown excludes the scene selected in the other dropdown
+ * - This prevents selecting the same scene for both Active and Next
  */
 export function SceneControlStrip({
   activeSceneId,
@@ -177,6 +191,7 @@ export function SceneControlStrip({
                 value={activeSceneId}
                 disabled={isCrossfading || isActiveLocked}
                 ariaLabel="Active scene"
+                excludeSceneId={nextSceneId}
                 onValueChange={handleActiveSceneChange}
               />
             </div>
@@ -208,6 +223,7 @@ export function SceneControlStrip({
                     value={nextSceneId}
                     disabled={isCrossfading || isNextLocked}
                     ariaLabel="Next scene"
+                    excludeSceneId={activeSceneId}
                     onValueChange={handleNextSceneChange}
                   />
                 </div>

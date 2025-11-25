@@ -47,8 +47,17 @@ Legend:
     - `scene_a_brightness`
     - `scene_a_wobble`
     - `scene_a_tint`
-  - Scene B – orange cube (opacity only)
-  - Scene C – green pulsing cube (opacity only)
+    - `scene_a_tint_lfo_depth`
+  - Scene B – orange cube with:
+    - `scene_b_brightness`
+    - `scene_b_rotation_speed`
+    - `scene_b_tint` (shifts between red and yellow)
+    - `scene_b_scale`
+  - Scene C – green pulsing cube with:
+    - `scene_c_brightness`
+    - `scene_c_pulse_speed`
+    - `scene_c_rotation_speed`
+    - `scene_c_tint` (shifts between cyan and lime)
 - Uses a simple linear crossfade between two scenes:
   - `activeWeight = 1 - crossfade`
   - `nextWeight = crossfade`
@@ -211,17 +220,28 @@ Helpers:
 
 **Parameters (Controls → backend):**
 
-- Sliders:
+- Global sliders:
   - `crossfade`
+- Scene A sliders:
   - `scene_a_brightness`
   - `rotationSpeed`
   - `scene_a_wobble`
   - `scene_a_tint`
   - `scene_a_tint_lfo_depth`
+- Scene B sliders:
+  - `scene_b_brightness`
+  - `scene_b_rotation_speed`
+  - `scene_b_tint`
+  - `scene_b_scale`
+- Scene C sliders:
+  - `scene_c_brightness`
+  - `scene_c_pulse_speed`
+  - `scene_c_rotation_speed`
+  - `scene_c_tint`
 - Each slider:
   - Updates local UI state
   - Calls `set_parameter(id, value, app: undefined)`
-  - For `crossfade` and `scene_a_brightness`, also forwards `forward_controls_event` to renderer (`renderer:{event}`)
+  - For brightness parameters (`crossfade`, `scene_a_brightness`, `scene_b_brightness`, `scene_c_brightness`), also forwards `forward_controls_event` to renderer (`renderer:{event}`)
 
 **Hydration / sync:**
 
@@ -239,14 +259,14 @@ Helpers:
 
 **Scene Control strip (Controls layout):**
 
-- Controls window now uses a 5-column rigid grid:
+- Controls window now uses a 5-column, 2-row rigid grid:
   - Row 1:
     - Columns 1–4: **Scene Control strip**
     - Column 5: **Renderer preview placeholder + Debug/Parameters panel**
   - Row 2:
-    - Columns 1–2: **Scene A panel**
-    - Columns 3–4: **Scene B panel (placeholder)**
-    - Column 5: continues Debug/Parameters.
+    - Columns 1–2: **Active scene panel** (dynamically renders controls for whichever scene is active)
+    - Columns 3–4: **Next scene panel** (dynamically renders controls for whichever scene is next)
+    - Column 5: continues Debug/Parameters
 - Scene Control strip:
   - Shows **Active** and **Next** scene combos:
     - Each combo is a stacked pill:
@@ -262,21 +282,25 @@ Helpers:
     - Button actions:
       - “Crossfade to Active” → target crossfade 0 via `set_parameter("crossfade", 0, app: undefined)`.
       - “Crossfade to Next” → target crossfade 1 via `set_parameter("crossfade", 1, app: undefined)`.
-- Scene A panel:
-  - Holds Scene A–specific parameter sliders (moved out of the Scene Control strip):
-    - `scene_a_brightness`
-    - `rotationSpeed`
-    - `scene_a_wobble`
-    - `scene_a_tint_lfo_depth`
-    - `scene_a_tint`
-  - Implementation:
-    - React component `SceneAControls` renders Radix Sliders for each parameter.
-    - For each change:
-      - Updates local state from `useControlsParameters`.
-      - Invokes `set_parameter` with the appropriate ID and value.
-      - For `scene_a_brightness`, also fires `forward_controls_event("scene_a_brightness", payload)` to the renderer.
-- Scene B panel:
-  - Currently a styled placeholder section for future Scene B–specific controls.
+- Dynamic scene panels:
+  - **Active scene panel** (left, cols 1–2):
+    - Shows controls for whichever scene is currently active
+    - Header displays scene name + "(Active)" role indicator
+    - Renders appropriate control component based on `activeSceneId`
+  - **Next scene panel** (right, cols 3–4):
+    - Shows controls for whichever scene is set as next
+    - Header displays scene name + "(Next)" role indicator
+    - Renders appropriate control component based on `nextSceneId`
+  - When scene selection changes, the panels dynamically swap to show the correct controls
+- Scene-specific control components:
+  - `SceneAControls`: brightness, rotation speed, wobble, tint LFO depth, tint
+  - `SceneBControls`: brightness, rotation speed, tint, scale
+  - `SceneCControls`: brightness, pulse speed, rotation speed, tint
+  - Each component:
+    - Renders Radix Sliders for its parameters
+    - Updates local state from `useControlsParameters`
+    - Invokes `set_parameter` with the appropriate ID and value
+    - For brightness parameters, also fires `forward_controls_event` to the renderer
 - Debug/Parameters panel:
   - Right-most column shows:
     - A renderer preview placeholder (intended to later mirror the final output).
@@ -732,7 +756,7 @@ Implementation status:
 > - OSC routing UI
 > - Audio input UI
 
-**Status:** 🧪 (early Scene Control + Scene A panel + Debug Panel with tabs in place)
+**Status:** 🧪 (Scene Control strip + Scene A/B/C panels + Debug Panel with tabs in place)
 
 Planned minimal features:
 
@@ -746,9 +770,10 @@ Planned minimal features:
          - While crossfade is mid-range, both combos and buttons are disabled.
          - At crossfade ≈ 0, Active combo+CTA are disabled (scene is fully live).
          - At crossfade ≈ 1, Next combo+CTA are disabled.
-   - 🧪 Parameter inspector:
+   - ✅ Parameter inspector:
      - Scene A panel with Scene A–specific sliders (brightness, wobble, rotation, tint, tint LFO depth) wired to the Parameter Server.
-     - Scene B panel stubbed out as a placeholder for future per-scene controls.
+     - Scene B panel with Scene B–specific sliders (brightness, rotation speed, tint, scale) wired to the Parameter Server.
+     - Scene C panel with Scene C–specific sliders (brightness, pulse speed, rotation speed, tint) wired to the Parameter Server.
    - ✅ Debug / backend inspector:
      - Right-hand column Debug panel with **Radix Tabs** (`@radix-ui/react-tabs`):
        - **Parameters tab:** Embeds `BackendInspector` for a live view of backend state.
@@ -763,7 +788,7 @@ Planned minimal features:
      - Simple visualization of MIDI/OSC/audio activity
 
 2. **Parameter editing**
-   - 🧪 Bi-directional updates with Parameter Server for Scene A parameters and `crossfade`.
+   - ✅ Bi-directional updates with Parameter Server for Scene A, B, C parameters and `crossfade`.
    - ⏳ Validation and clamping to min/max (some clamping already occurs in `applyBackendParamsToSliders`).
    - Accessibility:
      - Full keyboard support, visible focus, proper labels
@@ -951,7 +976,7 @@ Update and answer these over time; future LLM sessions will rely on them.
 
 ## 6. Next Actions (for LLM or human dev)
 
-Short-term, concrete steps building on the current Parameter Server + Scene A:
+Short-term, concrete steps building on the current Parameter Server + Scene A/B/C:
 
 1. **Tighten Parameter Server ↔ renderer integration**
    - Clarify and enforce `rotationSpeed` semantics:
@@ -965,20 +990,25 @@ Short-term, concrete steps building on the current Parameter Server + Scene A:
      - Backend-smoothed `parameter_changed` is preferred when available.
      - `renderer:crossfade` remains as a UI fallback (do not break existing sliders).
 
-2. **Add one more visual parameter to validate transitions further**
-   - Introduce a simple additional visual parameter for Scene A or B, for example:
-     - `scene_a_tint` (color tint intensity) or
-     - A boolean-ish “FX toggle” represented as a numeric parameter (0 or 1) such as `scene_a_fx_intensity`.
-   - Wire it end-to-end:
-     - Add backend default and transition behavior (similar to `scene_a_brightness`).
-     - Add a slider in Controls (with defaults, reset-to-defaults, inspector entry).
-     - Use the parameter in the renderer material (e.g., blending between two colors or enabling a subtle effect).
+2. **~~Add one more visual parameter to validate transitions further~~** ✅ DONE
+   - Scene B and Scene C now have full parameter sets:
+     - Scene B: `scene_b_brightness`, `scene_b_rotation_speed`, `scene_b_tint`, `scene_b_scale`
+     - Scene C: `scene_c_brightness`, `scene_c_pulse_speed`, `scene_c_rotation_speed`, `scene_c_tint`
+   - All wired end-to-end:
+     - Backend defaults and transition behavior in `lib.rs`
+     - Sliders in Controls (`SceneBControls`, `SceneCControls`) with defaults, reset-to-defaults, inspector entries
+     - Parameters consumed in renderer scene components with visual effects (color shifts, scaling, rotation, pulsing)
+
+3. **Input Layer (OSC / MIDI / Audio)**
+   - Wire up OSC input to drive parameters
+   - Add MIDI Learn UI for parameter binding
+   - Implement audio input with level meters and band energy
    - Use this to further exercise:
      - Parameter Server tick behavior.
      - Persistence.
      - Inspector grouping and live updates.
 
-3. **Start sketching the Scene System**
+4. **Start sketching the Scene System**
    - In TypeScript (frontend), introduce early scaffolding (types / placeholders) for a future Scene System, without breaking the current dual-scene setup:
      - Define a minimal scene descriptor type, e.g.:
        - `SceneId`
@@ -998,7 +1028,7 @@ Short-term, concrete steps building on the current Parameter Server + Scene A:
        - Sharing or reusing parameter IDs where appropriate (e.g. global crossfade).
        - Keeping the current dual-window behavior, sliders, and persistence stable.
 
-4. **Housekeeping**
+5. **Housekeeping**
    - After each incremental change (especially when adding new parameters or scene scaffolding), run TypeScript/Rust diagnostics to keep the codebase green.
    - Keep this document updated as:
      - Additional Scene A/B parameters are added and exercised.

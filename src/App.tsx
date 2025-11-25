@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { AnimatePresence, motion } from "motion/react";
 import { type SceneId } from "./scenes/sceneTypes";
 import {
   type BackendParameter,
@@ -8,6 +9,8 @@ import {
 } from "./controls/controlsParameters";
 import { SceneControlStrip } from "./components/controls/SceneControlStrip";
 import { SceneAControls } from "./components/controls/SceneAControls";
+import { SceneBControls } from "./components/controls/SceneBControls";
+import { SceneCControls } from "./components/controls/SceneCControls";
 import {
   DebugPanel,
   type LogEntry,
@@ -21,20 +24,45 @@ const MAX_LOG_ENTRIES = 100;
 function App() {
   const {
     crossfade,
+    // Scene A
     sceneABrightness,
     rotationSpeed,
     sceneAWobble,
     sceneATint,
     sceneATintLfoDepth,
+    // Scene B
+    sceneBBrightness,
+    sceneBRotationSpeed,
+    sceneBTint,
+    sceneBScale,
+    // Scene C
+    sceneCBrightness,
+    sceneCPulseSpeed,
+    sceneCRotationSpeed,
+    sceneCTint,
+
     backendParameters,
     isLoadingParams,
     paramError,
+
     setCrossfade,
+    // Scene A setters
     setSceneABrightness,
     setRotationSpeed,
     setSceneAWobble,
     setSceneATint,
     setSceneATintLfoDepth,
+    // Scene B setters
+    setSceneBBrightness,
+    setSceneBRotationSpeed,
+    setSceneBTint,
+    setSceneBScale,
+    // Scene C setters
+    setSceneCBrightness,
+    setSceneCPulseSpeed,
+    setSceneCRotationSpeed,
+    setSceneCTint,
+
     setBackendParameters,
     setIsLoadingParams,
     setParamError,
@@ -165,12 +193,25 @@ function App() {
     try {
       await invoke("clear_parameters");
       setBackendParameters([]);
+
+      // Reset all sliders to defaults
       setCrossfade(DEFAULTS.crossfade);
+      // Scene A
       setSceneABrightness(DEFAULTS.sceneABrightness);
       setRotationSpeed(DEFAULTS.rotationSpeed);
       setSceneAWobble(DEFAULTS.sceneAWobble);
       setSceneATint(DEFAULTS.sceneATint);
       setSceneATintLfoDepth(DEFAULTS.sceneATintLfoDepth);
+      // Scene B
+      setSceneBBrightness(DEFAULTS.sceneBBrightness);
+      setSceneBRotationSpeed(DEFAULTS.sceneBRotationSpeed);
+      setSceneBTint(DEFAULTS.sceneBTint);
+      setSceneBScale(DEFAULTS.sceneBScale);
+      // Scene C
+      setSceneCBrightness(DEFAULTS.sceneCBrightness);
+      setSceneCPulseSpeed(DEFAULTS.sceneCPulseSpeed);
+      setSceneCRotationSpeed(DEFAULTS.sceneCRotationSpeed);
+      setSceneCTint(DEFAULTS.sceneCTint);
     } catch (error) {
       setParamError("Failed to clear parameters in backend");
       console.error("[Controls] clear_parameters failed", error);
@@ -181,12 +222,24 @@ function App() {
     setParamError(null);
 
     const defaults: Array<{ id: string; value: number }> = [
+      // Crossfade
       { id: "crossfade", value: DEFAULTS.crossfade },
+      // Scene A
       { id: "scene_a_brightness", value: DEFAULTS.sceneABrightness },
       { id: "rotationSpeed", value: DEFAULTS.rotationSpeed },
       { id: "scene_a_wobble", value: DEFAULTS.sceneAWobble },
       { id: "scene_a_tint", value: DEFAULTS.sceneATint },
       { id: "scene_a_tint_lfo_depth", value: DEFAULTS.sceneATintLfoDepth },
+      // Scene B
+      { id: "scene_b_brightness", value: DEFAULTS.sceneBBrightness },
+      { id: "scene_b_rotation_speed", value: DEFAULTS.sceneBRotationSpeed },
+      { id: "scene_b_tint", value: DEFAULTS.sceneBTint },
+      { id: "scene_b_scale", value: DEFAULTS.sceneBScale },
+      // Scene C
+      { id: "scene_c_brightness", value: DEFAULTS.sceneCBrightness },
+      { id: "scene_c_pulse_speed", value: DEFAULTS.sceneCPulseSpeed },
+      { id: "scene_c_rotation_speed", value: DEFAULTS.sceneCRotationSpeed },
+      { id: "scene_c_tint", value: DEFAULTS.sceneCTint },
     ];
 
     try {
@@ -196,12 +249,24 @@ function App() {
         ),
       );
 
+      // Update local state
       setCrossfade(DEFAULTS.crossfade);
+      // Scene A
       setSceneABrightness(DEFAULTS.sceneABrightness);
       setRotationSpeed(DEFAULTS.rotationSpeed);
       setSceneAWobble(DEFAULTS.sceneAWobble);
       setSceneATint(DEFAULTS.sceneATint);
       setSceneATintLfoDepth(DEFAULTS.sceneATintLfoDepth);
+      // Scene B
+      setSceneBBrightness(DEFAULTS.sceneBBrightness);
+      setSceneBRotationSpeed(DEFAULTS.sceneBRotationSpeed);
+      setSceneBTint(DEFAULTS.sceneBTint);
+      setSceneBScale(DEFAULTS.sceneBScale);
+      // Scene C
+      setSceneCBrightness(DEFAULTS.sceneCBrightness);
+      setSceneCPulseSpeed(DEFAULTS.sceneCPulseSpeed);
+      setSceneCRotationSpeed(DEFAULTS.sceneCRotationSpeed);
+      setSceneCTint(DEFAULTS.sceneCTint);
     } catch (error) {
       setParamError("Failed to reset parameters to defaults");
       console.error("[Controls] reset defaults failed", error);
@@ -248,6 +313,73 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Render the appropriate scene controls based on scene ID
+   */
+  function renderSceneControls(sceneId: SceneId) {
+    switch (sceneId) {
+      case "sceneA":
+        return (
+          <SceneAControls
+            sceneABrightness={sceneABrightness}
+            rotationSpeed={rotationSpeed}
+            sceneAWobble={sceneAWobble}
+            sceneATint={sceneATint}
+            sceneATintLfoDepth={sceneATintLfoDepth}
+            setSceneABrightness={setSceneABrightness}
+            setRotationSpeed={setRotationSpeed}
+            setSceneAWobble={setSceneAWobble}
+            setSceneATint={setSceneATint}
+            setSceneATintLfoDepth={setSceneATintLfoDepth}
+          />
+        );
+      case "sceneB":
+        return (
+          <SceneBControls
+            sceneBBrightness={sceneBBrightness}
+            sceneBRotationSpeed={sceneBRotationSpeed}
+            sceneBTint={sceneBTint}
+            sceneBScale={sceneBScale}
+            setSceneBBrightness={setSceneBBrightness}
+            setSceneBRotationSpeed={setSceneBRotationSpeed}
+            setSceneBTint={setSceneBTint}
+            setSceneBScale={setSceneBScale}
+          />
+        );
+      case "sceneC":
+        return (
+          <SceneCControls
+            sceneCBrightness={sceneCBrightness}
+            sceneCPulseSpeed={sceneCPulseSpeed}
+            sceneCRotationSpeed={sceneCRotationSpeed}
+            sceneCTint={sceneCTint}
+            setSceneCBrightness={setSceneCBrightness}
+            setSceneCPulseSpeed={setSceneCPulseSpeed}
+            setSceneCRotationSpeed={setSceneCRotationSpeed}
+            setSceneCTint={setSceneCTint}
+          />
+        );
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Get a human-readable label for a scene ID
+   */
+  function getSceneLabel(sceneId: SceneId): string {
+    switch (sceneId) {
+      case "sceneA":
+        return "Scene A";
+      case "sceneB":
+        return "Scene B";
+      case "sceneC":
+        return "Scene C";
+      default:
+        return sceneId;
+    }
+  }
+
   return (
     <div className={styles.root}>
       <main className={styles.main}>
@@ -265,41 +397,52 @@ function App() {
           </div>
         </div>
 
-        {/* Scene A column: columns 1–2, row 2 */}
-        <div className={`${styles.sceneColumn} ${styles.sceneAColumn}`}>
-          <section aria-label="Scene A controls" className={styles.panel}>
-            <h2 className={styles.panelTitle}>Scene A</h2>
-            <p className={styles.caption}>
-              Per-scene parameters for Scene&nbsp;A beneath the scene control
-              strip.
-            </p>
-            <SceneAControls
-              sceneABrightness={sceneABrightness}
-              rotationSpeed={rotationSpeed}
-              sceneAWobble={sceneAWobble}
-              sceneATint={sceneATint}
-              sceneATintLfoDepth={sceneATintLfoDepth}
-              setSceneABrightness={setSceneABrightness}
-              setRotationSpeed={setRotationSpeed}
-              setSceneAWobble={setSceneAWobble}
-              setSceneATint={setSceneATint}
-              setSceneATintLfoDepth={setSceneATintLfoDepth}
-            />
-          </section>
+        {/* Active scene column: columns 1–2, row 2 */}
+        <div className={`${styles.sceneColumn} ${styles.activeSceneColumn}`}>
+          <AnimatePresence mode="wait">
+            <motion.section
+              key={activeSceneId}
+              aria-label={`${getSceneLabel(activeSceneId)} controls`}
+              className={styles.panel}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+            >
+              <h2 className={styles.panelTitle}>
+                {getSceneLabel(activeSceneId)}
+                <span className={styles.sceneRole}> (Active)</span>
+              </h2>
+              <p className={styles.caption}>
+                Controls for the currently active scene.
+              </p>
+              {renderSceneControls(activeSceneId)}
+            </motion.section>
+          </AnimatePresence>
         </div>
 
-        {/* Scene B column: columns 3–4, row 2 (placeholder) */}
-        <div className={`${styles.sceneColumn} ${styles.sceneBColumn}`}>
-          <section
-            aria-label="Scene B controls placeholder"
-            className={styles.panel}
-          >
-            <h2 className={styles.panelTitle}>Scene B</h2>
-            <p className={styles.caption}>
-              Placeholder for Scene&nbsp;B-specific controls beneath the scene
-              control strip.
-            </p>
-          </section>
+        {/* Next scene column: columns 3–4, row 2 */}
+        <div className={`${styles.sceneColumn} ${styles.nextSceneColumn}`}>
+          <AnimatePresence mode="wait">
+            <motion.section
+              key={nextSceneId}
+              aria-label={`${getSceneLabel(nextSceneId)} controls`}
+              className={styles.panel}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+            >
+              <h2 className={styles.panelTitle}>
+                {getSceneLabel(nextSceneId)}
+                <span className={styles.sceneRole}> (Next)</span>
+              </h2>
+              <p className={styles.caption}>
+                Controls for the next scene in the crossfade.
+              </p>
+              {renderSceneControls(nextSceneId)}
+            </motion.section>
+          </AnimatePresence>
         </div>
 
         {/* Preview + Debug column: column 5, spans both rows */}

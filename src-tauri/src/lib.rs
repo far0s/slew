@@ -154,15 +154,31 @@ impl ParameterStore {
 fn default_parameter_for_id(id: ParameterId, initial_value: f64) -> Parameter {
     // Per-parameter defaults:
     // - crossfade: slower transition (e.g. ~0.8s) for visible fades
-    // - scene_a_brightness: quicker response
-    // - scene_a_wobble: medium-fast, kept responsive for live tweaking
-    // - scene_a_tint: similar to wobble, responsive but not twitchy
+    // - scene_*_brightness: quicker response for immediate visual feedback
+    // - scene_*_wobble/tint: medium-fast, responsive for live tweaking
+    // - scene_*_rotation_speed/pulse_speed: medium-fast
+    // - scene_*_scale: medium-fast
     // - fallback: medium-fast
     let (transition_speed, curve) = match id.as_str() {
+        // Crossfade
         "crossfade" => (0.8_f64, ParameterCurve::Linear),
+        // Scene A
         "scene_a_brightness" => (0.3_f64, ParameterCurve::Linear),
         "scene_a_wobble" => (0.4_f64, ParameterCurve::Linear),
         "scene_a_tint" => (0.4_f64, ParameterCurve::Linear),
+        "scene_a_tint_lfo_depth" => (0.4_f64, ParameterCurve::Linear),
+        "rotationSpeed" => (0.4_f64, ParameterCurve::Linear),
+        // Scene B
+        "scene_b_brightness" => (0.3_f64, ParameterCurve::Linear),
+        "scene_b_rotation_speed" => (0.4_f64, ParameterCurve::Linear),
+        "scene_b_tint" => (0.4_f64, ParameterCurve::Linear),
+        "scene_b_scale" => (0.4_f64, ParameterCurve::Linear),
+        // Scene C
+        "scene_c_brightness" => (0.3_f64, ParameterCurve::Linear),
+        "scene_c_pulse_speed" => (0.4_f64, ParameterCurve::Linear),
+        "scene_c_rotation_speed" => (0.4_f64, ParameterCurve::Linear),
+        "scene_c_tint" => (0.4_f64, ParameterCurve::Linear),
+        // Fallback
         _ => (0.4_f64, ParameterCurve::Linear),
     };
 

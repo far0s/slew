@@ -21,6 +21,7 @@
  * For now we only have:
  * - "sceneA" → Blue cube with wobble/tint
  * - "sceneB" → Orange cube
+ * - "sceneC" → Green pulsing cube
  *
  * This is a string union rather than an enum so that:
  * - It is easy to extend in code generators / config-driven flows.
@@ -38,22 +39,43 @@ export type SceneId = "sceneA" | "sceneB" | "sceneC";
  *     "scene_a_brightness"
  *     "scene_a_wobble"
  *     "scene_a_tint"
+ *     "scene_a_tint_lfo_depth"
  *     "rotationSpeed"
+ *     "scene_b_brightness"
+ *     "scene_b_rotation_speed"
+ *     "scene_b_tint"
+ *     "scene_b_scale"
+ *     "scene_c_brightness"
+ *     "scene_c_pulse_speed"
+ *     "scene_c_rotation_speed"
+ *     "scene_c_tint"
  *
  * - Do NOT arbitrarily rename or remove IDs here; they are part of
  *   the shared contract with the Rust Parameter Server and the
  *   renderer/controls windows.
  */
 export type ParameterId =
+  // Global / transition
   | "crossfade"
+  // Scene A
   | "scene_a_brightness"
   | "scene_a_wobble"
   | "scene_a_tint"
   | "scene_a_tint_lfo_depth"
-  | "rotationSpeed";
+  | "rotationSpeed"
+  // Scene B
+  | "scene_b_brightness"
+  | "scene_b_rotation_speed"
+  | "scene_b_tint"
+  | "scene_b_scale"
+  // Scene C
+  | "scene_c_brightness"
+  | "scene_c_pulse_speed"
+  | "scene_c_rotation_speed"
+  | "scene_c_tint";
 
 /**
- * Lightweight description of a parameter from the Scene System’s
+ * Lightweight description of a parameter from the Scene System's
  * perspective.
  *
  * This is *not* the same as the backend `Parameter` model; it is
@@ -88,7 +110,7 @@ export interface SceneParameterDescriptor {
   group?: "scene" | "transition" | "global";
 
   /**
-   * Optional ordering hint within a scene’s parameter panel.
+   * Optional ordering hint within a scene's parameter panel.
    * Lower numbers should appear first.
    */
   orderHint?: number;
@@ -213,7 +235,7 @@ export const SCENE_REGISTRY: SceneDescriptor[] = [
     id: "sceneB",
     label: "Scene B — Orange Cube",
     description:
-      "Secondary demo scene, currently a simple orange cube used for crossfade testing.",
+      "Secondary demo scene with an orange cube. Supports brightness, rotation, tint (red-yellow shift), and scale.",
     parameters: [
       {
         id: "crossfade",
@@ -224,21 +246,91 @@ export const SCENE_REGISTRY: SceneDescriptor[] = [
         max: 1,
         defaultValue: 0.5,
       },
-      // Scene B does not currently consume additional parameters,
-      // but they can be added here as the visual design grows.
+      {
+        id: "scene_b_brightness",
+        label: "Scene B Brightness",
+        group: "scene",
+        orderHint: 20,
+        min: 0,
+        max: 2,
+        defaultValue: 1,
+      },
+      {
+        id: "scene_b_rotation_speed",
+        label: "Scene B Rotation Speed",
+        group: "scene",
+        orderHint: 30,
+        min: 0,
+        max: 5,
+        defaultValue: 0.4,
+      },
+      {
+        id: "scene_b_tint",
+        label: "Scene B Tint",
+        group: "scene",
+        orderHint: 40,
+        min: 0,
+        max: 1,
+        defaultValue: 0.5,
+      },
+      {
+        id: "scene_b_scale",
+        label: "Scene B Scale",
+        group: "scene",
+        orderHint: 50,
+        min: 0.5,
+        max: 2,
+        defaultValue: 1,
+      },
     ],
   },
   {
     id: "sceneC",
-    label: "Scene C — Experimental",
+    label: "Scene C — Green Pulsing Cube",
     description:
-      "Tertiary demo scene placeholder for testing dynamic scene selection. Visual implementation can be simple (e.g., a differently colored cube) while sharing the same crossfade pipeline.",
+      "Tertiary demo scene with a green pulsing cube. Supports brightness, pulse speed, rotation, and tint (cyan-lime shift).",
     parameters: [
       {
         id: "crossfade",
         label: "Crossfade",
         group: "transition",
         orderHint: 10,
+        min: 0,
+        max: 1,
+        defaultValue: 0.5,
+      },
+      {
+        id: "scene_c_brightness",
+        label: "Scene C Brightness",
+        group: "scene",
+        orderHint: 20,
+        min: 0,
+        max: 2,
+        defaultValue: 1,
+      },
+      {
+        id: "scene_c_pulse_speed",
+        label: "Scene C Pulse Speed",
+        group: "scene",
+        orderHint: 30,
+        min: 0,
+        max: 5,
+        defaultValue: 1.5,
+      },
+      {
+        id: "scene_c_rotation_speed",
+        label: "Scene C Rotation Speed",
+        group: "scene",
+        orderHint: 40,
+        min: 0,
+        max: 5,
+        defaultValue: 0.4,
+      },
+      {
+        id: "scene_c_tint",
+        label: "Scene C Tint",
+        group: "scene",
+        orderHint: 50,
         min: 0,
         max: 1,
         defaultValue: 0.5,
@@ -264,7 +356,7 @@ export function getSceneDescriptor(id: SceneId): SceneDescriptor | undefined {
  *
  * This is useful for:
  * - Understanding where a given backend parameter is used.
- * - Driving UI that wants to show “this parameter is used in scenes: …”.
+ * - Driving UI that wants to show "this parameter is used in scenes: …".
  */
 export function getScenesUsingParameter(
   parameterId: ParameterId,
