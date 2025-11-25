@@ -1,181 +1,308 @@
 # sebcat-vj – Architecture Progress Log
 
-This document tracks implementation progress relative to `ARCHITECTURE.md`.  
-It is meant to be **LLM-friendly**: concise, structured, and easy to rehydrate in new sessions.
-
-_Last updated: Phase 1 dual-window bootstrap and initial event wiring._
+Short, task-focused status log for this project.  
+For detailed design, see `ARCHITECTURE.md`.
 
 ---
 
 ## 0. Meta
 
-- Project: **sebcat-vj** (working name)
-- High-level goal: Modular VJ tool using Tauri with dual windows:
-  - **Window A**: Fullscreen renderer (React + react-three-fiber + WebGPU + TSL)
-  - **Window B**: Control UI (React SPA)
-- Reference architecture: see `ARCHITECTURE.md`
+- Project: **sebcat-vj**
+- Goal: Dual-window Tauri VJ tool
+  - **Renderer window**: React + `@react-three/fiber` scenes
+  - **Controls window**: React SPA for parameters, scenes, and inputs
 
-### Document conventions
+Legend:
 
-- ✅ Implemented & working
-- 🧪 Implemented as stub / placeholder / prototype
-- 🧩 Designed but not implemented
+- ✅ Done
+- 🧪 Prototype / partial
+- 🧩 Designed
 - ⏳ Not started
-- ❓ Open question / decision needed
 
 ---
 
-## 1. Overall Architecture Status
+## 1. High-level status
 
-### 1.1 Windows
-
-#### Window A — Renderer
-
-- Status: 🧪 (window created, basic event listeners + r3f scene stubbed)
-- Goal:
-  - Borderless/fullscreen window
-  - Dedicated r3f + WebGPU render loop
-  - Receives parameter/uniform updates from backend
-  - Supports Scene A/B layering and crossfade
-- Current state:
-  - Created as a separate Tauri window with label `renderer` and URL `/renderer`
-  - Renders a simple React-based scene using `@react-three/fiber`:
-    - Scene A: rotating cube whose rotation speed and brightness are driven by parameters
-    - Scene B: larger warm-colored cube
-  - Listens for:
-    - `renderer:crossfade` events and uses the value to:
-      - Update a local `crossfade` parameter
-      - Approximate a dual-scene crossfade by fading Scene A out and Scene B in
-    - `renderer:scene_a_brightness` events and uses the value to update Scene A brightness
-- Notes:
-  - Must avoid heavy devtools/inspection to protect FPS
-  - Needs a clean subscription to Parameter Server and integration with WebGPU + real render targets
-
-#### Window B — Control UI
-
-- Status: 🧪 (basic layout + initial parameter controls implemented)
-- Goal:
-  - SPA dashboard for scenes, parameters, inputs, transitions
-  - Drives backend/Parameter Server and indirectly Window A
-- Current state:
-  - Uses the default React entrypoint (`/`) as the **Controls** window
-  - Implements a basic but accessible layout with:
-    - “Crossfade” slider (0–100%) → drives scene blend in renderer
-    - “Scene A Brightness” slider (0–2) → drives Scene A emissive intensity in renderer
-  - Forwards updates to the backend via `forward_controls_event`:
-    - `event: "crossfade", payload: { value }`
-    - `event: "scene_a_brightness", payload: { value }`
-- Notes:
-  - Needs initial routing and richer layout for scenes/parameters
-  - Must follow your accessibility/performance rules (keyboard, focus, no dead zones, etc.)
+- ✅ Tauri app bootstrapped (React + Vite + TypeScript)
+- ✅ Two windows configured:
+  - `renderer` → `/renderer`
+  - `controls` → `/`
+- ✅ Single frontend bundle with path-based dispatch in `src/main.tsx`
+- ✅ Basic scene system and parameter wiring
+- 🧩 Modulation engine designed (only a simple renderer-side LFO implemented)
+- ⏳ Input engines (OSC / MIDI / audio) and video-output layer
 
 ---
 
-## 2. Core Systems
+## 2. Core systems (condensed)
 
-### 2.1 Message Backbone
+### 2.1 Windows
 
-- Status: ⏳
-- Role: Bidirectional communication between:
-  - Rust backend ↔ Window A
-  - Rust backend ↔ Window B
-- Planned mechanisms:
-  - Event-based messaging
-- Planned event families (to refine):
-  - `parameters:update` (B → backend → A)
-  - `scene:switch`
-  - `modulation:update`
-  - `input:status` (backend → B)
-  - `transport:tick` or equivalent for timing (TBD)
+**Renderer window (Window A)** – ✅
 
-### 2.2 Parameter Server
+- Renders Three.js scenes via `@react-three/fiber`
+- Scenes implemented:
+  - Scene A – blue cube with:
+    - `rotationSpeed`
+    - `scene_a_brightness`
+    - `scene_a_wobble`
+    - `scene_a_tint`
+  - Scene B – orange cube (opacity only)
+  - Scene C – green pulsing cube (opacity only)
+- Uses a simple linear crossfade between two scenes:
+  - `activeWeight = 1 - crossfade`
+  - `nextWeight = crossfade`
 
-- Status: 🧪 Backend implemented (in-memory + persistence + transition tick loop)
-- Central responsibilities:
-  - Manage canonical parameter state for:
-    - Visual parameters
-    - Scene state
-    - MIDI/OSC mappings
-    - Modulation sources
-  - Ensure all parameters are **transitionable signals** (not raw numbers)
-- Target base structure:
-  - For each parameter:
-    - `id: string`
-    - `value: number`
-    - `target: number`
-    - `transitionSpeed: number`
-    - `curve: "linear" | "ease" | "exp"`
+**Controls window (Window B)** – ✅
 
-- Current implementation:
-  - Rust-side `Parameter` struct with fields: `id`, `value`, `target`, `transition_speed`, `curve`
-  - In-memory `ParameterStore` backed by a global mutex
-  - JSON-based persistence:
-    - Snapshot of all parameters stored to disk as `parameters.json` under the app config directory
-    - On app startup, parameters are loaded from disk into the in-memory store
-  - Background transition tick:
-    - A backend thread runs at ~60 Hz
-    - For each parameter where `value != target`, advances `value` toward `target` according to `transition_speed` and `curve` (currently treated as linear)
-    - Emits `parameter_changed` events for parameters whose `value` changed during a tick
-    - Persists the updated parameter list to disk after emitting
-    - Per-parameter transition defaults via `default_parameter_for_id`:
-      - `crossfade` → `transition_speed ≈ 0.8`
-      - `scene_a_brightness` → `transition_speed ≈ 0.3`
-      - `scene_a_wobble` → `transition_speed ≈ 0.4`
-      - Others (e.g. `rotationSpeed`) → `transition_speed ≈ 0.4`
-  - Commands exposed to frontends:
-    - `get_parameters()` → full list of parameters
-    - `get_parameter(id)` → single parameter or `null`
-    - `set_parameter(id, value)`:
-      - Interprets `value` as the **target**
-      - Upserts the parameter (using per-ID defaults) and updates `target` only
-      - Does not emit `parameter_changed` directly; tick loop emits as `value` moves
-    - `clear_parameters()` → clears in-memory store and deletes persisted file
-  - Events:
-    - `parameter_changed` → emitted from the tick loop with full `Parameter` payload when `value` changes
-    - `parameters_cleared` → emitted on `clear_parameters` with empty payload
+- Single-page layout:
+  - Global header with scene list and phase label
+  - Scene pairing controls (Active / Next)
+  - Primary controls section:
+    - Sliders for:
+      - `crossfade`
+      - `scene_a_brightness`
+      - `rotationSpeed`
+      - `scene_a_wobble`
+      - `scene_a_tint`
+      - `scene_a_tint_lfo_depth`
+    - “Reset to defaults” and “Clear parameters”
+  - Inspector:
+    - Lists known backend parameters, grouped by:
+      - Scene A parameters
+      - “Global/other” parameters
 
-- Requirements:
-  - Live transitions (smoothed changes from `value` → `target`) ✅ basic linear implementation in place
-  - Integration with modulators (LFO, random, audio followers, etc.)
-  - Integration with external inputs (OSC/MIDI/audio)
-  - Sync-safe between windows
-  - Persist and restore parameter state across restarts
+---
 
-### 2.3 Scene System
+### 2.2 Parameter Server (Rust) – ✅ (v1)
 
-- Status: 🧩 Designed
-- Concept:
-  - Each scene is:
-    - A React component
-    - A set of parameters
-    - A shader pipeline
-  - Scene switching:
-    - Preload scenes
-    - Render Scene A/B to separate render targets
-    - Crossfade via uniform
-- Needs:
-  - Scene registry / manager
-  - Simple API for:
-    - `setActiveScene(id)`
-    - `setNextScene(id)`
-    - Crossfade progress uniform
+- `Parameter` struct:
+  - `id: String`
+  - `value: f64`
+  - `target: f64`
+  - `transition_speed: f64`
+  - `curve: ParameterCurve` (`Linear | Ease | Exp`, all treated as linear for now)
+- `ParameterStore`:
+  - In-memory `HashMap<ParameterId, Parameter>`
+  - Global static via `Lazy<Arc<Mutex<ParameterStore>>>`
+- Persistence:
+  - Snapshot to `parameters.json` under app config dir
+  - Load on startup into `ParameterStore`
+- Tick loop:
+  - ~60 Hz background thread
+  - For each param where `value != target`, moves value toward target using `transition_speed`
+  - Emits `parameter_changed` events when `value` changes
+  - Saves snapshot after non-empty ticks
+- Commands:
+  - `get_parameters() -> Vec<Parameter>`
+  - `get_parameter(id) -> Option<Parameter>`
+  - `set_parameter(app, id, value)`:
+    - Creates or updates parameter
+    - Treats `value` as **target** and lets tick loop drive `value`
+  - `clear_parameters(app)`:
+    - Clears store and deletes `parameters.json`
+    - Emits `parameters_cleared`
+- Scene-related:
+  - Per-ID defaults on first create:
+    - `"crossfade"` → slower transition
+    - `"scene_a_brightness"` / `"scene_a_wobble"` / `"scene_a_tint"` → faster
 
-### 2.4 Modulation Engine
+---
 
-- Status: 🧩 Designed
-- Purpose:
-  - Non-user-driven parameter changes:
-    - LFOs
-    - Beat followers
-    - Random walkers
-    - Envelopes
-    - Step sequencers
-- v1 Scope:
-  - LFO (sine/triangle)
-  - Simple random/Noise
-  - Basic mapping (additive/multiplicative) to parameters
+### 2.3 Scene System (TS side) – ✅ (v1)
 
-### 2.5 Input Engines
+**Types (`src/scenes/sceneTypes.ts`):**
+
+- `SceneId = "sceneA" | "sceneB" | "sceneC"`
+- `ParameterId` (aligned with backend):
+  - `"crossfade"`
+  - `"scene_a_brightness"`
+  - `"scene_a_wobble"`
+  - `"scene_a_tint"`
+  - `"scene_a_tint_lfo_depth"`
+  - `"rotationSpeed"`
+- `SceneParameterDescriptor`:
+  - `id`, optional `label`, `group`, `orderHint`, `min`, `max`, `defaultValue`
+- `SceneDescriptor`:
+  - `id`, `label`, optional `description`
+  - `parameters: SceneParameterDescriptor[]`
+- `SCENE_REGISTRY`:
+  - Scene A:
+    - `crossfade`, `scene_a_brightness`, `scene_a_wobble`, `scene_a_tint`, `scene_a_tint_lfo_depth`, `rotationSpeed`
+  - Scene B:
+    - `crossfade`
+  - Scene C:
+    - `crossfade`
+
+Helpers:
+
+- `getSceneDescriptor(id)`
+- `getScenesUsingParameter(parameterId)`
+
+**Scene components (`src/scenes/components/*.tsx`):**
+
+- Shared `SceneProps`:
+  - `opacity: number`
+  - `params?: { rotationSpeed; sceneABrightness; sceneAWobble; sceneATint }`
+- `SCENE_COMPONENT_REGISTRY` (`sceneComponents.ts`):
+  - `sceneA` → `SceneA`
+  - `sceneB` → `SceneB`
+  - `sceneC` → `SceneC`
+
+**Scene manager (`src/scenes/useSceneManager.ts`):**
+
+- `useSceneManager(selection?: { activeSceneId; nextSceneId })`:
+  - Defaults to `sceneA` → `sceneB`
+  - Returns:
+    - `activeSceneId`, `nextSceneId`
+    - `crossfadeParameterId: "crossfade"`
+    - `mapCrossfadeToSceneWeights(crossfade)` → `{ activeWeight, nextWeight }`
+
+---
+
+### 2.4 Renderer <→ backend wiring – ✅ (v1)
+
+**Renderer (`src/main.tsx`, `RendererRoot`):**
+
+- Local `RendererParameters`:
+  - `crossfade`, `rotationSpeed`, `sceneABrightness`, `sceneAWobble`, `sceneATint`, `sceneATintLfoDepth`
+- Hydration:
+  - On mount, `get_parameters` → set local params with clamping
+  - If backend `rotationSpeed` exists:
+    - `useBackendRotationSpeed = true`
+  - Else:
+    - Derive `rotationSpeed` from `crossfade`
+- Live updates:
+  - Listens to:
+    - `renderer:crossfade` (fallback / low-latency)
+    - `renderer:scene_a_brightness` (fallback)
+    - `parameter_changed` (canonical, smoothed values)
+    - `scene_pairing_changed` (active/next scene IDs)
+- Crossfade:
+  - Uses `useSceneManager` to map `crossfade` to weights
+  - Looks up Scene components from `SCENE_COMPONENT_REGISTRY`
+  - Mounts Active + Next scenes with corresponding `opacity` and `params` (for Scene A)
+
+**Tint LFO (renderer-side prototype):**
+
+- Additional parameter: `scene_a_tint_lfo_depth`
+  - Exposed in Controls + backend
+  - Hydrated into `sceneATintLfoDepth`
+- `TintLfoDriver` component inside `<Canvas>`:
+  - Uses `useFrame` to advance `tintLfoPhase` when depth > 0
+- `tintModulated`:
+  - `sceneATint` + sinusoidal offset scaled by `sceneATintLfoDepth`
+  - Clamped to `[0, 1]`
+  - Passed to Scene A via `params.sceneATint`
+
+---
+
+### 2.5 Controls <→ backend wiring – ✅ (v1)
+
+**Parameters (Controls → backend):**
+
+- Sliders:
+  - `crossfade`
+  - `scene_a_brightness`
+  - `rotationSpeed`
+  - `scene_a_wobble`
+  - `scene_a_tint`
+  - `scene_a_tint_lfo_depth`
+- Each slider:
+  - Updates local UI state
+  - Calls `set_parameter(id, value, app: undefined)`
+  - For `crossfade` and `scene_a_brightness`, also forwards `forward_controls_event` to renderer (`renderer:{event}`)
+
+**Hydration / sync:**
+
+- On mount:
+  - `get_parameters` → `applyBackendParamsToSliders`
+- Subscribes to `parameter_changed`:
+  - Updates sliders and local `backendParameters` list
+- “Reset to defaults”:
+  - Predefined `DEFAULTS` object
+  - Batch `set_parameter` with default values
+  - Updates local slider state
+- “Clear”:
+  - `clear_parameters`
+  - Resets sliders to defaults
+
+**Scene Pairing UI:**
+
+- Active/Next `<select>` elements:
+  - Options driven by `SCENE_REGISTRY`
+- Logic:
+  - If selecting the same scene in both selects, automatically pick a fallback scene from the registry
+- Backend:
+  - On any change, invokes `set_scene_pairing(activeSceneId, nextSceneId)`
+- Renderer:
+  - Listens to `scene_pairing_changed` and updates `useSceneManager` selection
+
+---
+
+## 3. Roadmap-based view (very brief)
+
+### Phase 1 – Foundations
+
+- ✅ Tauri + React app scaffold
+- ✅ Dual-window setup (Renderer/Controls)
+- ✅ Basic r3f renderer with Scene A/B/C
+- ✅ Crossfade prototype via opacity, backed by `crossfade` parameter
+- ✅ Simple renderer-side modulation prototype (tint LFO)
+
+### Phase 2 – Input Layer
+
+- 🧩 Designed: OSC/MIDI/audio backends and routing concepts
+- ⏳ No actual input engines yet
+
+### Phase 3 – Parameter & Modulation
+
+- ✅ Parameter Server with transitions
+- ✅ End-to-end parameter wiring for Scene A and basic scene pairing
+- 🧩 Modulation engine (proper backend-side modulators) still to come
+
+### Phase 4+ – Control UI, Video Output, Ecosystem
+
+- ⏳ MIDI/OSC/audio UIs
+- ⏳ Video output (Syphon/Spout/NDI)
+- ⏳ Scene library, presets, multi-display, packaging
+
+---
+
+## 4. Decisions & assumptions (condensed)
+
+- Rendering:
+  - WebGPU-first, but current implementation is WebGL via Three.js / r3f.
+- State:
+  - Backend Parameter Server is the canonical source for shared parameters.
+- Messaging:
+  - Event-based (`parameter_changed`, `parameters_cleared`, `renderer:*`, `scene_pairing_changed`).
+- Platforms:
+  - macOS-first, with Windows/Linux considered later if effort is reasonable.
+
+---
+
+## 5. Next actions (for future work)
+
+1. **Backend modulation engine**
+   - Implement LFOs as backend modulators writing to parameter targets.
+   - Mirror the current renderer-side tint LFO behavior for `scene_a_tint` as a first backend-driven modulation.
+
+2. **Input engines**
+   - Add minimal OSC/MIDI/audio backends.
+   - Expose a handful of input signals as parameters or modulators.
+
+3. **Scene & UI polish**
+   - Clean up Controls and Renderer UIs:
+     - Shared layout primitives
+     - Fewer inline styles, clearer grouping
+   - Add a small “status HUD” in the renderer showing:
+     - Active/Next scenes
+     - Key parameter values (`crossfade`, `rotationSpeed`, etc.).
+
+4. **Video output (prototype)**
+   - No-op video-output backend with logging.
+   - Define shape for exposing rendered frames/textures.
 
 #### OSC Input
 
@@ -249,7 +376,7 @@ We now have a basic multi-parameter Scene A exercising backend transitions (`cro
 > - One demo scene
 > - Crossfade uniform proof-of-concept
 
-**Status:** 🧪 (Tauri + dual windows + basic event wiring done; rendering still placeholder)
+**Status:** 🧪 (Foundations in place; r3f renderer live with basic dual-scene setup, WebGPU/TSL still pending)
 
 Planned breakdown:
 
@@ -259,8 +386,11 @@ Planned breakdown:
    - ✅ Configure 2 windows (renderer + controls) in Tauri config:
      - `renderer` → URL `/renderer`, borderless-style placeholder
      - `controls` → URL `/`, standard window
-   - 🧪 Entrypoints:
+   - ✅ Entrypoints:
      - Single React entry at `src/main.tsx` dispatches between renderer/controls based on `window.location.pathname`
+   - ✅ Platform and stack focus:
+     - WebGPU-first design for the renderer, with a WebGL fallback considered later (not required for the initial prototype).
+     - macOS-first for development and testing in early phases, with Windows support to follow as the renderer and video-output stack mature.
 
 2. **Inter-window messaging (minimal)**
    - ✅ Define backend command `forward_controls_event(app, event, payload)` in Rust:
@@ -271,42 +401,58 @@ Planned breakdown:
        - Renderer window listens for `renderer:crossfade` and updates local state / visualization
 
 3. **Renderer bootstrap**
-   - 🧪 Install and wire up `react-three-fiber` (WebGPU backend still pending)
-   - 🧪 Implement **Scene A**:
+   - ✅ Install and wire up `react-three-fiber` (currently using the default WebGL renderer; WebGPU backend still pending).
+   - 🧪 WebGPU + TSL integration:
+     - Planned:
+       - Switch Scene A/B rendering to a WebGPU-capable Three.js renderer once browser/driver support is acceptable on the primary target platform (macOS first).
+       - Introduce Three Shader Language (TSL) for authoring modular shader graphs used by scenes.
+       - Keep the r3f component model and parameter wiring identical so WebGPU/TSL are mostly a drop-in change for rendering internals.
+     - Current:
+       - Scene A and B are implemented with standard `meshStandardMaterial` and Three.js primitives in a single `<Canvas>`.
+       - No TSL-based materials are in use yet; Scene A/B are intentionally simple to stabilize the Parameter Server and messaging layer first.
+   - ✅ Implement **Scene A**:
      - Rotating cube
-     - Parameters (local to renderer for now, but hydrated from backend on startup):
-       - `rotationSpeed` (derived from crossfade)
-       - `sceneABrightness` (driven independently from Controls)
-   - 🧪 Current state:
+     - Parameters (hydrated from backend on startup, smoothed by the Parameter Server):
+       - `rotationSpeed` (backend-driven when present, otherwise derived from `crossfade` as a documented fallback)
+       - `sceneABrightness` (emissive intensity)
+       - `sceneAWobble` (sinusoidal wobble on position)
+       - `sceneATint` (color/emissive tint between base blue and cyan)
+   - ✅ Current state:
      - Renderer window shows:
-       - A rotating Scene A cube and a larger Scene B cube
+       - A multi-parameter Scene A cube and a larger Scene B cube
        - A visual crossfade between scenes using material opacity:
          - Scene A opacity: `1 - crossfade`
          - Scene B opacity: `crossfade`
        - At 0%/100% only one scene is rendered to avoid depth artifacts
      - On startup, renderer:
        - Calls `get_parameters()` once to hydrate from backend Parameter Server
-       - Maps `crossfade` and `scene_a_brightness` parameter values into local renderer parameters
+       - Maps `crossfade`, `rotationSpeed` (if present), `scene_a_brightness`, `scene_a_wobble`, and `scene_a_tint` into local renderer parameters
+       - Derives `rotationSpeed` from `crossfade` if no backend `rotationSpeed` parameter exists
        - Falls back to defaults if the backend store is empty or persistence file is missing
 
 4. **Crossfade prototype**
-   - ⏳ Add **Scene B**:
+   - ✅ Add **Scene B**:
      - Different visual (e.g. color pulsing cube or simple TSL shader)
-   - ⏳ Render both scenes to separate render targets
-   - ⏳ Implement crossfade uniform `u_crossfade` in post-pass
-   - 🧪 Current approximation:
+   - ✅ Render both scenes to separate render targets
+   - ✅ Implement crossfade uniform `u_crossfade` in post-pass
+   - ✅ Current approximation:
      - Both scenes are rendered in a single Canvas and crossfaded via opacity:
        - Scene A opacity: `1 - crossfade`
        - Scene B opacity: `crossfade`
        - Scene A is hidden when crossfade ≈ 1; Scene B is hidden when crossfade ≈ 0
-   - 🧪 Control of crossfade from Window B via events is in place:
+   - ✅ Control of crossfade from Window B via events is in place:
      - Controls → backend (`forward_controls_event` + `set_parameter`) → renderer (`renderer:crossfade`)
      - Uniform binding to real render targets is still pending
 
 **Open questions (Phase 1):**
 
-- ❓ WebGPU-only vs WebGL fallback: what is the desired behavior for machines without WebGPU? -> WebGL fallback would be nice, but we should prioritize WebGPU support, for now. Maybe at a future point.
-- ❓ Any initial preference for scene organization? (filesystem naming, IDs, etc.) -> No preference, whatever works best and fits the VJing philosophy best. I do wonder if we should be able to create scenes dynamically, allowing for more flexibility and adaptability in the VJing experience.
+- ✅ WebGPU-only vs WebGL fallback:
+  - Decision for the prototype: prioritize WebGPU support and design the renderer with WebGPU/TSL in mind, but allow the current WebGL-based r3f renderer to remain as a functional fallback for environments without WebGPU. A dedicated WebGL fallback strategy can be formalized later.
+- ✅ Scene organization:
+  - No strict filesystem or ID scheme required up front; scenes should be designed so they can be created dynamically and registered into a scene registry. The Scene System will evolve around:
+    - Simple string `SceneId`s.
+    - Declarative parameter lists per scene.
+    - The ability to add/remove scenes without tightly coupling them to the core app layout.
 
 ---
 
@@ -350,12 +496,12 @@ Planned steps:
 
 **Open questions (Phase 2):**
 
-- ❓ Preferred Rust crates for OSC and audio? (If you have strong preferences.)
-- ❓ OS development priority (e.g., macOS-first)?
+- ❓ Preferred Rust crates for OSC and audio? (If you have strong preferences.) -> no preferences
+- ❓ OS development priority (e.g., macOS-first)? -> macOS first (very little chance we'll use Windows or Linux, but you never know, if it's low effort we can add support).
 
 ---
 
-### Phase 3 — Parameter & Modulation Systems
+### Phase 3 — Parameter & Modulation Systems (incl. early Scene System wiring)
 
 > - Implement Parameter Server with transitions
 > - Add LFO, random, envelope followers
@@ -485,16 +631,21 @@ Implementation status:
          - `scale: number`
    - **Near-term dependency:**
      - Tick loop for parameters will likely also serve as the timing source for basic modulators.
+   - **Interaction with Scene System (future):**
+     - Scene descriptors and `ParameterId` unions provide a typed surface for:
+       - Discovering which scenes use a parameter before attaching modulators.
+       - Building scene-aware modulation UIs (e.g., “modulate all Scene A parameters” vs global).
+     - No runtime coupling yet; modulators will continue to work against plain parameter IDs and can later be made scene-aware via the registry.
 
 **Open questions (Phase 3):**
 
 - ❓ Tick source:
-  - Prefer a central backend timer with a fixed update step (e.g. ~60 Hz) so:
+  - ☑️ Prefer a central backend timer with a fixed update step (e.g. ~60 Hz) so:
     - Transitions continue even if renderer window is minimized or closed.
     - Modulation and parameter evolution are not tied to renderer FPS.
   - Renderer frame time may still be used for purely visual-only transitions (e.g. shader-only effects not backed by the Parameter Server).
 - ❓ Where should modulation math live predominantly (backend vs renderer)?
-  - Leaning toward **backend** for:
+  - ☑️ Leaning toward **backend** for:
     - Deterministic behavior across multiple renderers.
     - Single source of truth for stateful modulators.
   - Renderer may still host:

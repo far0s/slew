@@ -156,11 +156,13 @@ fn default_parameter_for_id(id: ParameterId, initial_value: f64) -> Parameter {
     // - crossfade: slower transition (e.g. ~0.8s) for visible fades
     // - scene_a_brightness: quicker response
     // - scene_a_wobble: medium-fast, kept responsive for live tweaking
+    // - scene_a_tint: similar to wobble, responsive but not twitchy
     // - fallback: medium-fast
     let (transition_speed, curve) = match id.as_str() {
         "crossfade" => (0.8_f64, ParameterCurve::Linear),
         "scene_a_brightness" => (0.3_f64, ParameterCurve::Linear),
         "scene_a_wobble" => (0.4_f64, ParameterCurve::Linear),
+        "scene_a_tint" => (0.4_f64, ParameterCurve::Linear),
         _ => (0.4_f64, ParameterCurve::Linear),
     };
 
@@ -365,6 +367,25 @@ fn clear_parameters(app: AppHandle) {
     }
 }
 
+#[tauri::command]
+fn set_scene_pairing(
+    app: AppHandle,
+    active_scene_id: String,
+    next_scene_id: String,
+) -> Result<(), String> {
+    // For now we accept arbitrary strings and trust the frontend to
+    // use valid SceneId values ("sceneA" | "sceneB" | "sceneC", etc.).
+    // The renderer will interpret these IDs on its side.
+    app.emit(
+        "scene_pairing_changed",
+        serde_json::json!({
+            "active_scene_id": active_scene_id,
+            "next_scene_id": next_scene_id,
+        }),
+    )
+    .map_err(|error| format!("Failed to emit scene_pairing_changed event: {error}"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -389,7 +410,8 @@ pub fn run() {
             get_parameters,
             get_parameter,
             set_parameter,
-            clear_parameters
+            clear_parameters,
+            set_scene_pairing
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
