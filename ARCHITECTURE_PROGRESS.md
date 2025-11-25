@@ -36,6 +36,7 @@ Legend:
   - MIDI: device enumeration, Learn workflow, per-slider integration
   - OSC: UDP server (port 9000), default mappings, recent messages display
   - Audio: FFT analysis, frequency bands, beat detection, level meters
+  - HID: Macropad/encoder support (DOIO Megalodon), multi-interface connection
 - ⏳ Audio → parameter binding (display works, routing pending)
 - ⏳ Video-output layer (Syphon/Spout/NDI)
 
@@ -375,6 +376,7 @@ Helpers:
 - ✅ MIDI input with Learn workflow and per-slider integration
 - ✅ OSC input with default mappings, recent messages display, auto-setup
 - ✅ Audio input with FFT analysis, band extraction, beat detection
+- ✅ HID input with multi-interface support for macropads/encoders
 
 ### Phase 3 – Parameter & Modulation
 
@@ -826,6 +828,86 @@ oscsend localhost 9000 /crossfade f 0.5
 
 ---
 
+#### 2.4 HID Input — ✅ Implemented
+
+**Backend (Rust):**
+
+- Added `hidapi` crate (v2.6) for cross-platform HID device access
+- Created `src-tauri/src/hid.rs` module with:
+  - Device enumeration with usage page/usage info (`list_hid_devices`, `list_supported_hid_devices`)
+  - Multi-interface connection for devices like DOIO Megalodon
+  - Raw HID report parsing tuned for DOIO encoder patterns
+  - Encoder event detection (Consumer Control + Keyboard NKRO interfaces)
+  - Parameter mapping with sensitivity and invert options
+  - Mapping persistence (`hid_mappings.json`)
+  - Direct Parameter Server integration
+
+**Supported Devices:**
+
+- DOIO Megalodon Triple Knob Macropad (Vendor: 0xD010, Product: 0x1601)
+  - Left Knob: Consumer Control (Next/Prev Track → encoder 0)
+  - Middle Knob: Consumer Control (Volume Up/Down → encoder 1)
+  - Right Knob: Keyboard NKRO (custom keycodes → encoder 2)
+
+**Tauri Commands:**
+
+- `list_hid_devices` — List all HID devices with interface info
+- `list_supported_hid_devices` — List only known/supported devices
+- `connect_hid_device(path)` — Connect to specific interface
+- `connect_hid_megalodon` — Auto-connect to all DOIO interfaces
+- `disconnect_hid_device` — Disconnect all interfaces
+- `get_hid_status` — Get connection status
+- `get_hid_mappings` — Get all encoder mappings
+- `add_hid_mapping(mapping)` — Add/update mapping
+- `remove_hid_mapping(encoder_index)` — Remove mapping
+- `clear_hid_mappings` — Clear all mappings
+- `setup_default_hid_mappings` — Set up default mappings
+
+**Events Emitted:**
+
+- `hid_status_changed` — Connection state changes
+- `hid_encoder` — Encoder turn events (index, delta, timestamp)
+- `hid_raw_report` — Raw HID reports for debugging
+
+**Frontend (React):**
+
+- Created `src/inputs/hid.ts` with:
+  - TypeScript types matching Rust structs
+  - API wrapper functions for all Tauri commands
+  - React hooks:
+    - `useHidDevice()` — Device listing, connection management
+    - `useHidMappings()` — Mapping CRUD
+    - `useHidEncoderEvents()` — Encoder event monitoring
+    - `useHidRawReports()` — Raw report debugging
+
+- Created UI components:
+  - `HidPanel` — Full HID management panel with:
+    - Activity indicator (green, pulses on encoder turn)
+    - Device section with interface list and "Connect All" button
+    - Encoder mappings editor (3 encoders with parameter, sensitivity, invert)
+    - Recent events display
+    - Raw reports debug section
+
+- Default encoder mappings:
+  - Encoder 0 (Left) → `crossfade` (sensitivity: 0.02)
+  - Encoder 1 (Middle) → `scene_a_brightness` (sensitivity: 0.05)
+  - Encoder 2 (Right) → `scene_a_tint` (sensitivity: 0.02)
+
+- Integrated into Debug panel as "HID" tab
+
+**Files Created/Modified:**
+
+- `src-tauri/Cargo.toml` — Added `hidapi` crate
+- `src-tauri/src/lib.rs` — Added hid module import, init, and command registration
+- `src-tauri/src/hid.rs` — NEW: Complete HID engine with DOIO support
+- `src/inputs/hid.ts` — NEW: TypeScript types and hooks
+- `src/components/controls/HidPanel.tsx` — NEW: HID management UI
+- `src/components/controls/HidPanel.module.css` — NEW: Panel styles
+- `src/components/controls/index.ts` — Added export
+- `src/components/debug/DebugPanel.tsx` — Added HID tab
+
+---
+
 **Resolved questions (Phase 2):**
 
 - ✅ Preferred Rust crates: `midir` for MIDI (confirmed working), `rosc` for OSC, `cpal`+`rustfft` for audio
@@ -1230,18 +1312,13 @@ Update and answer these over time; future LLM sessions will rely on them.
 4. **~~MIDI Input~~** ✅ DONE
 5. **~~OSC Input~~** ✅ DONE (including default port 9000, recent messages display, auto-setup mappings)
 6. **~~Audio Input~~** ✅ DONE
+7. **~~HID Input~~** ✅ DONE (DOIO Megalodon macropad with multi-interface support)
 
 ---
 
 ### Next Up (Prioritized)
 
-#### 1. Hardware Testing & Input Polish
-
-- **MIDI hardware testing** — Connect real controllers, verify learn workflow, latency, hot-plug
-- **OSC mobile testing** — Test with TouchOSC/Lemur on iOS/Android
-- **Audio device testing** — Verify capture on different macOS audio devices (built-in, BlackHole, etc.)
-
-#### 2. Audio → Parameter Binding
+#### 1. Audio → Parameter Binding
 
 - Currently audio analysis (RMS, bands, beats) is displayed but not connected to parameters
 - Add a simple binding UI to map audio outputs to parameters:
@@ -1250,26 +1327,26 @@ Update and answer these over time; future LLM sessions will rely on them.
   - `beat` → trigger actions (e.g., crossfade, parameter pulse)
 - Consider exposing audio levels as virtual parameters in the Parameter Server
 
-#### 3. Backend Modulation Engine
+#### 2. Backend Modulation Engine
 
 - Implement LFOs as backend modulators (not just renderer-side)
 - Move Scene A tint LFO to backend for consistency
 - Add modulation sources: sine, triangle, random/noise
 - Add modulation matrix UI (source → parameter with depth/mode)
 
-#### 4. Video Output (Prototype)
+#### 3. Video Output (Prototype)
 
 - No-op Syphon/Spout backend that logs calls
 - Define interface for publishing rendered frames
 - macOS: Start with Syphon integration
 
-#### 5. Scene System Expansion
+#### 4. Scene System Expansion
 
 - Add more scenes with different visual styles
 - Scene library/browser UI
 - Scene-aware parameter grouping in Controls
 
-#### 6. UX Polish
+#### 5. UX Polish
 
 - Mapping tooltips on sliders (show current MIDI/OSC binding)
 - Mapping import/export for preset sharing

@@ -6,6 +6,7 @@ import { DebugMetrics, type DebugMetricsData } from "./DebugMetrics";
 import { MidiPanel } from "../controls/MidiPanel";
 import { OscPanel } from "../controls/OscPanel";
 import { AudioPanel } from "../controls/AudioPanel";
+import { HidPanel } from "../controls/HidPanel";
 import styles from "./DebugPanel.module.css";
 
 export interface DebugPanelProps {
@@ -58,6 +59,9 @@ export function DebugPanel({
         <Tabs.Trigger value="audio" className={styles.tabTrigger}>
           Audio
         </Tabs.Trigger>
+        <Tabs.Trigger value="hid" className={styles.tabTrigger}>
+          HID
+        </Tabs.Trigger>
         <Tabs.Trigger value="parameters" className={styles.tabTrigger}>
           Parameters
         </Tabs.Trigger>
@@ -83,6 +87,10 @@ export function DebugPanel({
 
         <Tabs.Content value="audio" className={styles.tabContent}>
           <AudioPanel />
+        </Tabs.Content>
+
+        <Tabs.Content value="hid" className={styles.tabContent}>
+          <HidPanel />
         </Tabs.Content>
 
         <Tabs.Content value="parameters" className={styles.tabContent}>

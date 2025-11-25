@@ -11,6 +11,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 // Input layer modules
 pub mod audio;
+pub mod hid;
 pub mod midi;
 pub mod osc;
 
@@ -426,6 +427,9 @@ pub fn run() {
             // Initialize the Audio engine
             audio::init_audio_engine(app.handle().clone());
 
+            // Initialize the HID engine
+            hid::init_hid_engine(app.handle());
+
             // Start the background transition tick loop once the app is ready.
             // This loop:
             // - Moves parameter `value` towards `target`
@@ -526,6 +530,18 @@ pub fn run() {
             audio::start_audio_capture,
             audio::stop_audio_capture,
             audio::get_audio_status,
+            // HID commands
+            hid::list_hid_devices,
+            hid::list_supported_hid_devices,
+            hid::connect_hid_device,
+            hid::connect_hid_megalodon,
+            hid::disconnect_hid_device,
+            hid::get_hid_status,
+            hid::get_hid_mappings,
+            hid::add_hid_mapping,
+            hid::remove_hid_mapping,
+            hid::clear_hid_mappings,
+            hid::setup_default_hid_mappings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -11,3 +11,4 @@ export { MidiPanel, type MidiPanelProps } from "./MidiPanel";
 export { MidiLearnButton, type MidiLearnButtonProps } from "./MidiLearnButton";
 export { OscPanel, type OscPanelProps } from "./OscPanel";
 export { AudioPanel, type AudioPanelProps } from "./AudioPanel";
+export { HidPanel, type HidPanelProps } from "./HidPanel";
