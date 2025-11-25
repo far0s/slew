@@ -82,10 +82,7 @@ export function SceneBControls({
       try {
         await setParameter("scene_b_tint", value);
       } catch (error) {
-        console.error(
-          "[Controls] Failed to set scene_b_tint parameter",
-          error,
-        );
+        console.error("[Controls] Failed to set scene_b_tint parameter", error);
       }
     })();
   };
@@ -124,6 +121,7 @@ export function SceneBControls({
           color="amber"
           description="Adjusts the brightness of Scene B in the renderer."
           onChange={handleBrightnessChange}
+          midiParameterId="scene_b_brightness"
         />
 
         <ParameterSlider
@@ -137,6 +135,7 @@ export function SceneBControls({
           showSpacing
           description="Controls the cube rotation speed in Scene B."
           onChange={handleRotationSpeedChange}
+          midiParameterId="scene_b_rotation_speed"
         />
 
         <ParameterSlider
@@ -150,6 +149,7 @@ export function SceneBControls({
           showSpacing
           description="Shifts Scene B's orange color towards red (0) or yellow (1)."
           onChange={handleTintChange}
+          midiParameterId="scene_b_tint"
         />
 
         <ParameterSlider
@@ -163,6 +163,7 @@ export function SceneBControls({
           showSpacing
           description="Adjusts the size of Scene B's cube."
           onChange={handleScaleChange}
+          midiParameterId="scene_b_scale"
         />
       </div>
     </section>

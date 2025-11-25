@@ -96,10 +96,7 @@ export function SceneCControls({
       try {
         await setParameter("scene_c_tint", value);
       } catch (error) {
-        console.error(
-          "[Controls] Failed to set scene_c_tint parameter",
-          error,
-        );
+        console.error("[Controls] Failed to set scene_c_tint parameter", error);
       }
     })();
   };
@@ -124,6 +121,7 @@ export function SceneCControls({
           color="emerald"
           description="Adjusts the brightness of Scene C in the renderer."
           onChange={handleBrightnessChange}
+          midiParameterId="scene_c_brightness"
         />
 
         <ParameterSlider
@@ -137,6 +135,7 @@ export function SceneCControls({
           showSpacing
           description="Controls how fast Scene C's cube pulses in size."
           onChange={handlePulseSpeedChange}
+          midiParameterId="scene_c_pulse_speed"
         />
 
         <ParameterSlider
@@ -150,6 +149,7 @@ export function SceneCControls({
           showSpacing
           description="Controls the cube rotation speed in Scene C."
           onChange={handleRotationSpeedChange}
+          midiParameterId="scene_c_rotation_speed"
         />
 
         <ParameterSlider
@@ -163,6 +163,7 @@ export function SceneCControls({
           showSpacing
           description="Shifts Scene C's green color towards cyan (0) or lime (1)."
           onChange={handleTintChange}
+          midiParameterId="scene_c_tint"
         />
       </div>
     </section>

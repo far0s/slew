@@ -26,4 +26,7 @@ once_cell = "1"
 
 # Input layer
 midir = "0.10"       # Cross-platform MIDI I/O
+rosc = "0.10"        # OSC message parsing
+cpal = "0.15"        # Cross-platform audio I/O
+rustfft = "6.2"      # FFT processing
 log = "0.4"          # Logging facade

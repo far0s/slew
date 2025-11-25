@@ -4,6 +4,8 @@ import { BackendInspector } from "./BackendInspector";
 import { DebugLogs, type LogEntry } from "./DebugLogs";
 import { DebugMetrics, type DebugMetricsData } from "./DebugMetrics";
 import { MidiPanel } from "../controls/MidiPanel";
+import { OscPanel } from "../controls/OscPanel";
+import { AudioPanel } from "../controls/AudioPanel";
 import styles from "./DebugPanel.module.css";
 
 export interface DebugPanelProps {
@@ -50,6 +52,12 @@ export function DebugPanel({
         <Tabs.Trigger value="midi" className={styles.tabTrigger}>
           MIDI
         </Tabs.Trigger>
+        <Tabs.Trigger value="osc" className={styles.tabTrigger}>
+          OSC
+        </Tabs.Trigger>
+        <Tabs.Trigger value="audio" className={styles.tabTrigger}>
+          Audio
+        </Tabs.Trigger>
         <Tabs.Trigger value="parameters" className={styles.tabTrigger}>
           Parameters
         </Tabs.Trigger>
@@ -67,6 +75,14 @@ export function DebugPanel({
       <div className={styles.tabBody}>
         <Tabs.Content value="midi" className={styles.tabContent}>
           <MidiPanel />
+        </Tabs.Content>
+
+        <Tabs.Content value="osc" className={styles.tabContent}>
+          <OscPanel />
+        </Tabs.Content>
+
+        <Tabs.Content value="audio" className={styles.tabContent}>
+          <AudioPanel />
         </Tabs.Content>
 
         <Tabs.Content value="parameters" className={styles.tabContent}>

@@ -10,7 +10,9 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 
 // Input layer modules
+pub mod audio;
 pub mod midi;
+pub mod osc;
 
 /// ----------------------------------------------------------------------------
 /// Minimal Parameter Server (backend-local, in-memory)
@@ -418,6 +420,12 @@ pub fn run() {
             // Initialize the MIDI engine
             midi::init_midi_engine(app.handle().clone());
 
+            // Initialize the OSC engine
+            osc::init_osc_engine(app.handle().clone());
+
+            // Initialize the Audio engine
+            audio::init_audio_engine(app.handle().clone());
+
             // Start the background transition tick loop once the app is ready.
             // This loop:
             // - Moves parameter `value` towards `target`
@@ -505,6 +513,19 @@ pub fn run() {
             midi::set_midi_mapping,
             midi::remove_midi_mapping,
             midi::clear_midi_mappings,
+            // OSC commands
+            osc::start_osc_server,
+            osc::stop_osc_server,
+            osc::get_osc_status,
+            osc::get_osc_mappings,
+            osc::add_osc_mapping,
+            osc::remove_osc_mapping,
+            osc::clear_osc_mappings,
+            // Audio commands
+            audio::list_audio_devices,
+            audio::start_audio_capture,
+            audio::stop_audio_capture,
+            audio::get_audio_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

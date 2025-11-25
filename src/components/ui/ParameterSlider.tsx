@@ -1,4 +1,5 @@
 import * as Slider from "@radix-ui/react-slider";
+import { MidiLearnButton } from "../controls/MidiLearnButton";
 import styles from "./ParameterSlider.module.css";
 
 export type SliderColorVariant =
@@ -21,6 +22,8 @@ export interface ParameterSliderProps {
   formatValue?: (value: number) => string;
   onChange: (value: number) => void;
   "aria-label"?: string;
+  /** Optional: Parameter ID for MIDI Learn. If provided, shows a Learn button. */
+  midiParameterId?: string;
 }
 
 /**
@@ -42,6 +45,7 @@ export function ParameterSlider({
   formatValue = (v) => v.toFixed(2),
   onChange,
   "aria-label": ariaLabel,
+  midiParameterId,
 }: ParameterSliderProps) {
   const rangeClass = styles[`range${capitalize(color)}`] ?? styles.rangeEmerald;
   const thumbClass = styles[`thumb${capitalize(color)}`] ?? styles.thumbEmerald;
@@ -55,10 +59,15 @@ export function ParameterSlider({
     <div
       className={`${styles.container} ${showSpacing ? styles.containerSpaced : ""}`}
     >
-      <label htmlFor={id} className={styles.labelRow}>
-        <span className={styles.label}>{label}</span>
-        <span className={styles.value}>{formatValue(value)}</span>
-      </label>
+      <div className={styles.labelRow}>
+        <label htmlFor={id} className={styles.labelText}>
+          <span className={styles.label}>{label}</span>
+          <span className={styles.value}>{formatValue(value)}</span>
+        </label>
+        {midiParameterId && (
+          <MidiLearnButton parameterId={midiParameterId} compact />
+        )}
+      </div>
 
       <Slider.Root
         id={id}

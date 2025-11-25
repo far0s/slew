@@ -73,7 +73,10 @@ export function SceneAControls({
       try {
         await setParameter("rotationSpeed", value);
       } catch (error) {
-        console.error("[Controls] Failed to set rotationSpeed parameter", error);
+        console.error(
+          "[Controls] Failed to set rotationSpeed parameter",
+          error,
+        );
       }
     })();
   };
@@ -137,6 +140,7 @@ export function SceneAControls({
           color="emerald"
           description="Adjusts the brightness of Scene A in the renderer."
           onChange={handleBrightnessChange}
+          midiParameterId="scene_a_brightness"
         />
 
         <ParameterSlider
@@ -150,6 +154,7 @@ export function SceneAControls({
           showSpacing
           description="Controls the cube rotation speed in the renderer."
           onChange={handleRotationSpeedChange}
+          midiParameterId="rotationSpeed"
         />
 
         <ParameterSlider
@@ -163,6 +168,7 @@ export function SceneAControls({
           showSpacing
           description="Controls how much Scene A's cube wobbles in X/Y over time."
           onChange={handleWobbleChange}
+          midiParameterId="scene_a_wobble"
         />
 
         <ParameterSlider
@@ -176,6 +182,7 @@ export function SceneAControls({
           showSpacing
           description="Controls how strongly an LFO modulates Scene A's tint around the base value."
           onChange={handleTintLfoDepthChange}
+          midiParameterId="scene_a_tint_lfo_depth"
         />
 
         <ParameterSlider
@@ -189,6 +196,7 @@ export function SceneAControls({
           showSpacing
           description="Blends Scene A between its base blue and a more cyan tint."
           onChange={handleTintChange}
+          midiParameterId="scene_a_tint"
         />
       </div>
     </section>
