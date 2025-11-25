@@ -4,6 +4,7 @@ import { listen, type Event as TauriEvent } from "@tauri-apps/api/event";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useSceneManager } from "../scenes/useSceneManager";
 import { SCENE_COMPONENT_REGISTRY } from "../scenes/sceneComponents";
+import styles from "./RendererRoot.module.css";
 
 /**
  * Types and utilities for renderer-side parameters and events.
@@ -388,7 +389,6 @@ export function RendererRoot() {
     };
   }, [applyParamUpdate, useBackendRotationSpeed]);
 
-  const percent = Math.round(params.crossfade * 100);
   const sceneWeights = sceneManager.mapCrossfadeToSceneWeights(
     params.crossfade,
   );
@@ -402,111 +402,48 @@ export function RendererRoot() {
   );
 
   return (
-    <div
-      style={{
-        width: "100vw",
-        height: "100vh",
-        background: "black",
-        color: "white",
-        display: "flex",
-        alignItems: "stretch",
-        justifyContent: "center",
-        fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-      }}
-    >
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <header
-          style={{
-            padding: "0.75rem 1.25rem",
-            borderBottom: "1px solid rgba(255,255,255,0.12)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "baseline",
-            zIndex: 10,
-            position: "relative",
-          }}
-        >
-          <h1
-            style={{
-              fontSize: "1rem",
-              margin: 0,
-              letterSpacing: 0.04,
-              textTransform: "uppercase",
-              opacity: 0.9,
-            }}
-          >
-            sebcat-vj — Renderer
-          </h1>
-          <p
-            style={{
-              margin: 0,
-              fontSize: "0.8rem",
-              opacity: 0.7,
-            }}
-          >
-            Crossfade: {percent}%
-          </p>
-        </header>
+    <div className={styles.root}>
+      <Canvas className={styles.canvas} camera={{ position: [0, 0, 4] }}>
+        {/* Drive the tint LFO phase inside the r3f Canvas so that
+            r3f hooks are only used within the Canvas subtree. */}
+        <TintLfoDriver
+          tintLfoDepth={tintLfoDepth}
+          setTintLfoPhase={setTintLfoPhase}
+        />
+        <color attach="background" args={["#020617"]} />
+        <ambientLight intensity={0.4} />
+        <directionalLight position={[4, 6, 3]} intensity={1.1} />
+        <directionalLight position={[-4, -4, -2]} intensity={0.4} />
 
-        <div
-          style={{
-            flex: 1,
-            position: "relative",
-          }}
-        >
-          <Canvas
-            style={{ width: "100%", height: "100%" }}
-            camera={{ position: [0, 0, 4] }}
-          >
-            {/* Drive the tint LFO phase inside the r3f Canvas so that
-                r3f hooks are only used within the Canvas subtree. */}
-            <TintLfoDriver
-              tintLfoDepth={tintLfoDepth}
-              setTintLfoPhase={setTintLfoPhase}
-            />
-            <color attach="background" args={["#020617"]} />
-            <ambientLight intensity={0.4} />
-            <directionalLight position={[4, 6, 3]} intensity={1.1} />
-            <directionalLight position={[-4, -4, -2]} intensity={0.4} />
+        {(() => {
+          const ActiveSceneComponent =
+            SCENE_COMPONENT_REGISTRY[sceneManager.activeSceneId];
+          const NextSceneComponent =
+            SCENE_COMPONENT_REGISTRY[sceneManager.nextSceneId];
 
-            {(() => {
-              const ActiveSceneComponent =
-                SCENE_COMPONENT_REGISTRY[sceneManager.activeSceneId];
-              const NextSceneComponent =
-                SCENE_COMPONENT_REGISTRY[sceneManager.nextSceneId];
+          const activeSceneParams = {
+            rotationSpeed: params.rotationSpeed,
+            sceneABrightness: params.sceneABrightness,
+            sceneAWobble: params.sceneAWobble,
+            sceneATint: tintModulated,
+          };
 
-              const activeSceneParams = {
-                rotationSpeed: params.rotationSpeed,
-                sceneABrightness: params.sceneABrightness,
-                sceneAWobble: params.sceneAWobble,
-                sceneATint: tintModulated,
-              };
+          return (
+            <>
+              {ActiveSceneComponent && sceneWeights.activeWeight > 0.001 && (
+                <ActiveSceneComponent
+                  opacity={sceneWeights.activeWeight}
+                  params={activeSceneParams}
+                />
+              )}
 
-              return (
-                <>
-                  {ActiveSceneComponent &&
-                    sceneWeights.activeWeight > 0.001 && (
-                      <ActiveSceneComponent
-                        opacity={sceneWeights.activeWeight}
-                        params={activeSceneParams}
-                      />
-                    )}
-
-                  {NextSceneComponent && sceneWeights.nextWeight > 0.001 && (
-                    <NextSceneComponent opacity={sceneWeights.nextWeight} />
-                  )}
-                </>
-              );
-            })()}
-          </Canvas>
-        </div>
-      </div>
+              {NextSceneComponent && sceneWeights.nextWeight > 0.001 && (
+                <NextSceneComponent opacity={sceneWeights.nextWeight} />
+              )}
+            </>
+          );
+        })()}
+      </Canvas>
     </div>
   );
 }
