@@ -1,0 +1,93 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  flex: 0 0 auto;
+}
+
+.eventCount {
+  font-size: 0.75rem;
+  color: rgb(148 163 184 / 0.9);
+  font-variant-numeric: tabular-nums;
+}
+
+.scrollArea {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.emptyState {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: rgb(255 255 255 / 0.65);
+}
+
+.emptyStateHint {
+  opacity: 0.7;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.entry {
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.25rem;
+  background: rgb(15 23 42 / 0.6);
+  border: 1px solid rgb(71 85 105 / 0.3);
+  font-size: 0.72rem;
+}
+
+.entryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.parameterId {
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.timestamp {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.68rem;
+  color: rgb(148 163 184 / 0.8);
+}
+
+.entryDetails {
+  margin-top: 0.15rem;
+  display: flex;
+  gap: 0.75rem;
+  color: rgb(203 213 225 / 0.9);
+  font-variant-numeric: tabular-nums;
+}
+
+.value {
+  color: #7dd3fc;
+}
+
+.target {
+  color: #a5b4fc;
+}
+
+.curve {
+  opacity: 0.7;
+}

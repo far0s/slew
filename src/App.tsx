@@ -5,13 +5,15 @@ import { type SceneId } from "./scenes/sceneTypes";
 import {
   type BackendParameter,
   useControlsParameters,
-} from "./controls/controlsParameters.ts";
-import PrimaryControlsPanel from "./controls/PrimaryControlsPanel";
-import SceneAControls from "./controls/SceneAControls";
-import DebugPanel from "./controls/DebugPanel";
-import type { LogEntry } from "./controls/DebugLogs";
-import type { DebugMetricsData } from "./controls/DebugMetrics";
-import styles from "./AppShell.module.css";
+} from "./controls/controlsParameters";
+import { SceneControlStrip } from "./components/controls/SceneControlStrip";
+import { SceneAControls } from "./components/controls/SceneAControls";
+import {
+  DebugPanel,
+  type LogEntry,
+  type DebugMetricsData,
+} from "./components/debug";
+import styles from "./App.module.css";
 
 /** Maximum number of log entries to keep in memory */
 const MAX_LOG_ENTRIES = 100;
@@ -72,7 +74,6 @@ function App() {
 
     setLogs((prev) => {
       const next = [entry, ...prev];
-      // Keep only the most recent entries
       if (next.length > MAX_LOG_ENTRIES) {
         return next.slice(0, MAX_LOG_ENTRIES);
       }
@@ -85,12 +86,10 @@ function App() {
       const newCounts = { ...prev.parameterUpdateCounts };
       newCounts[param.id] = (newCounts[param.id] ?? 0) + 1;
 
-      // Detect crossfade transitions (when target changes to 0 or 1)
       let crossfadeTransitions = prev.crossfadeTransitions;
       if (param.id === "crossfade") {
         const prevCrossfade = prevCrossfadeRef.current;
         if (prevCrossfade !== null) {
-          // Count a transition when we start moving toward an endpoint
           const wasAtEndpoint = prevCrossfade <= 0.01 || prevCrossfade >= 0.99;
           const isMovingToEndpoint = param.target === 0 || param.target === 1;
           if (
@@ -142,7 +141,6 @@ function App() {
         payload: JSON.stringify({ value: next }),
       });
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error("[Controls] Failed to update crossfade", error);
     }
   }
@@ -156,7 +154,6 @@ function App() {
       applyBackendParamsToSliders(response);
     } catch (error) {
       setParamError("Failed to load parameters from backend");
-      // eslint-disable-next-line no-console
       console.error("[Controls] get_parameters failed", error);
     } finally {
       setIsLoadingParams(false);
@@ -176,7 +173,6 @@ function App() {
       setSceneATintLfoDepth(DEFAULTS.sceneATintLfoDepth);
     } catch (error) {
       setParamError("Failed to clear parameters in backend");
-      // eslint-disable-next-line no-console
       console.error("[Controls] clear_parameters failed", error);
     }
   }
@@ -190,10 +186,7 @@ function App() {
       { id: "rotationSpeed", value: DEFAULTS.rotationSpeed },
       { id: "scene_a_wobble", value: DEFAULTS.sceneAWobble },
       { id: "scene_a_tint", value: DEFAULTS.sceneATint },
-      {
-        id: "scene_a_tint_lfo_depth",
-        value: DEFAULTS.sceneATintLfoDepth,
-      },
+      { id: "scene_a_tint_lfo_depth", value: DEFAULTS.sceneATintLfoDepth },
     ];
 
     try {
@@ -211,7 +204,6 @@ function App() {
       setSceneATintLfoDepth(DEFAULTS.sceneATintLfoDepth);
     } catch (error) {
       setParamError("Failed to reset parameters to defaults");
-      // eslint-disable-next-line no-console
       console.error("[Controls] reset defaults failed", error);
     }
   }
@@ -227,10 +219,8 @@ function App() {
           (event) => {
             const updated = event.payload;
 
-            // Update sliders from backend
             applyBackendParamsToSliders([updated]);
 
-            // Update backend parameters list
             const current = backendParameters ?? [];
             const index = current.findIndex(
               (p: BackendParameter) => p.id === updated.id,
@@ -243,15 +233,11 @@ function App() {
               setBackendParameters(next);
             }
 
-            // Add to debug logs
             addLogEntry(updated);
-
-            // Update metrics
             updateMetrics(updated);
           },
         );
       } catch (error) {
-        // eslint-disable-next-line no-console
         console.error("[Controls] subscribe parameter_changed failed", error);
       }
     })();
@@ -259,24 +245,27 @@ function App() {
     return () => {
       if (unlisten) unlisten();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div className={styles.root}>
       <main className={styles.main}>
-        {/* Top-row scene control / switching strip spanning columns 1–4 */}
+        {/* Scene control strip: top row, columns 1–4 */}
         <div className={styles.sceneControlStrip}>
-          <PrimaryControlsPanel
-            activeSceneId={activeSceneId}
-            nextSceneId={nextSceneId}
-            setActiveSceneId={setActiveSceneId}
-            setNextSceneId={setNextSceneId}
-            crossfade={crossfade}
-            handleCrossfadeChange={handleCrossfadeChange}
-          />
+          <div className={styles.panel}>
+            <SceneControlStrip
+              activeSceneId={activeSceneId}
+              nextSceneId={nextSceneId}
+              setActiveSceneId={setActiveSceneId}
+              setNextSceneId={setNextSceneId}
+              crossfade={crossfade}
+              onCrossfadeChange={handleCrossfadeChange}
+            />
+          </div>
         </div>
 
-        {/* Scene A column (columns 1–2, row 2) – placeholder for future Scene A-specific controls */}
+        {/* Scene A column: columns 1–2, row 2 */}
         <div className={`${styles.sceneColumn} ${styles.sceneAColumn}`}>
           <section aria-label="Scene A controls" className={styles.panel}>
             <h2 className={styles.panelTitle}>Scene A</h2>
@@ -299,7 +288,7 @@ function App() {
           </section>
         </div>
 
-        {/* Scene B column (columns 3–4, row 2) – placeholder for future Scene B-specific controls */}
+        {/* Scene B column: columns 3–4, row 2 (placeholder) */}
         <div className={`${styles.sceneColumn} ${styles.sceneBColumn}`}>
           <section
             aria-label="Scene B controls placeholder"
@@ -313,7 +302,7 @@ function App() {
           </section>
         </div>
 
-        {/* Preview + Debug/Parameters column (column 5 spans both rows) */}
+        {/* Preview + Debug column: column 5, spans both rows */}
         <aside className={styles.previewColumn} aria-label="Preview and debug">
           <div className={styles.previewBlock}>
             <span>Renderer preview placeholder</span>
@@ -323,15 +312,9 @@ function App() {
             backendParameters={backendParameters}
             isLoadingParams={isLoadingParams}
             paramError={paramError}
-            onRefresh={() => {
-              void refreshBackendParameters();
-            }}
-            onResetDefaults={() => {
-              void handleResetDefaults();
-            }}
-            onClearParameters={() => {
-              void handleClearParameters();
-            }}
+            onRefresh={() => void refreshBackendParameters()}
+            onResetDefaults={() => void handleResetDefaults()}
+            onClearParameters={() => void handleClearParameters()}
             logs={logs}
             onClearLogs={handleClearLogs}
             metrics={metrics}
