@@ -14,8 +14,8 @@
       {
         "label": "renderer",
         "title": "sebcat-vj — Renderer",
-        "width": 1280,
-        "height": 720,
+        "width": 1920,
+        "height": 1080,
         "resizable": true,
         "fullscreen": false,
         "decorations": true,
@@ -26,8 +26,8 @@
       {
         "label": "controls",
         "title": "sebcat-vj — Controls",
-        "width": 1200,
-        "height": 800,
+        "width": 1440,
+        "height": 1080,
         "resizable": true,
         "fullscreen": false,
         "decorations": true,

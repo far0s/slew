@@ -402,6 +402,65 @@ pub fn run() {
             // - Persists updated parameters to disk
             start_parameter_tick_loop(app.handle().clone());
 
+            // Window placement: Controls on primary display, Renderer on
+            // the largest secondary display if available, otherwise the same
+            // primary display.
+            //
+            // In development, we still move windows to the appropriate screens
+            // and size them to the monitor, but we DO NOT force fullscreen so
+            // dev tools and system chrome remain visible.
+            let is_dev = cfg!(debug_assertions);
+            let app_handle = app.handle().clone();
+            if let Some(primary_monitor) = app_handle.primary_monitor().ok().flatten() {
+                // Controls: occupy primary monitor
+                if let Some(window) = app_handle.get_webview_window("controls") {
+                    let position = *primary_monitor.position();
+                    let size = primary_monitor.size();
+
+                    let _ = window.set_position(position);
+                    // In dev, just resize to monitor bounds; in prod, also go fullscreen.
+                    let _ = window.set_size(*size);
+                    if !is_dev {
+                        let _ = window.set_fullscreen(true);
+                    }
+                }
+
+                // Find largest non-primary monitor for renderer, if any
+                let all_monitors = app_handle.available_monitors().unwrap_or_default();
+                let mut best_secondary: Option<tauri::Monitor> = None;
+                let mut best_area: i64 = -1;
+
+                for m in all_monitors.into_iter() {
+                    // Skip the primary monitor when looking for renderer target.
+                    let is_primary = m.position() == primary_monitor.position()
+                        && m.size() == primary_monitor.size();
+
+                    if is_primary {
+                        continue;
+                    }
+
+                    let size = m.size();
+                    let area = size.width as i64 * size.height as i64;
+                    if area > best_area {
+                        best_area = area;
+                        best_secondary = Some(m);
+                    }
+                }
+
+                // Renderer: target best secondary if present, otherwise primary
+                if let Some(window) = app_handle.get_webview_window("renderer") {
+                    let target_monitor = best_secondary.as_ref().unwrap_or(&primary_monitor);
+                    let position = *target_monitor.position();
+                    let size = target_monitor.size();
+
+                    let _ = window.set_position(position);
+                    let _ = window.set_size(*size);
+                    if !is_dev {
+                        let _ = window.set_fullscreen(true);
+                    }
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

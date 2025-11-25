@@ -199,6 +199,9 @@ Helpers:
 
 ### 2.5 Controls <→ backend wiring – ✅ (v1)
 
+- Global `reset.css` wired via the React entry point so both Controls and Renderer share consistent base styles.
+- Controls window now intended to occupy the primary display fully; Renderer targets the largest secondary display (or falls back to the primary) and runs fullscreen with no decorations.
+
 **Parameters (Controls → backend):**
 
 - Sliders:
