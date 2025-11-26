@@ -330,8 +330,13 @@ pub fn run() {
 
             start_parameter_tick_loop(app.handle().clone());
 
-            // Window placement
-            setup_window_placement(app.handle());
+            // Window placement - spawn with delay to ensure windows are ready
+            let app_handle = app.handle().clone();
+            std::thread::spawn(move || {
+                // Wait for windows to be fully initialized
+                std::thread::sleep(Duration::from_millis(100));
+                setup_window_placement(&app_handle);
+            });
 
             Ok(())
         })
@@ -410,7 +415,9 @@ pub fn run() {
 }
 
 /// Place Controls on primary monitor, Renderer on largest secondary (or primary if none).
-/// In dev mode, windows are sized to monitors but not fullscreened.
+/// In dev mode, Renderer is centered on target monitor. In production, both go fullscreen.
+///
+/// Called with a delay to ensure windows are fully initialized.
 fn setup_window_placement(app_handle: &AppHandle) {
     let is_dev = cfg!(debug_assertions);
 
@@ -443,9 +450,40 @@ fn setup_window_placement(app_handle: &AppHandle) {
     // Renderer → secondary or primary
     if let Some(window) = app_handle.get_webview_window("renderer") {
         let target = secondary.as_ref().unwrap_or(&primary_monitor);
-        let _ = window.set_position(*target.position());
-        let _ = window.set_size(*target.size());
-        if !is_dev {
+        let monitor_pos = target.position();
+        let monitor_size = target.size();
+        let monitor_scale = target.scale_factor();
+
+        if is_dev {
+            // Two-step positioning: move to target monitor first (so macOS updates the
+            // window's scale factor), then center it.
+            let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
+                x: monitor_pos.x,
+                y: monitor_pos.y,
+            }));
+
+            // Let window manager process the move and update scale
+            std::thread::sleep(std::time::Duration::from_millis(50));
+
+            // Calculate center using actual window size, or fallback to config size
+            let (window_width, window_height) = window
+                .outer_size()
+                .map(|s| (s.width as i32, s.height as i32))
+                .unwrap_or((
+                    (1920.0 * monitor_scale) as i32,
+                    (1080.0 * monitor_scale) as i32,
+                ));
+
+            let center_x = monitor_pos.x + ((monitor_size.width as i32 - window_width) / 2);
+            let center_y = monitor_pos.y + ((monitor_size.height as i32 - window_height) / 2);
+
+            let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
+                x: center_x,
+                y: center_y,
+            }));
+        } else {
+            let _ = window.set_position(*monitor_pos);
+            let _ = window.set_size(*monitor_size);
             let _ = window.set_fullscreen(true);
         }
     }

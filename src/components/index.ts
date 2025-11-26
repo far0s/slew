@@ -32,14 +32,4 @@ export { HidPanel, type HidPanelProps } from "./HidPanel";
 export { ModulationPanel, type ModulationPanelProps } from "./ModulationPanel";
 
 // Debug Components
-export {
-  BackendInspector,
-  type BackendInspectorProps,
-} from "./BackendInspector";
-export { DebugLogs, type DebugLogsProps, type LogEntry } from "./DebugLogs";
-export {
-  DebugMetrics,
-  type DebugMetricsProps,
-  type DebugMetricsData,
-} from "./DebugMetrics";
 export { DebugPanel, type DebugPanelProps } from "./DebugPanel";

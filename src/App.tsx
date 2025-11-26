@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useSceneSlots } from "./scenes/useSceneSlots";
@@ -9,20 +9,11 @@ import {
 } from "./controls/useParameterStore";
 import type { SceneId } from "./scenes/sceneTypes";
 import { getSceneDescriptor } from "./scenes/sceneTypes";
-import {
-  ScenesArea,
-  RendererPreview,
-  DebugPanel,
-  type LogEntry,
-  type DebugMetricsData,
-} from "./components";
+import { ScenesArea, RendererPreview, DebugPanel } from "./components";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings } from "./inputs/audio";
 import { useLfos, useModulationTargets } from "./inputs/modulation";
 import styles from "./App.module.css";
-
-/** Maximum number of log entries to keep in memory */
-const MAX_LOG_ENTRIES = 100;
 
 function App() {
   // Scene slots state
@@ -42,93 +33,10 @@ function App() {
   const { lfos } = useLfos();
   const { targets: modulationTargets } = useModulationTargets();
 
-  // Debug logs state
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const logIdCounter = useRef(0);
-
   // Macropad selected slot (distinct from crossfade target)
   const [macropadSelectedIndex, setMacropadSelectedIndex] = useState<
     number | null
   >(null);
-
-  // Debug metrics state
-  const [metrics, setMetrics] = useState<DebugMetricsData>(() => ({
-    totalParameterUpdates: 0,
-    parameterUpdateCounts: {},
-    lastEventTime: null,
-    sessionStartTime: Date.now(),
-    crossfadeTransitions: 0,
-  }));
-
-  // Track previous crossfade value to detect transitions
-  const prevCrossfadeRef = useRef<number | null>(null);
-
-  const addLogEntry = useCallback((param: BackendParameter) => {
-    const entry: LogEntry = {
-      id: `log-${logIdCounter.current++}`,
-      timestamp: Date.now(),
-      parameterId: param.id,
-      value: param.value,
-      target: param.target,
-      transitionSpeed: param.transition_speed,
-      curve: param.curve,
-    };
-
-    setLogs((prev) => {
-      const next = [entry, ...prev];
-      if (next.length > MAX_LOG_ENTRIES) {
-        return next.slice(0, MAX_LOG_ENTRIES);
-      }
-      return next;
-    });
-  }, []);
-
-  const updateMetrics = useCallback((param: BackendParameter) => {
-    setMetrics((prev) => {
-      const newCounts = { ...prev.parameterUpdateCounts };
-      newCounts[param.id] = (newCounts[param.id] ?? 0) + 1;
-
-      let crossfadeTransitions = prev.crossfadeTransitions;
-      if (param.id === "crossfade") {
-        const prevCrossfade = prevCrossfadeRef.current;
-        if (prevCrossfade !== null) {
-          const wasAtEndpoint = prevCrossfade <= 0.01 || prevCrossfade >= 0.99;
-          const isMovingToEndpoint = param.target === 0 || param.target === 1;
-          if (
-            wasAtEndpoint &&
-            isMovingToEndpoint &&
-            param.target !== prevCrossfade
-          ) {
-            crossfadeTransitions++;
-          }
-        }
-        prevCrossfadeRef.current = param.value;
-      }
-
-      return {
-        ...prev,
-        totalParameterUpdates: prev.totalParameterUpdates + 1,
-        parameterUpdateCounts: newCounts,
-        lastEventTime: Date.now(),
-        crossfadeTransitions,
-      };
-    });
-  }, []);
-
-  const handleClearLogs = useCallback(() => {
-    setLogs([]);
-  }, []);
-
-  const handleResetMetrics = useCallback(() => {
-    setMetrics({
-      totalParameterUpdates: 0,
-      parameterUpdateCounts: {},
-      lastEventTime: null,
-      sessionStartTime: Date.now(),
-      crossfadeTransitions: 0,
-    });
-    prevCrossfadeRef.current = null;
-  }, []);
 
   // Handle crossfade to a slot
   const handleCrossfade = useCallback(
@@ -324,41 +232,6 @@ function App() {
     }
   }
 
-  // Clear all parameters
-  async function handleClearParameters() {
-    paramStore.setError(null);
-    try {
-      await invoke("clear_parameters");
-      paramStore.setBackendSnapshot([]);
-      paramStore.resetAllToDefaults();
-    } catch (error) {
-      paramStore.setError("Failed to clear parameters in backend");
-      console.error("[Controls] clear_parameters failed", error);
-    }
-  }
-
-  // Reset parameters to defaults
-  async function handleResetDefaults() {
-    paramStore.setError(null);
-
-    const defaults = paramStore.entries().map(([id, _]) => ({
-      id,
-      value: paramStore.getDefault(id),
-    }));
-
-    try {
-      await Promise.all(
-        defaults.map(({ id, value }) =>
-          invoke("set_parameter", { id, value, app: undefined }),
-        ),
-      );
-      paramStore.resetAllToDefaults();
-    } catch (error) {
-      paramStore.setError("Failed to reset parameters to defaults");
-      console.error("[Controls] reset defaults failed", error);
-    }
-  }
-
   // Handle crossfade completion when value reaches endpoint
   useEffect(() => {
     const crossfade = paramStore.get("crossfade");
@@ -448,9 +321,6 @@ function App() {
               next[index] = updated;
               paramStore.setBackendSnapshot(next);
             }
-
-            addLogEntry(updated);
-            updateMetrics(updated);
           },
         );
       } catch (error) {
@@ -530,19 +400,7 @@ function App() {
             nextSceneParams={getSceneParams(targetSceneId)}
             sceneATintLfoDepth={paramStore.get("scene_a_tint_lfo_depth")}
           />
-          <DebugPanel
-            backendParameters={paramStore.backendSnapshot}
-            isLoadingParams={paramStore.isLoading}
-            paramError={paramStore.error}
-            onRefresh={() => void refreshBackendParameters()}
-            onResetDefaults={() => void handleResetDefaults()}
-            onClearParameters={() => void handleClearParameters()}
-            logs={logs}
-            onClearLogs={handleClearLogs}
-            metrics={metrics}
-            onResetMetrics={handleResetMetrics}
-            macropadSelectedIndex={macropadSelectedIndex}
-          />
+          <DebugPanel macropadSelectedIndex={macropadSelectedIndex} />
         </aside>
       </main>
     </div>

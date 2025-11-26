@@ -1179,7 +1179,7 @@ export interface ModulationPanelProps {
 export function ModulationPanel({ className }: ModulationPanelProps) {
   const [lfosOpen, setLfosOpen] = useState(true);
   const [targetsOpen, setTargetsOpen] = useState(true);
-  const [audioModsOpen, setAudioModsOpen] = useState(false);
+  const [audioModsOpen, setAudioModsOpen] = useState(true);
   const [showAddLfo, setShowAddLfo] = useState(false);
   const [showAddTarget, setShowAddTarget] = useState(false);
   const [showAddAudioMod, setShowAddAudioMod] = useState(false);
