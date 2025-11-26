@@ -1,0 +1,96 @@
+/* ==========================================================================
+   MidiLearnButton.module.css
+
+   Styles for the MIDI Learn button component that appears next to
+   parameter controls.
+   ========================================================================== */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.5rem;
+  min-width: 48px;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 0.25rem;
+  color: rgb(255 255 255 / 0.6);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+  user-select: none;
+}
+
+.button:hover:not(:disabled) {
+  background: rgb(255 255 255 / 0.08);
+  border-color: rgb(255 255 255 / 0.18);
+  color: rgb(255 255 255 / 0.85);
+}
+
+.button:focus-visible {
+  outline: 2px solid rgb(59 130 246 / 0.8);
+  outline-offset: 1px;
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Learning State
+   ========================================================================== */
+
+.learning {
+  background: rgb(234 179 8 / 0.15);
+  border-color: rgb(234 179 8 / 0.4);
+  color: rgb(253 224 71);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.learning:hover:not(:disabled) {
+  background: rgb(234 179 8 / 0.2);
+  border-color: rgb(234 179 8 / 0.5);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(234 179 8 / 0);
+  }
+  50% {
+    box-shadow: 0 0 8px 2px rgb(234 179 8 / 0.3);
+  }
+}
+
+/* ==========================================================================
+   Mapped State
+   ========================================================================== */
+
+.mapped {
+  background: rgb(34 197 94 / 0.12);
+  border-color: rgb(34 197 94 / 0.3);
+  color: rgb(134 239 172);
+}
+
+.mapped:hover:not(:disabled) {
+  background: rgb(239 68 68 / 0.12);
+  border-color: rgb(239 68 68 / 0.3);
+  color: rgb(252 165 165);
+}
+
+/* ==========================================================================
+   Compact Mode
+   ========================================================================== */
+
+.compact {
+  min-width: 28px;
+  padding: 0.25rem 0.35rem;
+  font-size: 0.6rem;
+}

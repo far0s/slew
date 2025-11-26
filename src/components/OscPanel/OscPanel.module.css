@@ -1,0 +1,576 @@
+/* ==========================================================================
+   OscPanel.module.css
+
+   Styles for the OSC control panel component including server controls,
+   activity indicator, and mappings overview.
+   ========================================================================== */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+/* ==========================================================================
+   Header
+   ========================================================================== */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.9);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Activity Indicator
+   ========================================================================== */
+
+.activityIndicator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.activityDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(100 100 100 / 0.4);
+  transition: background-color 0.15s ease;
+}
+
+.activityDot.active {
+  background: #a855f7;
+  box-shadow: 0 0 6px rgb(168 85 247 / 0.6);
+  animation: pulse 0.3s ease-out;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.activityLabel {
+  font-size: 0.65rem;
+  color: rgb(255 255 255 / 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   Section Headers (Collapsible)
+   ========================================================================== */
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.4rem 0;
+  background: none;
+  border: none;
+  color: rgb(255 255 255 / 0.8);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.sectionHeader:hover {
+  color: rgb(255 255 255 / 1);
+}
+
+.sectionHeader:focus-visible {
+  outline: 2px solid rgb(168 85 247 / 0.8);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.sectionHeader svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.6;
+}
+
+.sectionContent {
+  padding-left: 0.25rem;
+}
+
+/* ==========================================================================
+   Server Controls
+   ========================================================================== */
+
+.serverControls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.serverStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(100 100 100 / 0.5);
+  flex-shrink: 0;
+}
+
+.statusDot.running {
+  background: #22c55e;
+  box-shadow: 0 0 4px rgb(34 197 94 / 0.5);
+}
+
+.statusText {
+  font-size: 0.72rem;
+  color: rgb(255 255 255 / 0.7);
+}
+
+.errorText {
+  font-size: 0.7rem;
+  color: rgb(252 165 165);
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  background: rgb(239 68 68 / 0.1);
+  border-radius: 0.25rem;
+}
+
+.serverForm {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.portLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.portLabelText {
+  font-size: 0.7rem;
+  color: rgb(255 255 255 / 0.6);
+}
+
+.portInput {
+  width: 70px;
+  padding: 0.35rem 0.5rem;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 0.25rem;
+  color: rgb(255 255 255 / 0.9);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.portInput:focus {
+  outline: none;
+  border-color: rgb(168 85 247 / 0.5);
+}
+
+.portInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toggleButton {
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.toggleButton.start {
+  background: rgb(34 197 94 / 0.15);
+  border: 1px solid rgb(34 197 94 / 0.3);
+  color: rgb(134 239 172);
+}
+
+.toggleButton.start:hover:not(:disabled) {
+  background: rgb(34 197 94 / 0.25);
+  border-color: rgb(34 197 94 / 0.5);
+}
+
+.toggleButton.stop {
+  background: rgb(239 68 68 / 0.15);
+  border: 1px solid rgb(239 68 68 / 0.3);
+  color: rgb(252 165 165);
+}
+
+.toggleButton.stop:hover:not(:disabled) {
+  background: rgb(239 68 68 / 0.25);
+  border-color: rgb(239 68 68 / 0.5);
+}
+
+.toggleButton:focus-visible {
+  outline: 2px solid rgb(168 85 247 / 0.8);
+  outline-offset: 1px;
+}
+
+.toggleButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Mappings Section
+   ========================================================================== */
+
+.mappingsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.addForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.addFormRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.addressInput,
+.parameterInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 0.25rem;
+  color: rgb(255 255 255 / 0.9);
+  font-size: 0.7rem;
+  font-family: ui-monospace, monospace;
+}
+
+.addressInput:focus,
+.parameterInput:focus {
+  outline: none;
+  border-color: rgb(168 85 247 / 0.5);
+}
+
+.addressInput::placeholder,
+.parameterInput::placeholder {
+  color: rgb(255 255 255 / 0.3);
+}
+
+.arrow {
+  font-size: 0.75rem;
+  color: rgb(255 255 255 / 0.4);
+  flex-shrink: 0;
+}
+
+.addButton {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(168 85 247 / 0.15);
+  border: 1px solid rgb(168 85 247 / 0.3);
+  border-radius: 0.25rem;
+  color: rgb(216 180 254);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.addButton:hover:not(:disabled) {
+  background: rgb(168 85 247 / 0.25);
+  border-color: rgb(168 85 247 / 0.5);
+}
+
+.addButton:focus-visible {
+  outline: 2px solid rgb(168 85 247 / 0.8);
+  outline-offset: 1px;
+}
+
+.addButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Mappings List
+   ========================================================================== */
+
+.mappingsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.mappingItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.5rem;
+  background: rgb(255 255 255 / 0.02);
+  border-radius: 0.3rem;
+  border: 1px solid rgb(255 255 255 / 0.04);
+}
+
+.mappingInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.mappingAddress {
+  font-size: 0.7rem;
+  font-family: ui-monospace, monospace;
+  color: rgb(216 180 254);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mappingArrow {
+  font-size: 0.65rem;
+  color: rgb(255 255 255 / 0.3);
+  flex-shrink: 0;
+}
+
+.mappingParameter {
+  font-size: 0.7rem;
+  font-family: ui-monospace, monospace;
+  color: rgb(255 255 255 / 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.removeButton {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(239 68 68 / 0.1);
+  border: 1px solid rgb(239 68 68 / 0.2);
+  border-radius: 0.2rem;
+  color: rgb(252 165 165);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.removeButton:hover:not(:disabled) {
+  background: rgb(239 68 68 / 0.2);
+  border-color: rgb(239 68 68 / 0.35);
+}
+
+.removeButton:focus-visible {
+  outline: 2px solid rgb(239 68 68 / 0.6);
+  outline-offset: 1px;
+}
+
+.removeButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+.clearAllButton {
+  padding: 0.4rem 0.75rem;
+  background: rgb(239 68 68 / 0.08);
+  border: 1px solid rgb(239 68 68 / 0.2);
+  border-radius: 0.3rem;
+  color: rgb(252 165 165 / 0.8);
+  font-size: 0.68rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+  align-self: flex-start;
+  margin-top: 0.25rem;
+}
+
+.clearAllButton:hover {
+  background: rgb(239 68 68 / 0.15);
+  border-color: rgb(239 68 68 / 0.3);
+  color: rgb(252 165 165);
+}
+
+.clearAllButton:focus-visible {
+  outline: 2px solid rgb(239 68 68 / 0.6);
+  outline-offset: 1px;
+}
+
+/* ==========================================================================
+   States
+   ========================================================================== */
+
+.loadingText,
+.emptyText {
+  font-size: 0.72rem;
+  color: rgb(255 255 255 / 0.5);
+  padding: 0.5rem 0;
+}
+
+/* ==========================================================================
+   Empty State
+   ========================================================================== */
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.setupDefaultsButton {
+  padding: 0.4rem 0.75rem;
+  background: rgb(168 85 247 / 0.12);
+  border: 1px solid rgb(168 85 247 / 0.25);
+  border-radius: 0.3rem;
+  color: rgb(216 180 254);
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.setupDefaultsButton:hover:not(:disabled) {
+  background: rgb(168 85 247 / 0.2);
+  border-color: rgb(168 85 247 / 0.4);
+}
+
+.setupDefaultsButton:focus-visible {
+  outline: 2px solid rgb(168 85 247 / 0.8);
+  outline-offset: 1px;
+}
+
+.setupDefaultsButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Mappings Actions
+   ========================================================================== */
+
+.mappingsActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+/* ==========================================================================
+   Recent Messages
+   ========================================================================== */
+
+.recentMessages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.messagesList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.messageItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.4rem;
+  background: rgb(255 255 255 / 0.02);
+  border-radius: 0.25rem;
+  border: 1px solid rgb(255 255 255 / 0.04);
+}
+
+.messageAddress {
+  font-size: 0.68rem;
+  font-family: ui-monospace, monospace;
+  color: rgb(168 85 247);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.messageArgs {
+  font-size: 0.68rem;
+  font-family: ui-monospace, monospace;
+  color: rgb(255 255 255 / 0.6);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clearMessagesButton {
+  padding: 0.3rem 0.6rem;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 0.25rem;
+  color: rgb(255 255 255 / 0.6);
+  font-size: 0.65rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+  align-self: flex-start;
+}
+
+.clearMessagesButton:hover {
+  background: rgb(255 255 255 / 0.08);
+  border-color: rgb(255 255 255 / 0.15);
+  color: rgb(255 255 255 / 0.8);
+}
+
+.clearMessagesButton:focus-visible {
+  outline: 2px solid rgb(168 85 247 / 0.8);
+  outline-offset: 1px;
+}

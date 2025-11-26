@@ -224,6 +224,95 @@ These plugins read directly from Window A’s GPU texture.
 
 ---
 
+## Code Style
+
+### TypeScript JSDoc Conventions
+
+When documenting TypeScript interfaces and types, use a **consolidated JSDoc block** before the interface rather than inline comments on each property. This keeps interfaces clean and scannable while preserving full documentation.
+
+**Pattern:**
+
+```ts
+/**
+ * Brief description of the interface.
+ *
+ * @property propertyA - Description of property A
+ * @property propertyB - Description of property B
+ * @property onSomething - Callback when something happens
+ */
+export interface MyComponentProps {
+  propertyA: string;
+  propertyB: number;
+  onSomething: () => void;
+}
+```
+
+**Why:**
+
+- Interfaces remain concise and easy to scan
+- All documentation is co-located in one block
+- Works well with IDE tooltips (shows full JSDoc on hover)
+- Follows JSDoc `@property` convention for object shapes
+
+**Avoid:**
+
+```ts
+// ❌ Don't use inline comments on every property
+export interface MyComponentProps {
+  /** Description of property A */
+  propertyA: string;
+  /** Description of property B */
+  propertyB: number;
+}
+```
+
+### Component Documentation
+
+Each React component should have a JSDoc block describing:
+
+1. What the component does (one-liner)
+2. Key features or behaviors (bullet list if needed)
+
+```ts
+/**
+ * ScenesArea
+ *
+ * Horizontally scrollable container for scene columns.
+ * Designed to show ~3.5 columns at once with the 4th peeking in.
+ *
+ * Features:
+ * - Horizontal scroll for 4+ scenes
+ * - Add scene button when < maxSlots
+ * - AnimatePresence for enter/exit animations
+ */
+export function ScenesArea({ ... }: ScenesAreaProps) {
+```
+
+### Hook Documentation
+
+Custom hooks should document:
+
+1. Purpose
+2. Key concepts or state it manages
+3. Return type (via the interface JSDoc)
+
+```ts
+/**
+ * Hook for managing numbered scene slots.
+ *
+ * Replaces the old "Active/Next" paradigm with a flexible
+ * system supporting 1-4 numbered slots.
+ *
+ * Key concepts:
+ * - Each slot has an index (0-3) and a scene ID
+ * - One slot is "active" (being rendered to output)
+ * - Crossfading transitions from active to a target slot
+ */
+export function useSceneSlots(config?: Partial<SceneSlotsConfig>): SceneSlotsState {
+```
+
+---
+
 ## Extensibility
 
 Future additions:

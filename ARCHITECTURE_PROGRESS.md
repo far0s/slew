@@ -29,10 +29,18 @@ Legend:
   - `controls` → `/`
 - ✅ Single frontend bundle with path-based dispatch in `src/main.tsx`
 - ✅ Basic scene system and parameter wiring (Scene A, B, C)
-- ✅ Scene Control UI with Active/Next selection, crossfade buttons, and progress indicators
-- ✅ Live scene previews (per-scene and global renderer preview with crossfade blending)
+- ✅ Scene Control UI with numbered slots (1-4), crossfade buttons, and progress indicators
+- ✅ Live scene previews (per-scene columns and global renderer preview with crossfade blending)
+- ✅ Flexible scene slot system (add/remove scenes, 1-4 max)
+- ✅ Auto-generated parameter controls from scene descriptors
 - 🧩 Modulation engine designed (simple renderer-side LFO implemented for Scene A tint)
-- ⏳ Input engines (OSC / MIDI / audio) and video-output layer
+- ✅ Input engines fully implemented:
+  - MIDI: device enumeration, Learn workflow, per-slider integration
+  - OSC: UDP server (port 9000), default mappings, recent messages display
+  - Audio: FFT analysis, frequency bands, beat detection, level meters
+  - HID: Macropad/encoder support (DOIO Megalodon), multi-interface connection
+- ⏳ Audio → parameter binding (display works, routing pending)
+- ⏳ Video-output layer (Syphon/Spout/NDI)
 
 ---
 
@@ -367,8 +375,10 @@ Helpers:
 
 ### Phase 2 – Input Layer
 
-- 🧩 Designed: OSC/MIDI/audio backends and routing concepts
-- ⏳ No actual input engines yet
+- ✅ MIDI input with Learn workflow and per-slider integration
+- ✅ OSC input with default mappings, recent messages display, auto-setup
+- ✅ Audio input with FFT analysis, band extraction, beat detection
+- ✅ HID input with multi-interface support for macropads/encoders
 
 ### Phase 3 – Parameter & Modulation
 
@@ -578,45 +588,359 @@ Planned breakdown:
 > - Integrate Rust audio capture + FFT
 > - Expose input data to Parameter Server
 
-**Status:** ⏳
-
-Planned steps:
-
-1. **Backend stubs**
-   - ⏳ Create modules:
-     - `/rust/plugins/osc`
-     - `/rust/plugins/midi`
-     - `/rust/plugins/audio`
-   - 🧪 Provide minimal functions:
-     - `start_*`, `stop_*`
-     - Dummy events to prove wiring to frontend
-
-2. **Real input integration**
-   - ⏳ Wire OSC:
-     - Bind port
-     - Map OSC addresses to internal channels
-   - ⏳ Wire MIDI:
-     - Enumerate devices
-     - Receive CC/Note events
-   - ⏳ Wire audio:
-     - Capture device input
-     - Run FFT to extract bands and loudness
-
-3. **Expose to Parameter Server**
-   - ⏳ Define internal data structures for:
-     - OSC channels
-     - MIDI controllers
-     - Audio bands
-   - ⏳ Allow these to act as modulation sources for parameters
-
-**Open questions (Phase 2):**
-
-- ❓ Preferred Rust crates for OSC and audio? (If you have strong preferences.) -> no preferences
-- ❓ OS development priority (e.g., macOS-first)? -> macOS first (very little chance we'll use Windows or Linux, but you never know, if it's low effort we can add support).
+**Status:** ✅ (All input engines implemented: MIDI, OSC, Audio)
 
 ---
 
-### Phase 3 — Parameter & Modulation Systems (incl. early Scene System wiring)
+#### 2.1 MIDI Input — ✅ Implemented
+
+**Backend (Rust):**
+
+- Added `midir` crate (v0.10) for cross-platform MIDI I/O
+- Created `src-tauri/src/midi.rs` module with:
+  - Device enumeration (`list_midi_devices`)
+  - Connection management (`open_midi_device`, `close_midi_device`)
+  - Message parsing (CC, Note On/Off, Pitch Bend)
+  - MIDI Learn state machine (`start_midi_learn`, `cancel_midi_learn`)
+  - Mapping storage and persistence (`midi_mappings.json`)
+  - Direct Parameter Server integration (CC values → `set_target`)
+
+**Tauri Commands:**
+
+- `list_midi_devices` — List available MIDI input devices
+- `open_midi_device(device_id)` — Open a device for input
+- `close_midi_device(device_id)` — Close a device
+- `start_midi_learn(parameter_id)` — Enter learn mode for a parameter
+- `cancel_midi_learn` — Cancel learn mode
+- `get_midi_learn_state` — Get current learn state
+- `get_midi_mappings` — Get all mappings
+- `set_midi_mapping(mapping)` — Add/update a mapping
+- `remove_midi_mapping(parameter_id)` — Remove a mapping
+- `clear_midi_mappings` — Clear all mappings
+
+**Events Emitted:**
+
+- `midi_message` — Raw MIDI for activity indicators
+- `midi_devices_changed` — Device connect/disconnect
+- `midi_learn_state_changed` — Learn mode changes
+- `midi_learn_complete` — Mapping captured
+
+**Frontend (React):**
+
+- Created `src/inputs/midi.ts` with:
+  - TypeScript types matching Rust structs
+  - API wrapper functions for all Tauri commands
+  - React hooks:
+    - `useMidiDevices()` — Device listing and connection
+    - `useMidiLearn()` — Learn mode management
+    - `useMidiMappings()` — Mapping CRUD
+    - `useMidiActivity()` — Activity monitoring
+
+- Created UI components:
+  - `MidiPanel` — Full MIDI management panel with:
+    - Activity indicator (pulses on input)
+    - Collapsible device list with connect/disconnect buttons
+    - Collapsible mappings list with remove buttons
+  - `MidiLearnButton` — Per-parameter Learn button showing:
+    - "Learn" when no mapping
+    - Current mapping (e.g., "CC1@1") when mapped
+    - "Waiting…" with pulse animation when learning
+
+- Integrated into Debug panel as first tab ("MIDI")
+
+- Integrated `MidiLearnButton` into all scene control sliders:
+  - `ParameterSlider` component extended with optional `midiParameterId` prop
+  - When provided, displays a compact Learn button next to the slider label
+  - All Scene A parameters (5 sliders): brightness, rotation, wobble, tint LFO, tint
+  - All Scene B parameters (4 sliders): brightness, rotation, tint, scale
+  - All Scene C parameters (4 sliders): brightness, pulse speed, rotation, tint
+
+**Files Created/Modified:**
+
+- `src-tauri/Cargo.toml` — Added `midir` and `log` crates
+- `src-tauri/src/lib.rs` — Added midi module import, init, and command registration
+- `src-tauri/src/midi.rs` — NEW: Complete MIDI engine
+- `src/inputs/midi.ts` — NEW: TypeScript types and hooks
+- `src/components/controls/MidiPanel.tsx` — NEW: MIDI management UI
+- `src/components/controls/MidiPanel.module.css` — NEW: Panel styles
+- `src/components/controls/MidiLearnButton.tsx` — NEW: Learn button component
+- `src/components/controls/MidiLearnButton.module.css` — NEW: Button styles
+- `src/components/controls/index.ts` — Added exports
+- `src/components/debug/DebugPanel.tsx` — Added MIDI tab
+- `src/components/ui/ParameterSlider.tsx` — Added `midiParameterId` prop and Learn button
+- `src/components/ui/ParameterSlider.module.css` — Updated label row layout for button
+- `src/components/controls/SceneAControls.tsx` — Added midiParameterId to all sliders
+- `src/components/controls/SceneBControls.tsx` — Added midiParameterId to all sliders
+- `src/components/controls/SceneCControls.tsx` — Added midiParameterId to all sliders
+
+---
+
+#### 2.2 OSC Input — ✅ Implemented
+
+**Backend (Rust):**
+
+- Added `rosc` crate (v0.10) for OSC message parsing
+- Created `src-tauri/src/osc.rs` module with:
+  - UDP server management (`start_osc_server`, `stop_osc_server`)
+  - OSC packet/message parsing (Float, Double, Int, Long, Bool)
+  - Address pattern matching (exact and wildcard with `*`)
+  - Input→output value scaling with configurable ranges
+  - Mapping storage and persistence (`osc_mappings.json`)
+  - Direct Parameter Server integration
+
+**Tauri Commands:**
+
+- `start_osc_server(port)` — Start UDP listener on specified port
+- `stop_osc_server` — Stop the server
+- `get_osc_status` — Get current server status
+- `get_osc_mappings` — Get all mappings
+- `add_osc_mapping(mapping)` — Add/update a mapping
+- `remove_osc_mapping(address)` — Remove a mapping
+- `clear_osc_mappings` — Clear all mappings
+
+**Events Emitted:**
+
+- `osc_message` — Raw OSC for activity indicators
+- `osc_status_changed` — Server start/stop events
+
+**Frontend (React):**
+
+- Created `src/inputs/osc.ts` with:
+  - TypeScript types matching Rust structs
+  - API wrapper functions for all Tauri commands
+  - Default port: **9000** (standard for TouchOSC, Lemur, etc.)
+  - `DEFAULT_OSC_MAPPINGS` — Pre-configured mappings for all parameters
+  - `setupDefaultMappings()` — One-click setup of all default mappings
+  - React hooks:
+    - `useOscServer()` — Server start/stop management
+    - `useOscMappings()` — Mapping CRUD
+    - `useOscActivity()` — Activity monitoring
+    - `useOscRecentMessages()` — Recent message history (last 20 messages)
+
+- Created UI components:
+  - `OscPanel` — Full OSC management panel with:
+    - Activity indicator (purple, pulses on input)
+    - Server controls (port config, start/stop button)
+    - **Recent Messages** section — Real-time display of incoming OSC messages (address + args)
+    - Mapping add form (address → parameter)
+    - Mappings list with remove buttons
+    - **"Setup Default Mappings"** button — Auto-creates mappings for all parameters
+    - **"Reset to Defaults"** button — Restores default mappings
+
+- Default OSC address mappings:
+  - `/crossfade` → `crossfade`
+  - `/scene_a/brightness` → `scene_a_brightness`
+  - `/scene_a/wobble` → `scene_a_wobble`
+  - `/scene_a/tint` → `scene_a_tint`
+  - `/scene_a/tint_lfo_depth` → `scene_a_tint_lfo_depth`
+  - `/scene_a/rotation_speed` → `rotationSpeed`
+  - `/scene_b/brightness` → `scene_b_brightness`
+  - `/scene_b/rotation_speed` → `scene_b_rotation_speed`
+  - `/scene_b/tint` → `scene_b_tint`
+  - `/scene_b/scale` → `scene_b_scale`
+  - `/scene_c/brightness` → `scene_c_brightness`
+  - `/scene_c/pulse_speed` → `scene_c_pulse_speed`
+  - `/scene_c/rotation_speed` → `scene_c_rotation_speed`
+  - `/scene_c/tint` → `scene_c_tint`
+
+- Integrated into Debug panel as "OSC" tab (after MIDI)
+
+**Testing OSC locally:**
+
+```bash
+# Install liblo (includes oscsend)
+brew install liblo
+
+# Send test messages (default port 9000)
+oscsend localhost 9000 /scene_a/brightness f 0.8
+oscsend localhost 9000 /crossfade f 0.5
+```
+
+**Files Created/Modified:**
+
+- `src-tauri/Cargo.toml` — Added `rosc` crate
+- `src-tauri/src/lib.rs` — Added osc module import, init, and command registration
+- `src-tauri/src/osc.rs` — NEW: Complete OSC engine
+- `src/inputs/osc.ts` — NEW: TypeScript types, hooks, default mappings
+- `src/components/controls/OscPanel.tsx` — NEW: OSC management UI with recent messages
+- `src/components/controls/OscPanel.module.css` — NEW: Panel styles
+- `src/components/controls/index.ts` — Added export
+- `src/components/debug/DebugPanel.tsx` — Added OSC tab
+
+---
+
+#### 2.3 Audio Input — ✅ Implemented
+
+**Backend (Rust):**
+
+- Added `cpal` crate (v0.15) for cross-platform audio I/O
+- Added `rustfft` crate (v6.2) for FFT processing
+- Created `src-tauri/src/audio.rs` module with:
+  - Device enumeration (`list_audio_devices`)
+  - Capture management (`start_audio_capture`, `stop_audio_capture`)
+  - FFT analysis pipeline:
+    - Hann windowing on 2048-sample buffer
+    - Real FFT for magnitude spectrum
+    - Frequency band extraction (bass, low-mid, high-mid, treble)
+    - RMS and peak amplitude calculation
+    - Beat detection with adaptive threshold and cooldown
+  - Background analysis loop emitting levels at 60Hz
+
+**Tauri Commands:**
+
+- `list_audio_devices` — List available input devices
+- `start_audio_capture(device_name)` — Start capture (optional device name)
+- `stop_audio_capture` — Stop capture
+- `get_audio_status` — Get current capture status
+
+**Events Emitted:**
+
+- `audio_levels` — Periodic levels with RMS, peak, bands, beat flag (60Hz)
+- `audio_status_changed` — Capture start/stop events
+
+**Frontend (React):**
+
+- Created `src/inputs/audio.ts` with:
+  - TypeScript types matching Rust structs
+  - API wrapper functions for all Tauri commands
+  - React hooks:
+    - `useAudioCapture()` — Device list, start/stop management
+    - `useAudioLevels()` — Real-time level monitoring
+
+- Created UI components:
+  - `AudioPanel` — Full audio input panel with:
+    - Device selector dropdown with refresh button
+    - Start/stop capture button
+    - Real-time level meters (RMS, Peak)
+    - Frequency band bars (Bass, Low-Mid, High-Mid, Treble)
+    - Beat indicator with pulse animation and count
+
+- Integrated into Debug panel as "Audio" tab
+
+**Files Created/Modified:**
+
+- `src-tauri/Cargo.toml` — Added `cpal` and `rustfft` crates
+- `src-tauri/src/lib.rs` — Added audio module import, init, and command registration
+- `src-tauri/src/audio.rs` — NEW: Complete audio engine with FFT
+- `src/inputs/audio.ts` — NEW: TypeScript types and hooks
+- `src/components/controls/AudioPanel.tsx` — NEW: Audio management UI
+- `src/components/controls/AudioPanel.module.css` — NEW: Panel styles with level meters
+- `src/components/controls/index.ts` — Added export
+- `src/components/debug/DebugPanel.tsx` — Added Audio tab
+
+---
+
+#### 2.4 HID Input — ✅ Implemented (v3 with Crossfade & Encoder Fixes)
+
+**Backend (Rust):**
+
+- Added `hidapi` crate (v2.6) for cross-platform HID device access
+- Created `src-tauri/src/hid.rs` module with:
+  - Device enumeration with usage page/usage info (`list_hid_devices`, `list_supported_hid_devices`)
+  - Multi-interface connection for devices like DOIO Megalodon
+  - Raw HID report parsing tuned for DOIO encoder patterns
+  - Encoder event detection (Consumer Control + Keyboard NKRO interfaces)
+  - **Key event detection** (keyboard NKRO bitmap parsing)
+  - **Auto-connect** with periodic device polling (every 2.5 seconds)
+  - Parameter mapping with sensitivity and invert options
+  - Mapping persistence (`hid_mappings.json`)
+  - Direct Parameter Server integration
+
+**Supported Devices:**
+
+- DOIO Megalodon Macropad (Vendor: 0xD010, Product: 0x1601)
+  - **16 Keys** (4×4 grid): Standard keyboard codes
+  - **K1 (Left small knob)**: Consumer Control (Next/Prev Track → encoder 0)
+  - **K2 (Right small knob)**: Consumer Control (Volume Up/Down → encoder 1)
+  - **K3 (Large bottom knob)**: Keyboard NKRO (custom keycodes → encoder 2)
+
+**Macropad Integration (v3):**
+
+- **Scene Selection**: Keys 1-4 select corresponding scene slots
+- **Crossfade Trigger**: Action key (Space/F13/Enter) triggers crossfade to selected slot
+- **Smooth Crossfade**: Scene pairing is set BEFORE crossfade value changes, ensuring correct visual transition
+- **Encoder → Parameter Mapping**:
+  - K1 → Parameter #1 of selected scene (by orderHint, e.g., Brightness)
+  - K2 → Parameter #2 of selected scene (e.g., Rotation Speed)
+  - K3 → Parameter #3 of selected scene (e.g., Wobble/Tint)
+- **Encoder Sensitivity Fix**: Uses max(sensitivity, step) to ensure parameters with large step sizes respond to input
+- **Backend Integration**: Encoder changes now call `set_parameter` to sync with Renderer
+- **Visual Indicator**: SceneColumn shows cyan highlight when slot is macropad-selected
+
+**Tauri Commands:**
+
+- `list_hid_devices` — List all HID devices with interface info
+- `list_supported_hid_devices` — List only known/supported devices
+- `connect_hid_device(path)` — Connect to specific interface
+- `connect_hid_megalodon` — Auto-connect to all DOIO interfaces
+- `disconnect_hid_device` — Disconnect all interfaces
+- `get_hid_status` — Get connection status (includes `is_searching`)
+- `get_hid_mappings` — Get all encoder mappings
+- `add_hid_mapping(mapping)` — Add/update mapping
+- `remove_hid_mapping(encoder_index)` — Remove mapping
+- `clear_hid_mappings` — Clear all mappings
+- `setup_default_hid_mappings` — Set up default mappings
+- `set_hid_auto_connect(enabled)` — Enable/disable auto-connect
+- `get_hid_auto_connect` — Check if auto-connect is enabled
+
+**Events Emitted:**
+
+- `hid_status_changed` — Connection state changes (includes `is_searching`)
+- `hid_encoder` — Encoder turn events (index, delta, timestamp)
+- `hid_key` — Key press/release events (key_code, key_name, pressed, timestamp)
+- `hid_raw_report` — Raw HID reports for debugging
+
+**Frontend (React):**
+
+- Updated `src/inputs/hid.ts` with:
+  - TypeScript types matching Rust structs (`HidKeyEvent`, updated `HidStatus`)
+  - API wrapper functions for all Tauri commands
+  - React hooks:
+    - `useHidDevice()` — Device listing, connection, auto-connect toggle
+    - `useHidMappings()` — Mapping CRUD (legacy)
+    - `useHidEncoderEvents()` — Encoder event monitoring
+    - `useHidKeyEvents()` — Key event monitoring
+    - `useHidRawReports()` — Raw report debugging
+    - `useMacropad()` — **NEW**: Scene slot integration hook
+
+- Updated UI components:
+  - `HidPanel` — Simplified panel with:
+    - Prominent connection status (connected/searching/disconnected)
+    - Auto-connect toggle
+    - Activity display (last key/encoder)
+    - Collapsible debug section (events + raw reports)
+  - `SceneColumn` — Added macropad selection indicator (cyan highlight)
+  - `ScenesArea` — Added `macropadSelectedIndex` prop
+
+- `useMacropad` hook provides:
+  - Slot selection via keys 1-4
+  - Crossfade trigger via action keys
+  - Encoder → parameter routing for selected scene
+
+**Files Created/Modified:**
+
+- `src-tauri/Cargo.toml` — Added `hidapi` crate
+- `src-tauri/src/lib.rs` — Added hid module init and command registration
+- `src-tauri/src/hid.rs` — Complete HID engine with auto-connect and key events
+- `src/inputs/hid.ts` — TypeScript types, hooks, and `useMacropad`
+- `src/components/HidPanel/HidPanel.tsx` — Simplified HID panel UI
+- `src/components/HidPanel/HidPanel.module.css` — Updated panel styles
+- `src/components/SceneColumn/SceneColumn.tsx` — Added macropad selection indicator
+- `src/components/SceneColumn/SceneColumn.module.css` — Added cyan highlight styles
+- `src/components/ScenesArea/ScenesArea.tsx` — Added macropadSelectedIndex prop
+- `src/components/DebugPanel/DebugPanel.tsx` — Pass selectedSlotIndex to HidPanel
+- `src/App.tsx` — Integrated `useMacropad` hook for scene slot control
+
+---
+
+**Resolved questions (Phase 2):**
+
+- ✅ Preferred Rust crates: `midir` for MIDI (confirmed working), `rosc` for OSC, `cpal`+`rustfft` for audio
+- ✅ OS priority: macOS first (cross-platform support via chosen crates)
+
+---
+
+### Phase 3 — Parameter & Modulation Systems (incl. Crossfade Refinements)
 
 > - Implement Parameter Server with transitions
 > - Add LFO, random, envelope followers
@@ -693,7 +1017,11 @@ Implementation status:
    - **Contract:**
      - Controls:
        - `set_parameter("<id>", next)` sets `target = next` and lets the backend tick interpolate `value`.
-       - For `crossfade` and `scene_a_brightness`, Controls also send `forward_controls_event` so the renderer can respond quickly even if the backend event stream is temporarily unavailable.
+       - For brightness parameters, Controls also send `forward_controls_event` so the renderer can respond quickly.
+       - **Crossfade special handling**:
+         - Scene pairing is set BEFORE crossfade value changes (prevents wrong scene flash)
+         - Backend emits current `value` (not `target`) for crossfade to enable smooth animation
+         - Controls use interpolated `value` for crossfade slider (smooth animation), `target` for other params (immediate feedback)
        - A “Reset to defaults” action:
          - Calls `set_parameter` for:
            - `"crossfade"`
@@ -1005,60 +1333,168 @@ Update and answer these over time; future LLM sessions will rely on them.
 
 ## 6. Next Actions (for LLM or human dev)
 
-Short-term, concrete steps building on the current Parameter Server + Scene A/B/C:
+### Completed ✅
 
 1. **~~Tighten Parameter Server ↔ renderer integration~~** ✅ DONE
-   - `rotationSpeed` semantics clarified and documented
-   - Dual-path crossfade behavior maintained
-
 2. **~~Add one more visual parameter to validate transitions further~~** ✅ DONE
-   - Scene B and Scene C now have full parameter sets:
-     - Scene B: `scene_b_brightness`, `scene_b_rotation_speed`, `scene_b_tint`, `scene_b_scale`
-     - Scene C: `scene_c_brightness`, `scene_c_pulse_speed`, `scene_c_rotation_speed`, `scene_c_tint`
-   - All wired end-to-end:
-     - Backend defaults and transition behavior in `lib.rs`
-     - Sliders in Controls (`SceneBControls`, `SceneCControls`) with defaults, reset-to-defaults, inspector entries
-     - Parameters consumed in renderer scene components with visual effects (color shifts, scaling, rotation, pulsing)
-
 3. **~~Scene Previews~~** ✅ DONE
-   - `ScenePreview` component for individual Active/Next scene previews
-   - `RendererPreview` component that mirrors the actual Renderer output:
-     - Accurate crossfade blending with scene weights
-     - Scene A tint LFO modulation
-     - Real-time parameter updates from Controls state
-   - Both optimized for performance (reduced DPR, low-power GPU preference)
+4. **~~MIDI Input~~** ✅ DONE
+5. **~~OSC Input~~** ✅ DONE (including default port 9000, recent messages display, auto-setup mappings)
+6. **~~Audio Input~~** ✅ DONE
+7. **~~HID Input~~** ✅ DONE (DOIO Megalodon macropad with multi-interface support)
+8. **~~Crossfade fixes~~** ✅ DONE
+   - Scene pairing set before crossfade value (no flash of wrong scene)
+   - Backend emits current value for crossfade (smooth animation)
+   - Controls use interpolated value for crossfade display
+9. **~~Macropad encoder fixes~~** ✅ DONE
+   - Encoders now call backend `set_parameter` (Renderer sync)
+   - Encoder sensitivity respects parameter step size
+   - All three knobs (K1, K2, K3) properly update their mapped parameters
+10. **~~lib.rs cleanup~~** ✅ DONE — Removed verbose comments, consolidated code, extracted window placement
 
-4. **Input Layer (OSC / MIDI / Audio)**
-   - Wire up OSC input to drive parameters
-   - Add MIDI Learn UI for parameter binding
-   - Implement audio input with level meters and band energy
-   - Use this to further exercise:
-     - Parameter Server tick behavior.
-     - Persistence.
-     - Inspector grouping and live updates.
+---
 
-5. **Start sketching the Scene System**
-   - In TypeScript (frontend), introduce early scaffolding (types / placeholders) for a future Scene System, without breaking the current dual-scene setup:
-     - Define a minimal scene descriptor type, e.g.:
-       - `SceneId`
-       - `registeredParameters: string[]`
-       - Optional labels / ordering.
-     - Add comments describing how scenes will:
-       - Register their parameters with the Parameter Server (or at least declare which IDs they care about).
-       - Allow the Controls UI to show scene-scoped parameter groups automatically.
-   - In this document and code comments:
-     - Note that Scene A currently drives and consumes:
-       - `crossfade`
-       - `rotationSpeed`
-       - `scene_a_brightness`
-       - `scene_a_wobble`
-     - Outline how additional scenes (beyond A/B) could be added while:
-       - Reusing the existing Parameter Server.
-       - Sharing or reusing parameter IDs where appropriate (e.g. global crossfade).
-       - Keeping the current dual-window behavior, sliders, and persistence stable.
+### Next Up (Prioritized)
 
-6. **Housekeeping**
-   - After each incremental change (especially when adding new parameters or scene scaffolding), run TypeScript/Rust diagnostics to keep the codebase green.
-   - Keep this document updated as:
-     - Additional Scene A/B parameters are added and exercised.
-     - Scene System scaffolding lands (mark relevant parts of Phase 3 “Scene System integration” as 🧪/✅ once started).
+#### 1. Audio → Parameter Binding
+
+- Currently audio analysis (RMS, bands, beats) is displayed but not connected to parameters
+- Add a simple binding UI to map audio outputs to parameters:
+  - `rms` → any parameter (e.g., `scene_a_brightness`)
+  - `bass` → any parameter (e.g., `scene_a_wobble`)
+  - `beat` → trigger actions (e.g., crossfade, parameter pulse)
+- Consider exposing audio levels as virtual parameters in the Parameter Server
+
+#### 2. Backend Modulation Engine
+
+- Implement LFOs as backend modulators (not just renderer-side)
+- Move Scene A tint LFO to backend for consistency
+- Add modulation sources: sine, triangle, random/noise
+- Add modulation matrix UI (source → parameter with depth/mode)
+
+#### 3. Video Output (Prototype)
+
+- No-op Syphon/Spout backend that logs calls
+- Define interface for publishing rendered frames
+- macOS: Start with Syphon integration
+
+#### 4. Scene System Expansion
+
+- Add more scenes with different visual styles
+- Scene library/browser UI
+- Scene-aware parameter grouping in Controls
+
+#### 5. UX Polish
+
+- Mapping tooltips on sliders (show current MIDI/OSC binding)
+- Mapping import/export for preset sharing
+- Device hot-plug handling improvements
+- Error recovery and user feedback
+
+---
+
+### Future Phases
+
+- **Presets & Projects** — Save/load parameter snapshots, scene selections, mappings
+- **Multi-display** — Support for multiple renderer windows
+- **Recording** — GPU-based capture or frame export
+- **Packaging** — macOS/Windows builds with code signing
+
+---
+
+## 8. Scene Management Refactor (Latest)
+
+**Date:** November 2024
+
+### Summary
+
+Major refactor of the Controls window scene management system:
+
+1. **Slot-Based System** — Replaced "Active/Next" paradigm with numbered scene slots (1-4)
+2. **Single Source of Truth** — Scene descriptors in `sceneTypes.ts` now drive all UI controls
+3. **Auto-Generated Controls** — New `SceneParameterControls` component reads from descriptors
+4. **Map-Based Parameter Store** — Replaced individual `useState` calls with `useParameterStore` hook
+5. **Scroll Edge Fades** — ScenesArea shows fade gradients when content overflows
+
+### New Files
+
+- `src/scenes/useSceneSlots.ts` — Slot management hook (add/remove/reorder/crossfade)
+- `src/controls/useParameterStore.ts` — Map-based parameter state with backend sync
+- `src/components/SceneParameterControls/` — Auto-generated sliders from scene descriptors
+- `src/components/SceneColumn/` — Single scene column (preview + header + controls)
+- `src/components/ScenesArea/` — Horizontally scrollable container for columns with edge fade gradients
+
+### Removed Files
+
+- `src/components/SceneAControls/` — Replaced by auto-generated controls
+- `src/components/SceneBControls/` — Replaced by auto-generated controls
+- `src/components/SceneCControls/` — Replaced by auto-generated controls
+- `src/components/SceneControlStrip/` — Replaced by ScenesArea
+- `src/components/ScenePreview/` — Preview now embedded in SceneColumn
+- `src/controls/controlsParameters.ts` — Replaced by useParameterStore
+- `src/controls/scenePairing.ts` — No longer needed
+
+### Updated Files
+
+- `src/scenes/sceneTypes.ts` — Enhanced `SceneParameterDescriptor` with `step`, `color`, `description`
+- `src/App.tsx` — New layout using slot-based system
+- `src/App.module.css` — 4/5 + 1/5 two-column responsive layout
+- `src/components/ParameterSlider/` — Extended color variants (rose, violet, lime, orange, fuchsia)
+- `src/components/index.ts` — Updated exports
+
+### UI Changes
+
+- **Layout:** Main area (4/5) with horizontal scroll, sidebar (1/5) for preview + debug
+- **Scene Columns:** Each shows preview canvas, scene selector, status badge, crossfade button, controls
+- **Responsive:** Columns have max-width 420px, fit ~3.5 columns on desktop
+- **Add/Remove:** "Add Scene" button when < 4 slots; remove button on non-active slots
+- **Scroll Fades:** Left/right gradient overlays appear when list is scrollable and not at edge
+
+### Key Design Decisions
+
+- Crossfade uses backend transition with smooth interpolation
+- Backend emits `value` (not `target`) for crossfade to enable smooth visual animation
+- Controls use `target` for most parameters (immediate UI feedback) but `value` for crossfade (smooth animation)
+- Scene pairing must be set BEFORE crossfade value changes to prevent wrong scene flash
+- Parameter store uses Map pattern for cleaner state management
+- Scene descriptors are the single source of truth for controls
+- Each column has its own embedded 3D preview (not shared)
+- Encoder sensitivity uses max(sensitivity, step) to handle large step sizes
+- JSDoc uses consolidated `@property` blocks before interfaces (see `ARCHITECTURE.md` Code Style section)
+
+---
+
+## 9. Housekeeping Notes
+
+- After each incremental change, run TypeScript/Rust diagnostics to keep the codebase green.
+- Keep this document updated as features land.
+- Mark relevant roadmap items as 🧪/✅ when work begins or completes.
+- Follow the JSDoc conventions documented in `ARCHITECTURE.md` (Code Style section).
+- `lib.rs` was cleaned up (Nov 2024) — comments shortened, window placement extracted to separate function, parameter defaults consolidated.
+
+---
+
+## 10. Code Style Reference
+
+See `ARCHITECTURE.md` → **Code Style** section for:
+
+- **JSDoc pattern:** Use consolidated `@property` blocks before interfaces, not inline comments
+- **Component docs:** One-liner + feature bullets
+- **Hook docs:** Purpose, key concepts, return type
+
+Example:
+
+```ts
+/**
+ * Props for the ScenesArea component.
+ *
+ * @property slots - Array of scene slots to render
+ * @property activeIndex - Index of the active (output) slot
+ * @property onAddSlot - Callback to add a new slot
+ */
+export interface ScenesAreaProps {
+  slots: SceneSlot[];
+  activeIndex: number;
+  onAddSlot: () => void;
+}
+```

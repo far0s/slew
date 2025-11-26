@@ -1,0 +1,393 @@
+/* ==========================================================================
+   HidPanel.module.css
+
+   Styles for the simplified HID control panel component.
+   Features prominent connection status, activity display, and collapsible debug.
+   ========================================================================== */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+/* ==========================================================================
+   Header
+   ========================================================================== */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.9);
+}
+
+.selectedSlot {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgb(99 102 241);
+  background: rgb(99 102 241 / 0.15);
+  border: 1px solid rgb(99 102 241 / 0.3);
+  border-radius: 0.25rem;
+}
+
+/* ==========================================================================
+   Connection Status
+   ========================================================================== */
+
+.connectionStatus {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.625rem;
+  background: rgb(255 255 255 / 0.03);
+  border-radius: 0.375rem;
+  border: 1px solid rgb(255 255 255 / 0.05);
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.statusIndicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.statusIndicator.connected {
+  background: rgb(52 211 153);
+  box-shadow: 0 0 6px rgb(52 211 153 / 0.5);
+}
+
+.statusIndicator.searching {
+  background: rgb(251 191 36);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.statusIndicator.disconnected {
+  background: rgb(255 255 255 / 0.3);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    box-shadow: 0 0 4px rgb(251 191 36 / 0.3);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 8px rgb(251 191 36 / 0.6);
+  }
+}
+
+.statusText {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.8);
+}
+
+.errorText {
+  margin: 0;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.7rem;
+  color: rgb(239 68 68);
+  background: rgb(239 68 68 / 0.1);
+  border-radius: 0.25rem;
+}
+
+.connectionActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.autoConnectLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.7rem;
+  color: rgb(255 255 255 / 0.6);
+  cursor: pointer;
+  user-select: none;
+}
+
+.autoConnectLabel:hover {
+  color: rgb(255 255 255 / 0.8);
+}
+
+.autoConnectCheckbox {
+  width: 12px;
+  height: 12px;
+  accent-color: rgb(99 102 241);
+  cursor: pointer;
+}
+
+.disconnectButton {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.7);
+  background: rgb(255 255 255 / 0.08);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.disconnectButton:hover {
+  color: rgb(239 68 68);
+  background: rgb(239 68 68 / 0.15);
+  border-color: rgb(239 68 68 / 0.3);
+}
+
+/* ==========================================================================
+   Activity Display
+   ========================================================================== */
+
+.activityDisplay {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.activityItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.5rem;
+  background: rgb(255 255 255 / 0.03);
+  border-radius: 0.25rem;
+  border: 1px solid rgb(255 255 255 / 0.05);
+}
+
+.activityLabel {
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.activityValue {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.8);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   Debug Section
+   ========================================================================== */
+
+.debugTrigger {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.5);
+  background: transparent;
+  border: 1px solid rgb(255 255 255 / 0.05);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.debugTrigger:hover {
+  color: rgb(255 255 255 / 0.7);
+  border-color: rgb(255 255 255 / 0.1);
+}
+
+.debugTrigger svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.debugCount {
+  margin-left: auto;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.6rem;
+  color: rgb(255 255 255 / 0.4);
+  background: rgb(255 255 255 / 0.05);
+  border-radius: 0.2rem;
+}
+
+.debugContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.debugGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: rgb(255 255 255 / 0.02);
+  border-radius: 0.25rem;
+  border: 1px solid rgb(255 255 255 / 0.04);
+}
+
+.debugGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.5);
+}
+
+.clearButton {
+  padding: 0.15rem 0.35rem;
+  font-size: 0.6rem;
+  color: rgb(255 255 255 / 0.4);
+  background: rgb(255 255 255 / 0.05);
+  border: none;
+  border-radius: 0.2rem;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.clearButton:hover {
+  color: rgb(255 255 255 / 0.7);
+}
+
+.emptyText {
+  margin: 0;
+  padding: 0.25rem 0;
+  font-size: 0.65rem;
+  font-style: italic;
+  color: rgb(255 255 255 / 0.3);
+}
+
+.eventList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.eventItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.375rem;
+  font-size: 0.65rem;
+  background: rgb(255 255 255 / 0.02);
+  border-radius: 0.2rem;
+}
+
+.eventKey {
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.8);
+  min-width: 2.5rem;
+}
+
+.eventCode {
+  margin-left: auto;
+  font-family: monospace;
+  font-size: 0.6rem;
+  color: rgb(255 255 255 / 0.3);
+}
+
+.eventPressed {
+  color: rgb(52 211 153);
+}
+
+.eventReleased {
+  color: rgb(251 191 36);
+}
+
+.eventEncoder {
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.7);
+  min-width: 4rem;
+}
+
+.eventPositive {
+  color: rgb(52 211 153);
+  font-weight: 600;
+}
+
+.eventNegative {
+  color: rgb(239 68 68);
+  font-weight: 600;
+}
+
+/* Raw Reports */
+.rawReportList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.rawReportItem {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.2rem 0.375rem;
+  font-size: 0.6rem;
+  background: rgb(255 255 255 / 0.02);
+  border-radius: 0.2rem;
+}
+
+.rawReportSize {
+  flex-shrink: 0;
+  min-width: 1.5rem;
+  color: rgb(255 255 255 / 0.4);
+}
+
+.rawReportHex {
+  font-family: monospace;
+  font-size: 0.55rem;
+  color: rgb(255 255 255 / 0.5);
+  word-break: break-all;
+}
+
+/* Scrollbar styles */
+.eventList::-webkit-scrollbar,
+.rawReportList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.eventList::-webkit-scrollbar-track,
+.rawReportList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.eventList::-webkit-scrollbar-thumb,
+.rawReportList::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.1);
+  border-radius: 2px;
+}
+
+.eventList::-webkit-scrollbar-thumb:hover,
+.rawReportList::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 0.2);
+}

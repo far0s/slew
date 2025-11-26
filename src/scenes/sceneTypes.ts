@@ -16,6 +16,21 @@
  */
 
 /**
+ * Available slider color themes for parameter UI.
+ */
+export type SliderColor =
+  | "emerald"
+  | "indigo"
+  | "cyan"
+  | "amber"
+  | "rose"
+  | "violet"
+  | "lime"
+  | "orange"
+  | "sky"
+  | "fuchsia";
+
+/**
  * Identifier for a scene.
  *
  * For now we only have:
@@ -28,6 +43,11 @@
  * - It stays ergonomic in JSON if we ever serialize scene state.
  */
 export type SceneId = "sceneA" | "sceneB" | "sceneC";
+
+/**
+ * Array of all available scene IDs for iteration.
+ */
+export const ALL_SCENE_IDS: SceneId[] = ["sceneA", "sceneB", "sceneC"];
 
 /**
  * Identifier for a parameter as used across the app.
@@ -83,6 +103,7 @@ export type ParameterId =
  * - UI grouping
  * - Labelling
  * - Default ranges
+ * - Auto-generating control sliders
  *
  * The canonical runtime value/target/speed/curve still live in the
  * backend Parameter Server.
@@ -95,9 +116,8 @@ export interface SceneParameterDescriptor {
 
   /**
    * Human-readable label used in scene-aware UIs.
-   * Optional: existing UIs may still hardcode labels for now.
    */
-  label?: string;
+  label: string;
 
   /**
    * Optional group hint for UI.
@@ -116,18 +136,34 @@ export interface SceneParameterDescriptor {
   orderHint?: number;
 
   /**
-   * Optional UI range hints. These DO NOT clamp backend values; they
-   * simply guide sliders/inputs in the Control UI.
+   * Minimum value for UI sliders. Defaults to 0.
    */
-  min?: number;
-  max?: number;
+  min: number;
 
   /**
-   * Optional default value, purely descriptive.
-   * The real runtime default is still owned by the backend + control UI
-   * reset logic.
+   * Maximum value for UI sliders. Defaults to 1.
    */
-  defaultValue?: number;
+  max: number;
+
+  /**
+   * Step size for slider increments. Defaults to 0.01.
+   */
+  step: number;
+
+  /**
+   * Default value for the parameter.
+   */
+  defaultValue: number;
+
+  /**
+   * Optional color theme for the slider UI.
+   */
+  color?: SliderColor;
+
+  /**
+   * Optional description/tooltip for the parameter.
+   */
+  description?: string;
 }
 
 /**
@@ -146,6 +182,11 @@ export interface SceneDescriptor {
    * Label for UI (scene picker, inspector headings, etc.).
    */
   label: string;
+
+  /**
+   * Short label for compact UI (e.g., column headers).
+   */
+  shortLabel: string;
 
   /**
    * Short description for docs / tooltips.
@@ -172,168 +213,186 @@ export const SCENE_REGISTRY: SceneDescriptor[] = [
   {
     id: "sceneA",
     label: "Scene A — Blue Cube",
+    shortLabel: "Scene A",
     description:
       "Primary demo scene with a blue cube driven by crossfade, brightness, wobble, tint, and rotationSpeed.",
     parameters: [
       {
-        id: "crossfade",
-        label: "Crossfade",
-        group: "transition",
+        id: "scene_a_brightness",
+        label: "Brightness",
+        group: "scene",
         orderHint: 10,
         min: 0,
-        max: 1,
-        defaultValue: 0.5,
-      },
-      {
-        id: "scene_a_brightness",
-        label: "Scene A Brightness",
-        group: "scene",
-        orderHint: 20,
-        min: 0,
         max: 2,
+        step: 0.01,
         defaultValue: 1,
-      },
-      {
-        id: "scene_a_wobble",
-        label: "Scene A Wobble",
-        group: "scene",
-        orderHint: 30,
-        min: 0,
-        max: 1,
-        defaultValue: 0,
-      },
-      {
-        id: "scene_a_tint",
-        label: "Scene A Tint",
-        group: "scene",
-        orderHint: 40,
-        min: 0,
-        max: 1,
-        defaultValue: 0,
-      },
-      {
-        id: "scene_a_tint_lfo_depth",
-        label: "Scene A Tint LFO Depth",
-        group: "scene",
-        orderHint: 45,
-        min: 0,
-        max: 1,
-        defaultValue: 0.2,
+        color: "emerald",
+        description: "Adjusts the brightness of Scene A in the renderer.",
       },
       {
         id: "rotationSpeed",
         label: "Rotation Speed",
-        group: "global",
-        orderHint: 50,
+        group: "scene",
+        orderHint: 20,
         min: 0,
         max: 5,
+        step: 0.05,
         defaultValue: 0.6,
+        color: "indigo",
+        description: "Controls the cube rotation speed in the renderer.",
+      },
+      {
+        id: "scene_a_wobble",
+        label: "Wobble",
+        group: "scene",
+        orderHint: 30,
+        min: 0,
+        max: 1,
+        step: 0.01,
+        defaultValue: 0,
+        color: "emerald",
+        description:
+          "Controls how much Scene A's cube wobbles in X/Y over time.",
+      },
+      {
+        id: "scene_a_tint_lfo_depth",
+        label: "Tint LFO Depth",
+        group: "scene",
+        orderHint: 40,
+        min: 0,
+        max: 1,
+        step: 0.01,
+        defaultValue: 0.2,
+        color: "emerald",
+        description:
+          "Controls how strongly an LFO modulates Scene A's tint around the base value.",
+      },
+      {
+        id: "scene_a_tint",
+        label: "Tint",
+        group: "scene",
+        orderHint: 50,
+        min: 0,
+        max: 1,
+        step: 0.01,
+        defaultValue: 0,
+        color: "cyan",
+        description:
+          "Blends Scene A between its base blue and a more cyan tint.",
       },
     ],
   },
   {
     id: "sceneB",
     label: "Scene B — Orange Cube",
+    shortLabel: "Scene B",
     description:
       "Secondary demo scene with an orange cube. Supports brightness, rotation, tint (red-yellow shift), and scale.",
     parameters: [
       {
-        id: "crossfade",
-        label: "Crossfade",
-        group: "transition",
+        id: "scene_b_brightness",
+        label: "Brightness",
+        group: "scene",
         orderHint: 10,
         min: 0,
-        max: 1,
-        defaultValue: 0.5,
-      },
-      {
-        id: "scene_b_brightness",
-        label: "Scene B Brightness",
-        group: "scene",
-        orderHint: 20,
-        min: 0,
         max: 2,
+        step: 0.01,
         defaultValue: 1,
+        color: "amber",
+        description: "Adjusts the brightness of Scene B in the renderer.",
       },
       {
         id: "scene_b_rotation_speed",
-        label: "Scene B Rotation Speed",
+        label: "Rotation Speed",
         group: "scene",
-        orderHint: 30,
+        orderHint: 20,
         min: 0,
         max: 5,
+        step: 0.05,
         defaultValue: 0.4,
+        color: "orange",
+        description: "Controls the cube rotation speed for Scene B.",
       },
       {
         id: "scene_b_tint",
-        label: "Scene B Tint",
+        label: "Tint",
         group: "scene",
-        orderHint: 40,
+        orderHint: 30,
         min: 0,
         max: 1,
+        step: 0.01,
         defaultValue: 0.5,
+        color: "amber",
+        description: "Shifts Scene B's color between red and yellow.",
       },
       {
         id: "scene_b_scale",
-        label: "Scene B Scale",
+        label: "Scale",
         group: "scene",
-        orderHint: 50,
+        orderHint: 40,
         min: 0.5,
         max: 2,
+        step: 0.01,
         defaultValue: 1,
+        color: "orange",
+        description: "Adjusts the size of Scene B's cube.",
       },
     ],
   },
   {
     id: "sceneC",
     label: "Scene C — Green Pulsing Cube",
+    shortLabel: "Scene C",
     description:
       "Tertiary demo scene with a green pulsing cube. Supports brightness, pulse speed, rotation, and tint (cyan-lime shift).",
     parameters: [
       {
-        id: "crossfade",
-        label: "Crossfade",
-        group: "transition",
+        id: "scene_c_brightness",
+        label: "Brightness",
+        group: "scene",
         orderHint: 10,
         min: 0,
-        max: 1,
-        defaultValue: 0.5,
-      },
-      {
-        id: "scene_c_brightness",
-        label: "Scene C Brightness",
-        group: "scene",
-        orderHint: 20,
-        min: 0,
         max: 2,
+        step: 0.01,
         defaultValue: 1,
+        color: "lime",
+        description: "Adjusts the brightness of Scene C in the renderer.",
       },
       {
         id: "scene_c_pulse_speed",
-        label: "Scene C Pulse Speed",
+        label: "Pulse Speed",
+        group: "scene",
+        orderHint: 20,
+        min: 0,
+        max: 5,
+        step: 0.05,
+        defaultValue: 1.5,
+        color: "lime",
+        description: "Controls how fast Scene C's cube pulses.",
+      },
+      {
+        id: "scene_c_rotation_speed",
+        label: "Rotation Speed",
         group: "scene",
         orderHint: 30,
         min: 0,
         max: 5,
-        defaultValue: 1.5,
-      },
-      {
-        id: "scene_c_rotation_speed",
-        label: "Scene C Rotation Speed",
-        group: "scene",
-        orderHint: 40,
-        min: 0,
-        max: 5,
+        step: 0.05,
         defaultValue: 0.4,
+        color: "emerald",
+        description: "Controls the cube rotation speed for Scene C.",
       },
       {
         id: "scene_c_tint",
-        label: "Scene C Tint",
+        label: "Tint",
         group: "scene",
-        orderHint: 50,
+        orderHint: 40,
         min: 0,
         max: 1,
+        step: 0.01,
         defaultValue: 0.5,
+        color: "lime",
+        description: "Shifts Scene C's color between cyan and lime.",
       },
     ],
   },
@@ -364,4 +423,65 @@ export function getScenesUsingParameter(
   return SCENE_REGISTRY.filter((scene) =>
     scene.parameters.some((param) => param.id === parameterId),
   );
+}
+
+/**
+ * Get the default value for a parameter from the scene registry.
+ * Searches all scenes and returns the first match, or undefined.
+ */
+export function getParameterDefault(
+  parameterId: ParameterId,
+): number | undefined {
+  for (const scene of SCENE_REGISTRY) {
+    const param = scene.parameters.find((p) => p.id === parameterId);
+    if (param) {
+      return param.defaultValue;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Get the parameter descriptor from any scene that contains it.
+ */
+export function getParameterDescriptor(
+  parameterId: ParameterId,
+): SceneParameterDescriptor | undefined {
+  for (const scene of SCENE_REGISTRY) {
+    const param = scene.parameters.find((p) => p.id === parameterId);
+    if (param) {
+      return param;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Collect all unique parameter IDs from all scenes.
+ */
+export function getAllParameterIds(): ParameterId[] {
+  const ids = new Set<ParameterId>();
+  for (const scene of SCENE_REGISTRY) {
+    for (const param of scene.parameters) {
+      ids.add(param.id);
+    }
+  }
+  return Array.from(ids);
+}
+
+/**
+ * Build a map of parameter ID → default value from the registry.
+ */
+export function buildDefaultParameterMap(): Map<ParameterId, number> {
+  const map = new Map<ParameterId, number>();
+  for (const scene of SCENE_REGISTRY) {
+    for (const param of scene.parameters) {
+      if (!map.has(param.id)) {
+        map.set(param.id, param.defaultValue);
+      }
+    }
+  }
+  // Add crossfade as a global parameter
+  map.set("crossfade", 0);
+  return map;
 }

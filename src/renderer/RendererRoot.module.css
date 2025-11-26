@@ -17,14 +17,3 @@
     "Segoe UI",
     sans-serif;
 }
-
-.canvasContainer {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  opacity: hidden;
-  flex: 1;
-  position: relative;
-}

@@ -1,0 +1,362 @@
+/* ==========================================================================
+   MidiPanel.module.css
+
+   Styles for the MIDI control panel component including device list,
+   activity indicator, and mappings overview.
+   ========================================================================== */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+/* ==========================================================================
+   Header
+   ========================================================================== */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.9);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Activity Indicator
+   ========================================================================== */
+
+.activityIndicator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.activityDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(100 100 100 / 0.4);
+  transition: background-color 0.15s ease;
+}
+
+.activityDot.active {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgb(34 197 94 / 0.6);
+  animation: pulse 0.3s ease-out;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.activityLabel {
+  font-size: 0.65rem;
+  color: rgb(255 255 255 / 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   Section Headers (Collapsible)
+   ========================================================================== */
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.4rem 0;
+  background: none;
+  border: none;
+  color: rgb(255 255 255 / 0.8);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.sectionHeader:hover {
+  color: rgb(255 255 255 / 1);
+}
+
+.sectionHeader:focus-visible {
+  outline: 2px solid rgb(59 130 246 / 0.8);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.sectionHeader svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.6;
+}
+
+.sectionContent {
+  padding-left: 0.25rem;
+}
+
+/* ==========================================================================
+   Device List
+   ========================================================================== */
+
+.deviceList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.deviceItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.6rem;
+  background: rgb(255 255 255 / 0.03);
+  border-radius: 0.35rem;
+  border: 1px solid rgb(255 255 255 / 0.04);
+}
+
+.deviceInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.connectionStatus {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(100 100 100 / 0.5);
+  flex-shrink: 0;
+}
+
+.connectionStatus.connected {
+  background: #22c55e;
+  box-shadow: 0 0 4px rgb(34 197 94 / 0.5);
+}
+
+.deviceName {
+  font-size: 0.75rem;
+  color: rgb(255 255 255 / 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.connectButton {
+  padding: 0.3rem 0.6rem;
+  background: rgb(59 130 246 / 0.15);
+  border: 1px solid rgb(59 130 246 / 0.3);
+  border-radius: 0.25rem;
+  color: rgb(147 197 253);
+  font-size: 0.65rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.connectButton:hover:not(:disabled) {
+  background: rgb(59 130 246 / 0.25);
+  border-color: rgb(59 130 246 / 0.5);
+}
+
+.connectButton:focus-visible {
+  outline: 2px solid rgb(59 130 246 / 0.8);
+  outline-offset: 1px;
+}
+
+.connectButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.connectButton.disconnect {
+  background: rgb(239 68 68 / 0.1);
+  border-color: rgb(239 68 68 / 0.25);
+  color: rgb(252 165 165);
+}
+
+.connectButton.disconnect:hover:not(:disabled) {
+  background: rgb(239 68 68 / 0.2);
+  border-color: rgb(239 68 68 / 0.4);
+}
+
+/* ==========================================================================
+   Mappings List
+   ========================================================================== */
+
+.mappingsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.mappingItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.5rem;
+  background: rgb(255 255 255 / 0.02);
+  border-radius: 0.3rem;
+  border: 1px solid rgb(255 255 255 / 0.04);
+}
+
+.mappingInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.mappingParameter {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mappingDetails {
+  font-size: 0.65rem;
+  color: rgb(255 255 255 / 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+.removeButton {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(239 68 68 / 0.1);
+  border: 1px solid rgb(239 68 68 / 0.2);
+  border-radius: 0.2rem;
+  color: rgb(252 165 165);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.removeButton:hover:not(:disabled) {
+  background: rgb(239 68 68 / 0.2);
+  border-color: rgb(239 68 68 / 0.35);
+}
+
+.removeButton:focus-visible {
+  outline: 2px solid rgb(239 68 68 / 0.6);
+  outline-offset: 1px;
+}
+
+.removeButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+.refreshButton,
+.retryButton,
+.clearAllButton {
+  padding: 0.4rem 0.75rem;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 0.3rem;
+  color: rgb(255 255 255 / 0.7);
+  font-size: 0.68rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+  align-self: flex-start;
+  margin-top: 0.25rem;
+}
+
+.refreshButton:hover,
+.retryButton:hover {
+  background: rgb(255 255 255 / 0.08);
+  border-color: rgb(255 255 255 / 0.15);
+  color: rgb(255 255 255 / 0.9);
+}
+
+.refreshButton:focus-visible,
+.retryButton:focus-visible,
+.clearAllButton:focus-visible {
+  outline: 2px solid rgb(59 130 246 / 0.8);
+  outline-offset: 1px;
+}
+
+.clearAllButton {
+  background: rgb(239 68 68 / 0.08);
+  border-color: rgb(239 68 68 / 0.2);
+  color: rgb(252 165 165 / 0.8);
+}
+
+.clearAllButton:hover {
+  background: rgb(239 68 68 / 0.15);
+  border-color: rgb(239 68 68 / 0.3);
+  color: rgb(252 165 165);
+}
+
+/* ==========================================================================
+   States
+   ========================================================================== */
+
+.loadingText,
+.emptyText {
+  font-size: 0.72rem;
+  color: rgb(255 255 255 / 0.5);
+  padding: 0.5rem 0;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.errorBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgb(239 68 68 / 0.08);
+  border: 1px solid rgb(239 68 68 / 0.2);
+  border-radius: 0.3rem;
+}
+
+.errorText {
+  font-size: 0.72rem;
+  color: rgb(252 165 165);
+  margin: 0;
+}
