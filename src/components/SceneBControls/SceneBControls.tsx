@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { ParameterSlider } from "../ui/ParameterSlider";
+import { ParameterSlider } from "../ParameterSlider";
 import styles from "./SceneBControls.module.css";
 
 export interface SceneBControlsProps {

@@ -8,17 +8,16 @@ import {
   type BackendParameter,
   useControlsParameters,
 } from "./controls/controlsParameters";
-import { SceneControlStrip } from "./components/controls/SceneControlStrip";
-import { SceneAControls } from "./components/controls/SceneAControls";
-import { SceneBControls } from "./components/controls/SceneBControls";
-import { SceneCControls } from "./components/controls/SceneCControls";
-import { RendererPreview } from "./components/controls/RendererPreview";
-
 import {
+  SceneControlStrip,
+  SceneAControls,
+  SceneBControls,
+  SceneCControls,
+  RendererPreview,
   DebugPanel,
   type LogEntry,
   type DebugMetricsData,
-} from "./components/debug";
+} from "./components";
 import styles from "./App.module.css";
 
 /** Maximum number of log entries to keep in memory */

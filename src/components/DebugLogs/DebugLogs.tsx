@@ -1,4 +1,4 @@
-import { Button } from "../ui/Button";
+import { Button } from "../Button";
 import styles from "./DebugLogs.module.css";
 
 export interface LogEntry {

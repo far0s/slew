@@ -1,5 +1,5 @@
 import * as Slider from "@radix-ui/react-slider";
-import { MidiLearnButton } from "../controls/MidiLearnButton";
+import { MidiLearnButton } from "../MidiLearnButton";
 import styles from "./ParameterSlider.module.css";
 
 export type SliderColorVariant =

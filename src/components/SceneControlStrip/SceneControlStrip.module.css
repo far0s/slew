@@ -34,11 +34,6 @@
   min-width: 0;
 }
 
-.sceneColumnPreview {
-  /*flex: 0 0 auto;*/
-  /*width: 140px;*/
-}
-
 .sceneLabel {
   display: flex;
   align-items: center;

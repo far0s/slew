@@ -1,7 +1,7 @@
 import React from "react";
 import { getSceneDescriptor, type ParameterId } from "../../scenes/sceneTypes";
 import type { BackendParameter } from "../../controls/controlsParameters";
-import { Button } from "../ui/Button";
+import { Button } from "../Button";
 import styles from "./BackendInspector.module.css";
 
 export interface BackendInspectorProps {
@@ -118,11 +118,18 @@ export function BackendInspector({
   };
 
   return (
-    <aside aria-label="Backend parameter inspector" className={styles.container}>
+    <aside
+      aria-label="Backend parameter inspector"
+      className={styles.container}
+    >
       <h2 className={styles.title}>Backend parameters</h2>
 
       <div className={styles.actions}>
-        <Button onClick={onRefresh} isLoading={isLoadingParams} loadingText="Refreshing…">
+        <Button
+          onClick={onRefresh}
+          isLoading={isLoadingParams}
+          loadingText="Refreshing…"
+        >
           Refresh
         </Button>
         <Button variant="primary" onClick={onResetDefaults}>

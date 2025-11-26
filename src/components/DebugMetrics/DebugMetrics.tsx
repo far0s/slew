@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Button } from "../ui/Button";
+import { Button } from "../Button";
 import styles from "./DebugMetrics.module.css";
 
 export interface DebugMetricsData {

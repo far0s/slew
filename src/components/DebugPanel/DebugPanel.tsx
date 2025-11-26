@@ -1,12 +1,12 @@
 import * as Tabs from "@radix-ui/react-tabs";
 import type { BackendParameter } from "../../controls/controlsParameters";
-import { BackendInspector } from "./BackendInspector";
-import { DebugLogs, type LogEntry } from "./DebugLogs";
-import { DebugMetrics, type DebugMetricsData } from "./DebugMetrics";
-import { MidiPanel } from "../controls/MidiPanel";
-import { OscPanel } from "../controls/OscPanel";
-import { AudioPanel } from "../controls/AudioPanel";
-import { HidPanel } from "../controls/HidPanel";
+import { BackendInspector } from "../BackendInspector/";
+import { DebugLogs, type LogEntry } from "../DebugLogs";
+import { DebugMetrics, type DebugMetricsData } from "../DebugMetrics";
+import { MidiPanel } from "../MidiPanel";
+import { OscPanel } from "../OscPanel";
+import { AudioPanel } from "../AudioPanel";
+import { HidPanel } from "../HidPanel";
 import styles from "./DebugPanel.module.css";
 
 export interface DebugPanelProps {

@@ -5,7 +5,7 @@ import type { SceneId } from "../../scenes/sceneTypes";
 import type { SetSceneId } from "../../controls/scenePairing";
 import { setScenePairingOnBackend } from "../../controls/scenePairing";
 import type { SceneProps } from "../../scenes/sceneComponents";
-import { ScenePreview } from "./ScenePreview";
+import { ScenePreview } from "../ScenePreview/ScenePreview";
 import styles from "./SceneControlStrip.module.css";
 
 export interface SceneControlStripProps {
@@ -217,13 +217,10 @@ export function SceneControlStrip({
               </div>
             </div>
             <div className={styles.sceneColumn}>
-              {/* Preview */}
-              <div className={styles.sceneColumnPreview}>
-                <ScenePreview
-                  sceneId={activeSceneId}
-                  params={activeSceneParams}
-                />
-              </div>
+              <ScenePreview
+                sceneId={activeSceneId}
+                params={activeSceneParams}
+              />
             </div>
           </div>
         </div>
@@ -264,10 +261,7 @@ export function SceneControlStrip({
               </div>
             </div>
             <div className={styles.sceneColumn}>
-              {/* Preview */}
-              <div className={styles.sceneColumnPreview}>
-                <ScenePreview sceneId={nextSceneId} params={nextSceneParams} />
-              </div>
+              <ScenePreview sceneId={nextSceneId} params={nextSceneParams} />
             </div>
           </div>
         </div>
