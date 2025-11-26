@@ -9,6 +9,7 @@ import { SCENE_COMPONENT_REGISTRY } from "../../scenes/sceneComponents";
 import type { SceneProps } from "../../scenes/sceneComponents";
 import { SceneParameterControls } from "../SceneParameterControls";
 import type { AudioMapping } from "../../inputs/audio";
+import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import styles from "./SceneColumn.module.css";
 
 /**
@@ -27,6 +28,8 @@ import styles from "./SceneColumn.module.css";
  * @property getValue - Get parameter value for controls
  * @property setValue - Set parameter value for controls
  * @property audioMappings - Optional audio mappings for parameter indicators
+ * @property modulationTargets - Optional modulation targets for parameter indicators
+ * @property lfos - Optional LFO sources (for modulation indicator labels)
  * @property onSceneChange - Callback when scene selection changes
  * @property onCrossfade - Callback when crossfade button is clicked
  * @property onRemove - Callback when remove button is clicked
@@ -45,6 +48,8 @@ export interface SceneColumnProps {
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
   audioMappings?: AudioMapping[];
+  modulationTargets?: ModulationTarget[];
+  lfos?: LfoSource[];
   onSceneChange: (sceneId: SceneId) => void;
   onCrossfade: () => void;
   onRemove: () => void;
@@ -82,6 +87,8 @@ export function SceneColumn({
   getValue,
   setValue,
   audioMappings,
+  modulationTargets,
+  lfos,
   onSceneChange,
   onCrossfade,
   onRemove,
@@ -243,6 +250,8 @@ export function SceneColumn({
           getValue={getValue}
           setValue={setValue}
           audioMappings={audioMappings}
+          modulationTargets={modulationTargets}
+          lfos={lfos}
         />
       </div>
     </motion.article>

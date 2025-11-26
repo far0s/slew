@@ -15,19 +15,19 @@ For detailed design, see `ARCHITECTURE.md`.
 
 ## 1. High-Level Status
 
-| System            | Status | Notes                                                      |
-| ----------------- | ------ | ---------------------------------------------------------- |
-| Tauri + React app | ✅     | Dual-window (Renderer + Controls)                          |
-| Parameter Server  | ✅     | Rust backend with ~60Hz transitions                        |
-| Scene System      | ✅     | Slot-based (1-6), auto-generated controls                  |
-| Crossfade         | ✅     | Smooth blending with correct scene pairing                 |
-| MIDI Input        | ✅     | Device enumeration, Learn workflow, per-slider integration |
-| OSC Input         | ✅     | UDP server (port 9000), default mappings                   |
-| Audio Input       | ✅     | FFT analysis, beat detection, BPM, level meters            |
-| Audio → Parameter | ✅     | Full mapping system with modes (continuous/trigger/add)    |
-| HID Input         | ✅     | DOIO Megalodon macropad with encoders                      |
-| Modulation Engine | ✅     | Backend LFOs, modulation matrix, audio→LFO                 |
-| Video Output      | ⏳     | Syphon/Spout/NDI planned                                   |
+| System            | Status | Notes                                                         |
+| ----------------- | ------ | ------------------------------------------------------------- |
+| Tauri + React app | ✅     | Dual-window (Renderer + Controls)                             |
+| Parameter Server  | ✅     | Rust backend with ~60Hz transitions                           |
+| Scene System      | ✅     | Slot-based (1-6), auto-generated controls                     |
+| Crossfade         | ✅     | Smooth blending with correct scene pairing                    |
+| MIDI Input        | ✅     | Device enumeration, Learn workflow, per-slider integration    |
+| OSC Input         | ✅     | UDP server (port 9000), default mappings                      |
+| Audio Input       | ✅     | FFT analysis, beat detection, BPM, level meters               |
+| Audio → Parameter | ✅     | Full mapping system with modes (continuous/trigger/add)       |
+| HID Input         | ✅     | DOIO Megalodon macropad with encoders                         |
+| Modulation Engine | ✅     | Backend LFOs, modulation matrix, audio→LFO, slider indicators |
+| Video Output      | ⏳     | Syphon/Spout/NDI planned                                      |
 
 ---
 
@@ -135,6 +135,7 @@ All inputs follow the same pattern:
   - LFO list with waveform visualization
   - Modulation targets matrix
   - Audio → LFO routing
+- **Slider indicators**: Indigo "LFO" badge with pulsing dot on modulated parameters
 
 ---
 
@@ -158,22 +159,22 @@ All inputs follow the same pattern:
 
 ## 6. Key Files
 
-| File                                | Purpose                                            |
-| ----------------------------------- | -------------------------------------------------- |
-| `src-tauri/src/lib.rs`              | Parameter Server, tick loop, command registration  |
-| `src-tauri/src/audio.rs`            | Audio capture, FFT, beat detection, audio mappings |
-| `src-tauri/src/modulation.rs`       | LFO engine, modulation matrix                      |
-| `src-tauri/src/midi.rs`             | MIDI device management and mappings                |
-| `src-tauri/src/osc.rs`              | OSC server and mappings                            |
-| `src-tauri/src/hid.rs`              | HID device management (macropads)                  |
-| `src/scenes/sceneTypes.ts`          | Scene/parameter descriptors (source of truth)      |
-| `src/controls/useParameterStore.ts` | Map-based parameter state                          |
-| `src/inputs/audio.ts`               | Audio types, hooks, helpers                        |
-| `src/inputs/modulation.ts`          | Modulation types, hooks, helpers                   |
-| `src/components/ModulationPanel/`   | LFO and modulation UI                              |
-| `src/components/AudioPanel/`        | Audio device, levels, mappings UI                  |
-| `src/components/ScenesArea/`        | Scene slots container                              |
-| `src/components/ParameterSlider/`   | Slider with MIDI learn and indicators              |
+| File                                | Purpose                                               |
+| ----------------------------------- | ----------------------------------------------------- |
+| `src-tauri/src/lib.rs`              | Parameter Server, tick loop, command registration     |
+| `src-tauri/src/audio.rs`            | Audio capture, FFT, beat detection, audio mappings    |
+| `src-tauri/src/modulation.rs`       | LFO engine, modulation matrix                         |
+| `src-tauri/src/midi.rs`             | MIDI device management and mappings                   |
+| `src-tauri/src/osc.rs`              | OSC server and mappings                               |
+| `src-tauri/src/hid.rs`              | HID device management (macropads)                     |
+| `src/scenes/sceneTypes.ts`          | Scene/parameter descriptors (source of truth)         |
+| `src/controls/useParameterStore.ts` | Map-based parameter state                             |
+| `src/inputs/audio.ts`               | Audio types, hooks, helpers                           |
+| `src/inputs/modulation.ts`          | Modulation types, hooks, helpers                      |
+| `src/components/ModulationPanel/`   | LFO and modulation UI                                 |
+| `src/components/AudioPanel/`        | Audio device, levels, mappings UI                     |
+| `src/components/ScenesArea/`        | Scene slots container                                 |
+| `src/components/ParameterSlider/`   | Slider with MIDI learn, audio & modulation indicators |
 
 ---
 
@@ -192,22 +193,17 @@ All inputs follow the same pattern:
 
 ### Prioritized
 
-1. **Modulation Indicator on Sliders**
-   - Show when a parameter is being modulated by an LFO
-   - Query `is_parameter_modulated` for each slider
-   - Add indigo-colored indicator badge (like audio indicator)
-
-2. **Video Output Prototype**
+1. **Video Output Prototype**
    - Define interface for Syphon/Spout/NDI
    - Create no-op backend that logs calls
    - macOS: Begin Syphon integration
 
-3. **Scene System Expansion**
+2. **Scene System Expansion**
    - Add more scenes with different visual styles
    - Scene library/browser UI
    - Scene presets (save parameter values per scene)
 
-4. **UX Polish**
+3. **UX Polish**
    - MIDI/OSC binding indicators on sliders
    - Mapping import/export (JSON)
    - Better device hot-plug handling

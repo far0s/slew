@@ -18,6 +18,7 @@ import {
 } from "./components";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings } from "./inputs/audio";
+import { useLfos, useModulationTargets } from "./inputs/modulation";
 import styles from "./App.module.css";
 
 /** Maximum number of log entries to keep in memory */
@@ -36,6 +37,10 @@ function App() {
 
   // Audio mappings for parameter indicators
   const { mappings: audioMappings } = useAudioMappings();
+
+  // Modulation state for parameter indicators
+  const { lfos } = useLfos();
+  const { targets: modulationTargets } = useModulationTargets();
 
   // Debug logs state
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -506,6 +511,8 @@ function App() {
             setValue={setValue}
             getSceneParams={getSceneParams}
             audioMappings={audioMappings}
+            modulationTargets={modulationTargets}
+            lfos={lfos}
             onSlotSceneChange={handleSlotSceneChange}
             onCrossfade={handleCrossfade}
             onRemoveSlot={handleRemoveSlot}

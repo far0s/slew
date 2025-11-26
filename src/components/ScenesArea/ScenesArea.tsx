@@ -5,6 +5,7 @@ import type { SceneId } from "../../scenes/sceneTypes";
 import type { SceneSlot } from "../../scenes/useSceneSlots";
 import type { SceneProps } from "../../scenes/sceneComponents";
 import type { AudioMapping } from "../../inputs/audio";
+import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import { SceneColumn } from "../SceneColumn";
 import styles from "./ScenesArea.module.css";
 
@@ -23,6 +24,8 @@ import styles from "./ScenesArea.module.css";
  * @property setValue - Set parameter value
  * @property getSceneParams - Get scene params object for a scene ID
  * @property audioMappings - Optional audio mappings for parameter indicators
+ * @property modulationTargets - Optional modulation targets for parameter indicators
+ * @property lfos - Optional LFO sources (for modulation indicator labels)
  * @property onSlotSceneChange - Callback to change scene in a slot
  * @property onCrossfade - Callback to start crossfade to a slot
  * @property onRemoveSlot - Callback to remove a slot
@@ -41,6 +44,8 @@ export interface ScenesAreaProps {
   setValue: (id: string, value: number) => void;
   getSceneParams: (sceneId: SceneId) => SceneProps["params"];
   audioMappings?: AudioMapping[];
+  modulationTargets?: ModulationTarget[];
+  lfos?: LfoSource[];
   onSlotSceneChange: (slotIndex: number, sceneId: SceneId) => void;
   onCrossfade: (slotIndex: number) => void;
   onRemoveSlot: (slotIndex: number) => void;
@@ -72,6 +77,8 @@ export function ScenesArea({
   setValue,
   getSceneParams,
   audioMappings,
+  modulationTargets,
+  lfos,
   onSlotSceneChange,
   onCrossfade,
   onRemoveSlot,
@@ -159,6 +166,8 @@ export function ScenesArea({
                   getValue={getValue}
                   setValue={setValue}
                   audioMappings={audioMappings}
+                  modulationTargets={modulationTargets}
+                  lfos={lfos}
                   onSceneChange={(sceneId) =>
                     onSlotSceneChange(slot.index, sceneId)
                   }

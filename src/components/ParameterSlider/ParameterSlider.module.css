@@ -186,3 +186,41 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+/* Modulation indicator badge (indigo theme) */
+.modulationBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.2rem;
+  border: 1px solid color-mix(in srgb, rgb(99 102 241) 40%, transparent);
+  background-color: color-mix(in srgb, rgb(99 102 241) 20%, transparent);
+  color: rgb(129 140 248);
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  margin-left: 0.25rem;
+}
+
+.modulationDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: modulationPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes modulationPulse {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}

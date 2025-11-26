@@ -1,5 +1,6 @@
 import * as Slider from "@radix-ui/react-slider";
 import { MidiLearnButton } from "../MidiLearnButton";
+import { MODULATION_INDICATOR_COLOR } from "../../inputs/modulation";
 import styles from "./ParameterSlider.module.css";
 
 export type SliderColorVariant =
@@ -25,6 +26,16 @@ export interface AudioMappingIndicator {
 }
 
 /**
+ * Modulation indicator info for display on the slider.
+ */
+export interface ModulationIndicator {
+  /** Name of the LFO source */
+  lfoName: string;
+  /** Optional: number of LFOs modulating this parameter (for tooltip) */
+  count?: number;
+}
+
+/**
  * Props for the ParameterSlider component.
  *
  * @property id - Unique identifier for the slider element
@@ -41,6 +52,7 @@ export interface AudioMappingIndicator {
  * @property aria-label - Accessible label override
  * @property midiParameterId - Parameter ID for MIDI Learn; if provided, shows a Learn button
  * @property audioMapping - Audio mapping indicator info; if provided, shows mapping badge
+ * @property modulationIndicator - Modulation indicator info; if provided, shows modulation badge
  */
 export interface ParameterSliderProps {
   id: string;
@@ -57,6 +69,7 @@ export interface ParameterSliderProps {
   "aria-label"?: string;
   midiParameterId?: string;
   audioMapping?: AudioMappingIndicator | null;
+  modulationIndicator?: ModulationIndicator | null;
 }
 
 /**
@@ -80,6 +93,7 @@ export function ParameterSlider({
   "aria-label": ariaLabel,
   midiParameterId,
   audioMapping,
+  modulationIndicator,
 }: ParameterSliderProps) {
   const rangeClass = styles[`range${capitalize(color)}`] ?? styles.rangeEmerald;
   const thumbClass = styles[`thumb${capitalize(color)}`] ?? styles.thumbEmerald;
@@ -111,6 +125,22 @@ export function ParameterSlider({
                 style={{ backgroundColor: audioMapping.color }}
               />
               {audioMapping.sourceLabel}
+            </span>
+          )}
+          {modulationIndicator && (
+            <span
+              className={styles.modulationBadge}
+              title={
+                modulationIndicator.count && modulationIndicator.count > 1
+                  ? `Modulated by ${modulationIndicator.count} LFOs including ${modulationIndicator.lfoName}`
+                  : `Modulated by ${modulationIndicator.lfoName}`
+              }
+            >
+              <span
+                className={styles.modulationDot}
+                style={{ backgroundColor: MODULATION_INDICATOR_COLOR }}
+              />
+              LFO
             </span>
           )}
           <span className={styles.value}>{formatValue(value)}</span>

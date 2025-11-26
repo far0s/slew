@@ -7,12 +7,14 @@ import { getSceneDescriptor } from "../../scenes/sceneTypes";
 import {
   ParameterSlider,
   type AudioMappingIndicator,
+  type ModulationIndicator,
 } from "../ParameterSlider";
 import {
   type AudioMapping,
   AUDIO_SOURCE_SHORT_LABELS,
   AUDIO_SOURCE_COLORS,
 } from "../../inputs/audio";
+import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import styles from "./SceneParameterControls.module.css";
 
 /**
@@ -22,12 +24,16 @@ import styles from "./SceneParameterControls.module.css";
  * @property getValue - Get current value for a parameter
  * @property setValue - Set value for a parameter
  * @property audioMappings - Optional list of audio mappings to show indicators
+ * @property modulationTargets - Optional list of modulation targets to show indicators
+ * @property lfos - Optional list of LFO sources (for indicator labels)
  */
 export interface SceneParameterControlsProps {
   sceneId: SceneId;
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
   audioMappings?: AudioMapping[];
+  modulationTargets?: ModulationTarget[];
+  lfos?: LfoSource[];
 }
 
 /**
@@ -99,6 +105,35 @@ function getAudioMappingIndicator(
 }
 
 /**
+ * Get modulation indicator for a parameter if one exists.
+ */
+function getModulationIndicator(
+  parameterId: string,
+  modulationTargets?: ModulationTarget[],
+  lfos?: LfoSource[],
+): ModulationIndicator | null {
+  if (!modulationTargets || !lfos) return null;
+
+  // Find all enabled targets for this parameter
+  const activeTargets = modulationTargets.filter(
+    (t) => t.parameter_id === parameterId && t.enabled,
+  );
+
+  if (activeTargets.length === 0) return null;
+
+  // Get the first LFO name for display
+  const firstTarget = activeTargets[0];
+  const lfo = lfos.find((l) => l.id === firstTarget.source_id && l.enabled);
+
+  if (!lfo) return null;
+
+  return {
+    lfoName: lfo.name,
+    count: activeTargets.length,
+  };
+}
+
+/**
  * SceneParameterControls
  *
  * Auto-generates parameter sliders from a scene's descriptor.
@@ -116,6 +151,8 @@ export function SceneParameterControls({
   getValue,
   setValue,
   audioMappings,
+  modulationTargets,
+  lfos,
 }: SceneParameterControlsProps) {
   const descriptor = getSceneDescriptor(sceneId);
 
@@ -150,6 +187,11 @@ export function SceneParameterControls({
             onChange={createChangeHandler(param, setValue)}
             midiParameterId={param.id}
             audioMapping={getAudioMappingIndicator(param.id, audioMappings)}
+            modulationIndicator={getModulationIndicator(
+              param.id,
+              modulationTargets,
+              lfos,
+            )}
           />
         ))}
       </div>
