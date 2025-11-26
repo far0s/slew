@@ -1,4 +1,9 @@
 import * as Tabs from "@radix-ui/react-tabs";
+import {
+  ActivityLogIcon,
+  BarChartIcon,
+  SwitchIcon,
+} from "@radix-ui/react-icons";
 import type { BackendParameter } from "../../controls/useParameterStore";
 import { BackendInspector } from "../BackendInspector/";
 import { DebugLogs, type LogEntry } from "../DebugLogs";
@@ -9,6 +14,21 @@ import { AudioPanel } from "../AudioPanel";
 import { HidPanel } from "../HidPanel";
 import styles from "./DebugPanel.module.css";
 
+/**
+ * Props for the DebugPanel component.
+ *
+ * @property backendParameters - Current backend parameters snapshot
+ * @property isLoadingParams - Whether parameters are loading
+ * @property paramError - Error message from parameter operations
+ * @property onRefresh - Callback to refresh parameters
+ * @property onResetDefaults - Callback to reset parameters to defaults
+ * @property onClearParameters - Callback to clear all parameters
+ * @property logs - Array of log entries
+ * @property onClearLogs - Callback to clear logs
+ * @property metrics - Debug metrics data
+ * @property onResetMetrics - Callback to reset metrics
+ * @property macropadSelectedIndex - Currently selected slot via macropad (for HID panel display)
+ */
 export interface DebugPanelProps {
   // Parameters tab
   backendParameters: BackendParameter[] | null;
@@ -25,6 +45,9 @@ export interface DebugPanelProps {
   // Metrics tab
   metrics: DebugMetricsData;
   onResetMetrics: () => void;
+
+  // HID/Macropad
+  macropadSelectedIndex?: number | null;
 }
 
 /**
@@ -46,9 +69,10 @@ export function DebugPanel({
   onClearLogs,
   metrics,
   onResetMetrics,
+  macropadSelectedIndex,
 }: DebugPanelProps) {
   return (
-    <Tabs.Root defaultValue="parameters" className={styles.container}>
+    <Tabs.Root defaultValue="hid" className={styles.container}>
       <Tabs.List className={styles.tabList} aria-label="Debug panel tabs">
         <Tabs.Trigger value="midi" className={styles.tabTrigger}>
           MIDI
@@ -63,16 +87,13 @@ export function DebugPanel({
           HID
         </Tabs.Trigger>
         <Tabs.Trigger value="parameters" className={styles.tabTrigger}>
-          Parameters
+          <SwitchIcon aria-label="Parameters" />
         </Tabs.Trigger>
         <Tabs.Trigger value="logs" className={styles.tabTrigger}>
-          Logs
-          {logs.length > 0 && (
-            <span className={styles.badge}>{logs.length}</span>
-          )}
+          <ActivityLogIcon aria-label="Logs" />
         </Tabs.Trigger>
         <Tabs.Trigger value="metrics" className={styles.tabTrigger}>
-          Metrics
+          <BarChartIcon aria-label="Metrics" />
         </Tabs.Trigger>
       </Tabs.List>
 
@@ -90,7 +111,7 @@ export function DebugPanel({
         </Tabs.Content>
 
         <Tabs.Content value="hid" className={styles.tabContent}>
-          <HidPanel />
+          <HidPanel selectedSlotIndex={macropadSelectedIndex} />
         </Tabs.Content>
 
         <Tabs.Content value="parameters" className={styles.tabContent}>
