@@ -12,6 +12,7 @@ import { MidiPanel } from "../MidiPanel";
 import { OscPanel } from "../OscPanel";
 import { AudioPanel } from "../AudioPanel";
 import { HidPanel } from "../HidPanel";
+import { ModulationPanel } from "../ModulationPanel";
 import styles from "./DebugPanel.module.css";
 
 /**
@@ -86,6 +87,9 @@ export function DebugPanel({
         <Tabs.Trigger value="hid" className={styles.tabTrigger}>
           HID
         </Tabs.Trigger>
+        <Tabs.Trigger value="modulation" className={styles.tabTrigger}>
+          Mod
+        </Tabs.Trigger>
         <Tabs.Trigger value="parameters" className={styles.tabTrigger}>
           <SwitchIcon aria-label="Parameters" />
         </Tabs.Trigger>
@@ -112,6 +116,10 @@ export function DebugPanel({
 
         <Tabs.Content value="hid" className={styles.tabContent}>
           <HidPanel selectedSlotIndex={macropadSelectedIndex} />
+        </Tabs.Content>
+
+        <Tabs.Content value="modulation" className={styles.tabContent}>
+          <ModulationPanel />
         </Tabs.Content>
 
         <Tabs.Content value="parameters" className={styles.tabContent}>

@@ -31,3 +31,4 @@ cpal = "0.15"        # Cross-platform audio I/O
 rustfft = "6.2"      # FFT processing
 hidapi = "2.6"       # Cross-platform HID device access
 log = "0.4"          # Logging facade
+rand = "0.8"         # Random number generation for LFO

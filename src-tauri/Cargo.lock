@@ -3422,6 +3422,7 @@ dependencies = [
  "log",
  "midir",
  "once_cell",
+ "rand 0.8.5",
  "rosc",
  "rustfft",
  "serde",

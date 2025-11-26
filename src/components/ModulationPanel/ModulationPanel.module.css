@@ -1,0 +1,807 @@
+/* ==========================================================================
+   ModulationPanel.module.css
+
+   Styles for the Modulation control panel component including LFO sources,
+   modulation targets, and audio-to-LFO routing.
+   ========================================================================== */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+/* ==========================================================================
+   Header
+   ========================================================================== */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.9);
+  margin: 0;
+}
+
+.statusBadge {
+  font-size: 0.6rem;
+  font-weight: 500;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.2rem;
+  background: rgb(100 100 100 / 0.3);
+  color: rgb(255 255 255 / 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.statusBadge.active {
+  background: rgb(99 102 241 / 0.2);
+  color: rgb(165 180 252);
+}
+
+/* ==========================================================================
+   Section Headers (Collapsible)
+   ========================================================================== */
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.4rem 0;
+  background: none;
+  border: none;
+  color: rgb(255 255 255 / 0.8);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.sectionHeader:hover {
+  color: rgb(255 255 255 / 1);
+}
+
+.sectionHeader:focus-visible {
+  outline: 2px solid rgb(99 102 241 / 0.8);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.sectionHeader svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.6;
+}
+
+.sectionHeaderWithAction {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sectionHeaderWithAction .sectionHeader {
+  flex: 1;
+}
+
+.headerAddButton {
+  padding: 0.2rem 0.5rem;
+  background: rgb(99 102 241 / 0.15);
+  border: 1px solid rgb(99 102 241 / 0.3);
+  border-radius: 0.2rem;
+  color: rgb(165 180 252);
+  font-size: 0.6rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.headerAddButton:hover:not(:disabled) {
+  background: rgb(99 102 241 / 0.25);
+  border-color: rgb(99 102 241 / 0.5);
+}
+
+.headerAddButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sectionBadge {
+  margin-left: 0.3rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.75rem;
+  background: rgb(99 102 241 / 0.25);
+  color: rgb(165 180 252);
+}
+
+.sectionContent {
+  padding-left: 0.25rem;
+}
+
+/* ==========================================================================
+   Common Section Styles
+   ========================================================================== */
+
+.noItems {
+  font-size: 0.68rem;
+  color: rgb(255 255 255 / 0.4);
+  text-align: center;
+  padding: 0.75rem 0;
+  margin: 0;
+}
+
+.sectionFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgb(255 255 255 / 0.06);
+}
+
+.itemCount {
+  font-size: 0.6rem;
+  color: rgb(255 255 255 / 0.4);
+}
+
+.clearButton {
+  padding: 0.2rem 0.5rem;
+  background: rgb(239 68 68 / 0.1);
+  border: 1px solid rgb(239 68 68 / 0.2);
+  border-radius: 0.2rem;
+  color: rgb(252 165 165);
+  font-size: 0.6rem;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.clearButton:hover:not(:disabled) {
+  background: rgb(239 68 68 / 0.2);
+  border-color: rgb(239 68 68 / 0.4);
+}
+
+.clearButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   LFO Section
+   ========================================================================== */
+
+.lfosSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lfosList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.lfoRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  background: rgb(255 255 255 / 0.03);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 0.25rem;
+}
+
+.lfoRow.lfoDisabled {
+  opacity: 0.5;
+}
+
+.lfoToggle {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: rgb(255 255 255 / 0.4);
+  font-size: 0.7rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.lfoToggle.enabled {
+  color: rgb(99 102 241);
+}
+
+.waveformSvg {
+  flex-shrink: 0;
+}
+
+.lfoInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background: none;
+  border: none;
+  padding: 0.2rem 0.3rem;
+  margin: -0.2rem 0;
+  border-radius: 0.2rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.lfoInfo:hover {
+  background: rgb(255 255 255 / 0.05);
+}
+
+.lfoInfo:focus-visible {
+  outline: 2px solid rgb(99 102 241 / 0.6);
+  outline-offset: 1px;
+}
+
+.lfoName {
+  font-weight: 600;
+  font-size: 0.7rem;
+  color: rgb(255 255 255 / 0.9);
+  flex-shrink: 0;
+}
+
+.lfoRate {
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  color: rgb(255 255 255 / 0.5);
+  flex-shrink: 0;
+}
+
+.lfoTargetCount {
+  font-size: 0.58rem;
+  padding: 0.1rem 0.25rem;
+  border-radius: 0.15rem;
+  background: rgb(99 102 241 / 0.2);
+  color: rgb(165 180 252);
+  flex-shrink: 0;
+}
+
+.lfoDelete {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: rgb(255 255 255 / 0.3);
+  font-size: 0.9rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.lfoDelete:hover {
+  color: rgb(239 68 68);
+}
+
+/* ==========================================================================
+   Targets Section
+   ========================================================================== */
+
+.targetsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.targetsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.targetRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  background: rgb(255 255 255 / 0.03);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 0.25rem;
+  font-size: 0.68rem;
+}
+
+.targetRow.targetDisabled {
+  opacity: 0.5;
+}
+
+.targetToggle {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: rgb(255 255 255 / 0.4);
+  font-size: 0.7rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.targetToggle.enabled {
+  color: rgb(34 197 94);
+}
+
+.targetInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background: none;
+  border: none;
+  padding: 0.2rem 0.3rem;
+  margin: -0.2rem 0;
+  border-radius: 0.2rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.targetInfo:hover {
+  background: rgb(255 255 255 / 0.05);
+}
+
+.targetInfo:focus-visible {
+  outline: 2px solid rgb(99 102 241 / 0.6);
+  outline-offset: 1px;
+}
+
+.targetLfo {
+  font-weight: 600;
+  font-size: 0.62rem;
+  color: rgb(165 180 252);
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.targetArrow {
+  color: rgb(255 255 255 / 0.3);
+  flex-shrink: 0;
+}
+
+.targetSceneId {
+  font-size: 0.58rem;
+  font-weight: 600;
+  padding: 0.1rem 0.25rem;
+  border-radius: 0.15rem;
+  background: rgb(255 255 255 / 0.1);
+  color: rgb(255 255 255 / 0.6);
+  flex-shrink: 0;
+}
+
+.targetParam {
+  color: rgb(255 255 255 / 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.targetDepth {
+  font-size: 0.6rem;
+  font-variant-numeric: tabular-nums;
+  color: rgb(255 255 255 / 0.5);
+  flex-shrink: 0;
+}
+
+.targetDelete {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: rgb(255 255 255 / 0.3);
+  font-size: 0.9rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.targetDelete:hover {
+  color: rgb(239 68 68);
+}
+
+/* ==========================================================================
+   Audio Modulations Section
+   ========================================================================== */
+
+.audioModsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.audioModsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.audioModRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  background: rgb(255 255 255 / 0.03);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 0.25rem;
+  font-size: 0.68rem;
+}
+
+.audioModRow.audioModDisabled {
+  opacity: 0.5;
+}
+
+.audioModToggle {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: rgb(255 255 255 / 0.4);
+  font-size: 0.7rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.audioModToggle.enabled {
+  color: rgb(251 191 36);
+}
+
+.audioModInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background: none;
+  border: none;
+  padding: 0.2rem 0.3rem;
+  margin: -0.2rem 0;
+  border-radius: 0.2rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.audioModInfo:hover {
+  background: rgb(255 255 255 / 0.05);
+}
+
+.audioModInfo:focus-visible {
+  outline: 2px solid rgb(251 191 36 / 0.6);
+  outline-offset: 1px;
+}
+
+.audioSourceDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.audioModSource {
+  font-weight: 600;
+  font-size: 0.62rem;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: rgb(255 255 255 / 0.8);
+}
+
+.audioModArrow {
+  color: rgb(255 255 255 / 0.3);
+  flex-shrink: 0;
+}
+
+.audioModLfo {
+  color: rgb(165 180 252);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.audioModProperty {
+  font-size: 0.6rem;
+  color: rgb(255 255 255 / 0.5);
+  flex-shrink: 0;
+}
+
+.audioModDelete {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: rgb(255 255 255 / 0.3);
+  font-size: 0.9rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.audioModDelete:hover {
+  color: rgb(239 68 68);
+}
+
+/* ==========================================================================
+   Forms
+   ========================================================================== */
+
+.lfoForm,
+.targetForm,
+.audioModForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  background: rgb(255 255 255 / 0.03);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 0.3rem;
+}
+
+.formHeader {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.8);
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  margin-bottom: 0.2rem;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.formLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.formLabelText {
+  font-size: 0.65rem;
+  color: rgb(255 255 255 / 0.6);
+}
+
+.formInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 0.25rem;
+  color: rgb(255 255 255 / 0.9);
+  font-size: 0.7rem;
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: rgb(99 102 241 / 0.5);
+}
+
+.formSelect {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 0.25rem;
+  color: rgb(255 255 255 / 0.9);
+  font-size: 0.7rem;
+}
+
+.formSelect:focus {
+  outline: none;
+  border-color: rgb(99 102 241 / 0.5);
+}
+
+.formRange {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgb(255 255 255 / 0.1);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.formRange::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: rgb(99 102 241);
+  border-radius: 50%;
+  cursor: grab;
+}
+
+.formRange::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: rgb(99 102 241);
+  border: none;
+  border-radius: 50%;
+  cursor: grab;
+}
+
+.formRange:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.formRange:disabled::-webkit-slider-thumb {
+  cursor: not-allowed;
+}
+
+.shapeSelectWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.shapePreview {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.sourceSelectWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sourceColorDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.rateControls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rateControls .formRange {
+  flex: 1;
+}
+
+.syncCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.65rem;
+  color: rgb(255 255 255 / 0.7);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.syncCheckbox input {
+  accent-color: rgb(99 102 241);
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.65rem;
+  color: rgb(255 255 255 / 0.7);
+  cursor: pointer;
+}
+
+.checkboxLabel input {
+  accent-color: rgb(99 102 241);
+}
+
+.rangeInputs {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.rangeInputs .formInput {
+  width: 60px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.rangeSeparator {
+  color: rgb(255 255 255 / 0.4);
+  font-size: 0.7rem;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.cancelButton {
+  padding: 0.3rem 0.6rem;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 0.25rem;
+  color: rgb(255 255 255 / 0.7);
+  font-size: 0.68rem;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.cancelButton:hover {
+  background: rgb(255 255 255 / 0.08);
+  border-color: rgb(255 255 255 / 0.2);
+}
+
+.submitButton {
+  padding: 0.3rem 0.75rem;
+  background: rgb(99 102 241 / 0.2);
+  border: 1px solid rgb(99 102 241 / 0.4);
+  border-radius: 0.25rem;
+  color: rgb(165 180 252);
+  font-size: 0.68rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.submitButton:hover:not(:disabled) {
+  background: rgb(99 102 241 / 0.3);
+  border-color: rgb(99 102 241 / 0.6);
+}
+
+.submitButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

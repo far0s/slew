@@ -11,6 +11,7 @@ use tauri::{AppHandle, Emitter, Manager};
 pub mod audio;
 pub mod hid;
 pub mod midi;
+pub mod modulation;
 pub mod osc;
 
 // =============================================================================
@@ -57,8 +58,8 @@ impl Default for ParameterCurve {
 }
 
 #[derive(Default)]
-struct ParameterStore {
-    parameters: HashMap<ParameterId, Parameter>,
+pub(crate) struct ParameterStore {
+    pub(crate) parameters: HashMap<ParameterId, Parameter>,
     last_tick: Option<Instant>,
 }
 
@@ -325,6 +326,7 @@ pub fn run() {
             osc::init_osc_engine(app.handle().clone());
             audio::init_audio_engine(app.handle().clone());
             hid::init_hid_engine(app.handle());
+            modulation::init_modulation_engine(app.handle().clone());
 
             start_parameter_tick_loop(app.handle().clone());
 
@@ -384,6 +386,24 @@ pub fn run() {
             hid::setup_default_hid_mappings,
             hid::set_hid_auto_connect,
             hid::get_hid_auto_connect,
+            // Modulation
+            modulation::get_modulation_lfos,
+            modulation::get_modulation_lfo,
+            modulation::add_modulation_lfo,
+            modulation::update_modulation_lfo,
+            modulation::remove_modulation_lfo,
+            modulation::clear_modulation_lfos,
+            modulation::get_modulation_targets,
+            modulation::add_modulation_target,
+            modulation::remove_modulation_target,
+            modulation::clear_modulation_targets,
+            modulation::update_modulation_base_value,
+            modulation::get_modulation_audio_modulations,
+            modulation::add_modulation_audio_modulation,
+            modulation::remove_modulation_audio_modulation,
+            modulation::clear_modulation_audio_modulations,
+            modulation::get_full_modulation_state,
+            modulation::is_parameter_modulated_cmd,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
