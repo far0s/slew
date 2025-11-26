@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Allow the app to be run even if it's not code signed (development) -->
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+
+    <!-- Allow loading of dynamic libraries (Syphon.framework) -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+
+    <!-- Audio input access for FFT analysis and beat detection -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+
+    <!-- USB/HID device access for MIDI controllers and macropads -->
+    <key>com.apple.security.device.usb</key>
+    <true/>
+
+    <!-- Network access for OSC input and NDI output -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <key>com.apple.security.network.server</key>
+    <true/>
+
+    <!-- Allow JIT compilation (for WebView/JavaScript) -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+
+    <!-- Allow DYLD environment variables (for NDI SDK library path) -->
+    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+    <true/>
+</dict>
+</plist>

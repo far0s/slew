@@ -42,13 +42,52 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["app", "dmg"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "category": "Entertainment",
+    "shortDescription": "Real-time VJ visuals with MIDI, OSC, and audio reactivity",
+    "longDescription": "sebcat-vj is a modular VJ engine for real-time visual performance. Features include dual-window architecture (renderer + controls), scene system with crossfading, MIDI/OSC/HID input, audio-reactive parameters with FFT analysis, LFO modulation, and video output via Syphon (macOS) and NDI.",
+    "copyright": "© 2024 Seb",
+    "publisher": "Seb",
+    "macOS": {
+      "frameworks": ["./frameworks/Syphon.framework"],
+      "minimumSystemVersion": "11.0",
+      "entitlements": "./entitlements.plist",
+      "signingIdentity": null,
+      "providerShortName": null,
+      "dmg": {
+        "appPosition": { "x": 180, "y": 170 },
+        "applicationFolderPosition": { "x": 480, "y": 170 },
+        "windowSize": { "width": 660, "height": 400 }
+      }
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.digicert.com",
+      "wix": null,
+      "nsis": {
+        "installerIcon": "./icons/icon.ico",
+        "headerImage": null,
+        "sidebarImage": null,
+        "installMode": "currentUser",
+        "languages": ["English"],
+        "displayLanguageSelector": false
+      }
+    },
+    "linux": {
+      "appimage": {
+        "bundleMediaFramework": true
+      },
+      "deb": {
+        "depends": ["libasound2", "libhidapi-dev"]
+      }
+    }
   }
 }

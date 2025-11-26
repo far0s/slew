@@ -8,7 +8,16 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:no-ndi": "tauri dev --no-default-features"
+    "tauri:no-ndi": "tauri dev --no-default-features",
+    "tauri:build": "tauri build",
+    "tauri:build:no-ndi": "tauri build --no-default-features",
+    "tauri:build:debug": "tauri build --debug",
+    "package": "./scripts/package.sh",
+    "package:check": "./scripts/package.sh --check",
+    "package:clean": "./scripts/package.sh --clean",
+    "package:no-ndi": "./scripts/package.sh --no-ndi",
+    "package:sign": "./scripts/package.sh --sign",
+    "package:release": "./scripts/package.sh --sign --dmg"
   },
   "dependencies": {
     "@radix-ui/react-collapsible": "^1.1.12",

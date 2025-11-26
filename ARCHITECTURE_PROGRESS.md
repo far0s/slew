@@ -28,6 +28,7 @@ For detailed design, see `ARCHITECTURE.md`.
 | HID Input         | ✅     | DOIO Megalodon macropad with encoders                         |
 | Modulation Engine | ✅     | Backend LFOs, modulation matrix, audio→LFO, slider indicators |
 | Video Output      | ✅     | Syphon + NDI working, 1080p@60 optimization backlogged        |
+| Packaging         | 🧪     | macOS bundle config, entitlements, scripts; signing untested  |
 
 ---
 

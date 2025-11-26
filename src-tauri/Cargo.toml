@@ -1,8 +1,10 @@
 [package]
 name = "sebcat-vj"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+version = "0.2.0"
+description = "Real-time VJ visuals with MIDI, OSC, and audio reactivity"
+authors = ["Seb"]
+license = "MIT"
+repository = "https://github.com/seb/sebcat-vj"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -51,3 +53,22 @@ optional = true
 [features]
 default = ["ndi"]                # NDI enabled by default (requires SDK)
 ndi = ["grafton-ndi"]            # NDI requires SDK installation
+
+# Release profile optimizations for smaller, faster binaries
+[profile.release]
+panic = "abort"       # Smaller binary, no unwinding
+codegen-units = 1     # Better optimization (slower compile)
+lto = true            # Link-time optimization
+opt-level = "s"       # Optimize for size (use "3" for max speed)
+strip = true          # Strip symbols from binary
+
+# Dev profile - faster compilation
+[profile.dev]
+opt-level = 0
+debug = true
+
+# Release with debug info for profiling
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+strip = false
