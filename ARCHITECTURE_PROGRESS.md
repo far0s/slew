@@ -830,7 +830,7 @@ oscsend localhost 9000 /crossfade f 0.5
 
 ---
 
-#### 2.4 HID Input — ✅ Implemented
+#### 2.4 HID Input — ✅ Implemented (v3 with Crossfade & Encoder Fixes)
 
 **Backend (Rust):**
 
@@ -840,16 +840,32 @@ oscsend localhost 9000 /crossfade f 0.5
   - Multi-interface connection for devices like DOIO Megalodon
   - Raw HID report parsing tuned for DOIO encoder patterns
   - Encoder event detection (Consumer Control + Keyboard NKRO interfaces)
+  - **Key event detection** (keyboard NKRO bitmap parsing)
+  - **Auto-connect** with periodic device polling (every 2.5 seconds)
   - Parameter mapping with sensitivity and invert options
   - Mapping persistence (`hid_mappings.json`)
   - Direct Parameter Server integration
 
 **Supported Devices:**
 
-- DOIO Megalodon Triple Knob Macropad (Vendor: 0xD010, Product: 0x1601)
-  - Left Knob: Consumer Control (Next/Prev Track → encoder 0)
-  - Middle Knob: Consumer Control (Volume Up/Down → encoder 1)
-  - Right Knob: Keyboard NKRO (custom keycodes → encoder 2)
+- DOIO Megalodon Macropad (Vendor: 0xD010, Product: 0x1601)
+  - **16 Keys** (4×4 grid): Standard keyboard codes
+  - **K1 (Left small knob)**: Consumer Control (Next/Prev Track → encoder 0)
+  - **K2 (Right small knob)**: Consumer Control (Volume Up/Down → encoder 1)
+  - **K3 (Large bottom knob)**: Keyboard NKRO (custom keycodes → encoder 2)
+
+**Macropad Integration (v3):**
+
+- **Scene Selection**: Keys 1-4 select corresponding scene slots
+- **Crossfade Trigger**: Action key (Space/F13/Enter) triggers crossfade to selected slot
+- **Smooth Crossfade**: Scene pairing is set BEFORE crossfade value changes, ensuring correct visual transition
+- **Encoder → Parameter Mapping**:
+  - K1 → Parameter #1 of selected scene (by orderHint, e.g., Brightness)
+  - K2 → Parameter #2 of selected scene (e.g., Rotation Speed)
+  - K3 → Parameter #3 of selected scene (e.g., Wobble/Tint)
+- **Encoder Sensitivity Fix**: Uses max(sensitivity, step) to ensure parameters with large step sizes respond to input
+- **Backend Integration**: Encoder changes now call `set_parameter` to sync with Renderer
+- **Visual Indicator**: SceneColumn shows cyan highlight when slot is macropad-selected
 
 **Tauri Commands:**
 
@@ -858,55 +874,62 @@ oscsend localhost 9000 /crossfade f 0.5
 - `connect_hid_device(path)` — Connect to specific interface
 - `connect_hid_megalodon` — Auto-connect to all DOIO interfaces
 - `disconnect_hid_device` — Disconnect all interfaces
-- `get_hid_status` — Get connection status
+- `get_hid_status` — Get connection status (includes `is_searching`)
 - `get_hid_mappings` — Get all encoder mappings
 - `add_hid_mapping(mapping)` — Add/update mapping
 - `remove_hid_mapping(encoder_index)` — Remove mapping
 - `clear_hid_mappings` — Clear all mappings
 - `setup_default_hid_mappings` — Set up default mappings
+- `set_hid_auto_connect(enabled)` — Enable/disable auto-connect
+- `get_hid_auto_connect` — Check if auto-connect is enabled
 
 **Events Emitted:**
 
-- `hid_status_changed` — Connection state changes
+- `hid_status_changed` — Connection state changes (includes `is_searching`)
 - `hid_encoder` — Encoder turn events (index, delta, timestamp)
+- `hid_key` — Key press/release events (key_code, key_name, pressed, timestamp)
 - `hid_raw_report` — Raw HID reports for debugging
 
 **Frontend (React):**
 
-- Created `src/inputs/hid.ts` with:
-  - TypeScript types matching Rust structs
+- Updated `src/inputs/hid.ts` with:
+  - TypeScript types matching Rust structs (`HidKeyEvent`, updated `HidStatus`)
   - API wrapper functions for all Tauri commands
   - React hooks:
-    - `useHidDevice()` — Device listing, connection management
-    - `useHidMappings()` — Mapping CRUD
+    - `useHidDevice()` — Device listing, connection, auto-connect toggle
+    - `useHidMappings()` — Mapping CRUD (legacy)
     - `useHidEncoderEvents()` — Encoder event monitoring
+    - `useHidKeyEvents()` — Key event monitoring
     - `useHidRawReports()` — Raw report debugging
+    - `useMacropad()` — **NEW**: Scene slot integration hook
 
-- Created UI components:
-  - `HidPanel` — Full HID management panel with:
-    - Activity indicator (green, pulses on encoder turn)
-    - Device section with interface list and "Connect All" button
-    - Encoder mappings editor (3 encoders with parameter, sensitivity, invert)
-    - Recent events display
-    - Raw reports debug section
+- Updated UI components:
+  - `HidPanel` — Simplified panel with:
+    - Prominent connection status (connected/searching/disconnected)
+    - Auto-connect toggle
+    - Activity display (last key/encoder)
+    - Collapsible debug section (events + raw reports)
+  - `SceneColumn` — Added macropad selection indicator (cyan highlight)
+  - `ScenesArea` — Added `macropadSelectedIndex` prop
 
-- Default encoder mappings:
-  - Encoder 0 (Left) → `crossfade` (sensitivity: 0.02)
-  - Encoder 1 (Middle) → `scene_a_brightness` (sensitivity: 0.05)
-  - Encoder 2 (Right) → `scene_a_tint` (sensitivity: 0.02)
-
-- Integrated into Debug panel as "HID" tab
+- `useMacropad` hook provides:
+  - Slot selection via keys 1-4
+  - Crossfade trigger via action keys
+  - Encoder → parameter routing for selected scene
 
 **Files Created/Modified:**
 
 - `src-tauri/Cargo.toml` — Added `hidapi` crate
-- `src-tauri/src/lib.rs` — Added hid module import, init, and command registration
-- `src-tauri/src/hid.rs` — NEW: Complete HID engine with DOIO support
-- `src/inputs/hid.ts` — NEW: TypeScript types and hooks
-- `src/components/controls/HidPanel.tsx` — NEW: HID management UI
-- `src/components/controls/HidPanel.module.css` — NEW: Panel styles
-- `src/components/controls/index.ts` — Added export
-- `src/components/debug/DebugPanel.tsx` — Added HID tab
+- `src-tauri/src/lib.rs` — Added hid module init and command registration
+- `src-tauri/src/hid.rs` — Complete HID engine with auto-connect and key events
+- `src/inputs/hid.ts` — TypeScript types, hooks, and `useMacropad`
+- `src/components/HidPanel/HidPanel.tsx` — Simplified HID panel UI
+- `src/components/HidPanel/HidPanel.module.css` — Updated panel styles
+- `src/components/SceneColumn/SceneColumn.tsx` — Added macropad selection indicator
+- `src/components/SceneColumn/SceneColumn.module.css` — Added cyan highlight styles
+- `src/components/ScenesArea/ScenesArea.tsx` — Added macropadSelectedIndex prop
+- `src/components/DebugPanel/DebugPanel.tsx` — Pass selectedSlotIndex to HidPanel
+- `src/App.tsx` — Integrated `useMacropad` hook for scene slot control
 
 ---
 
@@ -917,7 +940,7 @@ oscsend localhost 9000 /crossfade f 0.5
 
 ---
 
-### Phase 3 — Parameter & Modulation Systems (incl. early Scene System wiring)
+### Phase 3 — Parameter & Modulation Systems (incl. Crossfade Refinements)
 
 > - Implement Parameter Server with transitions
 > - Add LFO, random, envelope followers
@@ -994,7 +1017,11 @@ Implementation status:
    - **Contract:**
      - Controls:
        - `set_parameter("<id>", next)` sets `target = next` and lets the backend tick interpolate `value`.
-       - For `crossfade` and `scene_a_brightness`, Controls also send `forward_controls_event` so the renderer can respond quickly even if the backend event stream is temporarily unavailable.
+       - For brightness parameters, Controls also send `forward_controls_event` so the renderer can respond quickly.
+       - **Crossfade special handling**:
+         - Scene pairing is set BEFORE crossfade value changes (prevents wrong scene flash)
+         - Backend emits current `value` (not `target`) for crossfade to enable smooth animation
+         - Controls use interpolated `value` for crossfade slider (smooth animation), `target` for other params (immediate feedback)
        - A “Reset to defaults” action:
          - Calls `set_parameter` for:
            - `"crossfade"`
@@ -1315,6 +1342,15 @@ Update and answer these over time; future LLM sessions will rely on them.
 5. **~~OSC Input~~** ✅ DONE (including default port 9000, recent messages display, auto-setup mappings)
 6. **~~Audio Input~~** ✅ DONE
 7. **~~HID Input~~** ✅ DONE (DOIO Megalodon macropad with multi-interface support)
+8. **~~Crossfade fixes~~** ✅ DONE
+   - Scene pairing set before crossfade value (no flash of wrong scene)
+   - Backend emits current value for crossfade (smooth animation)
+   - Controls use interpolated value for crossfade display
+9. **~~Macropad encoder fixes~~** ✅ DONE
+   - Encoders now call backend `set_parameter` (Renderer sync)
+   - Encoder sensitivity respects parameter step size
+   - All three knobs (K1, K2, K3) properly update their mapped parameters
+10. **~~lib.rs cleanup~~** ✅ DONE — Removed verbose comments, consolidated code, extracted window placement
 
 ---
 
@@ -1416,10 +1452,14 @@ Major refactor of the Controls window scene management system:
 
 ### Key Design Decisions
 
-- Crossfade uses backend transition (option B) — no frontend animation
+- Crossfade uses backend transition with smooth interpolation
+- Backend emits `value` (not `target`) for crossfade to enable smooth visual animation
+- Controls use `target` for most parameters (immediate UI feedback) but `value` for crossfade (smooth animation)
+- Scene pairing must be set BEFORE crossfade value changes to prevent wrong scene flash
 - Parameter store uses Map pattern for cleaner state management
 - Scene descriptors are the single source of truth for controls
 - Each column has its own embedded 3D preview (not shared)
+- Encoder sensitivity uses max(sensitivity, step) to handle large step sizes
 - JSDoc uses consolidated `@property` blocks before interfaces (see `ARCHITECTURE.md` Code Style section)
 
 ---
@@ -1430,6 +1470,7 @@ Major refactor of the Controls window scene management system:
 - Keep this document updated as features land.
 - Mark relevant roadmap items as 🧪/✅ when work begins or completes.
 - Follow the JSDoc conventions documented in `ARCHITECTURE.md` (Code Style section).
+- `lib.rs` was cleaned up (Nov 2024) — comments shortened, window placement extracted to separate function, parameter defaults consolidated.
 
 ---
 

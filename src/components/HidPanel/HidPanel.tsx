@@ -1,8 +1,13 @@
 /**
  * HidPanel
  *
- * Control panel for HID device management (e.g., Megalodon Triple Knob Macropad).
- * Displays device connection status, encoder mappings, and activity.
+ * Simplified control panel for HID device (DOIO Megalodon Macropad).
+ * Shows connection status prominently with auto-connect indicator.
+ *
+ * Features:
+ * - Prominent connection status with auto-connect searching animation
+ * - Macropad state display (selected slot, last key/encoder)
+ * - Collapsible debug section with events and raw reports
  */
 
 import { useState } from "react";
@@ -10,514 +15,296 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import {
   useHidDevice,
-  useHidMappings,
   useHidEncoderEvents,
+  useHidKeyEvents,
   useHidRawReports,
   ENCODER_LABELS,
-  DEFAULT_ENCODER_PARAMS,
-  DEFAULT_SENSITIVITY,
-  type HidMapping,
+  type HidKeyEvent,
+  type HidEncoderEvent,
 } from "../../inputs/hid";
 import styles from "./HidPanel.module.css";
 
 /**
- * Activity indicator that pulses on encoder input.
+ * Connection status display with searching animation.
  */
-function HidActivityIndicator() {
-  const { lastEvent, eventCount } = useHidEncoderEvents();
-
-  const isActive = lastEvent !== null && eventCount > 0;
-
-  return (
-    <div className={styles.activityIndicator}>
-      <span
-        className={`${styles.activityDot} ${isActive ? styles.active : ""}`}
-        aria-label={isActive ? "HID activity detected" : "No HID activity"}
-      />
-      <span className={styles.activityLabel}>
-        {isActive ? `${eventCount} events` : "No activity"}
-      </span>
-    </div>
-  );
-}
-
-/**
- * Device connection controls.
- */
-function DeviceControls() {
+function ConnectionStatus() {
   const {
     isConnected,
+    isSearching,
     connectedDevice,
-    devices,
     error,
-    isLoading,
-    connect,
+    autoConnectEnabled,
+    setAutoConnect,
     disconnect,
-    refresh,
   } = useHidDevice();
 
-  const handleConnect = async (path?: string) => {
-    try {
-      await connect(path);
-    } catch (e) {
-      console.error("[HID] Connection error:", e);
-    }
-  };
+  // Determine status text and style
+  let statusText: string;
+  let statusClass: string;
 
-  const handleConnectAll = async () => {
-    try {
-      // connect() without a path triggers connect_megalodon which connects all interfaces
-      await connect();
-    } catch (e) {
-      console.error("[HID] Connection error:", e);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    try {
-      await disconnect();
-    } catch (e) {
-      console.error("[HID] Disconnect error:", e);
-    }
-  };
+  if (isConnected) {
+    statusText = connectedDevice?.product ?? "DOIO Megalodon";
+    statusClass = styles.connected;
+  } else if (isSearching) {
+    statusText = "Searching…";
+    statusClass = styles.searching;
+  } else {
+    statusText = "Disconnected";
+    statusClass = styles.disconnected;
+  }
 
   return (
-    <div className={styles.deviceControls}>
-      <div className={styles.deviceStatus}>
+    <div className={styles.connectionStatus}>
+      <div className={styles.statusRow}>
         <span
-          className={`${styles.statusDot} ${isConnected ? styles.connected : ""}`}
-          aria-label={isConnected ? "Device connected" : "No device connected"}
+          className={`${styles.statusIndicator} ${statusClass}`}
+          aria-label={
+            isConnected
+              ? "Connected"
+              : isSearching
+                ? "Searching"
+                : "Disconnected"
+          }
         />
-        <span className={styles.statusText}>
-          {isConnected
-            ? `${connectedDevice?.product ?? "DOIO"} (All Interfaces)`
-            : "No device connected"}
-        </span>
+        <span className={styles.statusText}>{statusText}</span>
       </div>
 
       {error && <p className={styles.errorText}>{error}</p>}
 
-      {!isConnected && devices.length > 0 && (
-        <div className={styles.interfaceList}>
-          <button
-            type="button"
-            onClick={() => void handleConnectAll()}
-            disabled={isLoading}
-            className={styles.connectAllButton}
-          >
-            {isLoading ? "Connecting…" : "Connect All Interfaces (Recommended)"}
-          </button>
+      <div className={styles.connectionActions}>
+        <label className={styles.autoConnectLabel}>
+          <input
+            type="checkbox"
+            checked={autoConnectEnabled}
+            onChange={(e) => void setAutoConnect(e.target.checked)}
+            className={styles.autoConnectCheckbox}
+          />
+          <span>Auto-connect</span>
+        </label>
 
-          <p className={styles.interfaceListLabel}>
-            Or connect to a specific interface:
-          </p>
-          {devices.map((dev, idx) => (
-            <button
-              key={`${dev.path}-${idx}`}
-              type="button"
-              onClick={() => void handleConnect(dev.path)}
-              disabled={isLoading}
-              className={styles.interfaceButton}
-            >
-              <span className={styles.interfaceName}>
-                {dev.interface_description}
-              </span>
-              <span className={styles.interfaceDetails}>
-                iface {dev.interface_number} • 0x
-                {dev.usage_page.toString(16).padStart(4, "0")}:0x
-                {dev.usage.toString(16).padStart(4, "0")}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className={styles.deviceActions}>
-        {!isConnected ? (
+        {isConnected && (
           <button
             type="button"
-            onClick={() => void refresh()}
-            disabled={isLoading}
-            className={styles.refreshButton}
-            aria-label="Refresh device list"
-          >
-            {isLoading ? "…" : "⟳ Refresh"}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => void handleDisconnect()}
-            disabled={isLoading}
+            onClick={() => void disconnect()}
             className={styles.disconnectButton}
           >
-            {isLoading ? "…" : "Disconnect"}
+            Disconnect
           </button>
         )}
       </div>
-
-      {!isConnected && devices.length === 0 && (
-        <p className={styles.hintText}>
-          No Megalodon detected. Make sure it's plugged in and click Refresh.
-        </p>
-      )}
     </div>
   );
 }
 
 /**
- * Single encoder mapping row.
+ * Display last key and encoder events for quick feedback.
  */
-function EncoderMappingRow({
-  encoderIndex,
-  mapping,
-  onUpdate,
-  onRemove,
-}: {
-  encoderIndex: number;
-  mapping: HidMapping | undefined;
-  onUpdate: (mapping: HidMapping) => Promise<void>;
-  onRemove: (encoderIndex: number) => Promise<void>;
-}) {
-  const [parameterId, setParameterId] = useState(
-    mapping?.parameter_id ?? DEFAULT_ENCODER_PARAMS[encoderIndex] ?? "",
-  );
-  const [sensitivity, setSensitivity] = useState(
-    mapping?.sensitivity ?? DEFAULT_SENSITIVITY,
-  );
-  const [inverted, setInverted] = useState(mapping?.inverted ?? false);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleSave = async () => {
-    if (!parameterId.trim()) return;
-
-    setIsSaving(true);
-    try {
-      await onUpdate({
-        encoder_index: encoderIndex,
-        parameter_id: parameterId.trim(),
-        sensitivity,
-        inverted,
-      });
-    } catch (e) {
-      console.error("[HID] Failed to save mapping:", e);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleRemove = async () => {
-    setIsSaving(true);
-    try {
-      await onRemove(encoderIndex);
-      setParameterId(DEFAULT_ENCODER_PARAMS[encoderIndex] ?? "");
-      setSensitivity(DEFAULT_SENSITIVITY);
-      setInverted(false);
-    } catch (e) {
-      console.error("[HID] Failed to remove mapping:", e);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const hasChanges =
-    !mapping ||
-    mapping.parameter_id !== parameterId.trim() ||
-    mapping.sensitivity !== sensitivity ||
-    mapping.inverted !== inverted;
+function ActivityDisplay() {
+  const { lastEvent: lastEncoder } = useHidEncoderEvents();
+  const { lastEvent: lastKey } = useHidKeyEvents();
 
   return (
-    <div className={styles.encoderRow}>
-      <div className={styles.encoderHeader}>
-        <div className={styles.encoderLabel}>
-          <span className={styles.encoderIndex}>{encoderIndex}</span>
-          <span className={styles.encoderName}>
-            {ENCODER_LABELS[encoderIndex]}
+    <div className={styles.activityDisplay}>
+      <div className={styles.activityItem}>
+        <span className={styles.activityLabel}>Last Key</span>
+        <span className={styles.activityValue}>
+          {lastKey ? formatKeyEvent(lastKey) : "—"}
+        </span>
+      </div>
+      <div className={styles.activityItem}>
+        <span className={styles.activityLabel}>Last Encoder</span>
+        <span className={styles.activityValue}>
+          {lastEncoder ? formatEncoderEvent(lastEncoder) : "—"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function formatKeyEvent(event: HidKeyEvent): string {
+  return `${event.key_name} ${event.pressed ? "↓" : "↑"}`;
+}
+
+function formatEncoderEvent(event: HidEncoderEvent): string {
+  const label =
+    ENCODER_LABELS[event.encoder_index] ?? `Encoder ${event.encoder_index}`;
+  const direction = event.delta > 0 ? "→" : "←";
+  return `${label} ${direction}`;
+}
+
+/**
+ * Collapsible debug section with events and raw reports.
+ */
+function DebugSection() {
+  const [isOpen, setIsOpen] = useState(false);
+  const { events: keyEvents, clear: clearKeys } = useHidKeyEvents();
+  const { events: encoderEvents, clear: clearEncoders } = useHidEncoderEvents();
+  const { reports: rawReports, clear: clearReports } = useHidRawReports();
+
+  return (
+    <Collapsible.Root open={isOpen} onOpenChange={setIsOpen}>
+      <Collapsible.Trigger asChild>
+        <button type="button" className={styles.debugTrigger}>
+          {isOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
+          <span>Debug</span>
+          <span className={styles.debugCount}>
+            {keyEvents.length + encoderEvents.length + rawReports.length}
           </span>
-        </div>
-        <div className={styles.encoderActions}>
-          {mapping && (
-            <button
-              type="button"
-              onClick={() => void handleRemove()}
-              disabled={isSaving}
-              className={styles.removeButton}
-              aria-label="Remove mapping"
-            >
-              ×
-            </button>
+        </button>
+      </Collapsible.Trigger>
+
+      <Collapsible.Content className={styles.debugContent}>
+        {/* Key Events */}
+        <div className={styles.debugGroup}>
+          <div className={styles.debugGroupHeader}>
+            <span>Key Events ({keyEvents.length})</span>
+            {keyEvents.length > 0 && (
+              <button
+                type="button"
+                onClick={clearKeys}
+                className={styles.clearButton}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {keyEvents.length === 0 ? (
+            <p className={styles.emptyText}>No key events</p>
+          ) : (
+            <div className={styles.eventList}>
+              {keyEvents.slice(0, 10).map((evt, idx) => (
+                <div
+                  key={`key-${evt.timestamp}-${idx}`}
+                  className={styles.eventItem}
+                >
+                  <span className={styles.eventKey}>{evt.key_name}</span>
+                  <span
+                    className={
+                      evt.pressed ? styles.eventPressed : styles.eventReleased
+                    }
+                  >
+                    {evt.pressed ? "↓" : "↑"}
+                  </span>
+                  <span className={styles.eventCode}>
+                    0x{evt.key_code.toString(16).padStart(2, "0")}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={isSaving || !parameterId.trim() || !hasChanges}
-            className={styles.saveButton}
-          >
-            {isSaving ? "…" : mapping ? "Update" : "Set"}
-          </button>
         </div>
-      </div>
 
-      <div className={styles.encoderMapping}>
-        <input
-          type="text"
-          value={parameterId}
-          onChange={(e) => setParameterId(e.target.value)}
-          placeholder="parameter_id (e.g. crossfade)"
-          className={styles.parameterInput}
-          aria-label={`Parameter for ${ENCODER_LABELS[encoderIndex]}`}
-        />
-      </div>
-
-      <div className={styles.encoderOptions}>
-        <label className={styles.sensitivityLabel}>
-          <span className={styles.sensitivityText}>Speed:</span>
-          <input
-            type="number"
-            value={sensitivity}
-            onChange={(e) => setSensitivity(parseFloat(e.target.value) || 0.01)}
-            min={0.001}
-            max={1}
-            step={0.01}
-            className={styles.sensitivityInput}
-            aria-label="Sensitivity"
-          />
-        </label>
-
-        <label className={styles.invertedLabel}>
-          <input
-            type="checkbox"
-            checked={inverted}
-            onChange={(e) => setInverted(e.target.checked)}
-            className={styles.invertedCheckbox}
-          />
-          <span>Invert</span>
-        </label>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Encoder mappings section.
- */
-function MappingsSection() {
-  const {
-    mappings,
-    isLoading,
-    addMapping,
-    removeMapping,
-    setupDefaults,
-    clearAll,
-  } = useHidMappings();
-  const [isSettingUp, setIsSettingUp] = useState(false);
-
-  const getMappingForEncoder = (index: number) =>
-    mappings.find((m) => m.encoder_index === index);
-
-  const handleSetupDefaults = async () => {
-    setIsSettingUp(true);
-    try {
-      await setupDefaults();
-    } catch (e) {
-      console.error("[HID] Failed to setup defaults:", e);
-    } finally {
-      setIsSettingUp(false);
-    }
-  };
-
-  if (isLoading) {
-    return <p className={styles.loadingText}>Loading mappings…</p>;
-  }
-
-  return (
-    <div className={styles.mappingsSection}>
-      <div className={styles.encodersList}>
-        {[0, 1, 2].map((idx) => (
-          <EncoderMappingRow
-            key={idx}
-            encoderIndex={idx}
-            mapping={getMappingForEncoder(idx)}
-            onUpdate={addMapping}
-            onRemove={removeMapping}
-          />
-        ))}
-      </div>
-
-      <div className={styles.mappingsActions}>
-        <button
-          type="button"
-          onClick={() => void handleSetupDefaults()}
-          disabled={isSettingUp}
-          className={styles.setupDefaultsButton}
-        >
-          {isSettingUp ? "…" : "Reset to Defaults"}
-        </button>
-        <button
-          type="button"
-          onClick={() => void clearAll()}
-          className={styles.clearAllButton}
-        >
-          Clear All
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Recent encoder events display.
- */
-function RecentEvents() {
-  const { events, clear } = useHidEncoderEvents();
-
-  if (events.length === 0) {
-    return (
-      <p className={styles.emptyText}>
-        No encoder events yet. Turn a knob on the connected device.
-      </p>
-    );
-  }
-
-  return (
-    <div className={styles.recentEvents}>
-      <div className={styles.eventsList}>
-        {events.map((evt, idx) => (
-          <div key={`${evt.timestamp}-${idx}`} className={styles.eventItem}>
-            <span className={styles.eventEncoder}>
-              {ENCODER_LABELS[evt.encoder_index] ??
-                `Encoder ${evt.encoder_index}`}
-            </span>
-            <span
-              className={`${styles.eventDelta} ${evt.delta > 0 ? styles.positive : styles.negative}`}
-            >
-              {evt.delta > 0 ? `+${evt.delta}` : evt.delta}
-            </span>
+        {/* Encoder Events */}
+        <div className={styles.debugGroup}>
+          <div className={styles.debugGroupHeader}>
+            <span>Encoder Events ({encoderEvents.length})</span>
+            {encoderEvents.length > 0 && (
+              <button
+                type="button"
+                onClick={clearEncoders}
+                className={styles.clearButton}
+              >
+                Clear
+              </button>
+            )}
           </div>
-        ))}
-      </div>
-      <button
-        type="button"
-        onClick={clear}
-        className={styles.clearEventsButton}
-      >
-        Clear
-      </button>
-    </div>
+          {encoderEvents.length === 0 ? (
+            <p className={styles.emptyText}>No encoder events</p>
+          ) : (
+            <div className={styles.eventList}>
+              {encoderEvents.slice(0, 10).map((evt, idx) => (
+                <div
+                  key={`enc-${evt.timestamp}-${idx}`}
+                  className={styles.eventItem}
+                >
+                  <span className={styles.eventEncoder}>
+                    {ENCODER_LABELS[evt.encoder_index] ??
+                      `Encoder ${evt.encoder_index}`}
+                  </span>
+                  <span
+                    className={
+                      evt.delta > 0
+                        ? styles.eventPositive
+                        : styles.eventNegative
+                    }
+                  >
+                    {evt.delta > 0 ? `+${evt.delta}` : evt.delta}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Raw Reports */}
+        <div className={styles.debugGroup}>
+          <div className={styles.debugGroupHeader}>
+            <span>Raw Reports ({rawReports.length})</span>
+            {rawReports.length > 0 && (
+              <button
+                type="button"
+                onClick={clearReports}
+                className={styles.clearButton}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {rawReports.length === 0 ? (
+            <p className={styles.emptyText}>No raw reports</p>
+          ) : (
+            <div className={styles.rawReportList}>
+              {rawReports.slice(0, 5).map((report, idx) => (
+                <div
+                  key={`raw-${report.timestamp}-${idx}`}
+                  className={styles.rawReportItem}
+                >
+                  <span className={styles.rawReportSize}>{report.size}B</span>
+                  <code className={styles.rawReportHex}>{report.hex}</code>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Collapsible.Content>
+    </Collapsible.Root>
   );
 }
 
 /**
- * Raw HID reports display for debugging.
+ * Props for the HidPanel component.
+ *
+ * @property className - Optional class name for additional styling
+ * @property selectedSlotIndex - Currently selected slot from macropad (for display)
  */
-function RawReports() {
-  const { reports, clear } = useHidRawReports();
-
-  if (reports.length === 0) {
-    return (
-      <p className={styles.emptyText}>
-        No raw reports yet. Connect a device and interact with it.
-      </p>
-    );
-  }
-
-  return (
-    <div className={styles.rawReports}>
-      <div className={styles.rawReportsList}>
-        {reports.map((report, idx) => (
-          <div
-            key={`${report.timestamp}-${idx}`}
-            className={styles.rawReportItem}
-          >
-            <span className={styles.rawReportSize}>{report.size}B</span>
-            <span className={styles.rawReportHex}>{report.hex}</span>
-          </div>
-        ))}
-      </div>
-      <button
-        type="button"
-        onClick={clear}
-        className={styles.clearEventsButton}
-      >
-        Clear
-      </button>
-    </div>
-  );
-}
-
 export interface HidPanelProps {
-  /** Optional class name for additional styling */
   className?: string;
+  selectedSlotIndex?: number | null;
 }
 
 /**
  * HidPanel
  *
- * Complete HID device management panel with:
- * - Activity indicator
- * - Device connection controls
- * - Encoder mappings editor
- * - Recent events display
+ * Simplified HID device panel with:
+ * - Prominent connection status with auto-connect
+ * - Activity display showing last events
+ * - Collapsible debug section
  */
-export function HidPanel({ className }: HidPanelProps) {
-  const [deviceOpen, setDeviceOpen] = useState(true);
-  const [mappingsOpen, setMappingsOpen] = useState(true);
-  const [eventsOpen, setEventsOpen] = useState(false);
-  const [rawOpen, setRawOpen] = useState(false);
-
+export function HidPanel({ className, selectedSlotIndex }: HidPanelProps) {
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
       <div className={styles.header}>
-        <h3 className={styles.title}>HID / Macropad</h3>
-        <HidActivityIndicator />
+        <h3 className={styles.title}>Macropad</h3>
+        {selectedSlotIndex !== null && selectedSlotIndex !== undefined && (
+          <span className={styles.selectedSlot}>
+            Slot {selectedSlotIndex + 1}
+          </span>
+        )}
       </div>
 
-      <Collapsible.Root open={deviceOpen} onOpenChange={setDeviceOpen}>
-        <Collapsible.Trigger asChild>
-          <button type="button" className={styles.sectionHeader}>
-            {deviceOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Device</span>
-          </button>
-        </Collapsible.Trigger>
-        <Collapsible.Content className={styles.sectionContent}>
-          <DeviceControls />
-        </Collapsible.Content>
-      </Collapsible.Root>
-
-      <Collapsible.Root open={mappingsOpen} onOpenChange={setMappingsOpen}>
-        <Collapsible.Trigger asChild>
-          <button type="button" className={styles.sectionHeader}>
-            {mappingsOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Encoder Mappings</span>
-          </button>
-        </Collapsible.Trigger>
-        <Collapsible.Content className={styles.sectionContent}>
-          <MappingsSection />
-        </Collapsible.Content>
-      </Collapsible.Root>
-
-      <Collapsible.Root open={eventsOpen} onOpenChange={setEventsOpen}>
-        <Collapsible.Trigger asChild>
-          <button type="button" className={styles.sectionHeader}>
-            {eventsOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Recent Events</span>
-          </button>
-        </Collapsible.Trigger>
-        <Collapsible.Content className={styles.sectionContent}>
-          <RecentEvents />
-        </Collapsible.Content>
-      </Collapsible.Root>
-
-      <Collapsible.Root open={rawOpen} onOpenChange={setRawOpen}>
-        <Collapsible.Trigger asChild>
-          <button type="button" className={styles.sectionHeader}>
-            {rawOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Raw Reports (Debug)</span>
-          </button>
-        </Collapsible.Trigger>
-        <Collapsible.Content className={styles.sectionContent}>
-          <RawReports />
-        </Collapsible.Content>
-      </Collapsible.Root>
+      <ConnectionStatus />
+      <ActivityDisplay />
+      <DebugSection />
     </div>
   );
 }

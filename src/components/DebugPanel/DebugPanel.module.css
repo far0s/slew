@@ -34,7 +34,9 @@
   border-right: 1px solid rgb(30 64 175 / 0.5);
   color: rgb(148 163 184);
   cursor: pointer;
-  transition: color 150ms, background-color 150ms;
+  transition:
+    color 150ms,
+    background-color 150ms;
 }
 
 .tabTrigger:last-child {
@@ -77,7 +79,6 @@
 
 .tabBody {
   flex: 1 1 auto;
-  padding: 0.75rem 0.9rem;
   overflow: hidden;
   display: flex;
   flex-direction: column;

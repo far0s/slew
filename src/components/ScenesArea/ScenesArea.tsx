@@ -15,6 +15,7 @@ import styles from "./ScenesArea.module.css";
  * @property crossfadeTargetIndex - Index of crossfade target slot, or null
  * @property crossfadeValue - Current crossfade value (0-1)
  * @property isCrossfading - Whether crossfade is in progress
+ * @property macropadSelectedIndex - Index of slot selected via macropad, or null
  * @property canAddSlot - Whether we can add more slots
  * @property canRemoveSlot - Whether we can remove slots
  * @property getValue - Get parameter value for a given parameter ID
@@ -31,6 +32,7 @@ export interface ScenesAreaProps {
   crossfadeTargetIndex: number | null;
   crossfadeValue: number;
   isCrossfading: boolean;
+  macropadSelectedIndex?: number | null;
   canAddSlot: boolean;
   canRemoveSlot: boolean;
   getValue: (id: string) => number;
@@ -60,6 +62,7 @@ export function ScenesArea({
   crossfadeTargetIndex,
   crossfadeValue,
   isCrossfading,
+  macropadSelectedIndex,
   canAddSlot,
   canRemoveSlot,
   getValue,
@@ -143,6 +146,7 @@ export function ScenesArea({
                   isCrossfadeTarget={slot.index === crossfadeTargetIndex}
                   crossfadeProgress={getCrossfadeProgress(slot.index)}
                   isCrossfading={isCrossfading}
+                  isMacropadSelected={slot.index === macropadSelectedIndex}
                   excludeSceneIds={usedSceneIds.filter(
                     (id) => id !== slot.sceneId,
                   )}

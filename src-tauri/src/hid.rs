@@ -1,28 +1,45 @@
 //! HID Input Module
 //!
-//! Provides direct HID device access for hardware like the Megalodon Triple Knob Macropad.
-//! Reads raw encoder events and maps them to parameter changes.
+//! Provides direct HID device access for hardware like the DOIO Megalodon Macropad.
+//! Supports:
+//! - Auto-connect with periodic device polling
+//! - Encoder events (3 knobs → parameter control)
+//! - Key events (16 keys → scene selection and crossfade trigger)
+//! - Raw report debugging
 
 use hidapi::{HidApi, HidDevice};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-/// Megalodon Triple Knob Macropad identifiers
+/// Megalodon/DOIO Macropad identifiers
 pub const MEGALODON_VENDOR_ID: u16 = 0xD010; // 53264
 pub const MEGALODON_PRODUCT_ID: u16 = 0x1601; // 5633
 
-/// How often to poll the device (in milliseconds)
+/// How often to poll the device for data (in milliseconds)
 const POLL_INTERVAL_MS: u64 = 10;
+
+/// How often to check for device connection (in milliseconds)
+const AUTO_CONNECT_INTERVAL_MS: u64 = 2500;
 
 /// Sensitivity multiplier for encoder turns
 const DEFAULT_SENSITIVITY: f64 = 0.02;
+
+/// HID Usage Page for Keyboard (Generic Desktop)
+const USAGE_PAGE_GENERIC_DESKTOP: u16 = 0x01;
+/// HID Usage for Keyboard
+const USAGE_KEYBOARD: u16 = 0x06;
+/// HID Usage Page for Consumer Control
+const USAGE_PAGE_CONSUMER: u16 = 0x0C;
+/// HID Usage for Consumer Control
+const USAGE_CONSUMER_CONTROL: u16 = 0x01;
 
 // ============================================================================
 // Types
@@ -64,6 +81,8 @@ pub struct HidStatus {
     pub device: Option<HidDeviceInfo>,
     /// Error message if connection failed
     pub error: Option<String>,
+    /// Whether auto-connect is actively searching
+    pub is_searching: bool,
 }
 
 /// A mapping from an encoder knob to a parameter.
@@ -93,10 +112,23 @@ impl Default for HidMapping {
 /// An encoder event for UI display.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HidEncoderEvent {
-    /// Which encoder (0, 1, 2)
+    /// Which encoder (0 = K1/left, 1 = K2/right small, 2 = K3/large bottom)
     pub encoder_index: u8,
     /// Direction: positive = clockwise, negative = counter-clockwise
     pub delta: i8,
+    /// Timestamp in milliseconds
+    pub timestamp: u64,
+}
+
+/// A key event from the macropad.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HidKeyEvent {
+    /// The key code (1-16 for the grid, or special codes for arrows/enter/etc)
+    pub key_code: u8,
+    /// Logical key name for easier handling
+    pub key_name: String,
+    /// Whether the key was pressed (true) or released (false)
+    pub pressed: bool,
     /// Timestamp in milliseconds
     pub timestamp: u64,
 }
@@ -125,6 +157,10 @@ struct HidEngineState {
     should_stop: Arc<Mutex<bool>>,
     /// Number of active reading threads
     active_readers: Arc<Mutex<u32>>,
+    /// Whether auto-connect is enabled
+    auto_connect_enabled: Arc<Mutex<bool>>,
+    /// Track previously pressed keys to detect releases
+    pressed_keys: Vec<u8>,
 }
 
 impl Default for HidEngineState {
@@ -134,11 +170,14 @@ impl Default for HidEngineState {
                 is_connected: false,
                 device: None,
                 error: None,
+                is_searching: false,
             },
             mappings: Vec::new(),
             app_handle: None,
             should_stop: Arc::new(Mutex::new(false)),
             active_readers: Arc::new(Mutex::new(0)),
+            auto_connect_enabled: Arc::new(Mutex::new(true)),
+            pressed_keys: Vec::new(),
         }
     }
 }
@@ -169,6 +208,108 @@ pub fn init_hid_engine(app: &AppHandle) {
 
     let mapping_count = with_hid_engine(|state| state.mappings.len());
     log::info!("[HID] Engine initialized with {} mappings", mapping_count);
+
+    // Start auto-connect thread
+    start_auto_connect_thread();
+}
+
+// ============================================================================
+// Auto-Connect
+// ============================================================================
+
+/// Start a background thread that periodically checks for devices and auto-connects.
+fn start_auto_connect_thread() {
+    let engine = HID_ENGINE.clone();
+
+    thread::spawn(move || {
+        log::info!("[HID] Auto-connect thread started");
+
+        loop {
+            // Check if auto-connect is enabled
+            let (enabled, is_connected) = {
+                let state = engine.lock().unwrap();
+                let enabled = *state.auto_connect_enabled.lock().unwrap();
+                let is_connected = state.status.is_connected;
+                (enabled, is_connected)
+            };
+
+            if !enabled {
+                thread::sleep(Duration::from_millis(AUTO_CONNECT_INTERVAL_MS));
+                continue;
+            }
+
+            // If not connected, try to find and connect
+            if !is_connected {
+                // Update status to searching
+                {
+                    let mut state = engine.lock().unwrap();
+                    if !state.status.is_searching {
+                        state.status.is_searching = true;
+                        // Clone status and app_handle to emit outside the lock
+                        let status = state.status.clone();
+                        let handle = state.app_handle.clone();
+                        drop(state);
+                        if let Some(h) = handle {
+                            let _ = h.emit("hid_status_changed", &status);
+                        }
+                    }
+                }
+
+                // Try to find supported devices
+                match list_supported_devices() {
+                    Ok(devices) if !devices.is_empty() => {
+                        log::info!(
+                            "[HID] Auto-connect: Found {} supported device interface(s)",
+                            devices.len()
+                        );
+
+                        // Try to connect to all interfaces
+                        if let Err(e) = connect_megalodon() {
+                            log::warn!("[HID] Auto-connect failed: {}", e);
+                        } else {
+                            log::info!("[HID] Auto-connect successful");
+                        }
+                    }
+                    Ok(_) => {
+                        // No devices found, keep searching
+                    }
+                    Err(e) => {
+                        log::debug!("[HID] Auto-connect device scan error: {}", e);
+                    }
+                }
+            } else {
+                // Already connected, clear searching status if set
+                let mut state = engine.lock().unwrap();
+                if state.status.is_searching {
+                    state.status.is_searching = false;
+                    let status = state.status.clone();
+                    let handle = state.app_handle.clone();
+                    drop(state);
+                    if let Some(h) = handle {
+                        let _ = h.emit("hid_status_changed", &status);
+                    }
+                }
+            }
+
+            thread::sleep(Duration::from_millis(AUTO_CONNECT_INTERVAL_MS));
+        }
+    });
+}
+
+/// Enable or disable auto-connect.
+pub fn set_auto_connect(enabled: bool) {
+    with_hid_engine(|state| {
+        *state.auto_connect_enabled.lock().unwrap() = enabled;
+    });
+    log::info!(
+        "[HID] Auto-connect {}",
+        if enabled { "enabled" } else { "disabled" }
+    );
+}
+
+/// Check if auto-connect is enabled.
+pub fn is_auto_connect_enabled() -> bool {
+    with_hid_engine(|state| *state.auto_connect_enabled.lock().unwrap())
 }
 
 // ============================================================================
@@ -235,7 +376,7 @@ pub fn list_supported_devices() -> Result<Vec<HidDeviceInfo>, String> {
 
     // Log what we found for debugging
     for dev in &supported {
-        log::info!(
+        log::debug!(
             "[HID] Found interface: {} - {} (page=0x{:04X}, usage=0x{:04X}, iface={})",
             dev.product.as_deref().unwrap_or("Unknown"),
             dev.interface_description,
@@ -298,6 +439,7 @@ fn connect_device_internal(path: &str, update_status: bool) -> Result<(), String
                 is_connected: true,
                 device: Some(device_info.clone()),
                 error: None,
+                is_searching: false,
             };
         });
         emit_status_changed();
@@ -326,16 +468,16 @@ pub fn connect_megalodon() -> Result<(), String> {
 
     // For DOIO/Megalodon, we need multiple interfaces:
     // - Consumer Control (0x0C:0x01) for left and middle knobs
-    // - Keyboard (0x01:0x06) for right knob
+    // - Keyboard (0x01:0x06) for right knob AND key presses
     //
     // Connect to all relevant interfaces
     let consumer_control = supported
         .iter()
-        .find(|d| d.usage_page == 0x0C && d.usage == 0x01);
+        .find(|d| d.usage_page == USAGE_PAGE_CONSUMER && d.usage == USAGE_CONSUMER_CONTROL);
 
     let keyboard = supported
         .iter()
-        .find(|d| d.usage_page == 0x01 && d.usage == 0x06);
+        .find(|d| d.usage_page == USAGE_PAGE_GENERIC_DESKTOP && d.usage == USAGE_KEYBOARD);
 
     let mut connected_any = false;
     let mut first_device_info: Option<HidDeviceInfo> = None;
@@ -351,7 +493,7 @@ pub fn connect_megalodon() -> Result<(), String> {
         }
     }
 
-    // Connect to keyboard for right knob
+    // Connect to keyboard for right knob AND key presses
     if let Some(dev) = keyboard {
         log::info!("[HID] Connecting to Keyboard: {}", dev.path);
         if let Err(e) = connect_device_internal(&dev.path, false) {
@@ -374,6 +516,7 @@ pub fn connect_megalodon() -> Result<(), String> {
             is_connected: true,
             device: first_device_info,
             error: None,
+            is_searching: false,
         };
     });
 
@@ -391,7 +534,9 @@ pub fn disconnect_device() -> Result<(), String> {
             is_connected: false,
             device: None,
             error: None,
+            is_searching: *state.auto_connect_enabled.lock().unwrap(),
         };
+        state.pressed_keys.clear();
         was
     });
 
@@ -454,13 +599,19 @@ fn start_reading_thread(device: HidDevice) {
                     // Only update status to disconnected if no readers remain
                     if remaining == 0 {
                         let mut state = engine.lock().unwrap();
+                        let is_searching = *state.auto_connect_enabled.lock().unwrap();
                         state.status = HidStatus {
                             is_connected: false,
                             device: None,
                             error: Some(format!("Device read error: {}", e)),
+                            is_searching,
                         };
-                        if let Some(handle) = &state.app_handle {
-                            let _ = handle.emit("hid_status_changed", &state.status);
+                        state.pressed_keys.clear();
+                        let status = state.status.clone();
+                        let handle = state.app_handle.clone();
+                        drop(state);
+                        if let Some(h) = handle {
+                            let _ = h.emit("hid_status_changed", &status);
                         }
                     }
                     break;
@@ -476,15 +627,15 @@ fn start_reading_thread(device: HidDevice) {
             }
         }
 
-        log::info!("[HID] Reading thread exiting");
+        log::debug!("[HID] Reading thread exiting");
     });
 }
 
 /// Parse an HID report from the Megalodon.
-/// The Megalodon sends keyboard HID reports. We need to detect encoder turns.
+/// Handles both encoder events and key events.
 fn handle_hid_report(data: &[u8], engine: &Arc<Mutex<HidEngineState>>) {
     // Debug: log raw data
-    log::debug!("[HID] Raw report ({} bytes): {:?}", data.len(), data);
+    log::trace!("[HID] Raw report ({} bytes): {:?}", data.len(), data);
 
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -510,51 +661,29 @@ fn handle_hid_report(data: &[u8], engine: &Arc<Mutex<HidEngineState>>) {
         }
     }
 
-    // The Megalodon likely sends standard keyboard HID reports.
-    // Format: [modifier, reserved, key1, key2, key3, key4, key5, key6]
-    // Or it might use a consumer control report for media keys.
-    //
-    // Common patterns for rotary encoders in VIA/QMK:
-    // - Clockwise: sends a specific keycode (e.g., KC_VOLU, or a custom key)
-    // - Counter-clockwise: sends another keycode (e.g., KC_VOLD, or custom key)
-    //
-    // We'll detect patterns and map them to encoder events.
-
     // Try to interpret as encoder events
     if let Some(event) = parse_encoder_event(data, timestamp) {
         let state = engine.lock().unwrap();
 
-        // Emit event for UI
+        // Emit event for UI - frontend handles parameter routing via useMacropad
         if let Some(handle) = &state.app_handle {
             let _ = handle.emit("hid_encoder", &event);
         }
 
-        // Apply to mapped parameters
         log::debug!(
-            "[HID] Encoder event: index={}, delta={}, mappings_count={}",
+            "[HID] Encoder event: index={}, delta={}",
             event.encoder_index,
-            event.delta,
-            state.mappings.len()
+            event.delta
         );
 
-        for mapping in &state.mappings {
-            if mapping.encoder_index == event.encoder_index {
-                let delta = if mapping.inverted {
-                    -(event.delta as f64)
-                } else {
-                    event.delta as f64
-                };
-
-                let change = delta * mapping.sensitivity;
-                log::debug!("[HID] Applying {} to '{}'", change, mapping.parameter_id);
-                apply_encoder_to_parameter(
-                    &mapping.parameter_id,
-                    change,
-                    state.app_handle.as_ref(),
-                );
-            }
-        }
+        // Note: Legacy backend mapping removed. All encoder → parameter routing
+        // is now handled by the frontend's useMacropad hook, which routes
+        // encoder changes to the currently selected scene's parameters.
+        return;
     }
+
+    // Try to interpret as key events (keyboard NKRO report)
+    parse_and_emit_key_events(data, timestamp, engine);
 }
 
 /// Try to parse encoder event from HID report.
@@ -570,17 +699,17 @@ fn parse_encoder_event(data: &[u8], timestamp: u64) -> Option<HidEncoderEvent> {
     //
     // Based on actual device output:
     //
-    // Left Knob (Consumer Control, 4 bytes starting with 0x04):
+    // K1 - Left small knob (Consumer Control, 4 bytes starting with 0x04):
     //   - Clockwise:        04 B5 00 → Next Track
     //   - Counter-clockwise: 04 B6 00 → Previous Track
     //
-    // Middle Knob (Consumer Control, 4 bytes starting with 0x04):
-    //   - Clockwise:        04 E9 00 → Volume Up
-    //   - Counter-clockwise: 04 EA 00 → Volume Down
-    //
-    // Right Knob (Keyboard NKRO, 32 bytes starting with 0x06):
+    // K2 - Right small knob (Keyboard NKRO, 32 bytes starting with 0x06):
     //   - Clockwise:        byte[11] = 0x08
     //   - Counter-clockwise: byte[11] = 0x40
+    //
+    // K3 - Large bottom knob (Consumer Control, 4 bytes starting with 0x04):
+    //   - Clockwise:        04 E9 00 → Volume Up
+    //   - Counter-clockwise: 04 EA 00 → Volume Down
     //
     // Release events are all zeros (04 00 00 or 06 00 00...)
     // ==========================================================================
@@ -596,33 +725,33 @@ fn parse_encoder_event(data: &[u8], timestamp: u64) -> Option<HidEncoderEvent> {
         }
 
         match consumer_code {
-            // Middle Knob: Volume Up/Down
+            // K3 (Large bottom knob): Volume Up/Down
             0xE9 => {
                 return Some(HidEncoderEvent {
-                    encoder_index: 1, // Middle knob
+                    encoder_index: 2, // K3
                     delta: 1,
                     timestamp,
                 });
             }
             0xEA => {
                 return Some(HidEncoderEvent {
-                    encoder_index: 1, // Middle knob
+                    encoder_index: 2, // K3
                     delta: -1,
                     timestamp,
                 });
             }
 
-            // Left Knob: Next/Previous Track
+            // K1 (Left small knob): Next/Previous Track
             0xB5 => {
                 return Some(HidEncoderEvent {
-                    encoder_index: 0, // Left knob
+                    encoder_index: 0, // K1
                     delta: 1,
                     timestamp,
                 });
             }
             0xB6 => {
                 return Some(HidEncoderEvent {
-                    encoder_index: 0, // Left knob
+                    encoder_index: 0, // K1
                     delta: -1,
                     timestamp,
                 });
@@ -633,27 +762,24 @@ fn parse_encoder_event(data: &[u8], timestamp: u64) -> Option<HidEncoderEvent> {
     }
 
     // Pattern B: DOIO Keyboard NKRO Report (32 bytes, starts with 0x06)
-    // Right knob sends keyboard report with specific bit patterns
+    // K2 (Right small knob) sends keyboard report with specific bit patterns
     // Format: [0x06, 0x00, ..., byte[11] contains the key]
     if data.len() >= 12 && data[0] == 0x06 {
         let key_byte = data[11];
 
-        // Skip release events (all zeros)
-        if key_byte == 0x00 {
-            return None;
-        }
-
+        // Only process encoder-specific bit patterns (0x08 and 0x40)
+        // Other key_byte values are regular key presses, handled separately
         match key_byte {
             0x08 => {
                 return Some(HidEncoderEvent {
-                    encoder_index: 2, // Right knob
+                    encoder_index: 1, // K2 (right small knob)
                     delta: 1,         // Clockwise
                     timestamp,
                 });
             }
             0x40 => {
                 return Some(HidEncoderEvent {
-                    encoder_index: 2, // Right knob
+                    encoder_index: 1, // K2 (right small knob)
                     delta: -1,        // Counter-clockwise
                     timestamp,
                 });
@@ -702,34 +828,200 @@ fn parse_encoder_event(data: &[u8], timestamp: u64) -> Option<HidEncoderEvent> {
     None
 }
 
-/// Apply an encoder change to a parameter.
-fn apply_encoder_to_parameter(parameter_id: &str, change: f64, app_handle: Option<&AppHandle>) {
-    // Get current value, add change, and set new target
-    let new_value = crate::with_parameter_store(|store| {
-        if let Some(param) = store.get(parameter_id) {
-            // Add change to current value (not target, for immediate feedback)
-            let new_val = (param.value + change).clamp(0.0, 2.0); // Clamp to reasonable range
-            store.set_target(parameter_id.to_string(), new_val);
-            Some(new_val)
-        } else {
-            // Parameter doesn't exist, create it with the change as initial value
-            log::debug!("[HID] Parameter '{}' not found, creating", parameter_id);
-            let initial = change.clamp(0.0, 2.0);
-            store.set_target(parameter_id.to_string(), initial);
-            Some(initial)
+/// Parse keyboard NKRO report and emit key events.
+/// Handles both key press and key release detection.
+fn parse_and_emit_key_events(data: &[u8], timestamp: u64, engine: &Arc<Mutex<HidEngineState>>) {
+    // Only process keyboard NKRO reports (32 bytes starting with 0x06)
+    if data.len() < 12 || data[0] != 0x06 {
+        return;
+    }
+
+    // DOIO keyboard NKRO report structure:
+    // Byte 0: Report ID (0x06)
+    // Bytes 1-31: NKRO bitmap (each bit represents a key)
+    //
+    // Standard HID key codes for the number row:
+    // 1 = 0x1E (30), 2 = 0x1F (31), 3 = 0x20 (32), 4 = 0x21 (33)
+    // 5 = 0x22 (34), 6 = 0x23 (35), 7 = 0x24 (36), 8 = 0x25 (37)
+    // 9 = 0x26 (38), 0 = 0x27 (39)
+    // Arrow Up = 0x52, Arrow Down = 0x51, Arrow Left = 0x50, Arrow Right = 0x4F
+    // Enter = 0x28 (40)
+    //
+    // The NKRO bitmap places key code N at bit (N % 8) of byte (N / 8 + 1)
+
+    // Extract all currently pressed keys from the NKRO bitmap
+    let mut current_keys: Vec<u8> = Vec::new();
+
+    for byte_idx in 1..data.len() {
+        let byte = data[byte_idx];
+        if byte == 0 {
+            continue;
         }
-    });
 
-    if let Some(value) = new_value {
-        log::debug!("[HID] {} → {}", parameter_id, value);
+        for bit_idx in 0..8 {
+            if byte & (1 << bit_idx) != 0 {
+                let key_code = ((byte_idx - 1) * 8 + bit_idx) as u8;
 
-        // Emit parameter_changed event
-        if let Some(handle) = app_handle {
-            if let Some(param) = crate::with_parameter_store(|store| store.get(parameter_id)) {
-                let _ = handle.emit("parameter_changed", &param);
+                // Skip the encoder-specific codes (handled above)
+                // 0x08 and 0x40 in byte[11] correspond to key codes that we use for encoder
+                // But we need to check the actual key code, not the byte value
+                // The encoder uses byte[11] directly, which is different from NKRO bitmap
+
+                // For NKRO, key_code is the HID usage ID
+                // We want keys 1-4 (0x1E-0x21), 5-8 (0x22-0x25), 9-0 (0x26-0x27)
+                // Arrow keys (0x4F-0x52), Enter (0x28)
+                // And any function/layer keys
+
+                current_keys.push(key_code);
             }
         }
     }
+
+    // Compare with previously pressed keys to detect changes
+    let mut state = engine.lock().unwrap();
+    let prev_keys = state.pressed_keys.clone();
+
+    // Find newly pressed keys
+    for &key_code in &current_keys {
+        if !prev_keys.contains(&key_code) {
+            // New key pressed
+            if let Some(event) = create_key_event(key_code, true, timestamp) {
+                log::debug!("[HID] Key pressed: {} (0x{:02X})", event.key_name, key_code);
+                if let Some(handle) = &state.app_handle {
+                    let _ = handle.emit("hid_key", &event);
+                }
+            }
+        }
+    }
+
+    // Find released keys
+    for &key_code in &prev_keys {
+        if !current_keys.contains(&key_code) {
+            // Key released
+            if let Some(event) = create_key_event(key_code, false, timestamp) {
+                log::debug!(
+                    "[HID] Key released: {} (0x{:02X})",
+                    event.key_name,
+                    key_code
+                );
+                if let Some(handle) = &state.app_handle {
+                    let _ = handle.emit("hid_key", &event);
+                }
+            }
+        }
+    }
+
+    // Update state
+    state.pressed_keys = current_keys;
+}
+
+/// Create a key event from an HID key code.
+/// Maps DOIO Megalodon key codes to logical key names based on physical layout.
+fn create_key_event(key_code: u8, pressed: bool, timestamp: u64) -> Option<HidKeyEvent> {
+    // DOIO Megalodon key mapping based on actual device output:
+    // Physical layout (4x4 grid + bottom row):
+    //
+    // ┌─────┬─────┬─────┬─────┐
+    // │  1  │  2  │  3  │  4  │  → 0x26(9), 0x27(0), 0x28(Enter), 0x29(Esc)
+    // ├─────┼─────┼─────┼─────┤
+    // │  5  │  6  │  7  │  8  │  → 0x2A, 0x2B, 0x2C(Space), 0x2D
+    // ├─────┼─────┼─────┼─────┤
+    // │  9  │  0  │  ↑  │Enter│  → 0x2E, 0x2F, 0x5A(Num2), 0x30
+    // ├─────┼─────┼─────┼─────┤
+    // │MO(3)│  ←  │  ↓  │  →  │  → 0x30(?), 0x59(Num1), 0x57
+    // └─────┴─────┴─────┴─────┘
+    //
+    // Note: MO(3) sends same code as row 3 Enter (0x30), or may not send anything
+
+    let key_name = match key_code {
+        // Row 1: Keys 1-4 (scene selection keys)
+        0x26 => "1", // Physical key 1 (sends HID "9")
+        0x27 => "2", // Physical key 2 (sends HID "0")
+        0x28 => "3", // Physical key 3 (sends HID "Enter")
+        0x29 => "4", // Physical key 4 (sends HID "Escape")
+
+        // Row 2: Keys 5-8
+        0x2A => "5", // Physical key 5 (Backspace)
+        0x2B => "6", // Physical key 6 (Tab)
+        0x2C => "7", // Physical key 7 (sends HID "Space")
+        0x2D => "8", // Physical key 8 (Minus)
+
+        // Row 3: Keys 9, 0, Up, Enter
+        0x2E => "9",     // Physical key 9 (Equal)
+        0x2F => "0",     // Physical key 0 (Left Bracket)
+        0x5A => "Up",    // Physical Up arrow (sends Num2)
+        0x30 => "Enter", // Physical Enter (Right Bracket) - also MO(3)?
+
+        // Row 4: MO(3), Left, Down, Right
+        // 0x30 is shared with Enter above, MO(3) might not send a unique code
+        // 0x57 is shared by both Down and Right arrows (firmware quirk)
+        0x59 => "Left",       // Physical Left arrow (sends Num1)
+        0x57 => "Down/Right", // Physical Down AND Right arrows share this code
+
+        // Action key - use key 7 (Space position) as primary action
+        // Or physical Enter key (0x30)
+
+        // Fallback standard mappings for any keys not remapped
+        // Standard arrow keys (if device sends these)
+        0x4F => "Right",
+        0x50 => "Left_Std",
+        0x51 => "Down_Std",
+        0x52 => "Up_Std",
+
+        // Function keys (F13+ are often used for macros)
+        0x68 => "F13",
+        0x69 => "F14",
+        0x6A => "F15",
+        0x6B => "F16",
+        0x6C => "F17",
+        0x6D => "F18",
+        0x6E => "F19",
+        0x6F => "F20",
+        0x70 => "F21",
+        0x71 => "F22",
+        0x72 => "F23",
+        0x73 => "F24",
+
+        // Application key
+        0x65 => "App",
+
+        // Other numpad keys
+        0x62 => "Num0",
+        0x5B => "Num3",
+        0x5C => "Num4",
+        0x5D => "Num5",
+        0x5E => "Num6",
+        0x5F => "Num7",
+        0x60 => "Num8",
+        0x61 => "Num9",
+
+        // Common modifiers
+        0xE0 => "LCtrl",
+        0xE1 => "LShift",
+        0xE2 => "LAlt",
+        0xE3 => "LMeta",
+        0xE4 => "RCtrl",
+        0xE5 => "RShift",
+        0xE6 => "RAlt",
+        0xE7 => "RMeta",
+
+        // Unknown key - still emit it with the code
+        _ => {
+            return Some(HidKeyEvent {
+                key_code,
+                key_name: format!("0x{:02X}", key_code),
+                pressed,
+                timestamp,
+            })
+        }
+    };
+
+    Some(HidKeyEvent {
+        key_code,
+        key_name: key_name.to_string(),
+        pressed,
+        timestamp,
+    })
 }
 
 // ============================================================================
@@ -786,6 +1078,8 @@ pub fn clear_mappings() -> Result<(), String> {
 }
 
 /// Set up default mappings for the Megalodon.
+/// NOTE: These are legacy mappings. With the new macropad integration,
+/// encoder mappings are handled dynamically based on selected scene.
 pub fn setup_default_mappings() -> Result<(), String> {
     let defaults = vec![
         HidMapping {
@@ -951,4 +1245,14 @@ pub fn clear_hid_mappings() -> Result<(), String> {
 #[tauri::command]
 pub fn setup_default_hid_mappings() -> Result<(), String> {
     setup_default_mappings()
+}
+
+#[tauri::command]
+pub fn set_hid_auto_connect(enabled: bool) {
+    set_auto_connect(enabled);
+}
+
+#[tauri::command]
+pub fn get_hid_auto_connect() -> bool {
+    is_auto_connect_enabled()
 }

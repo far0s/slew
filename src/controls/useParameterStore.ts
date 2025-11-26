@@ -162,6 +162,10 @@ export function useParameterStore(): ParameterStoreState {
   }, [defaultMap]);
 
   // Apply backend parameters to local state
+  // Uses `target` (the intended value) rather than `value` (interpolated)
+  // because Controls should show what the user set, not intermediate states.
+  // This prevents the tick loop's interpolated values from "fighting" with
+  // user input from macropad encoders or sliders.
   const applyBackendParams = useCallback((params: BackendParameter[]) => {
     setParameters((prev) => {
       const next = new Map(prev);
@@ -169,9 +173,11 @@ export function useParameterStore(): ParameterStoreState {
       for (const param of params) {
         const id = param.id as ParameterId;
         const range = getParameterRange(id);
+        // Use target (intended value) not value (interpolated)
+        const targetValue = param.target;
         const clampedValue = range
-          ? clamp(param.value, range.min, range.max)
-          : param.value;
+          ? clamp(targetValue, range.min, range.max)
+          : targetValue;
         next.set(id, clampedValue);
       }
 

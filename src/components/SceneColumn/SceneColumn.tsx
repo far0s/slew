@@ -19,6 +19,7 @@ import styles from "./SceneColumn.module.css";
  * @property isCrossfadeTarget - Whether this slot is the crossfade target
  * @property crossfadeProgress - Current crossfade progress (0-100) for this slot
  * @property isCrossfading - Whether crossfade is in progress
+ * @property isMacropadSelected - Whether this slot is selected via macropad (keys 1-4)
  * @property excludeSceneIds - Scene IDs to exclude from dropdown (already in use)
  * @property canRemove - Whether the slot can be removed
  * @property params - Scene params for preview rendering
@@ -35,6 +36,7 @@ export interface SceneColumnProps {
   isCrossfadeTarget: boolean;
   crossfadeProgress: number;
   isCrossfading: boolean;
+  isMacropadSelected?: boolean;
   excludeSceneIds: SceneId[];
   canRemove: boolean;
   params?: SceneProps["params"];
@@ -70,6 +72,7 @@ export function SceneColumn({
   isCrossfadeTarget,
   crossfadeProgress,
   isCrossfading,
+  isMacropadSelected = false,
   excludeSceneIds,
   canRemove,
   params,
@@ -107,10 +110,19 @@ export function SceneColumn({
   // Show remove button only if allowed and not active
   const showRemoveButton = canRemove && !isActive;
 
+  // Build column class names
+  const columnClassNames = [
+    styles.column,
+    isActive && styles.activeColumn,
+    isMacropadSelected && !isActive && styles.macropadSelected,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <motion.article
-      className={`${styles.column} ${isActive ? styles.activeColumn : ""}`}
-      aria-label={`Scene slot ${displayNumber}`}
+      className={columnClassNames}
+      aria-label={`Scene slot ${displayNumber}${isMacropadSelected ? " (macropad selected)" : ""}`}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
@@ -143,8 +155,15 @@ export function SceneColumn({
           <div className={styles.fallback}>Unknown scene: {sceneId}</div>
         )}
 
-        {/* Slot number badge (top-left) */}
-        <div className={styles.slotBadge}>{displayNumber}</div>
+        {/* Slot number badge (top-left) - highlight when macropad selected */}
+        <div
+          className={`${styles.slotBadge} ${isMacropadSelected ? styles.slotBadgeSelected : ""}`}
+        >
+          {displayNumber}
+          {isMacropadSelected && (
+            <span className={styles.macropadIndicator}>⎈</span>
+          )}
+        </div>
 
         {/* Bottom overlay with scene selector, crossfade button, and remove button */}
         <div className={styles.bottomOverlay}>

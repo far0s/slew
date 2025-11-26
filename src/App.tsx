@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useSceneSlots } from "./scenes/useSceneSlots";
@@ -8,6 +8,7 @@ import {
   type BackendParameter,
 } from "./controls/useParameterStore";
 import type { SceneId } from "./scenes/sceneTypes";
+import { getSceneDescriptor } from "./scenes/sceneTypes";
 import {
   ScenesArea,
   RendererPreview,
@@ -15,8 +16,8 @@ import {
   type LogEntry,
   type DebugMetricsData,
 } from "./components";
+import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import styles from "./App.module.css";
-import { useState } from "react";
 
 /** Maximum number of log entries to keep in memory */
 const MAX_LOG_ENTRIES = 100;
@@ -35,6 +36,11 @@ function App() {
   // Debug logs state
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const logIdCounter = useRef(0);
+
+  // Macropad selected slot (distinct from crossfade target)
+  const [macropadSelectedIndex, setMacropadSelectedIndex] = useState<
+    number | null
+  >(null);
 
   // Debug metrics state
   const [metrics, setMetrics] = useState<DebugMetricsData>(() => ({
@@ -116,39 +122,145 @@ function App() {
   }, []);
 
   // Handle crossfade to a slot
-  async function handleCrossfade(targetSlotIndex: number) {
-    if (targetSlotIndex === sceneSlots.activeIndex) return;
+  const handleCrossfade = useCallback(
+    async (targetSlotIndex: number) => {
+      if (targetSlotIndex === sceneSlots.activeIndex) return;
+      if (sceneSlots.isCrossfading) return;
+
+      // Start crossfade in slot state
+      sceneSlots.startCrossfade(targetSlotIndex);
+
+      try {
+        // CRITICAL: Set scene pairing BEFORE changing crossfade value
+        // This ensures the Renderer knows which scenes to show before the fade starts
+        const targetSceneId = sceneSlots.getSceneId(targetSlotIndex);
+        const activeSceneId = sceneSlots.getSceneId(sceneSlots.activeIndex);
+        if (targetSceneId && activeSceneId) {
+          await invoke("set_scene_pairing", {
+            activeSceneId,
+            nextSceneId: targetSceneId,
+          });
+        }
+
+        // Now set crossfade target to 1 (will transition from active to target)
+        await invoke("set_parameter", {
+          id: "crossfade",
+          value: 1,
+          app: undefined,
+        });
+        await invoke("forward_controls_event", {
+          event: "crossfade",
+          payload: JSON.stringify({ value: 1 }),
+        });
+      } catch (error) {
+        console.error("[Controls] Failed to start crossfade", error);
+        sceneSlots.cancelCrossfade();
+      }
+    },
+    [sceneSlots],
+  );
+
+  // Get parameters for the target scene (macropad-selected or active slot)
+  // Sorted by orderHint for encoder mapping
+  const getTargetSceneParameters = useCallback(() => {
+    // Use macropad selection if available, otherwise use active slot
+    const targetIndex = macropadSelectedIndex ?? sceneSlots.activeIndex;
+    const sceneId = sceneSlots.getSceneId(targetIndex);
+    if (!sceneId) return [];
+    const descriptor = getSceneDescriptor(sceneId);
+    if (!descriptor) return [];
+    // Sort by orderHint (ascending)
+    return [...descriptor.parameters].sort(
+      (a, b) => (a.orderHint ?? 0) - (b.orderHint ?? 0),
+    );
+  }, [macropadSelectedIndex, sceneSlots]);
+
+  // Handle macropad slot selection
+  const handleMacropadSlotSelect = useCallback(
+    (slotIndex: number) => {
+      // Only select if the slot exists
+      if (slotIndex < sceneSlots.slots.length) {
+        setMacropadSelectedIndex(slotIndex);
+      }
+    },
+    [sceneSlots.slots.length],
+  );
+
+  // Handle macropad crossfade trigger
+  const handleMacropadCrossfade = useCallback(() => {
+    if (macropadSelectedIndex === null) return;
+    if (macropadSelectedIndex === sceneSlots.activeIndex) return;
     if (sceneSlots.isCrossfading) return;
 
-    // Start crossfade in slot state
-    sceneSlots.startCrossfade(targetSlotIndex);
+    // Trigger crossfade to the selected slot
+    void handleCrossfade(macropadSelectedIndex);
 
-    // Set crossfade target to 1 (will transition from active to target)
-    try {
-      await invoke("set_parameter", {
-        id: "crossfade",
-        value: 1,
+    // Clear selection after triggering
+    setMacropadSelectedIndex(null);
+  }, [
+    macropadSelectedIndex,
+    sceneSlots.activeIndex,
+    sceneSlots.isCrossfading,
+    handleCrossfade,
+  ]);
+
+  // Handle macropad encoder change
+  // Routes to macropad-selected scene, or active scene if none selected
+  const handleMacropadEncoder = useCallback(
+    (encoderIndex: number, delta: number) => {
+      const params = getTargetSceneParameters();
+      if (encoderIndex >= params.length) return;
+
+      const param = params[encoderIndex];
+      const currentValue = paramStore.get(param.id);
+
+      // Use the larger of: sensitivity-based change OR one step
+      // This ensures parameters with large step sizes (like rotationSpeed: 0.05)
+      // still respond to encoder input (sensitivity: 0.02)
+      const sensitivityChange = Math.abs(delta) * DEFAULT_SENSITIVITY;
+      const stepChange = param.step;
+      const actualChange =
+        Math.max(sensitivityChange, stepChange) * Math.sign(delta);
+
+      const newValue = Math.max(
+        param.min,
+        Math.min(param.max, currentValue + actualChange),
+      );
+
+      // Round to step
+      const stepped = Math.round(newValue / param.step) * param.step;
+
+      // Skip if value hasn't actually changed (can happen at min/max bounds)
+      if (stepped === currentValue) return;
+
+      // Update local state immediately for responsive UI
+      paramStore.set(param.id, stepped);
+
+      // Send to backend so Renderer receives the update via parameter_changed event
+      void invoke("set_parameter", {
+        id: param.id,
+        value: stepped,
         app: undefined,
+      }).catch((error) => {
+        console.error(`[Macropad] Failed to set ${param.id}:`, error);
       });
-      await invoke("forward_controls_event", {
-        event: "crossfade",
-        payload: JSON.stringify({ value: 1 }),
-      });
+    },
+    [getTargetSceneParameters, paramStore],
+  );
 
-      // Update scene pairing on backend
-      const targetSceneId = sceneSlots.getSceneId(targetSlotIndex);
-      const activeSceneId = sceneSlots.getSceneId(sceneSlots.activeIndex);
-      if (targetSceneId && activeSceneId) {
-        await invoke("set_scene_pairing", {
-          activeSceneId,
-          nextSceneId: targetSceneId,
-        });
-      }
-    } catch (error) {
-      console.error("[Controls] Failed to start crossfade", error);
-      sceneSlots.cancelCrossfade();
-    }
-  }
+  // Use macropad hook for HID integration
+  // Note: We don't use the returned state directly, but the hook sets up
+  // event listeners that call our callbacks
+  useMacropad(
+    {
+      onSlotSelect: handleMacropadSlotSelect,
+      onCrossfade: handleMacropadCrossfade,
+      onEncoderChange: handleMacropadEncoder,
+    },
+    {
+      maxSlots: sceneSlots.slots.length,
+    },
+  );
 
   // Handle slot scene change
   async function handleSlotSceneChange(slotIndex: number, sceneId: SceneId) {
@@ -247,22 +359,53 @@ function App() {
 
       // Complete crossfade when we reach the target
       if (crossfade >= 0.99) {
+        // Capture the new active scene ID BEFORE completing (target becomes active)
+        const newActiveSceneId = sceneSlots.getSceneId(
+          sceneSlots.crossfadeTargetIndex,
+        );
+
+        // Complete the crossfade in local state
         sceneSlots.completeCrossfade();
-        // Reset crossfade to 0 for next transition
+
+        // Update Renderer and reset crossfade
         void (async () => {
           try {
+            // CRITICAL: Tell Renderer the new active scene BEFORE resetting crossfade
+            if (newActiveSceneId) {
+              await invoke("set_scene_pairing", {
+                activeSceneId: newActiveSceneId,
+                nextSceneId: newActiveSceneId,
+              });
+            }
+
+            // Now reset crossfade to 0 for next transition
             await invoke("set_parameter", {
               id: "crossfade",
               value: 0,
               app: undefined,
             });
           } catch (error) {
-            console.error("[Controls] Failed to reset crossfade", error);
+            console.error("[Controls] Failed to complete crossfade", error);
           }
         })();
       }
     }
   }, [paramStore.get("crossfade"), sceneSlots.crossfadeTargetIndex]);
+
+  // Sync initial scene pairing to Renderer on startup
+  useEffect(() => {
+    const activeSceneId = sceneSlots.getSceneId(sceneSlots.activeIndex);
+    if (activeSceneId) {
+      void invoke("set_scene_pairing", {
+        activeSceneId,
+        nextSceneId: activeSceneId,
+      }).catch((error) => {
+        console.error("[Controls] Failed to sync initial scene pairing", error);
+      });
+    }
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Initial load and event subscription
   useEffect(() => {
@@ -275,7 +418,16 @@ function App() {
           "parameter_changed",
           (event) => {
             const updated = event.payload;
-            paramStore.applyBackendParams([updated]);
+
+            // For crossfade, use interpolated value (smooth animation)
+            // For other parameters, use target (immediate response to user input)
+            if (updated.id === "crossfade") {
+              // Use value for smooth crossfade animation in UI
+              paramStore.set("crossfade", updated.value);
+            } else {
+              // Use target for immediate response to user input
+              paramStore.applyBackendParams([updated]);
+            }
 
             // Update backend snapshot
             const current = paramStore.backendSnapshot ?? [];
@@ -343,6 +495,7 @@ function App() {
             crossfadeTargetIndex={sceneSlots.crossfadeTargetIndex}
             crossfadeValue={sceneSlots.crossfadeValue}
             isCrossfading={sceneSlots.isCrossfading}
+            macropadSelectedIndex={macropadSelectedIndex}
             canAddSlot={sceneSlots.canAddSlot}
             canRemoveSlot={sceneSlots.canRemoveSlot}
             getValue={getValue}
@@ -376,6 +529,7 @@ function App() {
             onClearLogs={handleClearLogs}
             metrics={metrics}
             onResetMetrics={handleResetMetrics}
+            macropadSelectedIndex={macropadSelectedIndex}
           />
         </aside>
       </main>
