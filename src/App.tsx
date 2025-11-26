@@ -14,6 +14,7 @@ import { ScenesArea, RendererPreview, DebugPanel } from "./components";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings } from "./inputs/audio";
 import { useLfos, useModulationTargets } from "./inputs/modulation";
+import { useStatsToggle } from "./hooks";
 import styles from "./App.module.css";
 
 function App() {
@@ -38,6 +39,9 @@ function App() {
   const [macropadSelectedIndex, setMacropadSelectedIndex] = useState<
     number | null
   >(null);
+
+  // Stats toggle (press "D" to show/hide performance stats)
+  const { showStats } = useStatsToggle();
 
   // Handle crossfade to a slot
   const handleCrossfade = useCallback(
@@ -416,6 +420,7 @@ function App() {
             sceneATintLfoDepth={paramStore.getInterpolated(
               "scene_a_tint_lfo_depth",
             )}
+            showStats={showStats}
           />
           <DebugPanel macropadSelectedIndex={macropadSelectedIndex} />
         </aside>

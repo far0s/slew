@@ -1,5 +1,6 @@
 import { Suspense, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
+import { Perf } from "r3f-perf";
 import type { SceneId } from "../../scenes/sceneTypes";
 import { SCENE_COMPONENT_REGISTRY } from "../../scenes/sceneComponents";
 import type { SceneProps } from "../../scenes/sceneComponents";
@@ -18,6 +19,8 @@ export interface RendererPreviewProps {
   nextSceneParams?: SceneProps["params"];
   /** Scene A tint LFO depth for modulation (only applies when active/next is sceneA) */
   sceneATintLfoDepth?: number;
+  /** Show performance stats (toggled with "D" key) */
+  showStats?: boolean;
 }
 
 interface TintLfoDriverProps {
@@ -158,6 +161,7 @@ export function RendererPreview({
   activeSceneParams,
   nextSceneParams,
   sceneATintLfoDepth = 0,
+  showStats = false,
 }: RendererPreviewProps) {
   return (
     <div className={styles.container}>
@@ -174,6 +178,14 @@ export function RendererPreview({
             powerPreference: "low-power",
           }}
         >
+          {showStats && (
+            <Perf
+              position="top-left"
+              minimal={true}
+              showGraph={false}
+              colorBlind={false}
+            />
+          )}
           <RendererPreviewContent
             activeSceneId={activeSceneId}
             nextSceneId={nextSceneId}

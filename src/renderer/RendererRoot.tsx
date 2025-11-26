@@ -2,12 +2,14 @@ import { useEffect, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Canvas, useFrame } from "@react-three/fiber";
+import { Perf } from "r3f-perf";
 import {
   SCENE_COMPONENT_REGISTRY,
   type SceneProps,
 } from "../scenes/sceneComponents";
 import { ALL_SCENE_IDS, type SceneId } from "../scenes/sceneTypes";
 import { getSceneDescriptor } from "../scenes/sceneTypes";
+import { useStatsToggle } from "../hooks";
 import styles from "./RendererRoot.module.css";
 
 // =============================================================================
@@ -257,6 +259,9 @@ export function RendererRoot() {
   // Generic parameter store - stores ANY parameter by its backend ID
   const [paramStore, setParamStore] = useState<Record<string, number>>({});
 
+  // Stats toggle (press "D" to show/hide performance stats)
+  const { showStats } = useStatsToggle();
+
   // Update a parameter and trigger re-render
   const updateParam = useCallback((id: string, value: number) => {
     setParamStore((prev) => {
@@ -389,6 +394,14 @@ export function RendererRoot() {
   return (
     <div className={styles.root}>
       <Canvas camera={{ position: [0, 0, 4], fov: 50 }} frameloop="always">
+        {showStats && (
+          <Perf
+            position="top-left"
+            minimal={false}
+            showGraph={true}
+            colorBlind={false}
+          />
+        )}
         <RendererContent
           activeSceneId={activeSceneId}
           nextSceneId={nextSceneId}
