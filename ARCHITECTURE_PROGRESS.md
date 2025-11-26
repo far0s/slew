@@ -29,8 +29,10 @@ Legend:
   - `controls` → `/`
 - ✅ Single frontend bundle with path-based dispatch in `src/main.tsx`
 - ✅ Basic scene system and parameter wiring (Scene A, B, C)
-- ✅ Scene Control UI with Active/Next selection, crossfade buttons, and progress indicators
-- ✅ Live scene previews (per-scene and global renderer preview with crossfade blending)
+- ✅ Scene Control UI with numbered slots (1-4), crossfade buttons, and progress indicators
+- ✅ Live scene previews (per-scene columns and global renderer preview with crossfade blending)
+- ✅ Flexible scene slot system (add/remove scenes, 1-4 max)
+- ✅ Auto-generated parameter controls from scene descriptors
 - 🧩 Modulation engine designed (simple renderer-side LFO implemented for Scene A tint)
 - ✅ Input engines fully implemented:
   - MIDI: device enumeration, Learn workflow, per-slider integration
@@ -1364,8 +1366,94 @@ Update and answer these over time; future LLM sessions will rely on them.
 
 ---
 
-## 7. Housekeeping Notes
+## 8. Scene Management Refactor (Latest)
+
+**Date:** November 2024
+
+### Summary
+
+Major refactor of the Controls window scene management system:
+
+1. **Slot-Based System** — Replaced "Active/Next" paradigm with numbered scene slots (1-4)
+2. **Single Source of Truth** — Scene descriptors in `sceneTypes.ts` now drive all UI controls
+3. **Auto-Generated Controls** — New `SceneParameterControls` component reads from descriptors
+4. **Map-Based Parameter Store** — Replaced individual `useState` calls with `useParameterStore` hook
+5. **Scroll Edge Fades** — ScenesArea shows fade gradients when content overflows
+
+### New Files
+
+- `src/scenes/useSceneSlots.ts` — Slot management hook (add/remove/reorder/crossfade)
+- `src/controls/useParameterStore.ts` — Map-based parameter state with backend sync
+- `src/components/SceneParameterControls/` — Auto-generated sliders from scene descriptors
+- `src/components/SceneColumn/` — Single scene column (preview + header + controls)
+- `src/components/ScenesArea/` — Horizontally scrollable container for columns with edge fade gradients
+
+### Removed Files
+
+- `src/components/SceneAControls/` — Replaced by auto-generated controls
+- `src/components/SceneBControls/` — Replaced by auto-generated controls
+- `src/components/SceneCControls/` — Replaced by auto-generated controls
+- `src/components/SceneControlStrip/` — Replaced by ScenesArea
+- `src/components/ScenePreview/` — Preview now embedded in SceneColumn
+- `src/controls/controlsParameters.ts` — Replaced by useParameterStore
+- `src/controls/scenePairing.ts` — No longer needed
+
+### Updated Files
+
+- `src/scenes/sceneTypes.ts` — Enhanced `SceneParameterDescriptor` with `step`, `color`, `description`
+- `src/App.tsx` — New layout using slot-based system
+- `src/App.module.css` — 4/5 + 1/5 two-column responsive layout
+- `src/components/ParameterSlider/` — Extended color variants (rose, violet, lime, orange, fuchsia)
+- `src/components/index.ts` — Updated exports
+
+### UI Changes
+
+- **Layout:** Main area (4/5) with horizontal scroll, sidebar (1/5) for preview + debug
+- **Scene Columns:** Each shows preview canvas, scene selector, status badge, crossfade button, controls
+- **Responsive:** Columns have max-width 420px, fit ~3.5 columns on desktop
+- **Add/Remove:** "Add Scene" button when < 4 slots; remove button on non-active slots
+- **Scroll Fades:** Left/right gradient overlays appear when list is scrollable and not at edge
+
+### Key Design Decisions
+
+- Crossfade uses backend transition (option B) — no frontend animation
+- Parameter store uses Map pattern for cleaner state management
+- Scene descriptors are the single source of truth for controls
+- Each column has its own embedded 3D preview (not shared)
+- JSDoc uses consolidated `@property` blocks before interfaces (see `ARCHITECTURE.md` Code Style section)
+
+---
+
+## 9. Housekeeping Notes
 
 - After each incremental change, run TypeScript/Rust diagnostics to keep the codebase green.
 - Keep this document updated as features land.
 - Mark relevant roadmap items as 🧪/✅ when work begins or completes.
+- Follow the JSDoc conventions documented in `ARCHITECTURE.md` (Code Style section).
+
+---
+
+## 10. Code Style Reference
+
+See `ARCHITECTURE.md` → **Code Style** section for:
+
+- **JSDoc pattern:** Use consolidated `@property` blocks before interfaces, not inline comments
+- **Component docs:** One-liner + feature bullets
+- **Hook docs:** Purpose, key concepts, return type
+
+Example:
+
+```ts
+/**
+ * Props for the ScenesArea component.
+ *
+ * @property slots - Array of scene slots to render
+ * @property activeIndex - Index of the active (output) slot
+ * @property onAddSlot - Callback to add a new slot
+ */
+export interface ScenesAreaProps {
+  slots: SceneSlot[];
+  activeIndex: number;
+  onAddSlot: () => void;
+}
+```

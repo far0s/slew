@@ -1,6 +1,6 @@
 import React from "react";
 import { getSceneDescriptor, type ParameterId } from "../../scenes/sceneTypes";
-import type { BackendParameter } from "../../controls/controlsParameters";
+import type { BackendParameter } from "../../controls/useParameterStore";
 import { Button } from "../Button";
 import styles from "./BackendInspector.module.css";
 

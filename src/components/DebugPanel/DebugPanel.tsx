@@ -1,5 +1,5 @@
 import * as Tabs from "@radix-ui/react-tabs";
-import type { BackendParameter } from "../../controls/controlsParameters";
+import type { BackendParameter } from "../../controls/useParameterStore";
 import { BackendInspector } from "../BackendInspector/";
 import { DebugLogs, type LogEntry } from "../DebugLogs";
 import { DebugMetrics, type DebugMetricsData } from "../DebugMetrics";

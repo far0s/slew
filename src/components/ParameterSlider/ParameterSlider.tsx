@@ -7,8 +7,30 @@ export type SliderColorVariant =
   | "indigo"
   | "cyan"
   | "amber"
-  | "sky";
+  | "rose"
+  | "violet"
+  | "lime"
+  | "orange"
+  | "sky"
+  | "fuchsia";
 
+/**
+ * Props for the ParameterSlider component.
+ *
+ * @property id - Unique identifier for the slider element
+ * @property label - Display label for the parameter
+ * @property value - Current value
+ * @property min - Minimum value
+ * @property max - Maximum value
+ * @property step - Step increment
+ * @property description - Optional description text shown below the slider
+ * @property color - Color variant for the slider track and thumb
+ * @property showSpacing - Whether to add top margin for visual separation
+ * @property formatValue - Custom value formatter function
+ * @property onChange - Callback when value changes
+ * @property aria-label - Accessible label override
+ * @property midiParameterId - Parameter ID for MIDI Learn; if provided, shows a Learn button
+ */
 export interface ParameterSliderProps {
   id: string;
   label: string;
@@ -22,7 +44,6 @@ export interface ParameterSliderProps {
   formatValue?: (value: number) => string;
   onChange: (value: number) => void;
   "aria-label"?: string;
-  /** Optional: Parameter ID for MIDI Learn. If provided, shows a Learn button. */
   midiParameterId?: string;
 }
 

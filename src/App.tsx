@@ -1,79 +1,36 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { AnimatePresence, motion } from "motion/react";
-import { type SceneId } from "./scenes/sceneTypes";
-import type { SceneProps } from "./scenes/sceneComponents";
+import { useSceneSlots } from "./scenes/useSceneSlots";
 import {
+  useParameterStore,
+  buildSceneParams,
   type BackendParameter,
-  useControlsParameters,
-} from "./controls/controlsParameters";
+} from "./controls/useParameterStore";
+import type { SceneId } from "./scenes/sceneTypes";
 import {
-  SceneControlStrip,
-  SceneAControls,
-  SceneBControls,
-  SceneCControls,
+  ScenesArea,
   RendererPreview,
   DebugPanel,
   type LogEntry,
   type DebugMetricsData,
 } from "./components";
 import styles from "./App.module.css";
+import { useState } from "react";
 
 /** Maximum number of log entries to keep in memory */
 const MAX_LOG_ENTRIES = 100;
 
 function App() {
-  const {
-    crossfade,
-    // Scene A
-    sceneABrightness,
-    rotationSpeed,
-    sceneAWobble,
-    sceneATint,
-    sceneATintLfoDepth,
-    // Scene B
-    sceneBBrightness,
-    sceneBRotationSpeed,
-    sceneBTint,
-    sceneBScale,
-    // Scene C
-    sceneCBrightness,
-    sceneCPulseSpeed,
-    sceneCRotationSpeed,
-    sceneCTint,
+  // Scene slots state
+  const sceneSlots = useSceneSlots({
+    minSlots: 1,
+    maxSlots: 6,
+    initialScenes: ["sceneA"],
+  });
 
-    backendParameters,
-    isLoadingParams,
-    paramError,
-
-    setCrossfade,
-    // Scene A setters
-    setSceneABrightness,
-    setRotationSpeed,
-    setSceneAWobble,
-    setSceneATint,
-    setSceneATintLfoDepth,
-    // Scene B setters
-    setSceneBBrightness,
-    setSceneBRotationSpeed,
-    setSceneBTint,
-    setSceneBScale,
-    // Scene C setters
-    setSceneCBrightness,
-    setSceneCPulseSpeed,
-    setSceneCRotationSpeed,
-    setSceneCTint,
-
-    setBackendParameters,
-    setIsLoadingParams,
-    setParamError,
-    DEFAULTS,
-    applyBackendParamsToSliders,
-  } = useControlsParameters();
-
-  const [activeSceneId, setActiveSceneId] = useState<SceneId>("sceneA");
-  const [nextSceneId, setNextSceneId] = useState<SceneId>("sceneB");
+  // Parameter store (replaces individual useState calls)
+  const paramStore = useParameterStore();
 
   // Debug logs state
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -158,91 +115,115 @@ function App() {
     prevCrossfadeRef.current = null;
   }, []);
 
-  async function handleCrossfadeChange(next: number) {
-    setCrossfade(next);
+  // Handle crossfade to a slot
+  async function handleCrossfade(targetSlotIndex: number) {
+    if (targetSlotIndex === sceneSlots.activeIndex) return;
+    if (sceneSlots.isCrossfading) return;
+
+    // Start crossfade in slot state
+    sceneSlots.startCrossfade(targetSlotIndex);
+
+    // Set crossfade target to 1 (will transition from active to target)
     try {
       await invoke("set_parameter", {
         id: "crossfade",
-        value: next,
+        value: 1,
         app: undefined,
       });
       await invoke("forward_controls_event", {
         event: "crossfade",
-        payload: JSON.stringify({ value: next }),
+        payload: JSON.stringify({ value: 1 }),
       });
+
+      // Update scene pairing on backend
+      const targetSceneId = sceneSlots.getSceneId(targetSlotIndex);
+      const activeSceneId = sceneSlots.getSceneId(sceneSlots.activeIndex);
+      if (targetSceneId && activeSceneId) {
+        await invoke("set_scene_pairing", {
+          activeSceneId,
+          nextSceneId: targetSceneId,
+        });
+      }
     } catch (error) {
-      console.error("[Controls] Failed to update crossfade", error);
+      console.error("[Controls] Failed to start crossfade", error);
+      sceneSlots.cancelCrossfade();
     }
   }
 
+  // Handle slot scene change
+  async function handleSlotSceneChange(slotIndex: number, sceneId: SceneId) {
+    sceneSlots.setSlotScene(slotIndex, sceneId);
+
+    // Update backend if this affects the active/target pair
+    try {
+      const activeSceneId = sceneSlots.isActiveSlot(slotIndex)
+        ? sceneId
+        : sceneSlots.getSceneId(sceneSlots.activeIndex);
+
+      const targetSceneId = sceneSlots.isCrossfadeTarget(slotIndex)
+        ? sceneId
+        : sceneSlots.crossfadeTargetIndex !== null
+          ? sceneSlots.getSceneId(sceneSlots.crossfadeTargetIndex)
+          : null;
+
+      if (activeSceneId) {
+        await invoke("set_scene_pairing", {
+          activeSceneId,
+          nextSceneId: targetSceneId ?? activeSceneId,
+        });
+      }
+    } catch (error) {
+      console.error("[Controls] Failed to update scene pairing", error);
+    }
+  }
+
+  // Handle add slot
+  function handleAddSlot() {
+    sceneSlots.addSlot();
+  }
+
+  // Handle remove slot
+  function handleRemoveSlot(slotIndex: number) {
+    sceneSlots.removeSlot(slotIndex);
+  }
+
+  // Refresh backend parameters
   async function refreshBackendParameters() {
-    setIsLoadingParams(true);
-    setParamError(null);
+    paramStore.setIsLoading(true);
+    paramStore.setError(null);
     try {
       const response = (await invoke("get_parameters")) as BackendParameter[];
-      setBackendParameters(response);
-      applyBackendParamsToSliders(response);
+      paramStore.setBackendSnapshot(response);
+      paramStore.applyBackendParams(response);
     } catch (error) {
-      setParamError("Failed to load parameters from backend");
+      paramStore.setError("Failed to load parameters from backend");
       console.error("[Controls] get_parameters failed", error);
     } finally {
-      setIsLoadingParams(false);
+      paramStore.setIsLoading(false);
     }
   }
 
+  // Clear all parameters
   async function handleClearParameters() {
-    setParamError(null);
+    paramStore.setError(null);
     try {
       await invoke("clear_parameters");
-      setBackendParameters([]);
-
-      // Reset all sliders to defaults
-      setCrossfade(DEFAULTS.crossfade);
-      // Scene A
-      setSceneABrightness(DEFAULTS.sceneABrightness);
-      setRotationSpeed(DEFAULTS.rotationSpeed);
-      setSceneAWobble(DEFAULTS.sceneAWobble);
-      setSceneATint(DEFAULTS.sceneATint);
-      setSceneATintLfoDepth(DEFAULTS.sceneATintLfoDepth);
-      // Scene B
-      setSceneBBrightness(DEFAULTS.sceneBBrightness);
-      setSceneBRotationSpeed(DEFAULTS.sceneBRotationSpeed);
-      setSceneBTint(DEFAULTS.sceneBTint);
-      setSceneBScale(DEFAULTS.sceneBScale);
-      // Scene C
-      setSceneCBrightness(DEFAULTS.sceneCBrightness);
-      setSceneCPulseSpeed(DEFAULTS.sceneCPulseSpeed);
-      setSceneCRotationSpeed(DEFAULTS.sceneCRotationSpeed);
-      setSceneCTint(DEFAULTS.sceneCTint);
+      paramStore.setBackendSnapshot([]);
+      paramStore.resetAllToDefaults();
     } catch (error) {
-      setParamError("Failed to clear parameters in backend");
+      paramStore.setError("Failed to clear parameters in backend");
       console.error("[Controls] clear_parameters failed", error);
     }
   }
 
+  // Reset parameters to defaults
   async function handleResetDefaults() {
-    setParamError(null);
+    paramStore.setError(null);
 
-    const defaults: Array<{ id: string; value: number }> = [
-      // Crossfade
-      { id: "crossfade", value: DEFAULTS.crossfade },
-      // Scene A
-      { id: "scene_a_brightness", value: DEFAULTS.sceneABrightness },
-      { id: "rotationSpeed", value: DEFAULTS.rotationSpeed },
-      { id: "scene_a_wobble", value: DEFAULTS.sceneAWobble },
-      { id: "scene_a_tint", value: DEFAULTS.sceneATint },
-      { id: "scene_a_tint_lfo_depth", value: DEFAULTS.sceneATintLfoDepth },
-      // Scene B
-      { id: "scene_b_brightness", value: DEFAULTS.sceneBBrightness },
-      { id: "scene_b_rotation_speed", value: DEFAULTS.sceneBRotationSpeed },
-      { id: "scene_b_tint", value: DEFAULTS.sceneBTint },
-      { id: "scene_b_scale", value: DEFAULTS.sceneBScale },
-      // Scene C
-      { id: "scene_c_brightness", value: DEFAULTS.sceneCBrightness },
-      { id: "scene_c_pulse_speed", value: DEFAULTS.sceneCPulseSpeed },
-      { id: "scene_c_rotation_speed", value: DEFAULTS.sceneCRotationSpeed },
-      { id: "scene_c_tint", value: DEFAULTS.sceneCTint },
-    ];
+    const defaults = paramStore.entries().map(([id, _]) => ({
+      id,
+      value: paramStore.getDefault(id),
+    }));
 
     try {
       await Promise.all(
@@ -250,31 +231,40 @@ function App() {
           invoke("set_parameter", { id, value, app: undefined }),
         ),
       );
-
-      // Update local state
-      setCrossfade(DEFAULTS.crossfade);
-      // Scene A
-      setSceneABrightness(DEFAULTS.sceneABrightness);
-      setRotationSpeed(DEFAULTS.rotationSpeed);
-      setSceneAWobble(DEFAULTS.sceneAWobble);
-      setSceneATint(DEFAULTS.sceneATint);
-      setSceneATintLfoDepth(DEFAULTS.sceneATintLfoDepth);
-      // Scene B
-      setSceneBBrightness(DEFAULTS.sceneBBrightness);
-      setSceneBRotationSpeed(DEFAULTS.sceneBRotationSpeed);
-      setSceneBTint(DEFAULTS.sceneBTint);
-      setSceneBScale(DEFAULTS.sceneBScale);
-      // Scene C
-      setSceneCBrightness(DEFAULTS.sceneCBrightness);
-      setSceneCPulseSpeed(DEFAULTS.sceneCPulseSpeed);
-      setSceneCRotationSpeed(DEFAULTS.sceneCRotationSpeed);
-      setSceneCTint(DEFAULTS.sceneCTint);
+      paramStore.resetAllToDefaults();
     } catch (error) {
-      setParamError("Failed to reset parameters to defaults");
+      paramStore.setError("Failed to reset parameters to defaults");
       console.error("[Controls] reset defaults failed", error);
     }
   }
 
+  // Handle crossfade completion when value reaches endpoint
+  useEffect(() => {
+    const crossfade = paramStore.get("crossfade");
+
+    if (sceneSlots.crossfadeTargetIndex !== null) {
+      sceneSlots.setCrossfadeValue(crossfade);
+
+      // Complete crossfade when we reach the target
+      if (crossfade >= 0.99) {
+        sceneSlots.completeCrossfade();
+        // Reset crossfade to 0 for next transition
+        void (async () => {
+          try {
+            await invoke("set_parameter", {
+              id: "crossfade",
+              value: 0,
+              app: undefined,
+            });
+          } catch (error) {
+            console.error("[Controls] Failed to reset crossfade", error);
+          }
+        })();
+      }
+    }
+  }, [paramStore.get("crossfade"), sceneSlots.crossfadeTargetIndex]);
+
+  // Initial load and event subscription
   useEffect(() => {
     void refreshBackendParameters();
 
@@ -285,19 +275,17 @@ function App() {
           "parameter_changed",
           (event) => {
             const updated = event.payload;
+            paramStore.applyBackendParams([updated]);
 
-            applyBackendParamsToSliders([updated]);
-
-            const current = backendParameters ?? [];
-            const index = current.findIndex(
-              (p: BackendParameter) => p.id === updated.id,
-            );
+            // Update backend snapshot
+            const current = paramStore.backendSnapshot ?? [];
+            const index = current.findIndex((p) => p.id === updated.id);
             if (index === -1) {
-              setBackendParameters([...current, updated]);
+              paramStore.setBackendSnapshot([...current, updated]);
             } else {
               const next = current.slice();
               next[index] = updated;
-              setBackendParameters(next);
+              paramStore.setBackendSnapshot(next);
             }
 
             addLogEntry(updated);
@@ -315,183 +303,72 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /**
-   * Render the appropriate scene controls based on scene ID
-   */
-  function renderSceneControls(sceneId: SceneId) {
-    switch (sceneId) {
-      case "sceneA":
-        return (
-          <SceneAControls
-            sceneABrightness={sceneABrightness}
-            rotationSpeed={rotationSpeed}
-            sceneAWobble={sceneAWobble}
-            sceneATint={sceneATint}
-            sceneATintLfoDepth={sceneATintLfoDepth}
-            setSceneABrightness={setSceneABrightness}
-            setRotationSpeed={setRotationSpeed}
-            setSceneAWobble={setSceneAWobble}
-            setSceneATint={setSceneATint}
-            setSceneATintLfoDepth={setSceneATintLfoDepth}
-          />
-        );
-      case "sceneB":
-        return (
-          <SceneBControls
-            sceneBBrightness={sceneBBrightness}
-            sceneBRotationSpeed={sceneBRotationSpeed}
-            sceneBTint={sceneBTint}
-            sceneBScale={sceneBScale}
-            setSceneBBrightness={setSceneBBrightness}
-            setSceneBRotationSpeed={setSceneBRotationSpeed}
-            setSceneBTint={setSceneBTint}
-            setSceneBScale={setSceneBScale}
-          />
-        );
-      case "sceneC":
-        return (
-          <SceneCControls
-            sceneCBrightness={sceneCBrightness}
-            sceneCPulseSpeed={sceneCPulseSpeed}
-            sceneCRotationSpeed={sceneCRotationSpeed}
-            sceneCTint={sceneCTint}
-            setSceneCBrightness={setSceneCBrightness}
-            setSceneCPulseSpeed={setSceneCPulseSpeed}
-            setSceneCRotationSpeed={setSceneCRotationSpeed}
-            setSceneCTint={setSceneCTint}
-          />
-        );
-      default:
-        return null;
-    }
-  }
+  // Get scene params for a scene ID
+  const getSceneParams = useCallback(
+    (sceneId: SceneId) => buildSceneParams(sceneId, paramStore),
+    [paramStore],
+  );
 
-  /**
-   * Get a human-readable label for a scene ID
-   */
-  function getSceneLabel(sceneId: SceneId): string {
-    switch (sceneId) {
-      case "sceneA":
-        return "Scene A";
-      case "sceneB":
-        return "Scene B";
-      case "sceneC":
-        return "Scene C";
-      default:
-        return sceneId;
-    }
-  }
+  // Get/set parameter value wrappers
+  const getValue = useCallback(
+    (id: string) =>
+      paramStore.get(id as import("./scenes/sceneTypes").ParameterId),
+    [paramStore],
+  );
 
-  /**
-   * Get the params object for a given scene ID (for preview rendering)
-   */
-  function getSceneParams(sceneId: SceneId): SceneProps["params"] {
-    switch (sceneId) {
-      case "sceneA":
-        return {
-          rotationSpeed,
-          sceneABrightness,
-          sceneAWobble,
-          sceneATint,
-        };
-      case "sceneB":
-        return {
-          sceneBBrightness,
-          sceneBRotationSpeed,
-          sceneBTint,
-          sceneBScale,
-        };
-      case "sceneC":
-        return {
-          sceneCBrightness,
-          sceneCPulseSpeed,
-          sceneCRotationSpeed,
-          sceneCTint,
-        };
-      default:
-        return {};
-    }
-  }
+  const setValue = useCallback(
+    (id: string, value: number) => {
+      paramStore.set(id as import("./scenes/sceneTypes").ParameterId, value);
+    },
+    [paramStore],
+  );
+
+  // Get active and target scene IDs for preview
+  const activeSceneId =
+    sceneSlots.getSceneId(sceneSlots.activeIndex) ?? "sceneA";
+  const targetSceneId =
+    sceneSlots.crossfadeTargetIndex !== null
+      ? (sceneSlots.getSceneId(sceneSlots.crossfadeTargetIndex) ??
+        activeSceneId)
+      : activeSceneId;
 
   return (
     <div className={styles.root}>
       <main className={styles.main}>
-        {/* Scene control strip: top row, columns 1–4 */}
-        <div className={styles.sceneControlStrip}>
-          <SceneControlStrip
-            activeSceneId={activeSceneId}
-            nextSceneId={nextSceneId}
-            setActiveSceneId={setActiveSceneId}
-            setNextSceneId={setNextSceneId}
-            crossfade={crossfade}
-            onCrossfadeChange={handleCrossfadeChange}
-            activeSceneParams={getSceneParams(activeSceneId)}
-            nextSceneParams={getSceneParams(nextSceneId)}
+        {/* Scenes Area (4/5 width) */}
+        <div className={styles.scenesArea}>
+          <ScenesArea
+            slots={sceneSlots.slots}
+            activeIndex={sceneSlots.activeIndex}
+            crossfadeTargetIndex={sceneSlots.crossfadeTargetIndex}
+            crossfadeValue={sceneSlots.crossfadeValue}
+            isCrossfading={sceneSlots.isCrossfading}
+            canAddSlot={sceneSlots.canAddSlot}
+            canRemoveSlot={sceneSlots.canRemoveSlot}
+            getValue={getValue}
+            setValue={setValue}
+            getSceneParams={getSceneParams}
+            onSlotSceneChange={handleSlotSceneChange}
+            onCrossfade={handleCrossfade}
+            onRemoveSlot={handleRemoveSlot}
+            onAddSlot={handleAddSlot}
           />
         </div>
 
-        {/* Active scene column: columns 1–2, row 2 */}
-        <div className={`${styles.sceneColumn} ${styles.activeSceneColumn}`}>
-          <AnimatePresence mode="wait">
-            <motion.section
-              key={activeSceneId}
-              aria-label={`${getSceneLabel(activeSceneId)} controls`}
-              className={styles.panel}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-            >
-              <h2 className={styles.panelTitle}>
-                {getSceneLabel(activeSceneId)}
-                <span className={styles.sceneRole}> (Active)</span>
-              </h2>
-              <p className={styles.caption}>
-                Controls for the currently active scene.
-              </p>
-              {renderSceneControls(activeSceneId)}
-            </motion.section>
-          </AnimatePresence>
-        </div>
-
-        {/* Next scene column: columns 3–4, row 2 */}
-        <div className={`${styles.sceneColumn} ${styles.nextSceneColumn}`}>
-          <AnimatePresence mode="wait">
-            <motion.section
-              key={nextSceneId}
-              aria-label={`${getSceneLabel(nextSceneId)} controls`}
-              className={styles.panel}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-            >
-              <h2 className={styles.panelTitle}>
-                {getSceneLabel(nextSceneId)}
-                <span className={styles.sceneRole}> (Next)</span>
-              </h2>
-              <p className={styles.caption}>
-                Controls for the next scene in the crossfade.
-              </p>
-              {renderSceneControls(nextSceneId)}
-            </motion.section>
-          </AnimatePresence>
-        </div>
-
-        {/* Preview + Debug column: column 5, spans both rows */}
-        <aside className={styles.debugColumn} aria-label="Preview and debug">
+        {/* Sidebar (1/5 width) */}
+        <aside className={styles.sidebar} aria-label="Preview and debug">
           <RendererPreview
             activeSceneId={activeSceneId}
-            nextSceneId={nextSceneId}
-            crossfade={crossfade}
+            nextSceneId={targetSceneId}
+            crossfade={paramStore.get("crossfade")}
             activeSceneParams={getSceneParams(activeSceneId)}
-            nextSceneParams={getSceneParams(nextSceneId)}
-            sceneATintLfoDepth={sceneATintLfoDepth}
+            nextSceneParams={getSceneParams(targetSceneId)}
+            sceneATintLfoDepth={paramStore.get("scene_a_tint_lfo_depth")}
           />
           <DebugPanel
-            backendParameters={backendParameters}
-            isLoadingParams={isLoadingParams}
-            paramError={paramError}
+            backendParameters={paramStore.backendSnapshot}
+            isLoadingParams={paramStore.isLoading}
+            paramError={paramStore.error}
             onRefresh={() => void refreshBackendParameters()}
             onResetDefaults={() => void handleResetDefaults()}
             onClearParameters={() => void handleClearParameters()}

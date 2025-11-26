@@ -1,0 +1,355 @@
+/* ==========================================================================
+   SceneColumn.module.css
+
+   Styles for a single scene column in the scene management UI.
+   ========================================================================== */
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  /* Fixed width that doesn't change based on number of siblings */
+  width: 320px;
+  min-width: 280px;
+  max-width: 420px;
+  flex: 0 0 auto;
+  /* Stretch to fill container height */
+  align-self: stretch;
+  background: #0b0c12;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(255 255 255 / 0.06);
+  padding: 0.75rem;
+  transition: border-color 0.15s ease;
+}
+
+.column:hover {
+  border-color: rgb(255 255 255 / 0.1);
+}
+
+.activeColumn {
+  border-color: rgb(52 211 153 / 0.4);
+  background: rgb(52 211 153 / 0.02);
+}
+
+.activeColumn:hover {
+  border-color: rgb(52 211 153 / 0.5);
+}
+
+/* ==========================================================================
+   Preview Container
+   ========================================================================== */
+
+.previewContainer {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  background: #020617;
+  flex-shrink: 0;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: rgb(255 255 255 / 0.5);
+  background: #020617;
+}
+
+/* Slot number badge (top-left) */
+.slotBadge {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.9);
+  background: rgb(0 0 0 / 0.6);
+  border-radius: 0.25rem;
+  backdrop-filter: blur(4px);
+}
+
+/* ==========================================================================
+   Bottom Overlay (scene selector + actions)
+   ========================================================================== */
+
+.bottomOverlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 0.375rem;
+  background: linear-gradient(
+    to top,
+    rgb(0 0 0 / 0.7) 0%,
+    rgb(0 0 0 / 0.4) 70%,
+    transparent 100%
+  );
+}
+
+/* Scene selector wrapper (left half) */
+.selectorWrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Actions wrapper (right half with crossfade + remove) */
+.actionsWrapper {
+  flex: 1;
+  display: flex;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+/* ==========================================================================
+   Select Dropdown
+   ========================================================================== */
+
+.selectTrigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.9);
+  background: rgb(255 255 255 / 0.1);
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: 0.3rem;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.selectTrigger:hover:not(:disabled) {
+  background: rgb(255 255 255 / 0.15);
+  border-color: rgb(255 255 255 / 0.25);
+}
+
+.selectTrigger:focus-visible {
+  outline: 2px solid rgb(99 102 241 / 0.6);
+  outline-offset: 1px;
+}
+
+.selectTrigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.selectIcon {
+  flex-shrink: 0;
+  color: rgb(255 255 255 / 0.5);
+}
+
+.selectContent {
+  z-index: 1000;
+  min-width: 140px;
+  background: #1a1b23;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 0.375rem;
+  box-shadow:
+    0 10px 38px -10px rgb(0 0 0 / 0.5),
+    0 10px 20px -15px rgb(0 0 0 / 0.3);
+  overflow: hidden;
+}
+
+.selectViewport {
+  padding: 0.25rem;
+}
+
+.selectItem {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  color: rgb(255 255 255 / 0.9);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.selectItem[data-highlighted] {
+  background: rgb(255 255 255 / 0.1);
+}
+
+.selectItem[data-state="checked"] {
+  background: rgb(99 102 241 / 0.2);
+  color: rgb(165 180 252);
+}
+
+/* ==========================================================================
+   Crossfade Button
+   ========================================================================== */
+
+.crossfadeButton {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgb(255 255 255 / 0.9);
+  background: rgb(99 102 241 / 0.25);
+  border: 1px solid rgb(99 102 241 / 0.4);
+  border-radius: 0.3rem;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.crossfadeButton:hover:not(:disabled) {
+  background: rgb(99 102 241 / 0.35);
+  border-color: rgb(99 102 241 / 0.6);
+}
+
+.crossfadeButton:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.crossfadeButton:focus-visible {
+  outline: 2px solid rgb(99 102 241 / 0.6);
+  outline-offset: 1px;
+}
+
+.crossfadeButton:disabled {
+  cursor: not-allowed;
+}
+
+/* Active state - green */
+.crossfadeActive {
+  color: rgb(52 211 153);
+  background: rgb(52 211 153 / 0.2);
+  border-color: rgb(52 211 153 / 0.4);
+}
+
+.crossfadeActive:hover:not(:disabled) {
+  background: rgb(52 211 153 / 0.25);
+  border-color: rgb(52 211 153 / 0.5);
+}
+
+/* Crossfade target state - amber */
+.crossfadeTarget {
+  color: rgb(251 191 36);
+  background: rgb(251 191 36 / 0.2);
+  border-color: rgb(251 191 36 / 0.4);
+}
+
+.crossfadeTarget:hover:not(:disabled) {
+  background: rgb(251 191 36 / 0.25);
+  border-color: rgb(251 191 36 / 0.5);
+}
+
+/* ==========================================================================
+   Remove Button
+   ========================================================================== */
+
+.removeButton {
+  flex-shrink: 0;
+  aspect-ratio: 1;
+  width: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(255 255 255 / 0.6);
+  background: rgb(255 255 255 / 0.1);
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: 0.3rem;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.removeButton:hover {
+  color: rgb(239 68 68);
+  background: rgb(239 68 68 / 0.2);
+  border-color: rgb(239 68 68 / 0.4);
+}
+
+.removeButton:focus-visible {
+  outline: 2px solid rgb(239 68 68 / 0.6);
+  outline-offset: 1px;
+}
+
+/* ==========================================================================
+   Controls Section
+   ========================================================================== */
+
+.controls {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+/* Custom scrollbar for controls */
+.controls::-webkit-scrollbar {
+  width: 4px;
+}
+
+.controls::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.controls::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.1);
+  border-radius: 2px;
+}
+
+.controls::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 0.2);
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .column {
+    width: 300px;
+    min-width: 260px;
+  }
+}
+
+@media (max-width: 768px) {
+  .column {
+    width: 280px;
+    min-width: 240px;
+    max-width: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .column {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .crossfadeButton {
+    font-size: 0.65rem;
+  }
+}

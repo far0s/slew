@@ -12,14 +12,14 @@ export {
 } from "./ParameterSlider";
 
 // Scene Components
-export { SceneAControls, type SceneAControlsProps } from "./SceneAControls";
-export { SceneBControls, type SceneBControlsProps } from "./SceneBControls";
-export { SceneCControls, type SceneCControlsProps } from "./SceneCControls";
-export { ScenePreview, type ScenePreviewProps } from "./ScenePreview";
 export {
-  SceneControlStrip,
-  type SceneControlStripProps,
-} from "./SceneControlStrip";
+  SceneParameterControls,
+  type SceneParameterControlsProps,
+} from "./SceneParameterControls";
+export { SceneColumn, type SceneColumnProps } from "./SceneColumn";
+export { ScenesArea, type ScenesAreaProps } from "./ScenesArea";
+
+// Preview Components
 export { RendererPreview, type RendererPreviewProps } from "./RendererPreview";
 
 // Input Panel Components

@@ -1,0 +1,192 @@
+/* ==========================================================================
+   ScenesArea.module.css
+
+   Horizontally scrollable container for scene columns.
+   Designed to show ~3.5 columns at once.
+   ========================================================================== */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.scrollWrapper {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.scrollArea {
+  position: absolute;
+  inset: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Smooth scrolling for trackpad/wheel */
+  scroll-behavior: smooth;
+  /* Snap to columns on scroll */
+  scroll-snap-type: x proximity;
+  /* Hide scrollbar but keep functionality */
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.15) transparent;
+}
+
+.scrollArea::-webkit-scrollbar {
+  height: 6px;
+}
+
+.scrollArea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollArea::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.15);
+  border-radius: 3px;
+}
+
+.scrollArea::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 0.25);
+}
+
+/* ==========================================================================
+   Fade Gradients
+   Shown when content is scrollable and not at edge
+   ========================================================================== */
+
+.fadeLeft,
+.fadeRight {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 48px;
+  pointer-events: none;
+  z-index: 10;
+  transition: opacity 0.2s ease;
+}
+
+.fadeLeft {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    rgb(0 0 0 / 0.6) 0%,
+    rgb(0 0 0 / 0.3) 40%,
+    transparent 100%
+  );
+}
+
+.fadeRight {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    rgb(0 0 0 / 0.6) 0%,
+    rgb(0 0 0 / 0.3) 40%,
+    transparent 100%
+  );
+}
+
+.columnsWrapper {
+  display: flex;
+  /* Stretch children to full height */
+  align-items: stretch;
+  gap: 0.75rem;
+  /* Take full height of scroll area */
+  min-height: 100%;
+  height: 100%;
+  padding: 0.25rem;
+  /* Allow horizontal scroll */
+  width: max-content;
+}
+
+/* ==========================================================================
+   Add Scene Button
+   Same dimensions as scene columns for consistent layout
+   ========================================================================== */
+
+.addButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  /* Match SceneColumn sizing exactly */
+  width: 320px;
+  min-width: 280px;
+  max-width: 420px;
+  flex: 0 0 auto;
+  /* Stretch to fill container height */
+  align-self: stretch;
+  background: rgb(255 255 255 / 0.02);
+  border: 2px dashed rgb(255 255 255 / 0.1);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.addButton:hover {
+  background: rgb(255 255 255 / 0.04);
+  border-color: rgb(255 255 255 / 0.2);
+}
+
+.addButton:focus-visible {
+  outline: 2px solid rgb(99 102 241 / 0.6);
+  outline-offset: 2px;
+}
+
+.addButton:active {
+  background: rgb(255 255 255 / 0.06);
+}
+
+.addIcon {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: rgb(255 255 255 / 0.3);
+  transition: color 0.15s ease;
+}
+
+.addButton:hover .addIcon {
+  color: rgb(255 255 255 / 0.5);
+}
+
+.addLabel {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.3);
+  transition: color 0.15s ease;
+}
+
+.addButton:hover .addLabel {
+  color: rgb(255 255 255 / 0.5);
+}
+
+/* ==========================================================================
+   Responsive - match SceneColumn breakpoints
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .addButton {
+    width: 300px;
+    min-width: 260px;
+  }
+}
+
+@media (max-width: 768px) {
+  .addButton {
+    width: 280px;
+    min-width: 240px;
+    max-width: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .scrollArea {
+    scroll-snap-type: x mandatory;
+  }
+
+  .addButton {
+    width: 100%;
+    min-width: 0;
+  }
+}
