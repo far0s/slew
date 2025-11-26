@@ -139,7 +139,7 @@ pub fn init_midi_engine(app_handle: AppHandle) {
     // Load mappings from disk
     load_mappings_from_disk();
 
-    log::info!("[MIDI] Engine initialized");
+    log::debug!("[MIDI] Engine initialized");
 }
 
 // ============================================================================
@@ -241,7 +241,7 @@ pub fn open_device(device_id: String) -> Result<(), String> {
         );
     });
 
-    log::info!("[MIDI] Opened device: {} ({})", device_id, port_name);
+    log::debug!("[MIDI] Opened device: {} ({})", device_id, port_name);
 
     // Emit device change event
     emit_devices_changed();
@@ -259,7 +259,7 @@ pub fn close_device(device_id: String) -> Result<(), String> {
             if let Some(c) = conn.connection.take() {
                 c.close();
             }
-            log::info!("[MIDI] Closed device: {}", device_id);
+            log::debug!("[MIDI] Closed device: {}", device_id);
             emit_devices_changed();
             Ok(())
         }
@@ -381,7 +381,7 @@ fn handle_midi_message(
                 let _ = handle.emit("midi_learn_complete", MidiLearnComplete { mapping });
             }
 
-            log::info!(
+            log::debug!(
                 "[MIDI] Learn complete: CC {} @ channel {} -> parameter",
                 control,
                 channel
@@ -452,7 +452,7 @@ pub fn start_learn(parameter_id: String) -> Result<(), String> {
         Ok(())
     })?;
 
-    log::info!("[MIDI] Started learn mode for parameter: {}", parameter_id);
+    log::debug!("[MIDI] Started learn mode for parameter: {}", parameter_id);
 
     // Emit learn state change
     emit_learn_state_changed();
@@ -467,7 +467,7 @@ pub fn cancel_learn() -> Result<(), String> {
         state.learn_state.parameter_id = None;
     });
 
-    log::info!("[MIDI] Cancelled learn mode");
+    log::debug!("[MIDI] Cancelled learn mode");
 
     emit_learn_state_changed();
 
@@ -500,7 +500,7 @@ pub fn set_mapping(mapping: MidiMapping) -> Result<(), String> {
 
     save_mappings_to_disk();
 
-    log::info!("[MIDI] Mapping updated");
+    log::debug!("[MIDI] Mapping updated");
 
     Ok(())
 }
@@ -515,7 +515,7 @@ pub fn remove_mapping(parameter_id: String) -> Result<(), String> {
 
     if removed {
         save_mappings_to_disk();
-        log::info!("[MIDI] Removed mapping for parameter: {}", parameter_id);
+        log::debug!("[MIDI] Removed mapping for parameter: {}", parameter_id);
         Ok(())
     } else {
         Err(format!("No mapping found for parameter: {}", parameter_id))
@@ -530,7 +530,7 @@ pub fn clear_mappings() {
 
     save_mappings_to_disk();
 
-    log::info!("[MIDI] Cleared all mappings");
+    log::debug!("[MIDI] Cleared all mappings");
 }
 
 // ============================================================================
@@ -559,7 +559,7 @@ fn load_mappings_from_disk() {
                             with_midi_engine(|state| {
                                 state.mappings = mappings;
                             });
-                            log::info!(
+                            log::debug!(
                                 "[MIDI] Loaded {} mappings from disk",
                                 with_midi_engine(|s| s.mappings.len())
                             );

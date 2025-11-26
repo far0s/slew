@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Perf } from "r3f-perf";
+import { VideoOutputCapture } from "./VideoOutputCapture";
 import {
   SCENE_COMPONENT_REGISTRY,
   type SceneProps,
@@ -402,6 +403,8 @@ export function RendererRoot() {
             colorBlind={false}
           />
         )}
+        {/* Video output capture - sends frames to Syphon/Spout/NDI when active */}
+        <VideoOutputCapture />
         <RendererContent
           activeSceneId={activeSceneId}
           nextSceneId={nextSceneId}

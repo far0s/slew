@@ -366,7 +366,7 @@ pub fn init_audio_engine(app_handle: AppHandle) {
     // Start the analysis loop
     start_analysis_loop();
 
-    log::info!("[Audio] Engine initialized");
+    log::debug!("[Audio] Engine initialized");
 }
 
 /// Start the background analysis loop
@@ -542,7 +542,7 @@ pub fn start_capture(device_name: Option<String>) -> Result<(), String> {
 
     emit_status_changed();
 
-    log::info!(
+    log::debug!(
         "[Audio] Started capture on '{}' at {} Hz",
         actual_name,
         sample_rate
@@ -573,7 +573,7 @@ pub fn stop_capture() -> Result<(), String> {
 
     emit_status_changed();
 
-    log::info!("[Audio] Capture stopped");
+    log::debug!("[Audio] Capture stopped");
 
     Ok(())
 }
@@ -803,7 +803,7 @@ pub fn add_mapping(mapping: AudioMapping) -> AudioMapping {
 
     emit_mappings_changed();
 
-    log::info!(
+    log::debug!(
         "[Audio] Added mapping: {} -> {} ({})",
         format!("{:?}", mapping.source),
         mapping.parameter_id,
@@ -827,7 +827,7 @@ pub fn remove_mapping(id: &str) -> bool {
             save_mappings_to_disk(&handle);
         }
         emit_mappings_changed();
-        log::info!("[Audio] Removed mapping: {}", id);
+        log::debug!("[Audio] Removed mapping: {}", id);
     }
 
     removed
@@ -847,7 +847,7 @@ pub fn clear_mappings() {
 
     emit_mappings_changed();
 
-    log::info!("[Audio] Cleared all mappings");
+    log::debug!("[Audio] Cleared all mappings");
 }
 
 /// Set mapping enabled state.
@@ -894,7 +894,7 @@ fn load_mappings_from_disk(app: &AppHandle) {
             with_audio_engine(|state| {
                 state.mappings = mappings;
             });
-            log::info!(
+            log::debug!(
                 "[Audio] Loaded {} mappings from disk",
                 with_audio_engine(|s| s.mappings.len())
             );

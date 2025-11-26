@@ -27,7 +27,7 @@ For detailed design, see `ARCHITECTURE.md`.
 | Audio → Parameter | ✅     | Full mapping system with modes (continuous/trigger/add)       |
 | HID Input         | ✅     | DOIO Megalodon macropad with encoders                         |
 | Modulation Engine | ✅     | Backend LFOs, modulation matrix, audio→LFO, slider indicators |
-| Video Output      | ⏳     | Syphon/Spout/NDI planned                                      |
+| Video Output      | ✅     | Syphon + NDI working, 1080p@60 optimization backlogged        |
 
 ---
 
@@ -79,29 +79,21 @@ All inputs follow the same pattern:
 - UDP server via `rosc` crate (default port 9000)
 - Address → parameter mappings with value scaling
 - Default mappings for all parameters (e.g., `/scene_a/brightness`)
-- Recent messages display in UI
 
 ### Audio (`src-tauri/src/audio.rs`)
 
 - Capture via `cpal`, FFT via `rustfft`
 - Outputs: RMS, Peak, frequency bands (bass/low-mid/high-mid/treble), beat detection
-- Audio → Parameter mappings with modes:
-  - **Continuous**: Direct value mapping
-  - **Trigger**: Set value on beat
-  - **Add**: Additive to current value
+- Audio → Parameter mappings with modes: Continuous, Trigger, Add
 - Per-mapping smoothing, enable/disable, output range
 - BPM calculation from beat intervals
-- Color-coded level meters in UI
 
 ### HID (`src-tauri/src/hid.rs`)
 
 - `hidapi` crate for cross-platform HID access
 - Supported: DOIO Megalodon (16 keys + 3 encoders)
 - Auto-connect with periodic polling
-- Macropad integration:
-  - Keys 1-4: Select scene slot
-  - Action key: Trigger crossfade
-  - Encoders: Control parameters of selected scene
+- Macropad integration: Keys 1-4 select slots, Action key triggers crossfade, Encoders control parameters
 
 ---
 
@@ -114,7 +106,6 @@ All inputs follow the same pattern:
 - Waveforms: Sine, Triangle, Saw, Square, Random
 - Configurable: rate (Hz), phase, depth, offset
 - BPM sync option (1/4 beat to 8 beats division)
-- Real-time value emission for UI visualization
 
 ### Modulation Targets
 
@@ -126,55 +117,62 @@ All inputs follow the same pattern:
 
 - Any audio source can modulate LFO properties (rate, depth, phase)
 - Creates audio-reactive modulation chains
-- Example: Bass → LFO Rate → Brightness (pulsing speed follows bass)
-
-### Frontend
-
-- Types and hooks in `src/inputs/modulation.ts`
-- `ModulationPanel` component with:
-  - LFO list with waveform visualization
-  - Modulation targets matrix
-  - Audio → LFO routing
-- **Slider indicators**: Indigo "LFO" badge with pulsing dot on modulated parameters
 
 ---
 
-## 5. Crossfade Implementation
+## 5. Video Output
 
-**Key insight**: Scene pairing must be set BEFORE crossfade value changes.
+**Backend modules**: `src-tauri/src/video_out.rs`, `src-tauri/src/syphon.rs`
 
-1. User clicks crossfade button
-2. Backend receives `set_scene_pairing(activeId, nextId)`
-3. Renderer updates scene components
-4. Backend receives `set_parameter("crossfade", targetValue)`
-5. Tick loop smoothly interpolates `value` → `target`
-6. `parameter_changed` events update UI and Renderer
+### Architecture
 
-**Special handling**:
+- `VideoOutputBackend` trait with pluggable implementations
+- Frame capture from WebGL via `VideoOutputCapture.tsx`
+- Base64-encoded frame data sent to Rust via Tauri command
+- Video panel UI in Controls window for enabling/disabling backends
 
-- Backend emits current `value` (not `target`) for crossfade → smooth animation
-- Controls use `value` for crossfade display, `target` for other parameters
+### Syphon (macOS) ✅
+
+- Native bindings via `objc2` + CGL + OpenGL
+- Universal Syphon.framework (arm64 + x86_64) built from source
+- Runtime loading via dlopen (no static linking)
+- Setup: `./scripts/install-syphon.sh`
+
+### NDI (Cross-platform) ✅
+
+- `grafton-ndi` crate integration (default feature)
+- RGBA→BGRA conversion for NDI compatibility
+- Auto rpath configuration in `build.rs` for macOS
+- Setup: `./scripts/install-ndi.sh` to install SDK
+
+### Spout (Windows) 🧪
+
+- Interface defined, stub implementation only
+- Full implementation pending Windows testing
+
+### Backlogged Optimizations
+
+- Zero-copy IOSurface sharing for Syphon
+- Binary IPC instead of base64 encoding
+- PBOs for async GPU readback
 
 ---
 
 ## 6. Key Files
 
-| File                                | Purpose                                               |
-| ----------------------------------- | ----------------------------------------------------- |
-| `src-tauri/src/lib.rs`              | Parameter Server, tick loop, command registration     |
-| `src-tauri/src/audio.rs`            | Audio capture, FFT, beat detection, audio mappings    |
-| `src-tauri/src/modulation.rs`       | LFO engine, modulation matrix                         |
-| `src-tauri/src/midi.rs`             | MIDI device management and mappings                   |
-| `src-tauri/src/osc.rs`              | OSC server and mappings                               |
-| `src-tauri/src/hid.rs`              | HID device management (macropads)                     |
-| `src/scenes/sceneTypes.ts`          | Scene/parameter descriptors (source of truth)         |
-| `src/controls/useParameterStore.ts` | Map-based parameter state                             |
-| `src/inputs/audio.ts`               | Audio types, hooks, helpers                           |
-| `src/inputs/modulation.ts`          | Modulation types, hooks, helpers                      |
-| `src/components/ModulationPanel/`   | LFO and modulation UI                                 |
-| `src/components/AudioPanel/`        | Audio device, levels, mappings UI                     |
-| `src/components/ScenesArea/`        | Scene slots container                                 |
-| `src/components/ParameterSlider/`   | Slider with MIDI learn, audio & modulation indicators |
+| File                                  | Purpose                                            |
+| ------------------------------------- | -------------------------------------------------- |
+| `src-tauri/src/lib.rs`                | Parameter Server, tick loop, command registration  |
+| `src-tauri/src/audio.rs`              | Audio capture, FFT, beat detection, audio mappings |
+| `src-tauri/src/modulation.rs`         | LFO engine, modulation matrix                      |
+| `src-tauri/src/midi.rs`               | MIDI device management and mappings                |
+| `src-tauri/src/osc.rs`                | OSC server and mappings                            |
+| `src-tauri/src/hid.rs`                | HID device management (macropads)                  |
+| `src-tauri/src/video_out.rs`          | Video output backends (Syphon, Spout, NDI)         |
+| `src-tauri/src/syphon.rs`             | Native Syphon bindings (macOS only)                |
+| `src/scenes/sceneTypes.ts`            | Scene/parameter descriptors (source of truth)      |
+| `src/controls/useParameterStore.ts`   | Map-based parameter state                          |
+| `src/renderer/VideoOutputCapture.tsx` | Frame capture component (inside r3f Canvas)        |
 
 ---
 
@@ -186,6 +184,7 @@ All inputs follow the same pattern:
 4. **Platforms**: macOS-first, cross-platform via chosen Rust crates
 5. **Tick source**: Backend ~60Hz timer (independent of renderer FPS)
 6. **Modulation**: Backend-driven for deterministic behavior
+7. **Video Output**: NDI enabled by default (requires SDK)
 
 ---
 
@@ -193,23 +192,23 @@ All inputs follow the same pattern:
 
 ### Prioritized
 
-1. **Video Output Prototype**
-   - Define interface for Syphon/Spout/NDI
-   - Create no-op backend that logs calls
-   - macOS: Begin Syphon integration
-
-2. **Scene System Expansion**
+1. **Scene System Expansion**
    - Add more scenes with different visual styles
    - Scene library/browser UI
    - Scene presets (save parameter values per scene)
 
-3. **UX Polish**
+2. **UX Polish**
    - MIDI/OSC binding indicators on sliders
    - Mapping import/export (JSON)
    - Better device hot-plug handling
 
+3. **Video Output Optimization**
+   - 1080p@60fps performance (zero-copy IOSurface, binary IPC)
+   - Spout implementation for Windows
+
 ### Future Phases
 
+- **Multi-Instance Scenes**: Allow same scene in multiple slots with independent parameters
 - **Presets & Projects**: Save/load parameter snapshots, scene selections, mappings
 - **Multi-display**: Multiple renderer windows
 - **Recording**: GPU-based capture or frame export
@@ -217,32 +216,7 @@ All inputs follow the same pattern:
 
 ---
 
-## 9. Code Style Reference
-
-See `ARCHITECTURE.md` → **Code Style** section for full details.
-
-**JSDoc pattern**: Use consolidated `@property` blocks before interfaces:
-
-```ts
-/**
- * Props for the ScenesArea component.
- *
- * @property slots - Array of scene slots to render
- * @property activeIndex - Index of the active (output) slot
- */
-export interface ScenesAreaProps {
-  slots: SceneSlot[];
-  activeIndex: number;
-}
-```
-
-**Component docs**: One-liner + feature bullets
-
-**Hook docs**: Purpose, key concepts, return type
-
----
-
-## 10. Housekeeping
+## 9. Housekeeping
 
 - Run `npx tsc --noEmit` and `cargo check` after changes
 - Keep this document updated as features land

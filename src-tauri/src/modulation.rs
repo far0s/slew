@@ -339,7 +339,7 @@ pub fn init_modulation_engine(app_handle: AppHandle) {
     start_modulation_loop();
     start_audio_listener(app_handle);
 
-    log::info!("[Modulation] Engine initialized");
+    log::debug!("[Modulation] Engine initialized");
 }
 
 /// Listen for audio level events to get BPM and levels for audio modulation
@@ -851,7 +851,7 @@ fn load_state_from_disk(app: &AppHandle) {
                 engine.targets = state.targets;
                 engine.audio_modulations = state.audio_modulations;
             });
-            log::info!("[Modulation] Loaded state from disk");
+            log::debug!("[Modulation] Loaded state from disk");
         }
     }
 }

@@ -6,6 +6,7 @@ import { OscPanel } from "../OscPanel";
 import { AudioPanel } from "../AudioPanel";
 import { HidPanel } from "../HidPanel";
 import { ModulationPanel } from "../ModulationPanel";
+import { VideoOutputPanel } from "../VideoOutputPanel";
 import styles from "./DebugPanel.module.css";
 
 /**
@@ -65,6 +66,9 @@ export function DebugPanel({ macropadSelectedIndex }: DebugPanelProps) {
         <Tabs.Trigger value="modulation" className={styles.tabTrigger}>
           Mod
         </Tabs.Trigger>
+        <Tabs.Trigger value="video" className={styles.tabTrigger}>
+          Video
+        </Tabs.Trigger>
       </Tabs.List>
 
       <div className={styles.tabBody}>
@@ -86,6 +90,10 @@ export function DebugPanel({ macropadSelectedIndex }: DebugPanelProps) {
 
         <Tabs.Content value="modulation" className={styles.tabContent}>
           <ModulationPanel />
+        </Tabs.Content>
+
+        <Tabs.Content value="video" className={styles.tabContent}>
+          <VideoOutputPanel />
         </Tabs.Content>
       </div>
 

@@ -122,7 +122,7 @@ pub fn init_osc_engine(app_handle: AppHandle) {
     // Load mappings from disk
     load_mappings_from_disk();
 
-    log::info!("[OSC] Engine initialized");
+    log::debug!("[OSC] Engine initialized");
 }
 
 // ============================================================================
@@ -425,7 +425,7 @@ fn load_mappings_from_disk() {
                             with_osc_engine(|state| {
                                 state.mappings = mappings;
                             });
-                            log::info!(
+                            log::debug!(
                                 "[OSC] Loaded {} mappings from disk",
                                 with_osc_engine(|s| s.mappings.len())
                             );

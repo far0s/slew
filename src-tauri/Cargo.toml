@@ -34,3 +34,20 @@ log = "0.4"          # Logging facade
 rand = "0.8"         # Random number generation for LFO
 chrono = "0.4"       # Date/time for logging
 tokio = { version = "1", features = ["time"] }  # Async runtime for delays
+base64 = "0.22"      # Fast base64 decoding for video frames
+env_logger = "0.11"  # Logging implementation
+
+# Video Output (macOS Syphon)
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"                    # Objective-C runtime (must match Tauri's version)
+block2 = "0.6"                   # Objective-C blocks support
+dirs = "5.0"                     # Home directory detection for framework search
+
+# Video Output (NDI - cross-platform, optional)
+[dependencies.grafton-ndi]
+version = "0.9"
+optional = true
+
+[features]
+default = ["ndi"]                # NDI enabled by default (requires SDK)
+ndi = ["grafton-ndi"]            # NDI requires SDK installation

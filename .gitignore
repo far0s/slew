@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Native frameworks (installed via scripts/install-syphon.sh)
+src-tauri/frameworks/Syphon.framework/

@@ -207,7 +207,7 @@ pub fn init_hid_engine(app: &AppHandle) {
     load_mappings_from_disk();
 
     let mapping_count = with_hid_engine(|state| state.mappings.len());
-    log::info!("[HID] Engine initialized with {} mappings", mapping_count);
+    log::debug!("[HID] Engine initialized with {} mappings", mapping_count);
 
     // Start auto-connect thread
     start_auto_connect_thread();
@@ -222,7 +222,7 @@ fn start_auto_connect_thread() {
     let engine = HID_ENGINE.clone();
 
     thread::spawn(move || {
-        log::info!("[HID] Auto-connect thread started");
+        log::debug!("[HID] Auto-connect thread started");
 
         loop {
             // Check if auto-connect is enabled
@@ -258,16 +258,16 @@ fn start_auto_connect_thread() {
                 // Try to find supported devices
                 match list_supported_devices() {
                     Ok(devices) if !devices.is_empty() => {
-                        log::info!(
+                        log::debug!(
                             "[HID] Auto-connect: Found {} supported device interface(s)",
                             devices.len()
                         );
 
                         // Try to connect to all interfaces
                         if let Err(e) = connect_megalodon() {
-                            log::warn!("[HID] Auto-connect failed: {}", e);
+                            log::debug!("[HID] Auto-connect failed: {}", e);
                         } else {
-                            log::info!("[HID] Auto-connect successful");
+                            log::debug!("[HID] Auto-connect successful");
                         }
                     }
                     Ok(_) => {
@@ -301,7 +301,7 @@ pub fn set_auto_connect(enabled: bool) {
     with_hid_engine(|state| {
         *state.auto_connect_enabled.lock().unwrap() = enabled;
     });
-    log::info!(
+    log::debug!(
         "[HID] Auto-connect {}",
         if enabled { "enabled" } else { "disabled" }
     );
@@ -448,7 +448,7 @@ fn connect_device_internal(path: &str, update_status: bool) -> Result<(), String
     // Start reading thread
     start_reading_thread(device);
 
-    log::info!(
+    log::debug!(
         "[HID] Connected to device: {} ({})",
         device_info.interface_description,
         path
@@ -484,9 +484,9 @@ pub fn connect_megalodon() -> Result<(), String> {
 
     // Connect to consumer control for left/middle knobs
     if let Some(dev) = consumer_control {
-        log::info!("[HID] Connecting to Consumer Control: {}", dev.path);
+        log::debug!("[HID] Connecting to Consumer Control: {}", dev.path);
         if let Err(e) = connect_device_internal(&dev.path, false) {
-            log::warn!("[HID] Failed to connect to Consumer Control: {}", e);
+            log::debug!("[HID] Failed to connect to Consumer Control: {}", e);
         } else {
             connected_any = true;
             first_device_info = Some(dev.clone());
@@ -495,9 +495,9 @@ pub fn connect_megalodon() -> Result<(), String> {
 
     // Connect to keyboard for right knob AND key presses
     if let Some(dev) = keyboard {
-        log::info!("[HID] Connecting to Keyboard: {}", dev.path);
+        log::debug!("[HID] Connecting to Keyboard: {}", dev.path);
         if let Err(e) = connect_device_internal(&dev.path, false) {
-            log::warn!("[HID] Failed to connect to Keyboard: {}", e);
+            log::debug!("[HID] Failed to connect to Keyboard: {}", e);
         } else {
             connected_any = true;
             if first_device_info.is_none() {
@@ -541,7 +541,7 @@ pub fn disconnect_device() -> Result<(), String> {
     });
 
     if was_connected {
-        log::info!("[HID] Disconnected from all devices");
+        log::debug!("[HID] Disconnected from all devices");
         emit_status_changed();
     }
 
@@ -1044,7 +1044,7 @@ pub fn add_mapping(mapping: HidMapping) -> Result<(), String> {
     });
 
     save_mappings_to_disk();
-    log::info!("[HID] Mapping added/updated");
+    log::debug!("[HID] Mapping added/updated");
 
     Ok(())
 }
@@ -1059,7 +1059,7 @@ pub fn remove_mapping(encoder_index: u8) -> Result<(), String> {
 
     if removed {
         save_mappings_to_disk();
-        log::info!("[HID] Mapping removed for encoder {}", encoder_index);
+        log::debug!("[HID] Mapping removed for encoder {}", encoder_index);
     }
 
     Ok(())
@@ -1072,7 +1072,7 @@ pub fn clear_mappings() -> Result<(), String> {
     });
 
     save_mappings_to_disk();
-    log::info!("[HID] All mappings cleared");
+    log::debug!("[HID] All mappings cleared");
 
     Ok(())
 }
@@ -1107,7 +1107,7 @@ pub fn setup_default_mappings() -> Result<(), String> {
     });
 
     save_mappings_to_disk();
-    log::info!("[HID] Default mappings configured");
+    log::debug!("[HID] Default mappings configured");
 
     Ok(())
 }
@@ -1135,7 +1135,7 @@ fn load_mappings_from_disk() {
                             with_hid_engine(|state| {
                                 state.mappings = mappings;
                             });
-                            log::info!("[HID] Loaded mappings from {:?}", path);
+                            log::debug!("[HID] Loaded mappings from {:?}", path);
                         }
                         Err(e) => {
                             log::error!("[HID] Failed to parse mappings: {}", e);

@@ -13,6 +13,9 @@ pub mod hid;
 pub mod midi;
 pub mod modulation;
 pub mod osc;
+#[cfg(target_os = "macos")]
+pub mod syphon;
+pub mod video_out;
 
 // =============================================================================
 // Parameter Server
@@ -371,17 +374,36 @@ fn get_crash_log_path(app: AppHandle) -> Option<String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize logging
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .format_timestamp_millis()
+        .init();
+
+    log::info!("[App] Starting sebcat-vj");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             load_parameters_from_disk(app);
 
-            // Initialize input engines
+            // Initialize all engines (they log internally at debug level)
             midi::init_midi_engine(app.handle().clone());
             osc::init_osc_engine(app.handle().clone());
             audio::init_audio_engine(app.handle().clone());
             hid::init_hid_engine(app.handle());
             modulation::init_modulation_engine(app.handle().clone());
+            video_out::init_video_output(app.handle().clone());
+
+            // Log startup summary
+            let video_backends = video_out::get_available_backends();
+            log::info!(
+                "[App] Initialized: MIDI, OSC, Audio, HID, Modulation, Video ({})",
+                if video_backends.is_empty() {
+                    "no backends".to_string()
+                } else {
+                    video_backends.join(", ")
+                }
+            );
 
             start_parameter_tick_loop(app.handle().clone());
 
@@ -466,6 +488,12 @@ pub fn run() {
             modulation::clear_modulation_audio_modulations,
             modulation::get_full_modulation_state,
             modulation::is_parameter_modulated_cmd,
+            // Video Output
+            video_out::list_video_backends,
+            video_out::get_video_backend_status,
+            video_out::init_video_backend,
+            video_out::shutdown_video_backend,
+            video_out::publish_video_frame,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
