@@ -523,8 +523,7 @@ function MappingForm({
  * Audio mappings management section.
  */
 function MappingsSection() {
-  const { mappings, add, remove, setEnabled, clear, isLoading } =
-    useAudioMappings();
+  const { mappings, add, remove, setEnabled } = useAudioMappings();
   const [editingMapping, setEditingMapping] = useState<AudioMapping | null>(
     null,
   );
@@ -554,16 +553,6 @@ function MappingsSection() {
     }
   };
 
-  const handleClearAll = async () => {
-    if (mappings.length === 0) return;
-    if (!window.confirm("Clear all audio mappings?")) return;
-    try {
-      await clear();
-    } catch (e) {
-      console.error("[Audio] Failed to clear mappings:", e);
-    }
-  };
-
   // Show form if editing
   if (editingMapping !== null) {
     return (
@@ -580,30 +569,17 @@ function MappingsSection() {
   return (
     <div className={styles.mappingsSection}>
       {mappings.length > 0 ? (
-        <>
-          <div className={styles.mappingsList}>
-            {mappings.map((mapping) => (
-              <MappingRow
-                key={mapping.id}
-                mapping={mapping}
-                onToggle={handleToggle}
-                onEdit={setEditingMapping}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
-
-          <div className={styles.mappingsFooter}>
-            <button
-              type="button"
-              onClick={handleClearAll}
-              disabled={isLoading}
-              className={styles.clearButton}
-            >
-              Clear All
-            </button>
-          </div>
-        </>
+        <div className={styles.mappingsList}>
+          {mappings.map((mapping) => (
+            <MappingRow
+              key={mapping.id}
+              mapping={mapping}
+              onToggle={handleToggle}
+              onEdit={setEditingMapping}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
       ) : (
         <p className={styles.noMappings}>
           No mappings. Add one to make parameters react to audio.
@@ -634,7 +610,17 @@ export function AudioPanel({ className }: AudioPanelProps) {
   const [mappingsOpen, setMappingsOpen] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const { isRunning } = useAudioCapture();
-  const { mappings, add } = useAudioMappings();
+  const { mappings, add, clear } = useAudioMappings();
+
+  const handleClearAll = async () => {
+    if (mappings.length === 0) return;
+    if (!window.confirm("Clear all audio mappings?")) return;
+    try {
+      await clear();
+    } catch (e) {
+      console.error("[Audio] Failed to clear mappings:", e);
+    }
+  };
 
   const handleAddMapping = async (mapping: AudioMapping) => {
     try {
@@ -703,6 +689,19 @@ export function AudioPanel({ className }: AudioPanelProps) {
           >
             + Add
           </button>
+          {mappings.length > 0 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                void handleClearAll();
+              }}
+              className={styles.clearButton}
+              aria-label="Clear all mappings"
+            >
+              Clear All
+            </button>
+          )}
         </div>
         <Collapsible.Content className={styles.sectionContent}>
           {showAddForm ? (

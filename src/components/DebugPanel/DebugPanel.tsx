@@ -1,3 +1,5 @@
+import { useCallback, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import * as Tabs from "@radix-ui/react-tabs";
 import { MidiPanel } from "../MidiPanel";
 import { OscPanel } from "../OscPanel";
@@ -27,6 +29,24 @@ export interface DebugPanelProps {
  * - Modulation: LFO and modulation matrix
  */
 export function DebugPanel({ macropadSelectedIndex }: DebugPanelProps) {
+  const [isRestarting, setIsRestarting] = useState(false);
+
+  const handleRestartControls = useCallback(async () => {
+    if (isRestarting) return;
+    if (
+      !window.confirm("Restart the Controls window? This will reload the UI.")
+    )
+      return;
+
+    setIsRestarting(true);
+    try {
+      await invoke("restart_controls_window");
+    } catch (e) {
+      console.error("[Controls] Failed to restart:", e);
+      setIsRestarting(false);
+    }
+  }, [isRestarting]);
+
   return (
     <Tabs.Root defaultValue="hid" className={styles.container}>
       <Tabs.List className={styles.tabList} aria-label="Debug panel tabs">
@@ -68,6 +88,23 @@ export function DebugPanel({ macropadSelectedIndex }: DebugPanelProps) {
           <ModulationPanel />
         </Tabs.Content>
       </div>
+
+      <footer className={styles.footer}>
+        <div className={styles.shortcuts}>
+          <span className={styles.shortcut}>
+            <kbd>D</kbd> Toggle stats
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={handleRestartControls}
+          disabled={isRestarting}
+          className={styles.restartButton}
+          title="Restart Controls window (crash recovery)"
+        >
+          {isRestarting ? "Restarting…" : "Restart Controls"}
+        </button>
+      </footer>
     </Tabs.Root>
   );
 }

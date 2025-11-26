@@ -22,7 +22,8 @@ import styles from "./ScenesArea.module.css";
  * @property canRemoveSlot - Whether we can remove slots
  * @property getValue - Get parameter value for a given parameter ID
  * @property setValue - Set parameter value
- * @property getSceneParams - Get scene params object for a scene ID
+ * @property getSceneParams - Get scene params object for a scene ID (target values for sliders)
+ * @property getSceneParamsInterpolated - Get scene params with interpolated values (for smooth previews)
  * @property audioMappings - Optional audio mappings for parameter indicators
  * @property modulationTargets - Optional modulation targets for parameter indicators
  * @property lfos - Optional LFO sources (for modulation indicator labels)
@@ -43,6 +44,7 @@ export interface ScenesAreaProps {
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
   getSceneParams: (sceneId: SceneId) => SceneProps["params"];
+  getSceneParamsInterpolated?: (sceneId: SceneId) => SceneProps["params"];
   audioMappings?: AudioMapping[];
   modulationTargets?: ModulationTarget[];
   lfos?: LfoSource[];
@@ -76,6 +78,7 @@ export function ScenesArea({
   getValue,
   setValue,
   getSceneParams,
+  getSceneParamsInterpolated,
   audioMappings,
   modulationTargets,
   lfos,
@@ -163,6 +166,7 @@ export function ScenesArea({
                   )}
                   canRemove={canRemoveSlot && slot.index !== activeIndex}
                   params={getSceneParams(slot.sceneId)}
+                  previewParams={getSceneParamsInterpolated?.(slot.sceneId)}
                   getValue={getValue}
                   setValue={setValue}
                   audioMappings={audioMappings}

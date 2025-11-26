@@ -411,7 +411,7 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
 // ============================================================================
 
 function LfosSection() {
-  const { lfos, add, update, remove, clear } = useLfos();
+  const { lfos, add, update, remove } = useLfos();
   const { targets } = useModulationTargets();
   const { values } = useLfoValues();
 
@@ -448,20 +448,6 @@ function LfosSection() {
     }
   };
 
-  const handleClear = async () => {
-    if (
-      window.confirm(
-        "Clear all LFOs? This will also remove all modulation targets.",
-      )
-    ) {
-      try {
-        await clear();
-      } catch (e) {
-        console.error("[Modulation] Failed to clear LFOs:", e);
-      }
-    }
-  };
-
   if (showForm || editingLfo) {
     return (
       <LfoForm
@@ -492,19 +478,6 @@ function LfosSection() {
               onDelete={() => handleDelete(lfo.id)}
             />
           ))}
-        </div>
-      )}
-
-      {lfos.length > 0 && (
-        <div className={styles.sectionFooter}>
-          <span className={styles.itemCount}>{lfos.length} LFO(s)</span>
-          <button
-            type="button"
-            className={styles.clearButton}
-            onClick={handleClear}
-          >
-            Clear All
-          </button>
         </div>
       )}
     </div>
@@ -718,7 +691,7 @@ function TargetForm({
 
 function TargetsSection() {
   const { lfos } = useLfos();
-  const { targets, add, remove, clear } = useModulationTargets();
+  const { targets, add, remove } = useModulationTargets();
   const [showForm, setShowForm] = useState(false);
   const [editingTarget, setEditingTarget] = useState<ModulationTarget | null>(
     null,
@@ -747,16 +720,6 @@ function TargetsSection() {
       await add({ ...target, enabled: !target.enabled });
     } catch (e) {
       console.error("[Modulation] Failed to toggle target:", e);
-    }
-  };
-
-  const handleClear = async () => {
-    if (window.confirm("Clear all modulation targets?")) {
-      try {
-        await clear();
-      } catch (e) {
-        console.error("[Modulation] Failed to clear targets:", e);
-      }
     }
   };
 
@@ -804,19 +767,6 @@ function TargetsSection() {
               onDelete={() => handleDelete(target.id)}
             />
           ))}
-        </div>
-      )}
-
-      {targets.length > 0 && (
-        <div className={styles.sectionFooter}>
-          <span className={styles.itemCount}>{targets.length} target(s)</span>
-          <button
-            type="button"
-            className={styles.clearButton}
-            onClick={handleClear}
-          >
-            Clear All
-          </button>
         </div>
       )}
     </div>
@@ -1062,7 +1012,7 @@ function AudioModForm({
 
 function AudioModulationsSection() {
   const { lfos } = useLfos();
-  const { audioModulations, add, remove, clear } = useAudioModulations();
+  const { audioModulations, add, remove } = useAudioModulations();
   const [showForm, setShowForm] = useState(false);
   const [editingMod, setEditingMod] = useState<AudioModulation | null>(null);
 
@@ -1090,16 +1040,6 @@ function AudioModulationsSection() {
       await add({ ...mod, enabled: !mod.enabled });
     } catch (e) {
       console.error("[Modulation] Failed to toggle audio modulation:", e);
-    }
-  };
-
-  const handleClear = async () => {
-    if (window.confirm("Clear all audio modulations?")) {
-      try {
-        await clear();
-      } catch (e) {
-        console.error("[Modulation] Failed to clear audio modulations:", e);
-      }
     }
   };
 
@@ -1149,21 +1089,6 @@ function AudioModulationsSection() {
           ))}
         </div>
       )}
-
-      {audioModulations.length > 0 && (
-        <div className={styles.sectionFooter}>
-          <span className={styles.itemCount}>
-            {audioModulations.length} audio mod(s)
-          </span>
-          <button
-            type="button"
-            className={styles.clearButton}
-            onClick={handleClear}
-          >
-            Clear All
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -1184,9 +1109,17 @@ export function ModulationPanel({ className }: ModulationPanelProps) {
   const [showAddTarget, setShowAddTarget] = useState(false);
   const [showAddAudioMod, setShowAddAudioMod] = useState(false);
 
-  const { lfos, add: addLfo } = useLfos();
-  const { targets, add: addTarget } = useModulationTargets();
-  const { audioModulations, add: addAudioMod } = useAudioModulations();
+  const { lfos, add: addLfo, clear: clearLfos } = useLfos();
+  const {
+    targets,
+    add: addTarget,
+    clear: clearTargets,
+  } = useModulationTargets();
+  const {
+    audioModulations,
+    add: addAudioMod,
+    clear: clearAudioMods,
+  } = useAudioModulations();
 
   const handleAddLfo = async (lfo: LfoSource) => {
     try {
@@ -1255,6 +1188,25 @@ export function ModulationPanel({ className }: ModulationPanelProps) {
           >
             + Add
           </button>
+          {lfos.length > 0 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (
+                  window.confirm(
+                    "Clear all LFOs? This will also remove all modulation targets.",
+                  )
+                ) {
+                  void clearLfos();
+                }
+              }}
+              className={styles.clearButton}
+              aria-label="Clear all LFOs"
+            >
+              Clear All
+            </button>
+          )}
         </div>
         <Collapsible.Content className={styles.sectionContent}>
           {showAddLfo ? (
@@ -1294,6 +1246,21 @@ export function ModulationPanel({ className }: ModulationPanelProps) {
           >
             + Add
           </button>
+          {targets.length > 0 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm("Clear all modulation targets?")) {
+                  void clearTargets();
+                }
+              }}
+              className={styles.clearButton}
+              aria-label="Clear all targets"
+            >
+              Clear All
+            </button>
+          )}
         </div>
         <Collapsible.Content className={styles.sectionContent}>
           {showAddTarget && lfos.length > 0 ? (
@@ -1336,6 +1303,21 @@ export function ModulationPanel({ className }: ModulationPanelProps) {
           >
             + Add
           </button>
+          {audioModulations.length > 0 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm("Clear all audio modulations?")) {
+                  void clearAudioMods();
+                }
+              }}
+              className={styles.clearButton}
+              aria-label="Clear all audio modulations"
+            >
+              Clear All
+            </button>
+          )}
         </div>
         <Collapsible.Content className={styles.sectionContent}>
           {showAddAudioMod && lfos.length > 0 ? (

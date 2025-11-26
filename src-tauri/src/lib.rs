@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
 pub mod audio;
 pub mod hid;
@@ -310,6 +310,61 @@ fn set_scene_pairing(
     .map_err(|e| format!("Failed to emit scene_pairing_changed: {e}"))
 }
 
+/// Restart the Controls window (for crash recovery).
+/// This closes the existing Controls window and creates a new one.
+#[tauri::command]
+async fn restart_controls_window(app: AppHandle) -> Result<(), String> {
+    // Log the restart attempt
+    let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
+    if let Some(log_path) = app.path().app_log_dir().ok() {
+        let _ = std::fs::create_dir_all(&log_path);
+        let crash_log = log_path.join("controls_restarts.log");
+        let entry = format!("[{}] Controls window restart requested\n", timestamp);
+        let _ = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&crash_log)
+            .and_then(|mut f| std::io::Write::write_all(&mut f, entry.as_bytes()));
+    }
+
+    // Close existing Controls window if it exists
+    if let Some(window) = app.get_webview_window("controls") {
+        window
+            .close()
+            .map_err(|e| format!("Failed to close Controls window: {e}"))?;
+    }
+
+    // Wait a moment for cleanup
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    // Create new Controls window
+    let new_window = WebviewWindowBuilder::new(&app, "controls", WebviewUrl::App("/".into()))
+        .title("sebcat-vj — Controls")
+        .inner_size(1440.0, 1080.0)
+        .resizable(true)
+        .visible(true)
+        .build()
+        .map_err(|e| format!("Failed to create Controls window: {e}"))?;
+
+    // Position the window (similar to initial setup)
+    if let Ok(Some(primary_monitor)) = app.primary_monitor() {
+        let _ = new_window.set_position(*primary_monitor.position());
+        let _ = new_window.set_size(*primary_monitor.size());
+    }
+
+    Ok(())
+}
+
+/// Get the path to the crash/restart log file.
+#[tauri::command]
+fn get_crash_log_path(app: AppHandle) -> Option<String> {
+    app.path().app_log_dir().ok().map(|p| {
+        p.join("controls_restarts.log")
+            .to_string_lossy()
+            .to_string()
+    })
+}
+
 // =============================================================================
 // App Entry Point
 // =============================================================================
@@ -348,6 +403,8 @@ pub fn run() {
             set_parameter,
             clear_parameters,
             set_scene_pairing,
+            restart_controls_window,
+            get_crash_log_path,
             // MIDI
             midi::list_midi_devices,
             midi::open_midi_device,

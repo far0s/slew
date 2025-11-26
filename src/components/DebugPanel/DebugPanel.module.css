@@ -96,3 +96,69 @@
   flex-direction: column;
   outline: none;
 }
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid rgb(30 64 175 / 0.5);
+  background: rgb(15 23 42 / 0.6);
+  flex-shrink: 0;
+}
+
+.shortcuts {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.shortcut {
+  font-size: 0.65rem;
+  color: rgb(148 163 184 / 0.8);
+}
+
+.shortcut kbd {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  margin-right: 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 0.6rem;
+  font-weight: 600;
+  background: rgb(255 255 255 / 0.08);
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: 0.2rem;
+  color: rgb(203 213 225);
+}
+
+.restartButton {
+  padding: 0.25rem 0.5rem;
+  background: rgb(239 68 68 / 0.1);
+  border: 1px solid rgb(239 68 68 / 0.25);
+  border-radius: 0.25rem;
+  color: rgb(252 165 165);
+  font-size: 0.6rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.restartButton:hover:not(:disabled) {
+  background: rgb(239 68 68 / 0.2);
+  border-color: rgb(239 68 68 / 0.4);
+}
+
+.restartButton:focus-visible {
+  outline: 2px solid rgb(239 68 68 / 0.6);
+  outline-offset: 1px;
+}
+
+.restartButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

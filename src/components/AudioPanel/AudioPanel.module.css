@@ -437,6 +437,10 @@
   flex: 1;
 }
 
+.sectionHeaderWithAction .clearButton {
+  flex-shrink: 0;
+}
+
 .headerAddButton {
   padding: 0.2rem 0.5rem;
   background: rgb(168 85 247 / 0.15);

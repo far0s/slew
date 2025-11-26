@@ -24,7 +24,8 @@ import styles from "./SceneColumn.module.css";
  * @property isMacropadSelected - Whether this slot is selected via macropad (keys 1-4)
  * @property excludeSceneIds - Scene IDs to exclude from dropdown (already in use)
  * @property canRemove - Whether the slot can be removed
- * @property params - Scene params for preview rendering
+ * @property params - Scene params for controls (target values)
+ * @property previewParams - Scene params for preview rendering (interpolated values for smooth animation)
  * @property getValue - Get parameter value for controls
  * @property setValue - Set parameter value for controls
  * @property audioMappings - Optional audio mappings for parameter indicators
@@ -45,6 +46,7 @@ export interface SceneColumnProps {
   excludeSceneIds: SceneId[];
   canRemove: boolean;
   params?: SceneProps["params"];
+  previewParams?: SceneProps["params"];
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
   audioMappings?: AudioMapping[];
@@ -84,6 +86,7 @@ export function SceneColumn({
   excludeSceneIds,
   canRemove,
   params,
+  previewParams,
   getValue,
   setValue,
   audioMappings,
@@ -159,7 +162,7 @@ export function SceneColumn({
               <ambientLight intensity={0.4} />
               <directionalLight position={[4, 6, 3]} intensity={1.1} />
               <directionalLight position={[-4, -4, -2]} intensity={0.4} />
-              <SceneComponent opacity={1} params={params} />
+              <SceneComponent opacity={1} params={previewParams ?? params} />
             </Canvas>
           </Suspense>
         ) : (

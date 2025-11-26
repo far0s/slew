@@ -5,6 +5,7 @@ import { useSceneSlots } from "./scenes/useSceneSlots";
 import {
   useParameterStore,
   buildSceneParams,
+  buildSceneParamsInterpolated,
   type BackendParameter,
 } from "./controls/useParameterStore";
 import type { SceneId } from "./scenes/sceneTypes";
@@ -301,13 +302,20 @@ function App() {
           (event) => {
             const updated = event.payload;
 
+            // Always update interpolated values with the smooth backend value
+            // This is what the Renderer uses, so previews will match
+            paramStore.setInterpolated(
+              updated.id as import("./scenes/sceneTypes").ParameterId,
+              updated.value,
+            );
+
             // For crossfade, use interpolated value (smooth animation)
             // For other parameters, use target (immediate response to user input)
             if (updated.id === "crossfade") {
               // Use value for smooth crossfade animation in UI
               paramStore.set("crossfade", updated.value);
             } else {
-              // Use target for immediate response to user input
+              // Use target for immediate response to user input (for sliders)
               paramStore.applyBackendParams([updated]);
             }
 
@@ -334,9 +342,15 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Get scene params for a scene ID
+  // Get scene params for a scene ID (target values for sliders)
   const getSceneParams = useCallback(
     (sceneId: SceneId) => buildSceneParams(sceneId, paramStore),
+    [paramStore],
+  );
+
+  // Get scene params with interpolated values (for smooth preview rendering)
+  const getSceneParamsInterpolated = useCallback(
+    (sceneId: SceneId) => buildSceneParamsInterpolated(sceneId, paramStore),
     [paramStore],
   );
 
@@ -380,6 +394,7 @@ function App() {
             getValue={getValue}
             setValue={setValue}
             getSceneParams={getSceneParams}
+            getSceneParamsInterpolated={getSceneParamsInterpolated}
             audioMappings={audioMappings}
             modulationTargets={modulationTargets}
             lfos={lfos}
@@ -395,10 +410,12 @@ function App() {
           <RendererPreview
             activeSceneId={activeSceneId}
             nextSceneId={targetSceneId}
-            crossfade={paramStore.get("crossfade")}
-            activeSceneParams={getSceneParams(activeSceneId)}
-            nextSceneParams={getSceneParams(targetSceneId)}
-            sceneATintLfoDepth={paramStore.get("scene_a_tint_lfo_depth")}
+            crossfade={paramStore.getInterpolated("crossfade")}
+            activeSceneParams={getSceneParamsInterpolated(activeSceneId)}
+            nextSceneParams={getSceneParamsInterpolated(targetSceneId)}
+            sceneATintLfoDepth={paramStore.getInterpolated(
+              "scene_a_tint_lfo_depth",
+            )}
           />
           <DebugPanel macropadSelectedIndex={macropadSelectedIndex} />
         </aside>

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import type { ParameterId } from "../scenes/sceneTypes";
 import { buildDefaultParameterMap, SCENE_REGISTRY } from "../scenes/sceneTypes";
 
@@ -22,10 +22,13 @@ export interface BackendParameter {
 /**
  * State and actions for the parameter store.
  *
- * @property parameters - Map of parameter ID → current value
- * @property get - Get a parameter value (with fallback to default)
+ * @property parameters - Map of parameter ID → target value (for UI sliders)
+ * @property interpolatedValues - Map of parameter ID → interpolated value (for previews)
+ * @property get - Get a parameter target value (with fallback to default)
+ * @property getInterpolated - Get the interpolated value for smooth preview rendering
  * @property set - Set a parameter value locally
  * @property setMany - Set multiple parameters at once
+ * @property setInterpolated - Set an interpolated value (from backend tick loop)
  * @property resetToDefault - Reset a parameter to its default value
  * @property resetAllToDefaults - Reset all parameters to defaults
  * @property applyBackendParams - Apply backend parameters to local state
@@ -41,9 +44,12 @@ export interface BackendParameter {
  */
 export interface ParameterStoreState {
   parameters: Map<ParameterId, number>;
+  interpolatedValues: Map<ParameterId, number>;
   get: (id: ParameterId) => number;
+  getInterpolated: (id: ParameterId) => number;
   set: (id: ParameterId, value: number) => void;
   setMany: (updates: Array<[ParameterId, number]>) => void;
+  setInterpolated: (id: ParameterId, value: number) => void;
   resetToDefault: (id: ParameterId) => void;
   resetAllToDefaults: () => void;
   applyBackendParams: (params: BackendParameter[]) => void;
@@ -96,6 +102,7 @@ function getParameterRange(
  * - Automatic clamping based on scene registry ranges
  * - Default values from scene descriptors
  * - Backend synchronization helpers
+ * - Separate interpolated values for smooth preview rendering
  */
 export function useParameterStore(): ParameterStoreState {
   // Initialize with defaults from scene registry
@@ -105,6 +112,13 @@ export function useParameterStore(): ParameterStoreState {
     () => new Map(defaultMap),
   );
 
+  // Interpolated values for smooth preview rendering (matches Renderer behavior)
+  // Uses ref + state combo: ref for fast updates, state for triggering re-renders
+  const interpolatedRef = useRef<Map<ParameterId, number>>(new Map(defaultMap));
+  const [interpolatedValues, setInterpolatedValues] = useState<
+    Map<ParameterId, number>
+  >(() => new Map(defaultMap));
+
   const [backendSnapshot, setBackendSnapshot] = useState<
     BackendParameter[] | null
   >(null);
@@ -112,12 +126,20 @@ export function useParameterStore(): ParameterStoreState {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Get a parameter value
+  // Get a parameter target value (for sliders)
   const get = useCallback(
     (id: ParameterId): number => {
       return parameters.get(id) ?? defaultMap.get(id) ?? 0;
     },
     [parameters, defaultMap],
+  );
+
+  // Get interpolated value (for smooth preview rendering)
+  const getInterpolated = useCallback(
+    (id: ParameterId): number => {
+      return interpolatedValues.get(id) ?? defaultMap.get(id) ?? 0;
+    },
+    [interpolatedValues, defaultMap],
   );
 
   // Set a single parameter
@@ -145,6 +167,22 @@ export function useParameterStore(): ParameterStoreState {
     });
   }, []);
 
+  // Set an interpolated value (from backend tick loop for smooth animation)
+  const setInterpolated = useCallback((id: ParameterId, value: number) => {
+    const range = getParameterRange(id);
+    const clampedValue = range ? clamp(value, range.min, range.max) : value;
+
+    // Update ref immediately
+    interpolatedRef.current.set(id, clampedValue);
+
+    // Batch state updates for performance (React will dedupe rapid updates)
+    setInterpolatedValues((prev) => {
+      const next = new Map(prev);
+      next.set(id, clampedValue);
+      return next;
+    });
+  }, []);
+
   // Reset a parameter to default
   const resetToDefault = useCallback(
     (id: ParameterId) => {
@@ -159,6 +197,8 @@ export function useParameterStore(): ParameterStoreState {
   // Reset all to defaults
   const resetAllToDefaults = useCallback(() => {
     setParameters(new Map(defaultMap));
+    interpolatedRef.current = new Map(defaultMap);
+    setInterpolatedValues(new Map(defaultMap));
   }, [defaultMap]);
 
   // Apply backend parameters to local state
@@ -208,9 +248,12 @@ export function useParameterStore(): ParameterStoreState {
 
   return {
     parameters,
+    interpolatedValues,
     get,
+    getInterpolated,
     set,
     setMany,
+    setInterpolated,
     resetToDefault,
     resetAllToDefaults,
     applyBackendParams,
@@ -265,6 +308,7 @@ export function paramIdToPropsKey(
 
 /**
  * Build scene params object from parameter store for a given scene.
+ * Uses target values (for sliders/controls).
  */
 export function buildSceneParams(
   sceneId: import("../scenes/sceneTypes").SceneId,
@@ -279,6 +323,29 @@ export function buildSceneParams(
     const propsKey = paramIdToPropsKey(paramDesc.id);
     if (propsKey) {
       params[propsKey] = store.get(paramDesc.id);
+    }
+  }
+
+  return params as import("../scenes/sceneComponents").SceneProps["params"];
+}
+
+/**
+ * Build scene params object using interpolated values for smooth preview rendering.
+ * This matches the Renderer's behavior for accurate previews.
+ */
+export function buildSceneParamsInterpolated(
+  sceneId: import("../scenes/sceneTypes").SceneId,
+  store: ParameterStoreState,
+): import("../scenes/sceneComponents").SceneProps["params"] {
+  const scene = SCENE_REGISTRY.find((s) => s.id === sceneId);
+  if (!scene) return {};
+
+  const params: Record<string, number> = {};
+
+  for (const paramDesc of scene.parameters) {
+    const propsKey = paramIdToPropsKey(paramDesc.id);
+    if (propsKey) {
+      params[propsKey] = store.getInterpolated(paramDesc.id);
     }
   }
 

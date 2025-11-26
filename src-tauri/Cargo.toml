@@ -32,3 +32,5 @@ rustfft = "6.2"      # FFT processing
 hidapi = "2.6"       # Cross-platform HID device access
 log = "0.4"          # Logging facade
 rand = "0.8"         # Random number generation for LFO
+chrono = "0.4"       # Date/time for logging
+tokio = { version = "1", features = ["time"] }  # Async runtime for delays
