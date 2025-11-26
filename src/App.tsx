@@ -17,6 +17,7 @@ import {
   type DebugMetricsData,
 } from "./components";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
+import { useAudioMappings } from "./inputs/audio";
 import styles from "./App.module.css";
 
 /** Maximum number of log entries to keep in memory */
@@ -32,6 +33,9 @@ function App() {
 
   // Parameter store (replaces individual useState calls)
   const paramStore = useParameterStore();
+
+  // Audio mappings for parameter indicators
+  const { mappings: audioMappings } = useAudioMappings();
 
   // Debug logs state
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -501,6 +505,7 @@ function App() {
             getValue={getValue}
             setValue={setValue}
             getSceneParams={getSceneParams}
+            audioMappings={audioMappings}
             onSlotSceneChange={handleSlotSceneChange}
             onCrossfade={handleCrossfade}
             onRemoveSlot={handleRemoveSlot}

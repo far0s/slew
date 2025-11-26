@@ -1351,45 +1351,64 @@ Update and answer these over time; future LLM sessions will rely on them.
    - Encoder sensitivity respects parameter step size
    - All three knobs (K1, K2, K3) properly update their mapped parameters
 10. **~~lib.rs cleanup~~** ✅ DONE — Removed verbose comments, consolidated code, extracted window placement
+11. **~~Audio → Parameter Binding~~** ✅ DONE
+    - Backend mapping system in `audio.rs` with `AudioMapping`, `AudioSource`, `AudioMappingMode` types
+    - Audio sources: RMS, Peak, Bass, Low-Mid, High-Mid, Treble, Beat
+    - Mapping modes: Continuous (direct), Trigger (on beat), Add (additive)
+    - Per-mapping smoothing factor (0-95%)
+    - Per-mapping enable/disable toggle
+    - Mappings persisted to `audio_mappings.json`
+    - Tauri commands: `get_audio_mappings`, `add_audio_mapping`, `remove_audio_mapping`, `clear_audio_mappings`, `set_audio_mapping_enabled`
+    - Frontend hooks: `useAudioMappings()` with full CRUD operations
+    - UI in AudioPanel "Mappings" section with:
+      - Mapping list with enable/disable toggle, source→parameter display, delete button
+      - "Add Mapping" form with source, parameter, mode, output range, smoothing controls
+      - Auto-fill output range from parameter descriptor
+      - Clear all button with confirmation
+12. **~~Audio Mapping UI Enhancements~~** ✅ DONE
+    - **Edit mapping support**: Click mapping row to edit; form reused for add/edit modes
+    - **BPM detection**: Replaced beat count with calculated BPM (60-200 range, 8-beat averaging)
+    - **Improved beat indicator**: Larger visual (28px ring + 14px dot) with pulse animation and glow
+    - **Level bars with motion/react**: CSS transforms (`scaleX`) with snappy spring animation
+    - **RMS/Peak scaling**: Increased multipliers (8× RMS, 4× Peak) for better visibility
+    - **Color-coded sources**: Each audio source matches its level meter color (emerald, amber, purple, cyan, red)
+    - **Scene indicators**: Mapping rows show scene badge (`A`, `B`, `C`) for parameter context
+    - **Parameter slider indicators**: `AudioMappingIndicator` badge shown on mapped parameters
+      - Colored dot + source label (e.g., "Bass", "RMS")
+      - Flows through App → ScenesArea → SceneColumn → SceneParameterControls → ParameterSlider
+    - **Header redesign**: Count badge next to "Mappings" text, "+ Add" button in header
+    - **Helper functions**: `AUDIO_SOURCE_COLORS`, `AUDIO_SOURCE_SHORT_LABELS`, `getSceneFromParameterId()`
 
 ---
 
 ### Next Up (Prioritized)
 
-#### 1. Audio → Parameter Binding
-
-- Currently audio analysis (RMS, bands, beats) is displayed but not connected to parameters
-- Add a simple binding UI to map audio outputs to parameters:
-  - `rms` → any parameter (e.g., `scene_a_brightness`)
-  - `bass` → any parameter (e.g., `scene_a_wobble`)
-  - `beat` → trigger actions (e.g., crossfade, parameter pulse)
-- Consider exposing audio levels as virtual parameters in the Parameter Server
-
-#### 2. Backend Modulation Engine
+#### 1. Backend Modulation Engine
 
 - Implement LFOs as backend modulators (not just renderer-side)
 - Move Scene A tint LFO to backend for consistency
 - Add modulation sources: sine, triangle, random/noise
 - Add modulation matrix UI (source → parameter with depth/mode)
 
-#### 3. Video Output (Prototype)
+#### 2. Video Output (Prototype)
 
 - No-op Syphon/Spout backend that logs calls
 - Define interface for publishing rendered frames
 - macOS: Start with Syphon integration
 
-#### 4. Scene System Expansion
+#### 3. Scene System Expansion
 
 - Add more scenes with different visual styles
 - Scene library/browser UI
 - Scene-aware parameter grouping in Controls
 
-#### 5. UX Polish
+#### 4. UX Polish
 
-- Mapping tooltips on sliders (show current MIDI/OSC binding)
+- Mapping tooltips on sliders (show current MIDI/OSC/Audio binding) — Audio done ✅
 - Mapping import/export for preset sharing
 - Device hot-plug handling improvements
 - Error recovery and user feedback
+- Show MIDI/OSC binding indicators on parameter sliders (similar to audio)
 
 ---
 

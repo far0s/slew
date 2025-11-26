@@ -4,7 +4,15 @@ import type {
   SceneParameterDescriptor,
 } from "../../scenes/sceneTypes";
 import { getSceneDescriptor } from "../../scenes/sceneTypes";
-import { ParameterSlider } from "../ParameterSlider";
+import {
+  ParameterSlider,
+  type AudioMappingIndicator,
+} from "../ParameterSlider";
+import {
+  type AudioMapping,
+  AUDIO_SOURCE_SHORT_LABELS,
+  AUDIO_SOURCE_COLORS,
+} from "../../inputs/audio";
 import styles from "./SceneParameterControls.module.css";
 
 /**
@@ -13,11 +21,13 @@ import styles from "./SceneParameterControls.module.css";
  * @property sceneId - Scene ID to render controls for
  * @property getValue - Get current value for a parameter
  * @property setValue - Set value for a parameter
+ * @property audioMappings - Optional list of audio mappings to show indicators
  */
 export interface SceneParameterControlsProps {
   sceneId: SceneId;
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
+  audioMappings?: AudioMapping[];
 }
 
 /**
@@ -67,6 +77,28 @@ function createChangeHandler(
 }
 
 /**
+ * Get audio mapping indicator for a parameter if one exists.
+ */
+function getAudioMappingIndicator(
+  parameterId: string,
+  audioMappings?: AudioMapping[],
+): AudioMappingIndicator | null {
+  if (!audioMappings) return null;
+
+  // Find enabled mapping for this parameter
+  const mapping = audioMappings.find(
+    (m) => m.parameter_id === parameterId && m.enabled,
+  );
+
+  if (!mapping) return null;
+
+  return {
+    sourceLabel: AUDIO_SOURCE_SHORT_LABELS[mapping.source],
+    color: AUDIO_SOURCE_COLORS[mapping.source],
+  };
+}
+
+/**
  * SceneParameterControls
  *
  * Auto-generates parameter sliders from a scene's descriptor.
@@ -77,11 +109,13 @@ function createChangeHandler(
  * - Renders ParameterSlider for each parameter
  * - Handles all backend communication
  * - Supports MIDI learn via midiParameterId
+ * - Shows audio mapping indicators when a parameter is audio-mapped
  */
 export function SceneParameterControls({
   sceneId,
   getValue,
   setValue,
+  audioMappings,
 }: SceneParameterControlsProps) {
   const descriptor = getSceneDescriptor(sceneId);
 
@@ -115,6 +149,7 @@ export function SceneParameterControls({
             description={param.description}
             onChange={createChangeHandler(param, setValue)}
             midiParameterId={param.id}
+            audioMapping={getAudioMappingIndicator(param.id, audioMappings)}
           />
         ))}
       </div>

@@ -1,1 +1,6 @@
-export { ParameterSlider, type ParameterSliderProps, type SliderColorVariant } from "./ParameterSlider";
+export {
+  ParameterSlider,
+  type ParameterSliderProps,
+  type SliderColorVariant,
+  type AudioMappingIndicator,
+} from "./ParameterSlider";

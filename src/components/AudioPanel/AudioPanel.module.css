@@ -305,9 +305,10 @@
 }
 
 .levelBar {
+  width: 100%;
   height: 100%;
   border-radius: 4px;
-  transition: width 0.05s ease-out;
+  will-change: transform;
 }
 
 .levelBarEmerald {
@@ -342,40 +343,485 @@
 .beatIndicator {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.beatVisual {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .beatDot {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: rgb(100 100 100 / 0.3);
-  border: 2px solid rgb(100 100 100 / 0.4);
-  transition:
-    background-color 0.05s ease,
-    border-color 0.05s ease,
-    box-shadow 0.05s ease;
+  background: rgb(100 100 100 / 0.4);
+  transition: background-color 0.05s ease;
+  z-index: 1;
 }
 
 .beatDot.beatActive {
   background: rgb(239 68 68);
-  border-color: rgb(239 68 68);
-  box-shadow: 0 0 12px rgb(239 68 68 / 0.6);
-  animation: beatPulse 0.15s ease-out;
 }
 
-@keyframes beatPulse {
+.beatRing {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgb(100 100 100 / 0.2);
+  transition: all 0.05s ease;
+}
+
+.beatRing.beatRingActive {
+  border-color: rgb(239 68 68);
+  box-shadow:
+    0 0 16px rgb(239 68 68 / 0.5),
+    inset 0 0 8px rgb(239 68 68 / 0.2);
+  animation: beatRingPulse 0.3s ease-out;
+}
+
+@keyframes beatRingPulse {
   0% {
-    transform: scale(1.4);
+    transform: scale(1.3);
+    opacity: 1;
   }
   100% {
     transform: scale(1);
+    opacity: 1;
   }
 }
 
-.beatLabel {
-  font-size: 0.7rem;
-  color: rgb(255 255 255 / 0.6);
+.bpmDisplay {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.bpmValue {
+  font-size: 1.1rem;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  color: rgb(255 255 255 / 0.9);
+}
+
+.bpmUnit {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.5);
+  text-transform: uppercase;
+}
+
+.bpmWaiting {
+  font-size: 0.7rem;
+  color: rgb(255 255 255 / 0.4);
+  font-style: italic;
+}
+
+/* ==========================================================================
+   Mappings Section
+   ========================================================================== */
+
+.sectionHeaderWithAction {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sectionHeaderWithAction .sectionHeader {
+  flex: 1;
+}
+
+.headerAddButton {
+  padding: 0.2rem 0.5rem;
+  background: rgb(168 85 247 / 0.15);
+  border: 1px solid rgb(168 85 247 / 0.3);
+  border-radius: 0.2rem;
+  color: rgb(216 180 254);
+  font-size: 0.6rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.headerAddButton:hover {
+  background: rgb(168 85 247 / 0.25);
+  border-color: rgb(168 85 247 / 0.5);
+}
+
+.mappingsBadge {
+  margin-left: 0.3rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.75rem;
+  background: rgb(168 85 247 / 0.25);
+  color: rgb(216 180 254);
+}
+
+.mappingsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mappingsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.mappingRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  background: rgb(255 255 255 / 0.03);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 0.25rem;
+  font-size: 0.68rem;
+}
+
+.mappingRow.mappingDisabled {
+  opacity: 0.5;
+}
+
+.mappingToggle {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: rgb(255 255 255 / 0.4);
+  font-size: 0.7rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.mappingToggle.enabled {
+  color: rgb(34 197 94);
+}
+
+.mappingInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background: none;
+  border: none;
+  padding: 0.2rem 0.3rem;
+  margin: -0.2rem 0;
+  border-radius: 0.2rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.mappingInfo:hover {
+  background: rgb(255 255 255 / 0.05);
+}
+
+.mappingInfo:focus-visible {
+  outline: 2px solid rgb(168 85 247 / 0.6);
+  outline-offset: 1px;
+}
+
+.sourceColorDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mappingSource {
+  font-weight: 600;
+  font-size: 0.62rem;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.mappingSceneId {
+  font-size: 0.58rem;
+  font-weight: 600;
+  padding: 0.1rem 0.25rem;
+  border-radius: 0.15rem;
+  background: rgb(255 255 255 / 0.1);
+  color: rgb(255 255 255 / 0.6);
+  flex-shrink: 0;
+}
+
+.mappingArrow {
+  color: rgb(255 255 255 / 0.3);
+  flex-shrink: 0;
+}
+
+.mappingTarget {
+  color: rgb(255 255 255 / 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mappingMode {
+  color: rgb(255 255 255 / 0.4);
+  font-size: 0.6rem;
+  flex-shrink: 0;
+}
+
+.mappingRange {
+  color: rgb(255 255 255 / 0.5);
+  font-size: 0.6rem;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.mappingDelete {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: rgb(255 255 255 / 0.3);
+  font-size: 0.7rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.mappingDelete:hover {
+  color: rgb(239 68 68);
+}
+
+.mappingsFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgb(255 255 255 / 0.06);
+}
+
+.mappingsCount {
+  font-size: 0.6rem;
+  color: rgb(255 255 255 / 0.4);
+}
+
+.clearButton {
+  padding: 0.2rem 0.5rem;
+  background: rgb(239 68 68 / 0.1);
+  border: 1px solid rgb(239 68 68 / 0.2);
+  border-radius: 0.2rem;
+  color: rgb(252 165 165);
+  font-size: 0.6rem;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.clearButton:hover:not(:disabled) {
+  background: rgb(239 68 68 / 0.2);
+  border-color: rgb(239 68 68 / 0.4);
+}
+
+.clearButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.noMappings {
+  font-size: 0.68rem;
+  color: rgb(255 255 255 / 0.4);
+  text-align: center;
+  padding: 0.75rem 0;
+  margin: 0;
+}
+
+/* ==========================================================================
+   New Mapping Form
+   ========================================================================== */
+
+.newMappingForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  background: rgb(255 255 255 / 0.03);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 0.3rem;
+}
+
+.formHeader {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.8);
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  margin-bottom: 0.2rem;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.formLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.formLabelText {
+  font-size: 0.65rem;
+  color: rgb(255 255 255 / 0.6);
+}
+
+.sourceSelectWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sourceSelectWrapper .sourceColorDot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+.formSelect {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 0.25rem;
+  color: rgb(255 255 255 / 0.9);
+  font-size: 0.7rem;
+}
+
+.formSelect:focus {
+  outline: none;
+  border-color: rgb(168 85 247 / 0.5);
+}
+
+.rangeInputs {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.formInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.3rem 0.4rem;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 0.25rem;
+  color: rgb(255 255 255 / 0.9);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: rgb(168 85 247 / 0.5);
+}
+
+.rangeSeparator {
+  color: rgb(255 255 255 / 0.4);
+  font-size: 0.7rem;
+}
+
+.formRange {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgb(255 255 255 / 0.1);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.formRange::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: rgb(168 85 247);
+  border-radius: 50%;
+  cursor: grab;
+}
+
+.formRange::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: rgb(168 85 247);
+  border: none;
+  border-radius: 50%;
+  cursor: grab;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.cancelButton {
+  padding: 0.3rem 0.6rem;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 0.25rem;
+  color: rgb(255 255 255 / 0.7);
+  font-size: 0.68rem;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.cancelButton:hover {
+  background: rgb(255 255 255 / 0.08);
+  border-color: rgb(255 255 255 / 0.2);
+}
+
+.submitButton {
+  padding: 0.3rem 0.75rem;
+  background: rgb(168 85 247 / 0.2);
+  border: 1px solid rgb(168 85 247 / 0.4);
+  border-radius: 0.25rem;
+  color: rgb(216 180 254);
+  font-size: 0.68rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.submitButton:hover:not(:disabled) {
+  background: rgb(168 85 247 / 0.3);
+  border-color: rgb(168 85 247 / 0.6);
+}
+
+.submitButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

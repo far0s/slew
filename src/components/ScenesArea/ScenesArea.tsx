@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import type { SceneId } from "../../scenes/sceneTypes";
 import type { SceneSlot } from "../../scenes/useSceneSlots";
 import type { SceneProps } from "../../scenes/sceneComponents";
+import type { AudioMapping } from "../../inputs/audio";
 import { SceneColumn } from "../SceneColumn";
 import styles from "./ScenesArea.module.css";
 
@@ -21,6 +22,7 @@ import styles from "./ScenesArea.module.css";
  * @property getValue - Get parameter value for a given parameter ID
  * @property setValue - Set parameter value
  * @property getSceneParams - Get scene params object for a scene ID
+ * @property audioMappings - Optional audio mappings for parameter indicators
  * @property onSlotSceneChange - Callback to change scene in a slot
  * @property onCrossfade - Callback to start crossfade to a slot
  * @property onRemoveSlot - Callback to remove a slot
@@ -38,6 +40,7 @@ export interface ScenesAreaProps {
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
   getSceneParams: (sceneId: SceneId) => SceneProps["params"];
+  audioMappings?: AudioMapping[];
   onSlotSceneChange: (slotIndex: number, sceneId: SceneId) => void;
   onCrossfade: (slotIndex: number) => void;
   onRemoveSlot: (slotIndex: number) => void;
@@ -68,6 +71,7 @@ export function ScenesArea({
   getValue,
   setValue,
   getSceneParams,
+  audioMappings,
   onSlotSceneChange,
   onCrossfade,
   onRemoveSlot,
@@ -154,6 +158,7 @@ export function ScenesArea({
                   params={getSceneParams(slot.sceneId)}
                   getValue={getValue}
                   setValue={setValue}
+                  audioMappings={audioMappings}
                   onSceneChange={(sceneId) =>
                     onSlotSceneChange(slot.index, sceneId)
                   }

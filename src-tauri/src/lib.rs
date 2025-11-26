@@ -365,6 +365,11 @@ pub fn run() {
             audio::start_audio_capture,
             audio::stop_audio_capture,
             audio::get_audio_status,
+            audio::get_audio_mappings,
+            audio::add_audio_mapping,
+            audio::remove_audio_mapping,
+            audio::clear_audio_mappings,
+            audio::set_audio_mapping_enabled,
             // HID
             hid::list_hid_devices,
             hid::list_supported_hid_devices,

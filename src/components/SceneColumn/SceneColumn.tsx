@@ -8,6 +8,7 @@ import { SCENE_REGISTRY, ALL_SCENE_IDS } from "../../scenes/sceneTypes";
 import { SCENE_COMPONENT_REGISTRY } from "../../scenes/sceneComponents";
 import type { SceneProps } from "../../scenes/sceneComponents";
 import { SceneParameterControls } from "../SceneParameterControls";
+import type { AudioMapping } from "../../inputs/audio";
 import styles from "./SceneColumn.module.css";
 
 /**
@@ -25,6 +26,7 @@ import styles from "./SceneColumn.module.css";
  * @property params - Scene params for preview rendering
  * @property getValue - Get parameter value for controls
  * @property setValue - Set parameter value for controls
+ * @property audioMappings - Optional audio mappings for parameter indicators
  * @property onSceneChange - Callback when scene selection changes
  * @property onCrossfade - Callback when crossfade button is clicked
  * @property onRemove - Callback when remove button is clicked
@@ -42,6 +44,7 @@ export interface SceneColumnProps {
   params?: SceneProps["params"];
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
+  audioMappings?: AudioMapping[];
   onSceneChange: (sceneId: SceneId) => void;
   onCrossfade: () => void;
   onRemove: () => void;
@@ -78,6 +81,7 @@ export function SceneColumn({
   params,
   getValue,
   setValue,
+  audioMappings,
   onSceneChange,
   onCrossfade,
   onRemove,
@@ -238,6 +242,7 @@ export function SceneColumn({
           sceneId={sceneId}
           getValue={getValue}
           setValue={setValue}
+          audioMappings={audioMappings}
         />
       </div>
     </motion.article>

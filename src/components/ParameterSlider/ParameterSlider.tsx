@@ -15,6 +15,16 @@ export type SliderColorVariant =
   | "fuchsia";
 
 /**
+ * Audio mapping indicator info for display on the slider.
+ */
+export interface AudioMappingIndicator {
+  /** Short label for the audio source (e.g., "Bass", "RMS") */
+  sourceLabel: string;
+  /** CSS color value for the indicator */
+  color: string;
+}
+
+/**
  * Props for the ParameterSlider component.
  *
  * @property id - Unique identifier for the slider element
@@ -30,6 +40,7 @@ export type SliderColorVariant =
  * @property onChange - Callback when value changes
  * @property aria-label - Accessible label override
  * @property midiParameterId - Parameter ID for MIDI Learn; if provided, shows a Learn button
+ * @property audioMapping - Audio mapping indicator info; if provided, shows mapping badge
  */
 export interface ParameterSliderProps {
   id: string;
@@ -45,6 +56,7 @@ export interface ParameterSliderProps {
   onChange: (value: number) => void;
   "aria-label"?: string;
   midiParameterId?: string;
+  audioMapping?: AudioMappingIndicator | null;
 }
 
 /**
@@ -67,6 +79,7 @@ export function ParameterSlider({
   onChange,
   "aria-label": ariaLabel,
   midiParameterId,
+  audioMapping,
 }: ParameterSliderProps) {
   const rangeClass = styles[`range${capitalize(color)}`] ?? styles.rangeEmerald;
   const thumbClass = styles[`thumb${capitalize(color)}`] ?? styles.thumbEmerald;
@@ -83,6 +96,23 @@ export function ParameterSlider({
       <div className={styles.labelRow}>
         <label htmlFor={id} className={styles.labelText}>
           <span className={styles.label}>{label}</span>
+          {audioMapping && (
+            <span
+              className={styles.audioMappingBadge}
+              style={{
+                backgroundColor: `color-mix(in srgb, ${audioMapping.color} 20%, transparent)`,
+                borderColor: `color-mix(in srgb, ${audioMapping.color} 40%, transparent)`,
+                color: audioMapping.color,
+              }}
+              title={`Audio mapped: ${audioMapping.sourceLabel}`}
+            >
+              <span
+                className={styles.audioMappingDot}
+                style={{ backgroundColor: audioMapping.color }}
+              />
+              {audioMapping.sourceLabel}
+            </span>
+          )}
           <span className={styles.value}>{formatValue(value)}</span>
         </label>
         {midiParameterId && (
