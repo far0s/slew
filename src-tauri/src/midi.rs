@@ -2,13 +2,24 @@
 //!
 //! Provides MIDI device enumeration, connection management, message parsing,
 //! and MIDI Learn functionality for binding controllers to parameters.
+//!
+//! Features hot-plug detection via background polling and optional auto-reconnect.
 
 use midir::{Ignore, MidiInput, MidiInputConnection};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/// Interval for polling device list changes (in milliseconds)
+const DEVICE_POLL_INTERVAL_MS: u64 = 2000;
 
 // ============================================================================
 // Types
@@ -83,7 +94,6 @@ pub struct MidiLearnComplete {
 struct ActiveConnection {
     #[allow(dead_code)]
     device_id: String,
-    #[allow(dead_code)]
     device_name: String,
     // The connection must be kept alive; dropping it closes the port.
     // We use Option to allow taking ownership when closing.
@@ -100,6 +110,12 @@ struct MidiEngineState {
     learn_state: MidiLearnState,
     /// App handle for emitting events (set during init)
     app_handle: Option<AppHandle>,
+    /// Previously known device names (for hot-plug detection)
+    known_device_names: HashSet<String>,
+    /// Device names that were intentionally connected (for auto-reconnect)
+    auto_reconnect_devices: HashSet<String>,
+    /// Whether auto-reconnect is enabled
+    auto_reconnect_enabled: bool,
 }
 
 impl Default for MidiEngineState {
@@ -112,6 +128,9 @@ impl Default for MidiEngineState {
                 parameter_id: None,
             },
             app_handle: None,
+            known_device_names: HashSet::new(),
+            auto_reconnect_devices: HashSet::new(),
+            auto_reconnect_enabled: true,
         }
     }
 }
@@ -139,7 +158,170 @@ pub fn init_midi_engine(app_handle: AppHandle) {
     // Load mappings from disk
     load_mappings_from_disk();
 
-    log::debug!("[MIDI] Engine initialized");
+    // Initialize known devices list
+    if let Ok(devices) = list_devices() {
+        with_midi_engine(|state| {
+            state.known_device_names = devices.iter().map(|d| d.name.clone()).collect();
+        });
+    }
+
+    // Start device watcher thread
+    start_device_watcher_thread();
+
+    log::debug!("[MIDI] Engine initialized with hot-plug detection");
+}
+
+/// Start the background thread that polls for device changes.
+fn start_device_watcher_thread() {
+    let engine = MIDI_ENGINE.clone();
+
+    thread::spawn(move || {
+        log::debug!("[MIDI] Device watcher thread started");
+
+        loop {
+            thread::sleep(Duration::from_millis(DEVICE_POLL_INTERVAL_MS));
+
+            // Get current device list
+            let current_devices = match list_devices_internal() {
+                Ok(devices) => devices,
+                Err(e) => {
+                    log::debug!("[MIDI] Device enumeration error: {}", e);
+                    continue;
+                }
+            };
+
+            let current_names: HashSet<String> =
+                current_devices.iter().map(|d| d.name.clone()).collect();
+
+            // Get previous state
+            let (
+                previous_names,
+                connected_device_names,
+                auto_reconnect_devices,
+                auto_reconnect_enabled,
+                app_handle,
+            ) = {
+                let state = engine.lock().unwrap();
+                let connected_names: HashSet<String> = state
+                    .connections
+                    .values()
+                    .map(|c| c.device_name.clone())
+                    .collect();
+                (
+                    state.known_device_names.clone(),
+                    connected_names,
+                    state.auto_reconnect_devices.clone(),
+                    state.auto_reconnect_enabled,
+                    state.app_handle.clone(),
+                )
+            };
+
+            // Detect changes
+            let added: Vec<String> = current_names.difference(&previous_names).cloned().collect();
+            let removed: Vec<String> = previous_names.difference(&current_names).cloned().collect();
+
+            let has_changes = !added.is_empty() || !removed.is_empty();
+
+            // Log changes
+            for name in &added {
+                log::debug!("[MIDI] Device connected: {}", name);
+            }
+            for name in &removed {
+                log::debug!("[MIDI] Device disconnected: {}", name);
+            }
+
+            // Handle disconnected devices that were open
+            let mut disconnected_open_devices = Vec::new();
+            for name in &removed {
+                if connected_device_names.contains(name) {
+                    disconnected_open_devices.push(name.clone());
+                }
+            }
+
+            // Close connections to disconnected devices
+            if !disconnected_open_devices.is_empty() {
+                let mut state = engine.lock().unwrap();
+                let device_ids_to_remove: Vec<String> = state
+                    .connections
+                    .iter()
+                    .filter(|(_, conn)| disconnected_open_devices.contains(&conn.device_name))
+                    .map(|(id, _)| id.clone())
+                    .collect();
+
+                for device_id in device_ids_to_remove {
+                    if let Some(mut conn) = state.connections.remove(&device_id) {
+                        if let Some(c) = conn.connection.take() {
+                            // Close the connection (ignore errors, device is already gone)
+                            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                c.close();
+                            }));
+                        }
+                        log::debug!(
+                            "[MIDI] Closed connection to disconnected device: {}",
+                            conn.device_name
+                        );
+                    }
+                }
+            }
+
+            // Update known devices
+            {
+                let mut state = engine.lock().unwrap();
+                state.known_device_names = current_names.clone();
+            }
+
+            // Emit event if devices changed
+            if has_changes {
+                if let Some(handle) = &app_handle {
+                    // Re-fetch with connection status
+                    if let Ok(devices) = list_devices() {
+                        let _ = handle.emit("midi_devices_changed", &devices);
+                    }
+                }
+            }
+
+            // Auto-reconnect logic
+            if auto_reconnect_enabled && !added.is_empty() {
+                for name in &added {
+                    if auto_reconnect_devices.contains(name) {
+                        // Find the device ID for this name
+                        if let Ok(devices) = list_devices() {
+                            if let Some(device) = devices.iter().find(|d| &d.name == name) {
+                                log::debug!("[MIDI] Auto-reconnecting to: {}", name);
+                                if let Err(e) = open_device(device.id.clone()) {
+                                    log::warn!("[MIDI] Auto-reconnect failed for {}: {}", name, e);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+/// Internal device listing that doesn't require the mutex.
+fn list_devices_internal() -> Result<Vec<MidiDeviceInfo>, String> {
+    let midi_in = MidiInput::new("sebcat-vj-probe")
+        .map_err(|e| format!("Failed to create MIDI input: {}", e))?;
+
+    let ports = midi_in.ports();
+
+    let mut devices = Vec::new();
+    for (idx, port) in ports.iter().enumerate() {
+        let name = midi_in
+            .port_name(port)
+            .unwrap_or_else(|_| format!("Unknown Device {}", idx));
+        let id = format!("{}", idx);
+
+        devices.push(MidiDeviceInfo {
+            id,
+            name,
+            is_connected: false, // Will be updated by caller if needed
+        });
+    }
+
+    Ok(devices)
 }
 
 // ============================================================================
@@ -229,7 +411,7 @@ pub fn open_device(device_id: String) -> Result<(), String> {
         )
         .map_err(|e| format!("Failed to connect to device: {}", e))?;
 
-    // Store the connection
+    // Store the connection and mark for auto-reconnect
     with_midi_engine(|state| {
         state.connections.insert(
             device_id.clone(),
@@ -239,6 +421,8 @@ pub fn open_device(device_id: String) -> Result<(), String> {
                 connection: Some(connection),
             },
         );
+        // Remember this device for auto-reconnect
+        state.auto_reconnect_devices.insert(port_name.clone());
     });
 
     log::debug!("[MIDI] Opened device: {} ({})", device_id, port_name);
@@ -247,6 +431,27 @@ pub fn open_device(device_id: String) -> Result<(), String> {
     emit_devices_changed();
 
     Ok(())
+}
+
+/// Enable or disable auto-reconnect for MIDI devices.
+pub fn set_auto_reconnect(enabled: bool) {
+    with_midi_engine(|state| {
+        state.auto_reconnect_enabled = enabled;
+    });
+    log::debug!("[MIDI] Auto-reconnect set to: {}", enabled);
+}
+
+/// Check if auto-reconnect is enabled.
+pub fn is_auto_reconnect_enabled() -> bool {
+    with_midi_engine(|state| state.auto_reconnect_enabled)
+}
+
+/// Clear the auto-reconnect list (forgets which devices to reconnect to).
+pub fn clear_auto_reconnect_devices() {
+    with_midi_engine(|state| {
+        state.auto_reconnect_devices.clear();
+    });
+    log::debug!("[MIDI] Cleared auto-reconnect device list");
 }
 
 /// Close a MIDI device.
@@ -690,4 +895,22 @@ pub fn remove_midi_mapping(parameter_id: String) -> Result<(), String> {
 #[tauri::command]
 pub fn clear_midi_mappings() {
     clear_mappings()
+}
+
+/// Set auto-reconnect enabled state.
+#[tauri::command]
+pub fn set_midi_auto_reconnect(enabled: bool) {
+    set_auto_reconnect(enabled)
+}
+
+/// Get auto-reconnect enabled state.
+#[tauri::command]
+pub fn get_midi_auto_reconnect() -> bool {
+    is_auto_reconnect_enabled()
+}
+
+/// Clear the auto-reconnect device list.
+#[tauri::command]
+pub fn clear_midi_auto_reconnect_devices() {
+    clear_auto_reconnect_devices()
 }

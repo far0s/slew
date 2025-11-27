@@ -3,6 +3,8 @@
  *
  * Provides TypeScript types matching the Rust MIDI module and
  * React hooks for managing MIDI devices, mappings, and Learn mode.
+ *
+ * Supports hot-plug detection via backend events and optional auto-reconnect.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -123,25 +125,45 @@ export async function clearMidiMappings(): Promise<void> {
   return invoke("clear_midi_mappings");
 }
 
+/** Set auto-reconnect enabled state. */
+export async function setMidiAutoReconnect(enabled: boolean): Promise<void> {
+  return invoke("set_midi_auto_reconnect", { enabled });
+}
+
+/** Get auto-reconnect enabled state. */
+export async function getMidiAutoReconnect(): Promise<boolean> {
+  return invoke<boolean>("get_midi_auto_reconnect");
+}
+
+/** Clear the auto-reconnect device list (forgets which devices to reconnect to). */
+export async function clearMidiAutoReconnectDevices(): Promise<void> {
+  return invoke("clear_midi_auto_reconnect_devices");
+}
+
 // ============================================================================
 // React Hooks
 // ============================================================================
 
-/** Hook for managing MIDI devices. */
+/** Hook for managing MIDI devices with hot-plug detection support. */
 export function useMidiDevices() {
   const [devices, setDevices] = useState<MidiDeviceInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [autoReconnect, setAutoReconnectState] = useState(true);
 
-  // Fetch devices on mount
+  // Fetch devices and settings on mount
   useEffect(() => {
     let isMounted = true;
 
-    async function fetchDevices() {
+    async function fetchData() {
       try {
-        const result = await listMidiDevices();
+        const [deviceList, autoReconnectEnabled] = await Promise.all([
+          listMidiDevices(),
+          getMidiAutoReconnect(),
+        ]);
         if (isMounted) {
-          setDevices(result);
+          setDevices(deviceList);
+          setAutoReconnectState(autoReconnectEnabled);
           setError(null);
         }
       } catch (e) {
@@ -155,7 +177,7 @@ export function useMidiDevices() {
       }
     }
 
-    void fetchDevices();
+    void fetchData();
 
     return () => {
       isMounted = false;
@@ -211,13 +233,33 @@ export function useMidiDevices() {
     }
   }, []);
 
+  const setAutoReconnect = useCallback(async (enabled: boolean) => {
+    try {
+      await setMidiAutoReconnect(enabled);
+      setAutoReconnectState(enabled);
+    } catch (e) {
+      console.error("[MIDI] Failed to set auto-reconnect:", e);
+    }
+  }, []);
+
+  const clearAutoReconnectList = useCallback(async () => {
+    try {
+      await clearMidiAutoReconnectDevices();
+    } catch (e) {
+      console.error("[MIDI] Failed to clear auto-reconnect list:", e);
+    }
+  }, []);
+
   return {
     devices,
     isLoading,
     error,
+    autoReconnect,
     refresh,
     connect,
     disconnect,
+    setAutoReconnect,
+    clearAutoReconnectList,
   };
 }
 

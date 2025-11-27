@@ -51,11 +51,22 @@ function MidiActivityIndicator() {
  * Device list with connect/disconnect controls.
  */
 function DeviceList() {
-  const { devices, isLoading, error, refresh, connect, disconnect } =
-    useMidiDevices();
+  const {
+    devices,
+    isLoading,
+    error,
+    autoReconnect,
+    refresh,
+    connect,
+    disconnect,
+    setAutoReconnect,
+  } = useMidiDevices();
   const [connecting, setConnecting] = useState<string | null>(null);
 
-  const handleToggleConnection = async (deviceId: string, isConnected: boolean) => {
+  const handleToggleConnection = async (
+    deviceId: string,
+    isConnected: boolean,
+  ) => {
     setConnecting(deviceId);
     try {
       if (isConnected) {
@@ -70,7 +81,7 @@ function DeviceList() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && devices.length === 0) {
     return <p className={styles.loadingText}>Scanning for MIDI devices…</p>;
   }
 
@@ -92,14 +103,10 @@ function DeviceList() {
   if (devices.length === 0) {
     return (
       <div className={styles.emptyState}>
-        <p className={styles.emptyText}>No MIDI devices found</p>
-        <button
-          type="button"
-          onClick={() => void refresh()}
-          className={styles.refreshButton}
-        >
-          Refresh
-        </button>
+        <p className={styles.emptyText}>No MIDI devices detected</p>
+        <p className={styles.emptyHint}>
+          Devices will appear automatically when connected
+        </p>
       </div>
     );
   }
@@ -133,13 +140,14 @@ function DeviceList() {
           </button>
         </div>
       ))}
-      <button
-        type="button"
-        onClick={() => void refresh()}
-        className={styles.refreshButton}
-      >
-        Refresh Devices
-      </button>
+      <label className={styles.autoReconnectToggle}>
+        <input
+          type="checkbox"
+          checked={autoReconnect}
+          onChange={(e) => void setAutoReconnect(e.target.checked)}
+        />
+        <span>Auto-reconnect devices</span>
+      </label>
     </div>
   );
 }

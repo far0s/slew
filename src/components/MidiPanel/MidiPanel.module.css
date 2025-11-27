@@ -342,7 +342,44 @@
 .emptyState {
   display: flex;
   flex-direction: column;
+  gap: 0.25rem;
+}
+
+.emptyHint {
+  font-size: 0.65rem;
+  color: rgb(255 255 255 / 0.35);
+  font-style: italic;
+}
+
+/* ==========================================================================
+   Auto-Reconnect Toggle
+   ========================================================================== */
+
+.autoReconnectToggle {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
+  padding: 0.4rem 0;
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  color: rgb(255 255 255 / 0.6);
+  cursor: pointer;
+  user-select: none;
+}
+
+.autoReconnectToggle:hover {
+  color: rgb(255 255 255 / 0.8);
+}
+
+.autoReconnectToggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #22c55e;
+  cursor: pointer;
+}
+
+.autoReconnectToggle span {
+  line-height: 1;
 }
 
 .errorBlock {

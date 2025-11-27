@@ -21,11 +21,11 @@ For detailed design, see `ARCHITECTURE.md`.
 | Parameter Server  | ✅     | Rust backend with ~60Hz transitions                           |
 | Scene System      | ✅     | Slot-based (1-6), multi-instance, auto-generated controls     |
 | Crossfade         | ✅     | Smooth blending with correct scene pairing                    |
-| MIDI Input        | ✅     | Device enumeration, Learn workflow, per-slider integration    |
+| MIDI Input        | ✅     | Hot-plug detection, auto-reconnect, Learn workflow            |
 | OSC Input         | ✅     | UDP server (port 9000), default mappings                      |
-| Audio Input       | ✅     | FFT analysis, beat detection, BPM, level meters               |
+| Audio Input       | ✅     | Hot-plug detection, auto-reconnect, FFT, beat detection       |
 | Audio → Parameter | ✅     | Full mapping system with modes (continuous/trigger/add)       |
-| HID Input         | ✅     | DOIO Megalodon macropad with encoders                         |
+| HID Input         | ✅     | DOIO Megalodon macropad with encoders, auto-connect           |
 | Modulation Engine | ✅     | Backend LFOs, modulation matrix, audio→LFO, slider indicators |
 | Video Output      | ✅     | Syphon + NDI working, 1080p@60 optimization backlogged        |
 | Packaging         | 🧪     | macOS bundle config, entitlements, scripts; signing untested  |
@@ -41,12 +41,13 @@ For detailed design, see `ARCHITECTURE.md`.
 
 Both windows share the same frontend bundle; `src/main.tsx` dispatches based on path.
 
-### Recent Changes (Multi-Instance Scenes)
+### Recent Changes (Device Hot-Plug)
 
-- Refactored scene system from scene-type keyed parameters to slot-prefixed parameters
-- Implemented "Add Scene" inline panel with direct options (New Scene / Copy from Slot)
-- Added parameter migration for legacy `parameters.json` entries
-- Fixed Add Scene button sizing and dropdown positioning issues
+- Added background device watcher threads for MIDI and Audio (2s polling interval)
+- Implemented auto-reconnect for MIDI (remembers connected devices) and Audio (reconnects to last active)
+- Added `audio_devices_changed` event for real-time UI updates
+- UI panels now show devices automatically without manual refresh
+- Added auto-reconnect toggles in MIDI and Audio panels
 
 ### Parameter Server (Rust)
 
@@ -106,6 +107,36 @@ All inputs follow the same pattern:
 - Supported: DOIO Megalodon (16 keys + 3 encoders)
 - Auto-connect with periodic polling
 - Macropad integration: Keys 1-4 select slots, Action key triggers crossfade, Encoders control parameters
+
+### Device Hot-Plug Detection
+
+All input systems now support automatic device detection:
+
+| System | Polling Interval | Auto-Reconnect                   | Events                                          |
+| ------ | ---------------- | -------------------------------- | ----------------------------------------------- |
+| MIDI   | 2s               | ✅ (remembers connected devices) | `midi_devices_changed`                          |
+| Audio  | 2s               | ✅ (reconnects to last active)   | `audio_devices_changed`, `audio_status_changed` |
+| HID    | 500ms            | ✅ (auto-connect thread)         | `hid_status_changed`                            |
+
+**MIDI Hot-Plug**:
+
+- Background thread polls device list every 2 seconds
+- Compares against known devices, emits events on change
+- Tracks intentionally connected devices for auto-reconnect
+- Gracefully handles disconnection of open devices
+
+**Audio Hot-Plug**:
+
+- Background thread polls device list every 2 seconds
+- Detects when active capture device is disconnected
+- Remembers last active device for auto-reconnect
+- Shows error state with reconnect hint in UI
+
+**Configuration**:
+
+- Auto-reconnect toggle in MIDI and Audio panels
+- `set_midi_auto_reconnect`, `set_audio_auto_reconnect` commands
+- Devices auto-appear in UI when plugged in (no manual refresh needed)
 
 ---
 
@@ -217,8 +248,6 @@ All inputs follow the same pattern:
 2. **UX Polish**
    - MIDI/OSC "follow active slot" mapping mode (knobs control active slot's parameters)
    - Mapping import/export (JSON)
-   - Better device hot-plug handling
-   - Auto-scroll to newly added slot
 
 3. **Video Output Optimization**
    - 1080p@60fps performance (zero-copy IOSurface, binary IPC)

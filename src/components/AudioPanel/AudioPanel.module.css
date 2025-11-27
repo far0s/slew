@@ -127,13 +127,57 @@
   text-overflow: ellipsis;
 }
 
+.errorBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.4rem 0.5rem;
+  background: rgb(239 68 68 / 0.1);
+  border: 1px solid rgb(239 68 68 / 0.2);
+  border-radius: 0.25rem;
+}
+
 .errorText {
   font-size: 0.7rem;
   color: rgb(252 165 165);
   margin: 0;
-  padding: 0.4rem 0.5rem;
-  background: rgb(239 68 68 / 0.1);
-  border-radius: 0.25rem;
+}
+
+.reconnectHint {
+  font-size: 0.62rem;
+  color: rgb(255 255 255 / 0.4);
+  font-style: italic;
+  margin: 0;
+}
+
+/* ==========================================================================
+   Auto-Reconnect Toggle
+   ========================================================================== */
+
+.autoReconnectToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  font-size: 0.68rem;
+  color: rgb(255 255 255 / 0.6);
+  cursor: pointer;
+  user-select: none;
+}
+
+.autoReconnectToggle:hover {
+  color: rgb(255 255 255 / 0.8);
+}
+
+.autoReconnectToggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #22c55e;
+  cursor: pointer;
+}
+
+.autoReconnectToggle span {
+  line-height: 1;
 }
 
 .deviceForm {

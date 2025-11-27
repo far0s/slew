@@ -9,10 +9,19 @@ use cpal::{Device, Host, Stream, StreamConfig};
 use once_cell::sync::Lazy;
 use rustfft::{num_complex::Complex, FftPlanner};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 use std::{fs, path::PathBuf};
 use tauri::{AppHandle, Emitter, Manager};
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/// Interval for polling device list changes (in milliseconds)
+const DEVICE_POLL_INTERVAL_MS: u64 = 2000;
 
 // ============================================================================
 // Types
@@ -315,6 +324,12 @@ struct AudioEngineState {
     mappings: Vec<AudioMapping>,
     /// Smoothed values for each mapping (by mapping ID)
     smoothed_values: HashMap<String, f64>,
+    /// Previously known device names (for hot-plug detection)
+    known_device_names: HashSet<String>,
+    /// Device name that was active before disconnect (for auto-reconnect)
+    last_active_device: Option<String>,
+    /// Whether auto-reconnect is enabled
+    auto_reconnect_enabled: bool,
 }
 
 impl AudioEngineState {
@@ -334,6 +349,9 @@ impl AudioEngineState {
             app_handle: None,
             mappings: Vec::new(),
             smoothed_values: HashMap::new(),
+            known_device_names: HashSet::new(),
+            last_active_device: None,
+            auto_reconnect_enabled: true,
         }
     }
 }
@@ -363,10 +381,192 @@ pub fn init_audio_engine(app_handle: AppHandle) {
         state.app_handle = Some(app_handle);
     });
 
+    // Initialize known devices list
+    if let Ok(devices) = list_devices() {
+        with_audio_engine(|state| {
+            state.known_device_names = devices.iter().map(|d| d.name.clone()).collect();
+        });
+    }
+
     // Start the analysis loop
     start_analysis_loop();
 
-    log::debug!("[Audio] Engine initialized");
+    // Start device watcher thread
+    start_device_watcher_thread();
+
+    log::debug!("[Audio] Engine initialized with hot-plug detection");
+}
+
+/// Start the background thread that polls for device changes.
+fn start_device_watcher_thread() {
+    let engine = AUDIO_ENGINE.clone();
+
+    thread::spawn(move || {
+        log::debug!("[Audio] Device watcher thread started");
+
+        loop {
+            thread::sleep(Duration::from_millis(DEVICE_POLL_INTERVAL_MS));
+
+            // Get current device list
+            let current_devices = match list_devices_internal(&engine) {
+                Ok(devices) => devices,
+                Err(e) => {
+                    log::debug!("[Audio] Device enumeration error: {}", e);
+                    continue;
+                }
+            };
+
+            let current_names: HashSet<String> =
+                current_devices.iter().map(|d| d.name.clone()).collect();
+
+            // Get previous state
+            let (
+                previous_names,
+                active_device_name,
+                auto_reconnect_enabled,
+                is_running,
+                app_handle,
+            ) = {
+                let state = engine.lock().unwrap();
+                (
+                    state.known_device_names.clone(),
+                    state.status.device_name.clone(),
+                    state.auto_reconnect_enabled,
+                    state.status.is_running,
+                    state.app_handle.clone(),
+                )
+            };
+
+            // Detect changes
+            let added: Vec<String> = current_names.difference(&previous_names).cloned().collect();
+            let removed: Vec<String> = previous_names.difference(&current_names).cloned().collect();
+
+            let has_changes = !added.is_empty() || !removed.is_empty();
+
+            // Log changes
+            for name in &added {
+                log::debug!("[Audio] Device connected: {}", name);
+            }
+            for name in &removed {
+                log::debug!("[Audio] Device disconnected: {}", name);
+            }
+
+            // Check if active device was disconnected
+            let active_device_lost = if let Some(active_name) = &active_device_name {
+                removed.contains(active_name)
+            } else {
+                false
+            };
+
+            // Handle active device disconnect
+            if active_device_lost && is_running {
+                log::warn!(
+                    "[Audio] Active device disconnected: {}",
+                    active_device_name.as_deref().unwrap_or("unknown")
+                );
+
+                // Store the device name for potential reconnect and update status
+                let buffer_arc = {
+                    let mut state = engine.lock().unwrap();
+                    state.last_active_device = active_device_name.clone();
+
+                    // Update status to show error
+                    state.status = AudioStatus {
+                        is_running: false,
+                        device_name: None,
+                        sample_rate: None,
+                        error: Some(format!(
+                            "Device disconnected: {}",
+                            active_device_name.as_deref().unwrap_or("unknown")
+                        )),
+                    };
+
+                    // Clear the stream
+                    state.stream = None;
+
+                    // Clone the buffer Arc to access it after releasing state lock
+                    state.buffer.clone()
+                };
+
+                // Clear buffer outside the state lock
+                if let Ok(mut buf) = buffer_arc.lock() {
+                    *buf = None;
+                }
+
+                // Emit status change
+                if let Some(handle) = &app_handle {
+                    let status = with_audio_engine(|state| state.status.clone());
+                    let _ = handle.emit("audio_status_changed", &status);
+                }
+            }
+
+            // Update known devices
+            {
+                let mut state = engine.lock().unwrap();
+                state.known_device_names = current_names.clone();
+            }
+
+            // Emit event if devices changed
+            if has_changes {
+                if let Some(handle) = &app_handle {
+                    // Re-fetch with active status
+                    if let Ok(devices) = list_devices() {
+                        let _ = handle.emit("audio_devices_changed", &devices);
+                    }
+                }
+            }
+
+            // Auto-reconnect logic
+            if auto_reconnect_enabled && !added.is_empty() {
+                let last_active = with_audio_engine(|state| state.last_active_device.clone());
+
+                // Check if the previously active device came back
+                if let Some(last_name) = last_active {
+                    if added.contains(&last_name) {
+                        log::debug!("[Audio] Auto-reconnecting to: {}", last_name);
+                        match start_capture(Some(last_name.clone())) {
+                            Ok(()) => {
+                                with_audio_engine(|state| {
+                                    state.last_active_device = None;
+                                });
+                                log::debug!("[Audio] Auto-reconnect successful");
+                            }
+                            Err(e) => {
+                                log::warn!("[Audio] Auto-reconnect failed: {}", e);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+/// Internal device listing that works within the engine context.
+fn list_devices_internal(
+    engine: &Arc<Mutex<AudioEngineState>>,
+) -> Result<Vec<AudioDeviceInfo>, String> {
+    let state = engine.lock().unwrap();
+    let active_device_name = state.status.device_name.clone();
+
+    let default_device = state.host.default_input_device();
+    let default_name = default_device.as_ref().and_then(|d| d.name().ok());
+
+    let devices: Vec<AudioDeviceInfo> = state
+        .host
+        .input_devices()
+        .map_err(|e| format!("Failed to enumerate devices: {}", e))?
+        .filter_map(|device| {
+            let name = device.name().ok()?;
+            Some(AudioDeviceInfo {
+                name: name.clone(),
+                is_default: Some(&name) == default_name.as_ref(),
+                is_active: Some(&name) == active_device_name.as_ref(),
+            })
+        })
+        .collect();
+
+    Ok(devices)
 }
 
 /// Start the background analysis loop
@@ -581,6 +781,19 @@ pub fn stop_capture() -> Result<(), String> {
 /// Get current audio status.
 pub fn get_status() -> AudioStatus {
     with_audio_engine(|state| state.status.clone())
+}
+
+/// Enable or disable auto-reconnect for audio devices.
+pub fn set_auto_reconnect(enabled: bool) {
+    with_audio_engine(|state| {
+        state.auto_reconnect_enabled = enabled;
+    });
+    log::debug!("[Audio] Auto-reconnect set to: {}", enabled);
+}
+
+/// Check if auto-reconnect is enabled.
+pub fn is_auto_reconnect_enabled() -> bool {
+    with_audio_engine(|state| state.auto_reconnect_enabled)
 }
 
 // ============================================================================
@@ -995,4 +1208,16 @@ pub fn clear_audio_mappings() {
 #[tauri::command]
 pub fn set_audio_mapping_enabled(id: String, enabled: bool) -> bool {
     set_mapping_enabled(&id, enabled)
+}
+
+/// Set auto-reconnect enabled state.
+#[tauri::command]
+pub fn set_audio_auto_reconnect(enabled: bool) {
+    set_auto_reconnect(enabled)
+}
+
+/// Get auto-reconnect enabled state.
+#[tauri::command]
+pub fn get_audio_auto_reconnect() -> bool {
+    is_auto_reconnect_enabled()
 }

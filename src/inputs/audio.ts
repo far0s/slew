@@ -194,6 +194,16 @@ export async function getAudioStatus(): Promise<AudioStatus> {
   return invoke<AudioStatus>("get_audio_status");
 }
 
+/** Set auto-reconnect enabled state. */
+export async function setAudioAutoReconnect(enabled: boolean): Promise<void> {
+  return invoke("set_audio_auto_reconnect", { enabled });
+}
+
+/** Get auto-reconnect enabled state. */
+export async function getAudioAutoReconnect(): Promise<boolean> {
+  return invoke<boolean>("get_audio_auto_reconnect");
+}
+
 /** Get all audio mappings. */
 export async function getAudioMappings(): Promise<AudioMapping[]> {
   return invoke<AudioMapping[]>("get_audio_mappings");
@@ -238,6 +248,7 @@ export function useAudioCapture() {
     error: null,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [autoReconnect, setAutoReconnectState] = useState(true);
 
   // Fetch initial data
   useEffect(() => {
@@ -245,13 +256,16 @@ export function useAudioCapture() {
 
     async function fetchData() {
       try {
-        const [deviceList, audioStatus] = await Promise.all([
-          listAudioDevices(),
-          getAudioStatus(),
-        ]);
+        const [deviceList, audioStatus, autoReconnectEnabled] =
+          await Promise.all([
+            listAudioDevices(),
+            getAudioStatus(),
+            getAudioAutoReconnect(),
+          ]);
         if (isMounted) {
           setDevices(deviceList);
           setStatus(audioStatus);
+          setAutoReconnectState(autoReconnectEnabled);
         }
       } catch (e) {
         console.error("[Audio] Failed to fetch initial data:", e);
@@ -279,6 +293,24 @@ export function useAudioCapture() {
         // Refresh device list when status changes
         void listAudioDevices().then(setDevices);
       });
+    })();
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  // Subscribe to device list changes (hot-plug detection)
+  useEffect(() => {
+    let unlisten: UnlistenFn | undefined;
+
+    void (async () => {
+      unlisten = await listen<AudioDeviceInfo[]>(
+        "audio_devices_changed",
+        (event) => {
+          setDevices(event.payload);
+        },
+      );
     })();
 
     return () => {
@@ -335,6 +367,15 @@ export function useAudioCapture() {
     }
   }, []);
 
+  const setAutoReconnect = useCallback(async (enabled: boolean) => {
+    try {
+      await setAudioAutoReconnect(enabled);
+      setAutoReconnectState(enabled);
+    } catch (e) {
+      console.error("[Audio] Failed to set auto-reconnect:", e);
+    }
+  }, []);
+
   return {
     devices,
     isRunning: status.is_running,
@@ -342,9 +383,11 @@ export function useAudioCapture() {
     sampleRate: status.sample_rate,
     error: status.error,
     isLoading,
+    autoReconnect,
     refresh,
     start,
     stop,
+    setAutoReconnect,
   };
 }
 

@@ -599,6 +599,9 @@ pub fn run() {
             midi::set_midi_mapping,
             midi::remove_midi_mapping,
             midi::clear_midi_mappings,
+            midi::set_midi_auto_reconnect,
+            midi::get_midi_auto_reconnect,
+            midi::clear_midi_auto_reconnect_devices,
             // OSC
             osc::start_osc_server,
             osc::stop_osc_server,
@@ -617,6 +620,8 @@ pub fn run() {
             audio::remove_audio_mapping,
             audio::clear_audio_mappings,
             audio::set_audio_mapping_enabled,
+            audio::set_audio_auto_reconnect,
+            audio::get_audio_auto_reconnect,
             // HID
             hid::list_hid_devices,
             hid::list_supported_hid_devices,

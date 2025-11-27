@@ -146,9 +146,11 @@ function DeviceControls() {
     sampleRate,
     error,
     isLoading,
+    autoReconnect,
     refresh,
     start,
     stop,
+    setAutoReconnect,
   } = useAudioCapture();
   const [selectedDevice, setSelectedDevice] = useState<string | undefined>(
     undefined,
@@ -186,7 +188,14 @@ function DeviceControls() {
         </span>
       </div>
 
-      {error && <p className={styles.errorText}>{error}</p>}
+      {error && (
+        <div className={styles.errorBlock}>
+          <p className={styles.errorText}>{error}</p>
+          {autoReconnect && (
+            <p className={styles.reconnectHint}>Auto-reconnect is enabled</p>
+          )}
+        </div>
+      )}
 
       <div className={styles.deviceForm}>
         <label className={styles.deviceLabel}>
@@ -231,6 +240,15 @@ function DeviceControls() {
           {isLoading ? "…" : isRunning ? "Stop" : "Start"}
         </button>
       </div>
+
+      <label className={styles.autoReconnectToggle}>
+        <input
+          type="checkbox"
+          checked={autoReconnect}
+          onChange={(e) => void setAutoReconnect(e.target.checked)}
+        />
+        <span>Auto-reconnect on disconnect</span>
+      </label>
     </div>
   );
 }
