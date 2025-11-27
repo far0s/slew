@@ -608,27 +608,3 @@ export function getAudioSourceValue(
       return 0;
   }
 }
-
-/**
- * Extract scene identifier from a parameter ID.
- * Returns "A", "B", "C", or null for global parameters.
- */
-export function getSceneFromParameterId(parameterId: string): string | null {
-  // Handle new slot-based parameter IDs (e.g., slot_0_brightness)
-  const slotMatch = parameterId.match(/^slot_(\d+)_(.+)$/);
-  if (slotMatch) {
-    const slotIndex = parseInt(slotMatch[1], 10);
-    return `Slot ${slotIndex + 1}`;
-  }
-
-  // Legacy: Handle old scene-prefixed parameter IDs
-  const match = parameterId.match(/^scene_([a-c])_/i);
-  if (match) {
-    return match[1].toUpperCase();
-  }
-  // Special case for rotationSpeed which belongs to Scene A
-  if (parameterId === "rotationSpeed") {
-    return "A";
-  }
-  return null;
-}

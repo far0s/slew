@@ -134,9 +134,8 @@ impl ParameterStore {
 fn default_parameter_for_id(id: ParameterId, initial_value: f64) -> Parameter {
     let (transition_speed, curve) = match id.as_str() {
         "crossfade" => (0.8, ParameterCurve::Linear),
-        "scene_a_brightness" | "scene_b_brightness" | "scene_c_brightness" => {
-            (0.3, ParameterCurve::Linear)
-        }
+        // Brightness parameters get slightly faster transitions
+        s if s.ends_with("_brightness") => (0.3, ParameterCurve::Linear),
         _ => (0.4, ParameterCurve::Linear),
     };
 
@@ -335,91 +334,14 @@ fn set_slot_pairing(
     .map_err(|e| format!("Failed to emit slot_pairing_changed: {e}"))
 }
 
-/// Migrate legacy scene-prefixed parameters to slot-prefixed parameters.
-/// This is called during app startup when slots are initialized.
-#[tauri::command]
-fn migrate_parameters(slots: Vec<serde_json::Value>) -> Vec<Parameter> {
-    // Build migration map from legacy IDs to new slot IDs
-    let legacy_mappings: Vec<(&str, &str, &str)> = vec![
-        // (legacy_id, scene_id, template_id)
-        ("scene_a_brightness", "sceneA", "brightness"),
-        ("scene_a_wobble", "sceneA", "wobble"),
-        ("scene_a_tint", "sceneA", "tint"),
-        ("scene_a_tint_lfo_depth", "sceneA", "tint_lfo_depth"),
-        ("rotationSpeed", "sceneA", "rotation_speed"),
-        ("scene_b_brightness", "sceneB", "brightness"),
-        ("scene_b_rotation_speed", "sceneB", "rotation_speed"),
-        ("scene_b_tint", "sceneB", "tint"),
-        ("scene_b_scale", "sceneB", "scale"),
-        ("scene_c_brightness", "sceneC", "brightness"),
-        ("scene_c_pulse_speed", "sceneC", "pulse_speed"),
-        ("scene_c_rotation_speed", "sceneC", "rotation_speed"),
-        ("scene_c_tint", "sceneC", "tint"),
-    ];
-
-    // Parse slots to find which slot index corresponds to each scene
-    let mut scene_to_slot: std::collections::HashMap<String, usize> =
-        std::collections::HashMap::new();
-    for slot in &slots {
-        if let (Some(index), Some(scene_id)) = (
-            slot.get("index").and_then(|v| v.as_u64()),
-            slot.get("sceneId").and_then(|v| v.as_str()),
-        ) {
-            // Only use the first slot for each scene type (for migration)
-            scene_to_slot
-                .entry(scene_id.to_string())
-                .or_insert(index as usize);
-        }
-    }
-
-    let mut migrated_params: Vec<Parameter> = Vec::new();
-
-    with_parameter_store(|store| {
-        // Collect legacy parameters that need migration
-        let mut to_migrate: Vec<(String, String, Parameter)> = Vec::new();
-
-        for (legacy_id, scene_id, template_id) in &legacy_mappings {
-            if let Some(param) = store.parameters.get(*legacy_id) {
-                if let Some(&slot_index) = scene_to_slot.get(*scene_id) {
-                    let new_id = format!("slot_{}_{}", slot_index, template_id);
-                    to_migrate.push((legacy_id.to_string(), new_id, param.clone()));
-                }
-            }
-        }
-
-        // Apply migrations
-        for (legacy_id, new_id, old_param) in to_migrate {
-            // Create new parameter with slot-prefixed ID
-            let new_param = Parameter {
-                id: new_id.clone(),
-                value: old_param.value,
-                target: old_param.target,
-                transition_speed: old_param.transition_speed,
-                curve: old_param.curve,
-            };
-            store.parameters.insert(new_id, new_param.clone());
-            migrated_params.push(new_param);
-
-            // Keep legacy parameter (don't delete, in case we need it)
-            log::debug!("[Migration] Migrated {} -> slot parameter", legacy_id);
-        }
-    });
-
-    log::info!(
-        "[Migration] Migrated {} legacy parameters to slot format",
-        migrated_params.len()
-    );
-    migrated_params
-}
-
 /// Initialize parameters for a new slot with default values.
 #[tauri::command]
 fn initialize_slot_parameters(
     app: AppHandle,
     slot_index: usize,
-    scene_id: String,
+    scene_id: String, // Keep param name for API compatibility, but it's now a sketch ID
 ) -> Vec<Parameter> {
-    let defaults = get_scene_defaults(&scene_id);
+    let defaults = get_sketch_defaults(&scene_id);
     let mut created: Vec<Parameter> = Vec::new();
 
     with_parameter_store(|store| {
@@ -445,9 +367,30 @@ fn initialize_slot_parameters(
     created
 }
 
-/// Get default parameter values for a scene type.
-fn get_scene_defaults(scene_id: &str) -> Vec<(&'static str, f64)> {
-    match scene_id {
+/// Get default parameter values for a sketch type.
+fn get_sketch_defaults(sketch_id: &str) -> Vec<(&'static str, f64)> {
+    match sketch_id {
+        // New sketch IDs
+        "blueCube" => vec![
+            ("brightness", 1.0),
+            ("rotation_speed", 0.6),
+            ("wobble", 0.0),
+            ("tint_lfo_depth", 0.2),
+            ("tint", 0.0),
+        ],
+        "orangeCube" => vec![
+            ("brightness", 1.0),
+            ("rotation_speed", 0.4),
+            ("tint", 0.5),
+            ("scale", 1.0),
+        ],
+        "greenPulse" => vec![
+            ("brightness", 1.0),
+            ("pulse_speed", 1.5),
+            ("rotation_speed", 0.4),
+            ("tint", 0.5),
+        ],
+        // Legacy scene IDs (backwards compatibility)
         "sceneA" => vec![
             ("brightness", 1.0),
             ("rotation_speed", 0.6),
@@ -584,7 +527,6 @@ pub fn run() {
             clear_parameters,
             set_scene_pairing,
             set_slot_pairing,
-            migrate_parameters,
             initialize_slot_parameters,
             restart_controls_window,
             get_crash_log_path,

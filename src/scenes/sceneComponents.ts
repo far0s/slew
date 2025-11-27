@@ -1,77 +1,55 @@
-import type { ComponentType } from "react";
-import type { SceneId } from "./sceneTypes";
-import { SceneA } from "./components/SceneA";
-import { SceneB } from "./components/SceneB";
-import { SceneC } from "./components/SceneC";
-
 /**
- * Shared props passed from the renderer into all scene components.
+ * Scene Components (Backwards Compatibility)
  *
- * - `opacity` is required and is the primary crossfade control.
- * - `params` is an optional bag of additional per-scene parameters.
- *   Scenes are free to ignore params they don't care about.
+ * This file re-exports the sketch system types and components
+ * with backwards-compatible aliases for existing code.
  *
- * This keeps the renderer ↔ scene contract narrow and forward-compatible:
- * new parameters can be added to `params` without breaking existing scenes.
- *
- * With multi-instance support, parameters are now generic (e.g., `brightness`)
- * rather than scene-prefixed (e.g., `sceneABrightness`). Each slot gets its
- * own independent parameters.
+ * @deprecated Import directly from '../sketches' for new code.
  */
-export interface SceneProps {
-  /**
-   * Crossfade weight for this scene.
-   *
-   * - 0 → fully invisible
-   * - 1 → fully visible
-   *
-   * The renderer is responsible for mapping the global `crossfade`
-   * parameter into per-scene `opacity` values.
-   */
-  opacity: number;
 
-  /**
-   * Optional bag of additional parameters.
-   *
-   * These are generic parameter names that apply to all scenes.
-   * Each scene uses whichever parameters are relevant to it.
-   */
-  params?: Partial<{
-    // Common parameters (used by multiple scenes)
-    brightness: number;
-    rotationSpeed: number;
-    tint: number;
+import type { SketchId, SketchProps, SketchComponent } from "../sketches";
+import {
+  SKETCH_COMPONENT_REGISTRY,
+  BlueCube,
+  OrangeCube,
+  GreenPulse,
+} from "../sketches";
 
-    // Scene A specific
-    wobble: number;
-    tintLfoDepth: number;
+// Re-export SketchProps as SceneProps for backwards compatibility
+export type SceneProps = SketchProps;
 
-    // Scene B specific
-    scale: number;
-
-    // Scene C specific
-    pulseSpeed: number;
-  }>;
-}
-
-/**
- * All scene components must accept `SceneProps`. This allows the
- * renderer to treat them uniformly, while individual scenes can
- * opt into whichever params are relevant.
- */
-export type SceneComponent = ComponentType<SceneProps>;
+// Re-export SketchComponent as SceneComponent for backwards compatibility
+export type SceneComponent = SketchComponent;
 
 /**
  * Registry mapping SceneId → React component.
  *
- * This file defines the mapping used by the renderer (and any future
- * Scene Manager) to look up a concrete React component for a given
- * SceneId.
+ * @deprecated Use SKETCH_COMPONENT_REGISTRY from '../sketches' instead.
  */
-export const SCENE_COMPONENT_REGISTRY: Partial<
-  Record<SceneId, SceneComponent>
-> = {
-  sceneA: SceneA,
-  sceneB: SceneB,
-  sceneC: SceneC,
-};
+export const SCENE_COMPONENT_REGISTRY: Record<SketchId, SketchComponent> =
+  SKETCH_COMPONENT_REGISTRY;
+
+// Legacy component aliases
+/**
+ * @deprecated Use BlueCube from '../sketches' instead.
+ */
+export const SceneA = BlueCube;
+
+/**
+ * @deprecated Use OrangeCube from '../sketches' instead.
+ */
+export const SceneB = OrangeCube;
+
+/**
+ * @deprecated Use GreenPulse from '../sketches' instead.
+ */
+export const SceneC = GreenPulse;
+
+// Re-export sketch types for convenience
+export type { SketchId, SketchProps, SketchComponent };
+
+// Re-export the new registry
+export { SKETCH_COMPONENT_REGISTRY };
+
+// Re-export individual components with new names
+export { BlueCube, OrangeCube, GreenPulse };

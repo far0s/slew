@@ -14,7 +14,6 @@ import {
   useAudioLevels,
   useAudioMappings,
   generateMappingId,
-  getSceneFromParameterId,
   AUDIO_SOURCES,
   AUDIO_SOURCE_LABELS,
   AUDIO_SOURCE_SHORT_LABELS,
@@ -26,10 +25,12 @@ import {
   type AudioMappingMode,
 } from "../../inputs/audio";
 import {
-  getAllParameterIds,
+  getAllSlotParameterIds,
   getParameterDescriptor,
+  getParameterDropdownLabel,
   type ParameterId,
 } from "../../scenes/sceneTypes";
+import type { Slot } from "../../scenes/useSceneSlots";
 import styles from "./AudioPanel.module.css";
 
 /** Spring config for snappy level bar animations */
@@ -280,11 +281,9 @@ function MappingRow({
   onEdit: (mapping: AudioMapping) => void;
   onDelete: (id: string) => void;
 }) {
-  const paramDescriptor = getParameterDescriptor(
+  const paramLabel = getParameterDropdownLabel(
     mapping.parameter_id as ParameterId,
   );
-  const paramLabel = paramDescriptor?.label ?? mapping.parameter_id;
-  const sceneId = getSceneFromParameterId(mapping.parameter_id);
 
   return (
     <div
@@ -313,7 +312,6 @@ function MappingRow({
           {AUDIO_SOURCE_SHORT_LABELS[mapping.source]}
         </span>
         <span className={styles.mappingArrow}>→</span>
-        {sceneId && <span className={styles.mappingSceneId}>{sceneId}</span>}
         <span className={styles.mappingTarget}>{paramLabel}</span>
         {mapping.mode !== "continuous" && (
           <span className={styles.mappingMode}>
@@ -343,10 +341,12 @@ function MappingRow({
  */
 function MappingForm({
   editingMapping,
+  slots,
   onSave,
   onCancel,
 }: {
   editingMapping: AudioMapping | null;
+  slots: Slot[];
   onSave: (mapping: AudioMapping) => void;
   onCancel: () => void;
 }) {
@@ -365,8 +365,14 @@ function MappingForm({
   const [maxOutput, setMaxOutput] = useState(editingMapping?.max_output ?? 1);
   const [smoothing, setSmoothing] = useState(editingMapping?.smoothing ?? 0.3);
 
-  // Get all available parameters
-  const allParameterIds = useMemo(() => getAllParameterIds(), []);
+  // Get parameter IDs only for active slots
+  const allParameterIds = useMemo(
+    () =>
+      getAllSlotParameterIds(
+        slots.map((s) => ({ index: s.index, sceneId: s.sketchId })),
+      ),
+    [slots],
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -444,16 +450,11 @@ function MappingForm({
             required
           >
             <option value="">Select parameter…</option>
-            {allParameterIds.map((id) => {
-              const desc = getParameterDescriptor(id);
-              const scene = getSceneFromParameterId(id);
-              return (
-                <option key={id} value={id}>
-                  {scene ? `[${scene}] ` : ""}
-                  {desc?.label ?? id}
-                </option>
-              );
-            })}
+            {allParameterIds.map((id) => (
+              <option key={id} value={id}>
+                {getParameterDropdownLabel(id)}
+              </option>
+            ))}
           </select>
         </label>
       </div>
@@ -540,7 +541,11 @@ function MappingForm({
 /**
  * Audio mappings management section.
  */
-function MappingsSection() {
+interface MappingsSectionProps {
+  slots: Slot[];
+}
+
+function MappingsSection({ slots }: MappingsSectionProps) {
   const { mappings, add, remove, setEnabled } = useAudioMappings();
   const [editingMapping, setEditingMapping] = useState<AudioMapping | null>(
     null,
@@ -577,6 +582,7 @@ function MappingsSection() {
       <div className={styles.mappingsSection}>
         <MappingForm
           editingMapping={editingMapping}
+          slots={slots}
           onSave={handleSave}
           onCancel={() => setEditingMapping(null)}
         />
@@ -610,6 +616,8 @@ function MappingsSection() {
 export interface AudioPanelProps {
   /** Optional class name for additional styling */
   className?: string;
+  /** Active slots for parameter filtering */
+  slots?: Slot[];
 }
 
 /**
@@ -622,7 +630,7 @@ export interface AudioPanelProps {
  * - Beat detection with BPM
  * - Audio → parameter mappings
  */
-export function AudioPanel({ className }: AudioPanelProps) {
+export function AudioPanel({ className, slots = [] }: AudioPanelProps) {
   const [deviceOpen, setDeviceOpen] = useState(true);
   const [levelsOpen, setLevelsOpen] = useState(true);
   const [mappingsOpen, setMappingsOpen] = useState(true);
@@ -726,12 +734,13 @@ export function AudioPanel({ className }: AudioPanelProps) {
             <div className={styles.mappingsSection}>
               <MappingForm
                 editingMapping={null}
+                slots={slots}
                 onSave={handleAddMapping}
                 onCancel={() => setShowAddForm(false)}
               />
             </div>
           ) : (
-            <MappingsSection />
+            <MappingsSection slots={slots} />
           )}
         </Collapsible.Content>
       </Collapsible.Root>

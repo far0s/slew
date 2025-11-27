@@ -23,7 +23,7 @@ function App() {
   const sceneSlots = useSceneSlots({
     minSlots: 1,
     maxSlots: 6,
-    initialScenes: ["sceneA"],
+    initialSketches: ["blueCube"],
   });
 
   // Parameter store (replaces individual useState calls)
@@ -300,7 +300,7 @@ function App() {
     paramStore.removeSlotParameters(slotIndex);
   }
 
-  // Refresh backend parameters and migrate legacy IDs
+  // Refresh backend parameters
   async function refreshBackendParameters() {
     paramStore.setIsLoading(true);
     paramStore.setError(null);
@@ -308,7 +308,7 @@ function App() {
       // Get all backend parameters
       const response = (await invoke("get_parameters")) as BackendParameter[];
 
-      // Build slot config for migration
+      // Build slot config
       const slotConfig: SlotConfig[] = sceneSlots.slots.map((slot) => ({
         index: slot.index,
         sceneId: slot.sceneId,
@@ -317,20 +317,9 @@ function App() {
       // Update parameter store's slot configuration
       paramStore.setCurrentSlots(slotConfig);
 
-      // Migrate legacy parameters if needed
-      const migratedParams = paramStore.migrateBackendParams(
-        response,
-        slotConfig,
-      );
-
-      // Also trigger backend migration
-      await invoke("migrate_parameters", {
-        slots: slotConfig.map((s) => ({ index: s.index, sceneId: s.sceneId })),
-      });
-
-      // Apply migrated parameters to store
-      paramStore.setBackendSnapshot(migratedParams);
-      paramStore.applyBackendParams(migratedParams);
+      // Apply parameters to store
+      paramStore.setBackendSnapshot(response);
+      paramStore.applyBackendParams(response);
 
       // Initialize any missing slot parameters
       for (const slot of sceneSlots.slots) {
@@ -544,7 +533,10 @@ function App() {
             )}
             showStats={showStats}
           />
-          <DebugPanel macropadSelectedIndex={macropadSelectedIndex} />
+          <DebugPanel
+            macropadSelectedIndex={macropadSelectedIndex}
+            slots={sceneSlots.slots}
+          />
         </aside>
       </main>
     </div>

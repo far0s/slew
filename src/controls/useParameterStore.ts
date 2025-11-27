@@ -12,8 +12,6 @@ import {
   makeSlotParameterId,
   parseSlotParameterId,
   getSceneDescriptor,
-  LEGACY_PARAMETER_MAPPING,
-  buildLegacyMigrationMap,
 } from "../scenes/sceneTypes";
 
 /**
@@ -57,7 +55,6 @@ export interface SlotConfig {
  * @property resetSlotToDefaults - Reset a slot's parameters to defaults
  * @property resetAllToDefaults - Reset all parameters to defaults
  * @property applyBackendParams - Apply backend parameters to local state
- * @property migrateBackendParams - Migrate legacy parameters to new slot-based IDs
  * @property getSlotParameter - Get a parameter value for a specific slot and template
  * @property setSlotParameter - Set a parameter value for a specific slot and template
  * @property has - Check if a parameter exists in the store
@@ -93,10 +90,6 @@ export interface ParameterStoreState {
   resetSlotToDefaults: (slotIndex: number, sceneId: SceneId) => void;
   resetAllToDefaults: (slots: SlotConfig[]) => void;
   applyBackendParams: (params: BackendParameter[]) => void;
-  migrateBackendParams: (
-    params: BackendParameter[],
-    slots: SlotConfig[],
-  ) => BackendParameter[];
   getSlotParameter: (
     slotIndex: number,
     templateId: ParameterTemplateId,
@@ -447,36 +440,6 @@ export function useParameterStore(): ParameterStoreState {
     setInterpolatedValues(new Map(defaults));
   }, []);
 
-  // Migrate legacy backend parameters to new slot-based IDs
-  const migrateBackendParams = useCallback(
-    (params: BackendParameter[], slots: SlotConfig[]): BackendParameter[] => {
-      const migrationMap = buildLegacyMigrationMap(slots);
-      const migratedParams: BackendParameter[] = [];
-      const seenIds = new Set<string>();
-
-      for (const param of params) {
-        // Check if this is a legacy parameter that needs migration
-        if (LEGACY_PARAMETER_MAPPING[param.id]) {
-          const newId = migrationMap.get(param.id);
-          if (newId && !seenIds.has(newId)) {
-            migratedParams.push({
-              ...param,
-              id: newId,
-            });
-            seenIds.add(newId);
-          }
-        } else if (!seenIds.has(param.id)) {
-          // Keep non-legacy parameters as-is
-          migratedParams.push(param);
-          seenIds.add(param.id);
-        }
-      }
-
-      return migratedParams;
-    },
-    [],
-  );
-
   // Apply backend parameters to local state
   const applyBackendParams = useCallback(
     (params: BackendParameter[]) => {
@@ -545,7 +508,6 @@ export function useParameterStore(): ParameterStoreState {
     resetSlotToDefaults,
     resetAllToDefaults,
     applyBackendParams,
-    migrateBackendParams,
     getSlotParameter,
     setSlotParameter,
     has,

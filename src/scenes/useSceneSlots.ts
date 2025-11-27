@@ -1,50 +1,71 @@
 import { useState, useCallback } from "react";
-import type { SceneId, SlotParameterId } from "./sceneTypes";
+import type { SketchId, SlotParameterId } from "./sceneTypes";
 import {
-  ALL_SCENE_IDS,
+  ALL_SKETCH_IDS,
   buildSlotDefaultParameters,
   copySlotParameters,
   makeSlotParameterId,
-  getSceneParameterTemplateIds,
+  getSketchParameterTemplateIds,
 } from "./sceneTypes";
 
+// Backwards compatibility alias
+export type SceneId = SketchId;
+
 /**
- * Represents a single scene slot in the UI.
+ * Represents a single slot in the UI.
  *
  * @property index - Slot index (0-based, displayed as 1-based in UI)
- * @property sceneId - Which scene type is loaded in this slot
+ * @property sketchId - Which sketch type is loaded in this slot
+ * @property sceneId - Backwards-compatible alias for sketchId
  */
-export interface SceneSlot {
+export interface Slot {
   index: number;
-  sceneId: SceneId;
+  sketchId: SketchId;
+  /** @deprecated Use sketchId instead */
+  sceneId: SketchId;
 }
 
 /**
- * Configuration for the scene slots system.
+ * @deprecated Use Slot interface instead
+ */
+export type SceneSlot = Slot;
+
+/**
+ * Configuration for the slots system.
  *
  * @property minSlots - Minimum number of slots allowed
  * @property maxSlots - Maximum number of slots allowed
- * @property initialScenes - Initial scene IDs for slots (defaults to first scene)
+ * @property initialSketches - Initial sketch IDs for slots (defaults to first sketch)
+ * @property initialScenes - Backwards-compatible alias for initialSketches
  */
-export interface SceneSlotsConfig {
+export interface SlotsConfig {
   minSlots: number;
   maxSlots: number;
-  initialScenes?: SceneId[];
+  initialSketches?: SketchId[];
+  /** @deprecated Use initialSketches instead */
+  initialScenes?: SketchId[];
 }
+
+/**
+ * @deprecated Use SlotsConfig instead
+ */
+export type SceneSlotsConfig = SlotsConfig;
 
 /**
  * Parameters to initialize for a new slot.
  */
 export interface SlotInitParams {
   slotIndex: number;
-  sceneId: SceneId;
+  sketchId: SketchId;
   parameters: Map<SlotParameterId, number>;
+  /** @deprecated Use sketchId instead */
+  sceneId: SketchId;
 }
 
 /**
  * Return type for the useSceneSlots hook.
  *
- * @property slots - Array of current scene slots
+ * @property slots - Array of current slots
  * @property activeIndex - Index of the currently active (output) slot
  * @property crossfadeTargetIndex - Index of the slot we're crossfading to, or null if not crossfading
  * @property crossfadeValue - Current crossfade value (0 = fully active, 1 = fully target)
@@ -54,34 +75,34 @@ export interface SlotInitParams {
  * @property addSlot - Add a new slot with default parameters
  * @property addSlotWithCopy - Add a new slot by copying an existing slot's parameters
  * @property removeSlot - Remove a slot by index (cannot remove active slot)
- * @property setSlotScene - Change the scene in a slot (resets to defaults or copies)
+ * @property setSlotSketch - Change the sketch in a slot (resets to defaults or copies)
  * @property startCrossfade - Start crossfading to a target slot
  * @property setCrossfadeValue - Update the crossfade value (called during transition)
  * @property completeCrossfade - Complete the crossfade (swap active to target)
  * @property cancelCrossfade - Cancel an in-progress crossfade
- * @property getSceneId - Get the scene ID for a slot index
+ * @property getSketchId - Get the sketch ID for a slot index
  * @property isActiveSlot - Check if a slot is the active slot
  * @property isCrossfadeTarget - Check if a slot is the crossfade target
- * @property findSlotsWithScene - Find all slot indices that have a given scene type
+ * @property findSlotsWithSketch - Find all slot indices that have a given sketch type
  * @property getSlotParameterIds - Get all parameter IDs for a slot
  */
-export interface SceneSlotsState {
-  slots: SceneSlot[];
+export interface SlotsState {
+  slots: Slot[];
   activeIndex: number;
   crossfadeTargetIndex: number | null;
   crossfadeValue: number;
   isCrossfading: boolean;
   canAddSlot: boolean;
   canRemoveSlot: boolean;
-  addSlot: (sceneId?: SceneId) => SlotInitParams | null;
+  addSlot: (sketchId?: SketchId) => SlotInitParams | null;
   addSlotWithCopy: (
     sourceSlotIndex: number,
     getParameterValue: (id: string) => number | undefined,
   ) => SlotInitParams | null;
   removeSlot: (index: number) => boolean;
-  setSlotScene: (
+  setSlotSketch: (
     index: number,
-    sceneId: SceneId,
+    sketchId: SketchId,
     copyFromSlotIndex?: number,
     getParameterValue?: (id: string) => number | undefined,
   ) => SlotInitParams | null;
@@ -89,46 +110,65 @@ export interface SceneSlotsState {
   setCrossfadeValue: (value: number) => void;
   completeCrossfade: () => void;
   cancelCrossfade: () => void;
-  getSceneId: (index: number) => SceneId | undefined;
+  getSketchId: (index: number) => SketchId | undefined;
   isActiveSlot: (index: number) => boolean;
   isCrossfadeTarget: (index: number) => boolean;
-  findSlotsWithScene: (sceneId: SceneId) => number[];
+  findSlotsWithSketch: (sketchId: SketchId) => number[];
   getSlotParameterIds: (slotIndex: number) => SlotParameterId[];
+  // Backwards compatibility aliases
+  /** @deprecated Use setSlotSketch instead */
+  setSlotScene: (
+    index: number,
+    sketchId: SketchId,
+    copyFromSlotIndex?: number,
+    getParameterValue?: (id: string) => number | undefined,
+  ) => SlotInitParams | null;
+  /** @deprecated Use getSketchId instead */
+  getSceneId: (index: number) => SketchId | undefined;
+  /** @deprecated Use findSlotsWithSketch instead */
+  findSlotsWithScene: (sketchId: SketchId) => number[];
 }
 
-const DEFAULT_CONFIG: SceneSlotsConfig = {
+/**
+ * @deprecated Use SlotsState instead
+ */
+export type SceneSlotsState = SlotsState;
+
+const DEFAULT_CONFIG: SlotsConfig = {
   minSlots: 1,
   maxSlots: 6,
 };
 
 /**
- * Hook for managing numbered scene slots with multi-instance support.
+ * Hook for managing numbered slots with multi-instance support.
  *
  * Key concepts:
- * - Each slot has an index and a scene ID (scene types can be duplicated)
+ * - Each slot has an index and a sketch ID (sketch types can be duplicated)
  * - One slot is "active" (being rendered to output)
  * - Crossfading transitions from active to a target slot
  * - Each slot has independent parameters (prefixed with slot index)
- * - New slots can copy parameters from existing slots of the same scene type
+ * - New slots can copy parameters from existing slots of the same sketch type
  */
-export function useSceneSlots(
-  config: Partial<SceneSlotsConfig> = {},
-): SceneSlotsState {
-  const { minSlots, maxSlots, initialScenes } = {
+export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
+  const { minSlots, maxSlots } = {
     ...DEFAULT_CONFIG,
     ...config,
   };
 
-  // Initialize with default scenes
-  const getInitialSlots = (): SceneSlot[] => {
-    const scenes = initialScenes ?? [ALL_SCENE_IDS[0]];
-    return scenes.slice(0, maxSlots).map((sceneId, index) => ({
+  // Handle both old and new config property names
+  const initialSketches = config.initialSketches ?? config.initialScenes;
+
+  // Initialize with default sketches
+  const getInitialSlots = (): Slot[] => {
+    const sketches = initialSketches ?? [ALL_SKETCH_IDS[0]];
+    return sketches.slice(0, maxSlots).map((sketchId, index) => ({
       index,
-      sceneId,
+      sketchId,
+      sceneId: sketchId, // backwards compat
     }));
   };
 
-  const [slots, setSlots] = useState<SceneSlot[]>(getInitialSlots);
+  const [slots, setSlots] = useState<Slot[]>(getInitialSlots);
   const [activeIndex, setActiveIndex] = useState(0);
   const [crossfadeTargetIndex, setCrossfadeTargetIndex] = useState<
     number | null
@@ -143,11 +183,11 @@ export function useSceneSlots(
   const canAddSlot = slots.length < maxSlots;
   const canRemoveSlot = slots.length > minSlots;
 
-  // Find all slots with a given scene type
-  const findSlotsWithScene = useCallback(
-    (sceneId: SceneId): number[] => {
+  // Find all slots with a given sketch type
+  const findSlotsWithSketch = useCallback(
+    (sketchId: SketchId): number[] => {
       return slots
-        .filter((slot) => slot.sceneId === sceneId)
+        .filter((slot) => slot.sketchId === sketchId)
         .map((slot) => slot.index);
     },
     [slots],
@@ -158,7 +198,7 @@ export function useSceneSlots(
     (slotIndex: number): SlotParameterId[] => {
       const slot = slots.find((s) => s.index === slotIndex);
       if (!slot) return [];
-      const templateIds = getSceneParameterTemplateIds(slot.sceneId);
+      const templateIds = getSketchParameterTemplateIds(slot.sketchId);
       return templateIds.map((tid) => makeSlotParameterId(slotIndex, tid));
     },
     [slots],
@@ -166,17 +206,25 @@ export function useSceneSlots(
 
   // Add a new slot with default parameters
   const addSlot = useCallback(
-    (sceneId?: SceneId): SlotInitParams | null => {
+    (sketchId?: SketchId): SlotInitParams | null => {
       if (!canAddSlot) return null;
 
-      const newSceneId = sceneId ?? ALL_SCENE_IDS[0];
+      const newSketchId = sketchId ?? ALL_SKETCH_IDS[0];
       const newIndex = slots.length;
 
-      setSlots((prev) => [...prev, { index: newIndex, sceneId: newSceneId }]);
+      setSlots((prev) => [
+        ...prev,
+        { index: newIndex, sketchId: newSketchId, sceneId: newSketchId },
+      ]);
 
       // Return the slot info and default parameters
-      const parameters = buildSlotDefaultParameters(newIndex, newSceneId);
-      return { slotIndex: newIndex, sceneId: newSceneId, parameters };
+      const parameters = buildSlotDefaultParameters(newIndex, newSketchId);
+      return {
+        slotIndex: newIndex,
+        sketchId: newSketchId,
+        sceneId: newSketchId, // backwards compat
+        parameters,
+      };
     },
     [canAddSlot, slots.length],
   );
@@ -196,17 +244,26 @@ export function useSceneSlots(
 
       setSlots((prev) => [
         ...prev,
-        { index: newIndex, sceneId: sourceSlot.sceneId },
+        {
+          index: newIndex,
+          sketchId: sourceSlot.sketchId,
+          sceneId: sourceSlot.sketchId,
+        },
       ]);
 
       // Copy parameters from source slot
       const parameters = copySlotParameters(
         sourceSlotIndex,
         newIndex,
-        sourceSlot.sceneId,
+        sourceSlot.sketchId,
         getParameterValue,
       );
-      return { slotIndex: newIndex, sceneId: sourceSlot.sceneId, parameters };
+      return {
+        slotIndex: newIndex,
+        sketchId: sourceSlot.sketchId,
+        sceneId: sourceSlot.sketchId, // backwards compat
+        parameters,
+      };
     },
     [canAddSlot, slots],
   );
@@ -221,7 +278,7 @@ export function useSceneSlots(
       setSlots((prev) => {
         const newSlots = prev
           .filter((_, i) => i !== index)
-          .map((slot, i) => ({ ...slot, index: i }));
+          .map((slot, i) => ({ ...slot, index: i, sceneId: slot.sketchId }));
         return newSlots;
       });
 
@@ -245,42 +302,54 @@ export function useSceneSlots(
     [canRemoveSlot, activeIndex, slots.length, crossfadeTargetIndex],
   );
 
-  // Change scene in a slot (returns new parameters to initialize)
-  const setSlotScene = useCallback(
+  // Change sketch in a slot (returns new parameters to initialize)
+  const setSlotSketch = useCallback(
     (
       index: number,
-      sceneId: SceneId,
+      sketchId: SketchId,
       copyFromSlotIndex?: number,
       getParameterValue?: (id: string) => number | undefined,
     ): SlotInitParams | null => {
       const currentSlot = slots.find((s) => s.index === index);
       if (!currentSlot) return null;
 
-      // Update the slot's scene ID
+      // Update the slot's sketch ID
       setSlots((prev) =>
         prev.map((slot) =>
-          slot.index === index ? { ...slot, sceneId } : slot,
+          slot.index === index
+            ? { ...slot, sketchId, sceneId: sketchId }
+            : slot,
         ),
       );
 
-      // If copying from another slot and it has the same scene type
+      // If copying from another slot and it has the same sketch type
       if (
         copyFromSlotIndex !== undefined &&
         getParameterValue &&
-        slots[copyFromSlotIndex]?.sceneId === sceneId
+        slots[copyFromSlotIndex]?.sketchId === sketchId
       ) {
         const parameters = copySlotParameters(
           copyFromSlotIndex,
           index,
-          sceneId,
+          sketchId,
           getParameterValue,
         );
-        return { slotIndex: index, sceneId, parameters };
+        return {
+          slotIndex: index,
+          sketchId,
+          sceneId: sketchId, // backwards compat
+          parameters,
+        };
       }
 
       // Otherwise return default parameters
-      const parameters = buildSlotDefaultParameters(index, sceneId);
-      return { slotIndex: index, sceneId, parameters };
+      const parameters = buildSlotDefaultParameters(index, sketchId);
+      return {
+        slotIndex: index,
+        sketchId,
+        sceneId: sketchId, // backwards compat
+        parameters,
+      };
     },
     [slots],
   );
@@ -313,10 +382,10 @@ export function useSceneSlots(
     setCrossfadeValue(0);
   }, []);
 
-  // Get scene ID for a slot
-  const getSceneId = useCallback(
-    (index: number): SceneId | undefined => {
-      return slots.find((s) => s.index === index)?.sceneId;
+  // Get sketch ID for a slot
+  const getSketchId = useCallback(
+    (index: number): SketchId | undefined => {
+      return slots.find((s) => s.index === index)?.sketchId;
     },
     [slots],
   );
@@ -348,15 +417,19 @@ export function useSceneSlots(
     addSlot,
     addSlotWithCopy,
     removeSlot,
-    setSlotScene,
+    setSlotSketch,
     startCrossfade,
     setCrossfadeValue,
     completeCrossfade,
     cancelCrossfade,
-    getSceneId,
+    getSketchId,
     isActiveSlot,
     isCrossfadeTarget,
-    findSlotsWithScene,
+    findSlotsWithSketch,
     getSlotParameterIds,
+    // Backwards compatibility aliases
+    setSlotScene: setSlotSketch,
+    getSceneId: getSketchId,
+    findSlotsWithScene: findSlotsWithSketch,
   };
 }

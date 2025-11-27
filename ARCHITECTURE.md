@@ -41,7 +41,7 @@ Backend services handle input (OSC, MIDI, audio), state management, modulation, 
 - Runs full-screen or as a borderless window
 - Dedicated render loop using r3f + WebGPU
 - Receives parameters/uniform updates from backend
-- Supports layering (Scene A/B blending)
+- Supports layering (active/target slot blending)
 - Exposes rendered frames via:
   - Syphon (macOS)
   - Spout (Windows)
@@ -60,7 +60,7 @@ Backend services handle input (OSC, MIDI, audio), state management, modulation, 
 
 **Features**:
 
-- Scene selection & switching
+- Slot & sketch selection
 - Parameter panels (Leva-like)
 - Color/FX presets
 - MIDI Learn UI for knob/pad mapping
@@ -114,18 +114,25 @@ interface Parameter {
 
 Parameter updates flow: Window B → Backend → Window A.
 
-### 3. Scene System
+### 3. Slot & Sketch System
 
-Each visual scene is:
+**Terminology:**
 
-- A React component
-- A set of parameters
-- A shader pipeline
+- **Slots**: Numbered containers (1-6) that hold a visual and its parameters
+- **Sketches**: Visual programs (e.g., `BlueCube`, `OrangeCube`, `GreenPulse`) that can be loaded into slots
 
-Scene switching uses:
+Each sketch is:
 
-- Preloading both scenes
-- Crossfading render targets
+- A React component with a `SketchDescriptor` (metadata + parameters)
+- Self-contained in `/src/sketches/{SketchName}/index.tsx`
+- Registered in `SKETCH_REGISTRY`
+
+**Parameter IDs** use format: `slot_{index}_{templateId}` (e.g., `slot_0_brightness`)
+
+Crossfading uses:
+
+- Preloading both active and target slot sketches
+- Blending render targets via crossfade uniform
 - Maintaining state during transitions
 
 ### 4. Modulation Engine
@@ -171,8 +178,8 @@ Audio produces:
 
 Visual pipeline:
 
-1. Render Scene A → RenderTargetA
-2. Render Scene B → RenderTargetB (optional)
+1. Render active slot sketch → RenderTargetA
+2. Render target slot sketch → RenderTargetB (during crossfade)
 3. Blend using crossfade uniform
 4. Postprocess pipeline (Bloom, feedback, distortions)
 
@@ -197,29 +204,32 @@ These plugins read directly from Window A’s GPU texture.
 ```
 /project
   /src
-    /windows
-      /renderer        # Window A
-      /controls        # Window B
-    /core
-      /parameters
-      /modulation
-      /inputs
-        /midi
-        /osc
-        /audio
-      /scenes
-      /transitions
-      /video-out
+    /sketches          # Visual programs (BlueCube, OrangeCube, GreenPulse)
+      /BlueCube
+        index.tsx      # Component + SketchDescriptor
+      /OrangeCube
+      /GreenPulse
+      index.ts         # Registry exports
+      types.ts         # SketchDescriptor, SketchProps
+    /scenes            # Slot management (backwards-compat naming)
+      sceneTypes.ts    # Parameter utilities
+      useSceneSlots.ts # Slot state management
+    /components        # UI components
+    /controls          # Parameter store
+    /inputs            # MIDI, OSC, Audio, HID
+    /renderer          # Window A renderer
     /lib
       /shaders
       /utils
-  /rust
-    /plugins
-      /osc
-      /midi
-      /audio
-      /syphon_spout
-      /ndi
+  /src-tauri           # Rust backend
+    /src
+      lib.rs           # Parameter server, commands
+      midi.rs
+      osc.rs
+      audio.rs
+      hid.rs
+      modulation.rs
+      video_out.rs
 ```
 
 ---
@@ -277,12 +287,12 @@ Each React component should have a JSDoc block describing:
 /**
  * ScenesArea
  *
- * Horizontally scrollable container for scene columns.
+ * Horizontally scrollable container for slot columns.
  * Designed to show ~3.5 columns at once with the 4th peeking in.
  *
  * Features:
- * - Horizontal scroll for 4+ scenes
- * - Add scene button when < maxSlots
+ * - Horizontal scroll for 4+ slots
+ * - Add slot button when < maxSlots
  * - AnimatePresence for enter/exit animations
  */
 export function ScenesArea({ ... }: ScenesAreaProps) {
@@ -356,8 +366,8 @@ You are tasked with generating the initial codebase for a modular VJ application
 4. **Generate a clean project structure** matching the architecture above.
 
 5. **Provide minimal demo functionality**:
-   - A rotating cube or shader as Scene A
-   - A color-changing uniform as Scene B
+   - A rotating cube sketch (BlueCube)
+   - A pulsing sketch (GreenPulse)
    - Crossfade slider in Window B controlling blend in Window A
    - A couple of adjustable parameters (speed, color, distortion)
 

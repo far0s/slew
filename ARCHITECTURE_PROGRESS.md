@@ -262,7 +262,40 @@ All input systems now support automatic device detection:
 
 ---
 
-## 9. Housekeeping
+## 9. Sketch/Slot Refactoring ✅
+
+**Status:** Complete
+
+Separated the concepts of **Slots** (numbered containers 1-6) and **Sketches** (visual programs like `BlueCube`, `OrangeCube`, `GreenPulse`).
+
+### Key Changes
+
+| Area             | Change                                                                           |
+| ---------------- | -------------------------------------------------------------------------------- |
+| **Sketches**     | New `/src/sketches/` folder with self-contained modules (descriptor + component) |
+| **Registry**     | `SKETCH_REGISTRY` in `/src/sketches/index.ts`                                    |
+| **Parameters**   | Format: `slot_{index}_{templateId}` (e.g., `slot_0_brightness`)                  |
+| **Input Panels** | Filter to active slots only, cleaner labels (`3 - Brightness`)                   |
+| **Backend**      | Legacy migration code removed (migration complete)                               |
+
+### Backwards Compatibility
+
+Old names still work via aliases: `SceneId` → `SketchId`, `sceneId` → `sketchId`
+
+### File Structure
+
+```
+/src/sketches/
+  BlueCube/index.tsx    # Sketch component + descriptor
+  OrangeCube/index.tsx
+  GreenPulse/index.tsx
+  index.ts              # Registry exports
+  types.ts              # SketchDescriptor, SketchProps
+```
+
+---
+
+## 10. Housekeeping
 
 - Run `npx tsc --noEmit` and `cargo check` after changes
 - Keep this document updated as features land

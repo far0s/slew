@@ -36,11 +36,11 @@ import {
   type AudioSource,
 } from "../../inputs/audio";
 import {
-  getAllParameterIds,
-  getParameterDescriptor,
+  getAllSlotParameterIds,
+  getParameterDropdownLabel,
   type ParameterId,
 } from "../../scenes/sceneTypes";
-import { getSceneFromParameterId } from "../../inputs/audio";
+import type { Slot } from "../../scenes/useSceneSlots";
 import styles from "./ModulationPanel.module.css";
 
 // ============================================================================
@@ -503,11 +503,9 @@ function TargetRow({
   onToggle,
   onDelete,
 }: TargetRowProps) {
-  const paramDescriptor = getParameterDescriptor(
+  const paramLabel = getParameterDropdownLabel(
     target.parameter_id as ParameterId,
   );
-  const paramLabel = paramDescriptor?.label ?? target.parameter_id;
-  const sceneId = getSceneFromParameterId(target.parameter_id);
 
   return (
     <div
@@ -525,7 +523,6 @@ function TargetRow({
       <button type="button" className={styles.targetInfo} onClick={onEdit}>
         <span className={styles.targetLfo}>{lfoName}</span>
         <span className={styles.targetArrow}>→</span>
-        {sceneId && <span className={styles.targetSceneId}>{sceneId}</span>}
         <span className={styles.targetParam}>{paramLabel}</span>
         <span className={styles.targetDepth}>
           {target.bipolar ? "±" : ""}
@@ -551,6 +548,7 @@ function TargetRow({
 
 interface TargetFormProps {
   lfos: LfoSource[];
+  slots: Slot[];
   editingTarget: ModulationTarget | null;
   onSave: (target: ModulationTarget) => void;
   onCancel: () => void;
@@ -558,6 +556,7 @@ interface TargetFormProps {
 
 function TargetForm({
   lfos,
+  slots,
   editingTarget,
   onSave,
   onCancel,
@@ -573,7 +572,14 @@ function TargetForm({
   const [depth, setDepth] = useState(editingTarget?.depth ?? 0.5);
   const [bipolar, setBipolar] = useState(editingTarget?.bipolar ?? true);
 
-  const allParameterIds = useMemo(() => getAllParameterIds(), []);
+  // Get parameter IDs only for active slots
+  const allParameterIds = useMemo(
+    () =>
+      getAllSlotParameterIds(
+        slots.map((s) => ({ index: s.index, sceneId: s.sketchId })),
+      ),
+    [slots],
+  );
 
   const handleSubmit = () => {
     if (!sourceId || !parameterId) return;
@@ -621,16 +627,11 @@ function TargetForm({
             onChange={(e) => setParameterId(e.target.value)}
           >
             <option value="">Select parameter…</option>
-            {allParameterIds.map((id) => {
-              const desc = getParameterDescriptor(id);
-              const scene = getSceneFromParameterId(id);
-              return (
-                <option key={id} value={id}>
-                  {scene ? `[${scene}] ` : ""}
-                  {desc?.label ?? id}
-                </option>
-              );
-            })}
+            {allParameterIds.map((id) => (
+              <option key={id} value={id}>
+                {getParameterDropdownLabel(id)}
+              </option>
+            ))}
           </select>
         </label>
       </div>
@@ -689,7 +690,11 @@ function TargetForm({
 // Targets Section
 // ============================================================================
 
-function TargetsSection() {
+interface TargetsSectionProps {
+  slots: Slot[];
+}
+
+function TargetsSection({ slots }: TargetsSectionProps) {
   const { lfos } = useLfos();
   const { targets, add, remove } = useModulationTargets();
   const [showForm, setShowForm] = useState(false);
@@ -739,6 +744,7 @@ function TargetsSection() {
     return (
       <TargetForm
         lfos={lfos}
+        slots={slots}
         editingTarget={editingTarget}
         onSave={handleSave}
         onCancel={() => {
@@ -1099,9 +1105,13 @@ function AudioModulationsSection() {
 
 export interface ModulationPanelProps {
   className?: string;
+  slots?: Slot[];
 }
 
-export function ModulationPanel({ className }: ModulationPanelProps) {
+export function ModulationPanel({
+  className,
+  slots = [],
+}: ModulationPanelProps) {
   const [lfosOpen, setLfosOpen] = useState(true);
   const [targetsOpen, setTargetsOpen] = useState(true);
   const [audioModsOpen, setAudioModsOpen] = useState(true);
@@ -1266,12 +1276,13 @@ export function ModulationPanel({ className }: ModulationPanelProps) {
           {showAddTarget && lfos.length > 0 ? (
             <TargetForm
               lfos={lfos}
+              slots={slots}
               editingTarget={null}
               onSave={handleAddTarget}
               onCancel={() => setShowAddTarget(false)}
             />
           ) : (
-            <TargetsSection />
+            <TargetsSection slots={slots} />
           )}
         </Collapsible.Content>
       </Collapsible.Root>

@@ -7,6 +7,7 @@ import { AudioPanel } from "../AudioPanel";
 import { HidPanel } from "../HidPanel";
 import { ModulationPanel } from "../ModulationPanel";
 import { VideoOutputPanel } from "../VideoOutputPanel";
+import type { Slot } from "../../scenes/useSceneSlots";
 import styles from "./DebugPanel.module.css";
 
 /**
@@ -17,6 +18,8 @@ import styles from "./DebugPanel.module.css";
 export interface DebugPanelProps {
   // HID/Macropad
   macropadSelectedIndex?: number | null;
+  // Active slots for parameter filtering
+  slots?: Slot[];
 }
 
 /**
@@ -29,7 +32,10 @@ export interface DebugPanelProps {
  * - HID: Macropad/controller status
  * - Modulation: LFO and modulation matrix
  */
-export function DebugPanel({ macropadSelectedIndex }: DebugPanelProps) {
+export function DebugPanel({
+  macropadSelectedIndex,
+  slots = [],
+}: DebugPanelProps) {
   const [isRestarting, setIsRestarting] = useState(false);
 
   const handleRestartControls = useCallback(async () => {
@@ -81,7 +87,7 @@ export function DebugPanel({ macropadSelectedIndex }: DebugPanelProps) {
         </Tabs.Content>
 
         <Tabs.Content value="audio" className={styles.tabContent}>
-          <AudioPanel />
+          <AudioPanel slots={slots} />
         </Tabs.Content>
 
         <Tabs.Content value="hid" className={styles.tabContent}>
@@ -89,7 +95,7 @@ export function DebugPanel({ macropadSelectedIndex }: DebugPanelProps) {
         </Tabs.Content>
 
         <Tabs.Content value="modulation" className={styles.tabContent}>
-          <ModulationPanel />
+          <ModulationPanel slots={slots} />
         </Tabs.Content>
 
         <Tabs.Content value="video" className={styles.tabContent}>

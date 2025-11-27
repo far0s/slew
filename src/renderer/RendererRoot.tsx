@@ -5,11 +5,12 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Perf } from "r3f-perf";
 import { VideoOutputCapture } from "./VideoOutputCapture";
 import {
-  SCENE_COMPONENT_REGISTRY,
-  type SceneProps,
-} from "../scenes/sceneComponents";
-import type { SceneId, ParameterTemplateId } from "../scenes/sceneTypes";
-import { getSceneDescriptor, makeSlotParameterId } from "../scenes/sceneTypes";
+  SKETCH_COMPONENT_REGISTRY,
+  type SketchProps,
+  type SketchId,
+} from "../sketches";
+import type { ParameterTemplateId } from "../scenes/sceneTypes";
+import { getSketchDescriptor, makeSlotParameterId } from "../scenes/sceneTypes";
 import { useStatsToggle } from "../hooks";
 import styles from "./RendererRoot.module.css";
 
@@ -34,9 +35,9 @@ interface BackendParameter {
  */
 interface SlotPairingPayload {
   active_slot_index: number;
-  active_scene_id: SceneId;
+  active_scene_id: SketchId;
   next_slot_index: number;
-  next_scene_id: SceneId;
+  next_scene_id: SketchId;
 }
 
 /**
@@ -44,7 +45,7 @@ interface SlotPairingPayload {
  */
 interface SlotInfo {
   index: number;
-  sceneId: SceneId;
+  sketchId: SketchId;
 }
 
 // =============================================================================
@@ -96,11 +97,11 @@ function TintLfoDriver({ depth, setPhase }: TintLfoDriverProps) {
  */
 function buildSlotParams(
   slotIndex: number,
-  sceneId: SceneId,
+  sketchId: SketchId,
   paramStore: Map<string, number>,
   tintLfoPhase: number,
-): SceneProps["params"] {
-  const descriptor = getSceneDescriptor(sceneId);
+): SketchProps["params"] {
+  const descriptor = getSketchDescriptor(sketchId);
   if (!descriptor) return {};
 
   const params: Record<string, number> = {};
@@ -126,7 +127,7 @@ function buildSlotParams(
     );
   }
 
-  return params as SceneProps["params"];
+  return params as SketchProps["params"];
 }
 
 // =============================================================================
@@ -191,11 +192,16 @@ function RendererContent({
   const crossfade = paramStore.get("crossfade") ?? 0;
 
   // Calculate max tint LFO depth across active slots for the driver
-  const activeTintLfoDepth =
-    paramStore.get(makeSlotParameterId(activeSlot.index, "tint_lfo_depth")) ??
-    0;
-  const nextTintLfoDepth =
-    paramStore.get(makeSlotParameterId(nextSlot.index, "tint_lfo_depth")) ?? 0;
+  const activeTintLfoDepthParamId = makeSlotParameterId(
+    activeSlot.index,
+    "tint_lfo_depth",
+  );
+  const activeTintLfoDepth = paramStore.get(activeTintLfoDepthParamId) ?? 0;
+  const nextTintLfoDepthParamId = makeSlotParameterId(
+    nextSlot.index,
+    "tint_lfo_depth",
+  );
+  const nextTintLfoDepth = paramStore.get(nextTintLfoDepthParamId) ?? 0;
   const maxTintLfoDepth = Math.max(activeTintLfoDepth, nextTintLfoDepth);
 
   // Determine which slots to render (active and/or next)
@@ -223,8 +229,8 @@ function RendererContent({
 
       {/* Render slots based on active/next pairing */}
       {slotsToRender.map((slot) => {
-        const SceneComponent = SCENE_COMPONENT_REGISTRY[slot.sceneId];
-        if (!SceneComponent) return null;
+        const SketchComponent = SKETCH_COMPONENT_REGISTRY[slot.sketchId];
+        if (!SketchComponent) return null;
 
         const opacity = calculateSlotOpacity(
           slot.index,
@@ -236,18 +242,18 @@ function RendererContent({
         // Skip rendering slots with zero opacity for performance
         if (opacity < 0.001) return null;
 
-        const sceneParams = buildSlotParams(
+        const sketchParams = buildSlotParams(
           slot.index,
-          slot.sceneId,
+          slot.sketchId,
           paramStore,
           tintLfoPhase,
         );
 
         return (
-          <SceneComponent
+          <SketchComponent
             key={`slot-${slot.index}`}
             opacity={opacity}
-            params={sceneParams}
+            params={sketchParams}
           />
         );
       })}
@@ -278,11 +284,11 @@ export function RendererRoot() {
   // Slot pairing state
   const [activeSlot, setActiveSlot] = useState<SlotInfo>({
     index: 0,
-    sceneId: "sceneA",
+    sketchId: "blueCube",
   });
   const [nextSlot, setNextSlot] = useState<SlotInfo>({
     index: 0,
-    sceneId: "sceneA",
+    sketchId: "blueCube",
   });
 
   // Generic parameter store - stores ANY parameter by its backend ID
@@ -326,11 +332,11 @@ export function RendererRoot() {
 
       setActiveSlot({
         index: payload.active_slot_index,
-        sceneId: payload.active_scene_id,
+        sketchId: payload.active_scene_id,
       });
       setNextSlot({
         index: payload.next_slot_index,
-        sceneId: payload.next_scene_id,
+        sketchId: payload.next_scene_id,
       });
     },
     [],
@@ -338,7 +344,7 @@ export function RendererRoot() {
 
   // Legacy handler for scene_pairing_changed (backwards compatibility during migration)
   const handleLegacyScenePairingChanged = useCallback(
-    (payload: { active_scene_id: SceneId; next_scene_id: SceneId }) => {
+    (payload: { active_scene_id: SketchId; next_scene_id: SketchId }) => {
       console.log(
         "[Renderer] Legacy scene pairing:",
         payload.active_scene_id,
@@ -346,8 +352,8 @@ export function RendererRoot() {
         payload.next_scene_id,
       );
       // Map legacy scene IDs to slot 0 for backwards compatibility
-      setActiveSlot({ index: 0, sceneId: payload.active_scene_id });
-      setNextSlot({ index: 0, sceneId: payload.next_scene_id });
+      setActiveSlot({ index: 0, sketchId: payload.active_scene_id });
+      setNextSlot({ index: 0, sketchId: payload.next_scene_id });
     },
     [],
   );
@@ -422,8 +428,8 @@ export function RendererRoot() {
     async function subscribe() {
       try {
         unlisten = await listen<{
-          active_scene_id: SceneId;
-          next_scene_id: SceneId;
+          active_scene_id: SketchId;
+          next_scene_id: SketchId;
         }>("scene_pairing_changed", (event) => {
           if (event.payload) {
             handleLegacyScenePairingChanged(event.payload);

@@ -1079,7 +1079,7 @@ pub fn clear_mappings() -> Result<(), String> {
 
 /// Set up default mappings for the Megalodon.
 /// NOTE: These are legacy mappings. With the new macropad integration,
-/// encoder mappings are handled dynamically based on selected scene.
+/// encoder mappings are handled dynamically based on selected slot.
 pub fn setup_default_mappings() -> Result<(), String> {
     let defaults = vec![
         HidMapping {
@@ -1090,13 +1090,13 @@ pub fn setup_default_mappings() -> Result<(), String> {
         },
         HidMapping {
             encoder_index: 1,
-            parameter_id: "scene_a_brightness".to_string(),
+            parameter_id: "slot_0_brightness".to_string(),
             sensitivity: 0.05,
             inverted: false,
         },
         HidMapping {
             encoder_index: 2,
-            parameter_id: "scene_a_tint".to_string(),
+            parameter_id: "slot_0_tint".to_string(),
             sensitivity: 0.02,
             inverted: false,
         },

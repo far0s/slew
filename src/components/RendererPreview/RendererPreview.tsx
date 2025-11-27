@@ -1,23 +1,22 @@
 import { Suspense, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Perf } from "r3f-perf";
-import type { SceneId } from "../../scenes/sceneTypes";
-import { SCENE_COMPONENT_REGISTRY } from "../../scenes/sceneComponents";
-import type { SceneProps } from "../../scenes/sceneComponents";
+import type { SketchId, SketchProps } from "../../sketches";
+import { SKETCH_COMPONENT_REGISTRY } from "../../sketches";
 import styles from "./RendererPreview.module.css";
 
 export interface RendererPreviewProps {
-  /** The currently active scene ID */
-  activeSceneId: SceneId;
-  /** The next scene ID for crossfading */
-  nextSceneId: SceneId;
+  /** The currently active sketch ID */
+  activeSceneId: SketchId;
+  /** The next sketch ID for crossfading */
+  nextSceneId: SketchId;
   /** Crossfade value (0 = fully active, 1 = fully next) */
   crossfade: number;
-  /** Scene-specific parameters for the active scene */
-  activeSceneParams?: SceneProps["params"];
-  /** Scene-specific parameters for the next scene */
-  nextSceneParams?: SceneProps["params"];
-  /** Tint LFO depth for modulation (applies to scenes with tintLfoDepth param) */
+  /** Sketch-specific parameters for the active sketch */
+  activeSceneParams?: SketchProps["params"];
+  /** Sketch-specific parameters for the next sketch */
+  nextSceneParams?: SketchProps["params"];
+  /** Tint LFO depth for modulation (applies to sketches with tintLfoDepth param) */
   sceneATintLfoDepth?: number;
   /** Show performance stats (toggled with "D" key) */
   showStats?: boolean;
@@ -42,12 +41,12 @@ function TintLfoDriver({ tintLfoDepth, setTintLfoPhase }: TintLfoDriverProps) {
   return null;
 }
 
-interface SceneWeights {
+interface SketchWeights {
   activeWeight: number;
   nextWeight: number;
 }
 
-function mapCrossfadeToSceneWeights(crossfadeRaw: number): SceneWeights {
+function mapCrossfadeToSketchWeights(crossfadeRaw: number): SketchWeights {
   const crossfade = Math.max(0, Math.min(1, crossfadeRaw));
   return {
     activeWeight: 1 - crossfade,
@@ -56,44 +55,44 @@ function mapCrossfadeToSceneWeights(crossfadeRaw: number): SceneWeights {
 }
 
 interface RendererPreviewContentProps {
-  activeSceneId: SceneId;
-  nextSceneId: SceneId;
+  activeSketchId: SketchId;
+  nextSketchId: SketchId;
   crossfade: number;
-  activeSceneParams?: SceneProps["params"];
-  nextSceneParams?: SceneProps["params"];
-  sceneATintLfoDepth: number;
+  activeSketchParams?: SketchProps["params"];
+  nextSketchParams?: SketchProps["params"];
+  tintLfoDepth: number;
 }
 
 /**
  * Inner content component that renders inside the Canvas.
- * Handles scene blending and tint modulation.
+ * Handles sketch blending and tint modulation.
  */
 function RendererPreviewContent({
-  activeSceneId,
-  nextSceneId,
+  activeSketchId,
+  nextSketchId,
   crossfade,
-  activeSceneParams,
-  nextSceneParams,
-  sceneATintLfoDepth,
+  activeSketchParams,
+  nextSketchParams,
+  tintLfoDepth,
 }: RendererPreviewContentProps) {
-  const sceneWeights = mapCrossfadeToSceneWeights(crossfade);
+  const sketchWeights = mapCrossfadeToSketchWeights(crossfade);
 
   // Track tint LFO phase for tint modulation
   const [tintLfoPhase, setTintLfoPhase] = useState(0);
 
-  // Apply tint modulation for scenes that have tintLfoDepth
+  // Apply tint modulation for sketches that have tintLfoDepth
   const getModulatedParams = (
-    sceneId: SceneId,
-    params?: SceneProps["params"],
-  ): SceneProps["params"] => {
-    // Only apply tint modulation to sceneA (which has the tint LFO feature)
-    if (sceneId !== "sceneA" || !params) return params;
+    sketchId: SketchId,
+    params?: SketchProps["params"],
+  ): SketchProps["params"] => {
+    // Only apply tint modulation to blueCube (which has the tint LFO feature)
+    if (sketchId !== "blueCube" || !params) return params;
 
     // Use the generic 'tint' property name
     const tintBase = params.tint ?? 0.5;
     const tintModulated = Math.max(
       0,
-      Math.min(1, tintBase + Math.sin(tintLfoPhase) * sceneATintLfoDepth),
+      Math.min(1, tintBase + Math.sin(tintLfoPhase) * tintLfoDepth),
     );
 
     return {
@@ -102,19 +101,22 @@ function RendererPreviewContent({
     };
   };
 
-  const ActiveSceneComponent = SCENE_COMPONENT_REGISTRY[activeSceneId];
-  const NextSceneComponent = SCENE_COMPONENT_REGISTRY[nextSceneId];
+  const ActiveSketchComponent = SKETCH_COMPONENT_REGISTRY[activeSketchId];
+  const NextSketchComponent = SKETCH_COMPONENT_REGISTRY[nextSketchId];
 
   const modulatedActiveParams = getModulatedParams(
-    activeSceneId,
-    activeSceneParams,
+    activeSketchId,
+    activeSketchParams,
   );
-  const modulatedNextParams = getModulatedParams(nextSceneId, nextSceneParams);
+  const modulatedNextParams = getModulatedParams(
+    nextSketchId,
+    nextSketchParams,
+  );
 
   return (
     <>
       <TintLfoDriver
-        tintLfoDepth={sceneATintLfoDepth}
+        tintLfoDepth={tintLfoDepth}
         setTintLfoPhase={setTintLfoPhase}
       />
       <color attach="background" args={["#020617"]} />
@@ -122,18 +124,18 @@ function RendererPreviewContent({
       <directionalLight position={[4, 6, 3]} intensity={1.1} />
       <directionalLight position={[-4, -4, -2]} intensity={0.4} />
 
-      {/* Render active scene with crossfade weight */}
-      {ActiveSceneComponent && sceneWeights.activeWeight > 0.001 && (
-        <ActiveSceneComponent
-          opacity={sceneWeights.activeWeight}
+      {/* Render active sketch with crossfade weight */}
+      {ActiveSketchComponent && sketchWeights.activeWeight > 0.001 && (
+        <ActiveSketchComponent
+          opacity={sketchWeights.activeWeight}
           params={modulatedActiveParams}
         />
       )}
 
-      {/* Render next scene with crossfade weight */}
-      {NextSceneComponent && sceneWeights.nextWeight > 0.001 && (
-        <NextSceneComponent
-          opacity={sceneWeights.nextWeight}
+      {/* Render next sketch with crossfade weight */}
+      {NextSketchComponent && sketchWeights.nextWeight > 0.001 && (
+        <NextSketchComponent
+          opacity={sketchWeights.nextWeight}
           params={modulatedNextParams}
         />
       )}
@@ -145,14 +147,14 @@ function RendererPreviewContent({
  * RendererPreview
  *
  * A preview component that mirrors the actual Renderer output.
- * Shows both Active and Next scenes blended according to the crossfade value.
+ * Shows both Active and Next sketches blended according to the crossfade value.
  *
  * This is used in the Controls window to give the operator an accurate
  * representation of what's being displayed in the Renderer window.
  *
  * Features:
  * - Accurate crossfade blending matching the main renderer
- * - Tint LFO modulation support for Scene A
+ * - Tint LFO modulation support for BlueCube sketch
  * - Fixed 16:9 aspect ratio
  * - Optimized for performance with reduced DPR
  */
@@ -189,12 +191,12 @@ export function RendererPreview({
             />
           )}
           <RendererPreviewContent
-            activeSceneId={activeSceneId}
-            nextSceneId={nextSceneId}
+            activeSketchId={activeSceneId}
+            nextSketchId={nextSceneId}
             crossfade={crossfade}
-            activeSceneParams={activeSceneParams}
-            nextSceneParams={nextSceneParams}
-            sceneATintLfoDepth={sceneATintLfoDepth}
+            activeSketchParams={activeSceneParams}
+            nextSketchParams={nextSceneParams}
+            tintLfoDepth={sceneATintLfoDepth}
           />
         </Canvas>
       </Suspense>

@@ -1,60 +1,99 @@
-/* Scene System with Multi-Instance Support
+/**
+ * Slot System Types
  *
- * This file defines types and a registry for scenes and their parameters.
- * Parameters are now template-based, meaning each slot gets its own
- * independent set of parameters prefixed with `slot_{index}_`.
+ * This file provides slot-related types and utilities for managing visual slots.
+ * It imports sketch definitions from the new /src/sketches system and provides
+ * backwards-compatible aliases for existing code.
  *
  * Key concepts:
+ * - Slots are numbered containers (1-6) that hold a visual and its parameters
+ * - Sketches are the visual programs that can be loaded into slots
  * - Parameter templates define the shape (label, min, max, etc.)
  * - Slot parameter IDs are generated as `slot_{slotIndex}_{templateId}`
- * - Scenes can be instantiated multiple times in different slots
  */
 
-/**
- * Available slider color themes for parameter UI.
- */
-export type SliderColor =
-  | "emerald"
-  | "indigo"
-  | "cyan"
-  | "amber"
-  | "rose"
-  | "violet"
-  | "lime"
-  | "orange"
-  | "sky"
-  | "fuchsia";
+// Import types and registry from the new sketches system
+import {
+  type SketchId,
+  type SketchDescriptor,
+  type SketchProps,
+  type SketchComponent,
+  type ParameterTemplate,
+  type ParameterTemplateId,
+  type SliderColor,
+  SKETCH_REGISTRY,
+  ALL_SKETCH_IDS,
+  getSketchDescriptor,
+  getSketchParameterTemplateIds,
+  getSketchParameterTemplate,
+  LEGACY_SKETCH_ID_MAP,
+  resolveSketchId,
+} from "../sketches";
+
+// ============================================================================
+// Backwards Compatibility Aliases
+// ============================================================================
 
 /**
- * Identifier for a scene type.
- *
- * - "sceneA" → Blue cube with wobble/tint
- * - "sceneB" → Orange cube
- * - "sceneC" → Green pulsing cube
+ * @deprecated Use SketchId from '../sketches' instead
  */
-export type SceneId = "sceneA" | "sceneB" | "sceneC";
+export type SceneId = SketchId;
 
 /**
- * Array of all available scene IDs for iteration.
+ * @deprecated Use SketchDescriptor from '../sketches' instead
  */
-export const ALL_SCENE_IDS: SceneId[] = ["sceneA", "sceneB", "sceneC"];
+export type SceneDescriptor = SketchDescriptor;
 
 /**
- * Template ID for a parameter (without slot prefix).
- * These are the base names used in parameter templates.
+ * @deprecated Use ALL_SKETCH_IDS from '../sketches' instead
  */
-export type ParameterTemplateId =
-  // Common parameters (used across scenes)
-  | "brightness"
-  | "rotation_speed"
-  | "tint"
-  // Scene A specific
-  | "wobble"
-  | "tint_lfo_depth"
-  // Scene B specific
-  | "scale"
-  // Scene C specific
-  | "pulse_speed";
+export const ALL_SCENE_IDS: SceneId[] = ALL_SKETCH_IDS;
+
+/**
+ * @deprecated Use SKETCH_REGISTRY from '../sketches' instead
+ */
+export const SCENE_REGISTRY: SceneDescriptor[] = SKETCH_REGISTRY;
+
+/**
+ * @deprecated Use getSketchDescriptor from '../sketches' instead
+ */
+export function getSceneDescriptor(id: SceneId): SceneDescriptor | undefined {
+  return getSketchDescriptor(id);
+}
+
+/**
+ * @deprecated Use getSketchParameterTemplateIds from '../sketches' instead
+ */
+export function getSceneParameterTemplateIds(
+  sceneId: SceneId,
+): ParameterTemplateId[] {
+  return getSketchParameterTemplateIds(sceneId);
+}
+
+// Re-export sketch types for convenience
+export type {
+  SketchId,
+  SketchDescriptor,
+  SketchProps,
+  SketchComponent,
+  ParameterTemplate,
+  ParameterTemplateId,
+  SliderColor,
+};
+
+export {
+  SKETCH_REGISTRY,
+  ALL_SKETCH_IDS,
+  getSketchDescriptor,
+  getSketchParameterTemplateIds,
+  getSketchParameterTemplate,
+  LEGACY_SKETCH_ID_MAP,
+  resolveSketchId,
+};
+
+// ============================================================================
+// Global Parameter Types
+// ============================================================================
 
 /**
  * Global parameter IDs (not slot-scoped).
@@ -72,31 +111,9 @@ export type SlotParameterId = `slot_${number}_${ParameterTemplateId}`;
  */
 export type ParameterId = GlobalParameterId | SlotParameterId | string;
 
-/**
- * Legacy parameter IDs for migration support.
- * Maps old scene-prefixed IDs to new template IDs.
- */
-export const LEGACY_PARAMETER_MAPPING: Record<
-  string,
-  { sceneId: SceneId; templateId: ParameterTemplateId }
-> = {
-  // Scene A
-  scene_a_brightness: { sceneId: "sceneA", templateId: "brightness" },
-  scene_a_wobble: { sceneId: "sceneA", templateId: "wobble" },
-  scene_a_tint: { sceneId: "sceneA", templateId: "tint" },
-  scene_a_tint_lfo_depth: { sceneId: "sceneA", templateId: "tint_lfo_depth" },
-  rotationSpeed: { sceneId: "sceneA", templateId: "rotation_speed" },
-  // Scene B
-  scene_b_brightness: { sceneId: "sceneB", templateId: "brightness" },
-  scene_b_rotation_speed: { sceneId: "sceneB", templateId: "rotation_speed" },
-  scene_b_tint: { sceneId: "sceneB", templateId: "tint" },
-  scene_b_scale: { sceneId: "sceneB", templateId: "scale" },
-  // Scene C
-  scene_c_brightness: { sceneId: "sceneC", templateId: "brightness" },
-  scene_c_pulse_speed: { sceneId: "sceneC", templateId: "pulse_speed" },
-  scene_c_rotation_speed: { sceneId: "sceneC", templateId: "rotation_speed" },
-  scene_c_tint: { sceneId: "sceneC", templateId: "tint" },
-};
+// ============================================================================
+// Slot Parameter ID Utilities
+// ============================================================================
 
 /**
  * Generate a slot-scoped parameter ID from slot index and template ID.
@@ -137,298 +154,18 @@ export function isGlobalParameterId(id: string): id is GlobalParameterId {
   return id === "crossfade";
 }
 
-/**
- * Lightweight description of a parameter template.
- * This defines the parameter's metadata without the slot prefix.
- */
-export interface ParameterTemplate {
-  /**
-   * Template ID (e.g., "brightness", "tint", "wobble").
-   */
-  templateId: ParameterTemplateId;
-
-  /**
-   * Human-readable label used in UI.
-   */
-  label: string;
-
-  /**
-   * Optional group hint for UI.
-   */
-  group?: "scene" | "transition" | "global";
-
-  /**
-   * Optional ordering hint within a scene's parameter panel.
-   * Lower numbers appear first.
-   */
-  orderHint?: number;
-
-  /**
-   * Minimum value for UI sliders.
-   */
-  min: number;
-
-  /**
-   * Maximum value for UI sliders.
-   */
-  max: number;
-
-  /**
-   * Step size for slider increments.
-   */
-  step: number;
-
-  /**
-   * Default value for the parameter.
-   */
-  defaultValue: number;
-
-  /**
-   * Optional color theme for the slider UI.
-   */
-  color?: SliderColor;
-
-  /**
-   * Optional description/tooltip for the parameter.
-   */
-  description?: string;
-}
+// ============================================================================
+// Parameter Template Utilities
+// ============================================================================
 
 /**
- * Descriptor for a single visual scene.
- */
-export interface SceneDescriptor {
-  /**
-   * Stable ID for the scene type.
-   */
-  id: SceneId;
-
-  /**
-   * Label for UI (scene picker, inspector headings, etc.).
-   */
-  label: string;
-
-  /**
-   * Short label for compact UI (e.g., column headers).
-   */
-  shortLabel: string;
-
-  /**
-   * Short description for docs / tooltips.
-   */
-  description?: string;
-
-  /**
-   * Parameter templates for this scene.
-   * These get instantiated per-slot with slot-prefixed IDs.
-   */
-  parameters: ParameterTemplate[];
-}
-
-/**
- * Scene registry with template-based parameters.
- */
-export const SCENE_REGISTRY: SceneDescriptor[] = [
-  {
-    id: "sceneA",
-    label: "Scene A — Blue Cube",
-    shortLabel: "Scene A",
-    description:
-      "Primary demo scene with a blue cube driven by brightness, rotation, wobble, and tint.",
-    parameters: [
-      {
-        templateId: "brightness",
-        label: "Brightness",
-        group: "scene",
-        orderHint: 10,
-        min: 0,
-        max: 2,
-        step: 0.01,
-        defaultValue: 1,
-        color: "emerald",
-        description: "Adjusts the brightness of the scene.",
-      },
-      {
-        templateId: "rotation_speed",
-        label: "Rotation Speed",
-        group: "scene",
-        orderHint: 20,
-        min: 0,
-        max: 5,
-        step: 0.05,
-        defaultValue: 0.6,
-        color: "indigo",
-        description: "Controls the cube rotation speed.",
-      },
-      {
-        templateId: "wobble",
-        label: "Wobble",
-        group: "scene",
-        orderHint: 30,
-        min: 0,
-        max: 1,
-        step: 0.01,
-        defaultValue: 0,
-        color: "emerald",
-        description: "Controls how much the cube wobbles in X/Y over time.",
-      },
-      {
-        templateId: "tint_lfo_depth",
-        label: "Tint LFO Depth",
-        group: "scene",
-        orderHint: 40,
-        min: 0,
-        max: 1,
-        step: 0.01,
-        defaultValue: 0.2,
-        color: "emerald",
-        description: "Controls how strongly an LFO modulates the tint.",
-      },
-      {
-        templateId: "tint",
-        label: "Tint",
-        group: "scene",
-        orderHint: 50,
-        min: 0,
-        max: 1,
-        step: 0.01,
-        defaultValue: 0,
-        color: "cyan",
-        description: "Blends between base blue and cyan tint.",
-      },
-    ],
-  },
-  {
-    id: "sceneB",
-    label: "Scene B — Orange Cube",
-    shortLabel: "Scene B",
-    description:
-      "Secondary demo scene with an orange cube. Supports brightness, rotation, tint, and scale.",
-    parameters: [
-      {
-        templateId: "brightness",
-        label: "Brightness",
-        group: "scene",
-        orderHint: 10,
-        min: 0,
-        max: 2,
-        step: 0.01,
-        defaultValue: 1,
-        color: "amber",
-        description: "Adjusts the brightness of the scene.",
-      },
-      {
-        templateId: "rotation_speed",
-        label: "Rotation Speed",
-        group: "scene",
-        orderHint: 20,
-        min: 0,
-        max: 5,
-        step: 0.05,
-        defaultValue: 0.4,
-        color: "orange",
-        description: "Controls the cube rotation speed.",
-      },
-      {
-        templateId: "tint",
-        label: "Tint",
-        group: "scene",
-        orderHint: 30,
-        min: 0,
-        max: 1,
-        step: 0.01,
-        defaultValue: 0.5,
-        color: "amber",
-        description: "Shifts color between red and yellow.",
-      },
-      {
-        templateId: "scale",
-        label: "Scale",
-        group: "scene",
-        orderHint: 40,
-        min: 0.5,
-        max: 2,
-        step: 0.01,
-        defaultValue: 1,
-        color: "orange",
-        description: "Adjusts the size of the cube.",
-      },
-    ],
-  },
-  {
-    id: "sceneC",
-    label: "Scene C — Green Pulsing Cube",
-    shortLabel: "Scene C",
-    description:
-      "Tertiary demo scene with a green pulsing cube. Supports brightness, pulse speed, rotation, and tint.",
-    parameters: [
-      {
-        templateId: "brightness",
-        label: "Brightness",
-        group: "scene",
-        orderHint: 10,
-        min: 0,
-        max: 2,
-        step: 0.01,
-        defaultValue: 1,
-        color: "lime",
-        description: "Adjusts the brightness of the scene.",
-      },
-      {
-        templateId: "pulse_speed",
-        label: "Pulse Speed",
-        group: "scene",
-        orderHint: 20,
-        min: 0,
-        max: 5,
-        step: 0.05,
-        defaultValue: 1.5,
-        color: "lime",
-        description: "Controls how fast the cube pulses.",
-      },
-      {
-        templateId: "rotation_speed",
-        label: "Rotation Speed",
-        group: "scene",
-        orderHint: 30,
-        min: 0,
-        max: 5,
-        step: 0.05,
-        defaultValue: 0.4,
-        color: "emerald",
-        description: "Controls the cube rotation speed.",
-      },
-      {
-        templateId: "tint",
-        label: "Tint",
-        group: "scene",
-        orderHint: 40,
-        min: 0,
-        max: 1,
-        step: 0.01,
-        defaultValue: 0.5,
-        color: "lime",
-        description: "Shifts color between cyan and lime.",
-      },
-    ],
-  },
-];
-
-/**
- * Helper to look up a scene descriptor by ID.
- */
-export function getSceneDescriptor(id: SceneId): SceneDescriptor | undefined {
-  return SCENE_REGISTRY.find((scene) => scene.id === id);
-}
-
-/**
- * Get the default value for a parameter template from any scene.
+ * Get the default value for a parameter template from any sketch.
  */
 export function getParameterTemplateDefault(
   templateId: ParameterTemplateId,
 ): number | undefined {
-  for (const scene of SCENE_REGISTRY) {
-    const param = scene.parameters.find((p) => p.templateId === templateId);
+  for (const sketch of SKETCH_REGISTRY) {
+    const param = sketch.parameters.find((p) => p.templateId === templateId);
     if (param) {
       return param.defaultValue;
     }
@@ -437,15 +174,13 @@ export function getParameterTemplateDefault(
 }
 
 /**
- * Get the parameter template from a scene descriptor.
+ * Get the parameter template from a sketch descriptor.
  */
 export function getParameterTemplate(
-  sceneId: SceneId,
+  sketchId: SketchId,
   templateId: ParameterTemplateId,
 ): ParameterTemplate | undefined {
-  const scene = getSceneDescriptor(sceneId);
-  if (!scene) return undefined;
-  return scene.parameters.find((p) => p.templateId === templateId);
+  return getSketchParameterTemplate(sketchId, templateId);
 }
 
 /**
@@ -454,25 +189,29 @@ export function getParameterTemplate(
 export function getSlotParameterRange(
   _slotIndex: number,
   templateId: ParameterTemplateId,
-  sceneId: SceneId,
+  sketchId: SketchId,
 ): { min: number; max: number } | undefined {
-  const template = getParameterTemplate(sceneId, templateId);
+  const template = getParameterTemplate(sketchId, templateId);
   if (!template) return undefined;
   return { min: template.min, max: template.max };
 }
+
+// ============================================================================
+// Slot Default Parameter Builders
+// ============================================================================
 
 /**
  * Build a map of slot parameter IDs → default values for a slot.
  */
 export function buildSlotDefaultParameters(
   slotIndex: number,
-  sceneId: SceneId,
+  sketchId: SketchId,
 ): Map<SlotParameterId, number> {
-  const scene = getSceneDescriptor(sceneId);
-  if (!scene) return new Map();
+  const sketch = getSketchDescriptor(sketchId);
+  if (!sketch) return new Map();
 
   const map = new Map<SlotParameterId, number>();
-  for (const param of scene.parameters) {
+  for (const param of sketch.parameters) {
     const id = makeSlotParameterId(slotIndex, param.templateId);
     map.set(id, param.defaultValue);
   }
@@ -508,14 +247,14 @@ export function buildAllSlotsDefaultParameters(
 export function copySlotParameters(
   sourceSlotIndex: number,
   targetSlotIndex: number,
-  sceneId: SceneId,
+  sketchId: SketchId,
   getParameterValue: (id: ParameterId) => number | undefined,
 ): Map<SlotParameterId, number> {
-  const scene = getSceneDescriptor(sceneId);
-  if (!scene) return new Map();
+  const sketch = getSketchDescriptor(sketchId);
+  if (!sketch) return new Map();
 
   const map = new Map<SlotParameterId, number>();
-  for (const param of scene.parameters) {
+  for (const param of sketch.parameters) {
     const sourceId = makeSlotParameterId(sourceSlotIndex, param.templateId);
     const targetId = makeSlotParameterId(targetSlotIndex, param.templateId);
     const value = getParameterValue(sourceId) ?? param.defaultValue;
@@ -524,25 +263,18 @@ export function copySlotParameters(
   return map;
 }
 
-/**
- * Get all parameter template IDs used by a scene.
- */
-export function getSceneParameterTemplateIds(
-  sceneId: SceneId,
-): ParameterTemplateId[] {
-  const scene = getSceneDescriptor(sceneId);
-  if (!scene) return [];
-  return scene.parameters.map((p) => p.templateId);
-}
+// ============================================================================
+// Slot Parameter ID Getters
+// ============================================================================
 
 /**
  * Get all slot parameter IDs for a slot.
  */
 export function getSlotParameterIds(
   slotIndex: number,
-  sceneId: SceneId,
+  sketchId: SketchId,
 ): SlotParameterId[] {
-  const templateIds = getSceneParameterTemplateIds(sceneId);
+  const templateIds = getSketchParameterTemplateIds(sketchId);
   return templateIds.map((templateId) =>
     makeSlotParameterId(slotIndex, templateId),
   );
@@ -571,7 +303,7 @@ export function getAllSlotParameterIds(
 
 /**
  * Legacy compatibility: Get all parameter IDs for all possible slots.
- * This generates parameter IDs for slots 0-5 (max 6 slots) for all scene types.
+ * This generates parameter IDs for slots 0-5 (max 6 slots) for all sketch types.
  * Used by AudioPanel and ModulationPanel for parameter selection dropdowns.
  *
  * @deprecated Use getAllSlotParameterIds(slots) for accurate slot-based parameters
@@ -582,14 +314,14 @@ export function getAllParameterIds(): ParameterId[] {
   // Add global crossfade parameter
   ids.push("crossfade");
 
-  // Generate parameters for all possible slots (0-5) and all scene types
+  // Generate parameters for all possible slots (0-5) and all sketch types
   // This ensures the dropdowns always show available parameters
   const maxSlots = 6;
   for (let slotIndex = 0; slotIndex < maxSlots; slotIndex++) {
-    for (const scene of SCENE_REGISTRY) {
-      for (const template of scene.parameters) {
+    for (const sketch of SKETCH_REGISTRY) {
+      for (const template of sketch.parameters) {
         const paramId = makeSlotParameterId(slotIndex, template.templateId);
-        // Avoid duplicates (same template across different scenes)
+        // Avoid duplicates (same template across different sketches)
         if (!ids.includes(paramId)) {
           ids.push(paramId);
         }
@@ -600,31 +332,9 @@ export function getAllParameterIds(): ParameterId[] {
   return ids;
 }
 
-/**
- * Legacy compatibility: Build a map from old parameter IDs to new slot parameter IDs.
- * This is used for migrating saved parameters.
- *
- * @param slots - Current slot configuration to determine which slot index to use for each scene
- * @returns Map of old parameter ID → new slot parameter ID
- */
-export function buildLegacyMigrationMap(
-  slots: Array<{ index: number; sceneId: SceneId }>,
-): Map<string, SlotParameterId> {
-  const map = new Map<string, SlotParameterId>();
-
-  // For each legacy parameter, find the first slot with that scene type
-  for (const [legacyId, { sceneId, templateId }] of Object.entries(
-    LEGACY_PARAMETER_MAPPING,
-  )) {
-    const slot = slots.find((s) => s.sceneId === sceneId);
-    if (slot) {
-      const newId = makeSlotParameterId(slot.index, templateId);
-      map.set(legacyId, newId);
-    }
-  }
-
-  return map;
-}
+// ============================================================================
+// Parameter Descriptors (for UI)
+// ============================================================================
 
 /**
  * SceneParameterDescriptor - for backwards compatibility with existing code.
@@ -635,7 +345,7 @@ export function buildLegacyMigrationMap(
 export interface SceneParameterDescriptor {
   id: ParameterId;
   label: string;
-  group?: "scene" | "transition" | "global";
+  group?: "sketch" | "scene" | "transition" | "global";
   orderHint?: number;
   min: number;
   max: number;
@@ -651,12 +361,12 @@ export interface SceneParameterDescriptor {
  */
 export function buildSlotParameterDescriptors(
   slotIndex: number,
-  sceneId: SceneId,
+  sketchId: SketchId,
 ): SceneParameterDescriptor[] {
-  const scene = getSceneDescriptor(sceneId);
-  if (!scene) return [];
+  const sketch = getSketchDescriptor(sketchId);
+  if (!sketch) return [];
 
-  return scene.parameters.map((template) => ({
+  return sketch.parameters.map((template) => ({
     id: makeSlotParameterId(slotIndex, template.templateId),
     label: template.label,
     group: template.group,
@@ -675,7 +385,7 @@ export function buildSlotParameterDescriptors(
  */
 export function getParameterDefault(
   parameterId: ParameterId,
-  sceneIdForSlot?: SceneId,
+  sketchIdForSlot?: SketchId,
 ): number | undefined {
   // Handle global parameters
   if (parameterId === "crossfade") {
@@ -684,8 +394,8 @@ export function getParameterDefault(
 
   // Handle slot parameters
   const parsed = parseSlotParameterId(parameterId);
-  if (parsed && sceneIdForSlot) {
-    const template = getParameterTemplate(sceneIdForSlot, parsed.templateId);
+  if (parsed && sketchIdForSlot) {
+    const template = getParameterTemplate(sketchIdForSlot, parsed.templateId);
     return template?.defaultValue;
   }
 
@@ -694,12 +404,12 @@ export function getParameterDefault(
 
 /**
  * Get the parameter descriptor for any parameter.
- * For slot parameters, can optionally provide sceneIdForSlot for accuracy.
- * If not provided, will search all scenes for the template.
+ * For slot parameters, can optionally provide sketchIdForSlot for accuracy.
+ * If not provided, will search all sketches for the template.
  */
 export function getParameterDescriptor(
   parameterId: ParameterId,
-  sceneIdForSlot?: SceneId,
+  sketchIdForSlot?: SketchId,
 ): SceneParameterDescriptor | undefined {
   // Handle global parameters
   if (parameterId === "crossfade") {
@@ -717,9 +427,9 @@ export function getParameterDescriptor(
   // Handle slot parameters
   const parsed = parseSlotParameterId(parameterId);
   if (parsed) {
-    // If scene ID provided, use it directly
-    if (sceneIdForSlot) {
-      const template = getParameterTemplate(sceneIdForSlot, parsed.templateId);
+    // If sketch ID provided, use it directly
+    if (sketchIdForSlot) {
+      const template = getParameterTemplate(sketchIdForSlot, parsed.templateId);
       if (template) {
         return {
           id: parameterId,
@@ -736,9 +446,9 @@ export function getParameterDescriptor(
       }
     }
 
-    // Otherwise, search all scenes for the template
-    for (const scene of SCENE_REGISTRY) {
-      const template = scene.parameters.find(
+    // Otherwise, search all sketches for the template
+    for (const sketch of SKETCH_REGISTRY) {
+      const template = sketch.parameters.find(
         (p) => p.templateId === parsed.templateId,
       );
       if (template) {
@@ -759,4 +469,51 @@ export function getParameterDescriptor(
   }
 
   return undefined;
+}
+
+/**
+ * Get a simplified label for parameter dropdowns.
+ * Returns format: "1 - Brightness" instead of "[Slot 1] Slot 1: Brightness"
+ *
+ * @param parameterId - The parameter ID
+ * @param sketchIdForSlot - Optional sketch ID if known
+ */
+export function getParameterDropdownLabel(
+  parameterId: ParameterId,
+  sketchIdForSlot?: SketchId,
+): string {
+  // Handle global parameters
+  if (parameterId === "crossfade") {
+    return "Crossfade";
+  }
+
+  // Handle slot parameters
+  const parsed = parseSlotParameterId(parameterId);
+  if (parsed) {
+    const slotNum = parsed.slotIndex + 1;
+
+    // If sketch ID provided, use it directly
+    if (sketchIdForSlot) {
+      const template = getParameterTemplate(sketchIdForSlot, parsed.templateId);
+      if (template) {
+        return `${slotNum} - ${template.label}`;
+      }
+    }
+
+    // Otherwise, search all sketches for the template
+    for (const sketch of SKETCH_REGISTRY) {
+      const template = sketch.parameters.find(
+        (p) => p.templateId === parsed.templateId,
+      );
+      if (template) {
+        return `${slotNum} - ${template.label}`;
+      }
+    }
+
+    // Fallback to raw template ID
+    return `${slotNum} - ${parsed.templateId}`;
+  }
+
+  // Fallback to the parameter ID itself
+  return parameterId;
 }

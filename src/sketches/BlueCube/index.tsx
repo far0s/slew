@@ -1,12 +1,90 @@
 import React from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import type { SceneProps } from "../sceneComponents";
+import type { SketchDescriptor, SketchProps } from "../types";
 
 /**
- * Scene A — blue cube with rotation, wobble, brightness, and tint controls.
+ * BlueCube Sketch Descriptor
  *
- * Props:
+ * Defines all metadata and parameters for this sketch.
+ * This is the single source of truth for BlueCube's configuration.
+ */
+export const descriptor: SketchDescriptor = {
+  id: "blueCube",
+  label: "Blue Cube",
+  shortLabel: "Blue",
+  description:
+    "A rotating blue cube with wobble and tint controls. Primary demo sketch.",
+  parameters: [
+    {
+      templateId: "brightness",
+      label: "Brightness",
+      group: "sketch",
+      orderHint: 10,
+      min: 0,
+      max: 2,
+      step: 0.01,
+      defaultValue: 1,
+      color: "emerald",
+      description: "Adjusts the brightness of the sketch.",
+    },
+    {
+      templateId: "rotation_speed",
+      label: "Rotation Speed",
+      group: "sketch",
+      orderHint: 20,
+      min: 0,
+      max: 5,
+      step: 0.05,
+      defaultValue: 0.6,
+      color: "indigo",
+      description: "Controls the cube rotation speed.",
+    },
+    {
+      templateId: "wobble",
+      label: "Wobble",
+      group: "sketch",
+      orderHint: 30,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      defaultValue: 0,
+      color: "emerald",
+      description: "Controls how much the cube wobbles in X/Y over time.",
+    },
+    {
+      templateId: "tint_lfo_depth",
+      label: "Tint LFO Depth",
+      group: "sketch",
+      orderHint: 40,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      defaultValue: 0.2,
+      color: "emerald",
+      description: "Controls how strongly an LFO modulates the tint.",
+    },
+    {
+      templateId: "tint",
+      label: "Tint",
+      group: "sketch",
+      orderHint: 50,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      defaultValue: 0,
+      color: "cyan",
+      description: "Blends between base blue and cyan tint.",
+    },
+  ],
+};
+
+/**
+ * BlueCube
+ *
+ * A rotating blue cube with brightness, rotation, wobble, and tint controls.
+ *
+ * Parameters:
  * - opacity: 0..1, used for crossfade
  * - params.brightness: 0..2, scales emissive intensity
  * - params.rotationSpeed: radians/sec for base rotation
@@ -14,11 +92,11 @@ import type { SceneProps } from "../sceneComponents";
  * - params.tint: 0..1, blends base blue → cyan for color/emissive
  * - params.tintLfoDepth: 0..1, LFO modulation depth for tint
  */
-export function SceneA({ opacity, params }: SceneProps) {
+export function BlueCube({ opacity, params }: SketchProps) {
   const meshRef = React.useRef<THREE.Mesh | null>(null);
   const timeRef = React.useRef(0);
 
-  // Derive per-scene values from the optional params bag, with sensible defaults.
+  // Derive per-sketch values from the optional params bag, with sensible defaults.
   const brightness = params?.brightness ?? 1;
   const rotationSpeed = params?.rotationSpeed ?? 0.6;
   const wobble = params?.wobble ?? 0;
@@ -67,3 +145,5 @@ export function SceneA({ opacity, params }: SceneProps) {
     </mesh>
   );
 }
+
+export default BlueCube;
