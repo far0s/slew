@@ -63,6 +63,13 @@ const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
   tint_lfo_depth: "tintLfoDepth",
   scale: "scale",
   pulse_speed: "pulseSpeed",
+  // TslText3D specific
+  hue_shift: "hueShift",
+  glow_intensity: "glowIntensity",
+  // TslNoiseBlob specific
+  noise_scale: "noiseScale",
+  noise_speed: "noiseSpeed",
+  color_mix: "colorMix",
 };
 
 // =============================================================================

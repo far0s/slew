@@ -23,6 +23,11 @@ import type {
 import { BlueCube, descriptor as blueCubeDescriptor } from "./BlueCube";
 import { OrangeCube, descriptor as orangeCubeDescriptor } from "./OrangeCube";
 import { GreenPulse, descriptor as greenPulseDescriptor } from "./GreenPulse";
+import { TslText3D, descriptor as tslText3DDescriptor } from "./TslText3D";
+import {
+  TslNoiseBlob,
+  descriptor as tslNoiseBlobDescriptor,
+} from "./TslNoiseBlob";
 
 /**
  * Array of all sketch descriptors.
@@ -32,6 +37,8 @@ export const SKETCH_REGISTRY: SketchDescriptor[] = [
   blueCubeDescriptor,
   orangeCubeDescriptor,
   greenPulseDescriptor,
+  tslText3DDescriptor,
+  tslNoiseBlobDescriptor,
 ];
 
 /**
@@ -53,6 +60,8 @@ export const SKETCH_COMPONENT_REGISTRY: Record<SketchId, SketchComponent> = {
   blueCube: BlueCube,
   orangeCube: OrangeCube,
   greenPulse: GreenPulse,
+  tslText3D: TslText3D,
+  tslNoiseBlob: TslNoiseBlob,
 };
 
 /**
@@ -131,3 +140,5 @@ export type {
 export { BlueCube } from "./BlueCube";
 export { OrangeCube } from "./OrangeCube";
 export { GreenPulse } from "./GreenPulse";
+export { TslText3D } from "./TslText3D";
+export { TslNoiseBlob } from "./TslNoiseBlob";

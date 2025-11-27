@@ -37,7 +37,14 @@ export type ParameterTemplateId =
   // OrangeCube specific
   | "scale"
   // GreenPulse specific
-  | "pulse_speed";
+  | "pulse_speed"
+  // TslText3D specific
+  | "hue_shift"
+  | "glow_intensity"
+  // TslNoiseBlob specific
+  | "noise_scale"
+  | "noise_speed"
+  | "color_mix";
 
 /**
  * Lightweight description of a parameter template.
@@ -118,6 +125,15 @@ export interface SketchProps {
 
     // GreenPulse specific
     pulseSpeed: number;
+
+    // TslText3D specific
+    hueShift: number;
+    glowIntensity: number;
+
+    // TslNoiseBlob specific
+    noiseScale: number;
+    noiseSpeed: number;
+    colorMix: number;
   }>;
 }
 

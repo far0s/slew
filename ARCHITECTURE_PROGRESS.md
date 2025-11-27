@@ -28,6 +28,7 @@ For detailed design, see `ARCHITECTURE.md`.
 | HID Input          | ✅     | DOIO Megalodon macropad with encoders, auto-connect           |
 | Modulation Engine  | ✅     | Backend LFOs, modulation matrix, audio→LFO, slider indicators |
 | Video Output       | ✅     | Syphon + NDI working, 1080p@60 optimization backlogged        |
+| Shader Sketches    | ✅     | TslText3D (3D text), TslNoiseBlob (procedural noise)          |
 | Packaging          | 🧪     | macOS bundle config, entitlements, scripts; signing untested  |
 
 ---
@@ -59,7 +60,8 @@ Both windows share the same frontend bundle; `src/main.tsx` dispatches based on 
 ### Sketch/Slot System
 
 - **Sketches** (`/src/sketches/`): Self-contained visual programs with descriptors
-  - `BlueCube`, `OrangeCube`, `GreenPulse` sketches
+  - Basic: `BlueCube`, `OrangeCube`, `GreenPulse`
+  - Shader-based: `TslText3D` (3D text with hue/glow), `TslNoiseBlob` (procedural noise)
   - Each exports `descriptor: SketchDescriptor` + React component
   - Registry in `/src/sketches/index.ts`
 - **Slots**: 1-6 numbered containers, add/remove dynamically
@@ -226,7 +228,7 @@ All input systems now support automatic device detection:
 
 ## 7. Decisions & Assumptions
 
-1. **Rendering**: WebGL via Three.js/r3f (WebGPU planned for future)
+1. **Rendering**: WebGL via Three.js/r3f with custom GLSL shaders
 2. **State**: Backend Parameter Server is canonical source
 3. **Messaging**: Event-based (`parameter_changed`, `slot_pairing_changed` events)
 4. **Platforms**: macOS-first, cross-platform via chosen Rust crates
@@ -241,26 +243,66 @@ All input systems now support automatic device detection:
 
 ## 8. Next Actions
 
-### Prioritized
+### Suggested Next Steps
 
-1. **Scene System Expansion**
-   - Add more scenes with different visual styles
-   - Sketch library/browser UI (sketch type selector in Add Slot panel)
-   - Sketch presets (save parameter values per sketch)
+#### 1. Sketch Browser UI (High Priority)
 
-2. **UX Polish**
-   - MIDI/OSC "follow active slot" mode (knobs control active slot's parameters)
-   - Mapping import/export (JSON)
+Add a sketch type selector in the Add Slot panel:
 
-3. **Video Output Optimization**
-   - 1080p@60fps performance (zero-copy IOSurface, binary IPC)
-   - Spout implementation for Windows
+- Grid/list view of available sketches with thumbnails
+- Preview on hover (optional)
+- Filter/search by name or tags
+- Shows sketch description from descriptor
+
+#### 2. Sketch Presets
+
+Save/load parameter values per sketch:
+
+- "Save Preset" button in slot controls
+- Preset dropdown to load saved configurations
+- Persist to JSON files (`presets/{sketchId}/{presetName}.json`)
+- Default preset per sketch type
+
+#### 3. More Shader Sketches
+
+Expand the visual library with new procedural sketches:
+
+- **Feedback/Tunnel**: Infinite zoom with color cycling
+- **Particles**: GPU-driven particle system with audio reactivity
+- **Kaleidoscope**: Mirror/reflection patterns
+- **Waveform**: Audio-reactive visualization
+
+#### 4. MIDI/OSC "Follow Active Slot" Mode
+
+Simplify live control:
+
+- Toggle to make all MIDI/OSC mappings control active slot's parameters
+- Auto-remap when slot changes
+- Visual indicator in UI when mode is active
+
+#### 5. Video Output Optimization
+
+Improve 1080p@60fps performance:
+
+- Zero-copy IOSurface sharing for Syphon (macOS)
+- Binary IPC instead of base64 encoding
+- PBOs for async GPU readback
+- Spout implementation for Windows
+
+#### 6. Presets & Projects
+
+Full session management:
+
+- Save/load complete project state (slots, parameters, mappings)
+- Quick snapshot for A/B comparison
+- Export/import for sharing
 
 ### Future Phases
 
-- **Presets & Projects**: Save/load parameter snapshots, slot configurations, mappings
 - **Multi-display**: Multiple renderer windows
 - **Recording**: GPU-based capture or frame export
+- **Post-processing**: Bloom, feedback, color grading pipeline
+- **WebGPU Upgrade**: Switch to WebGPU renderer when r3f support matures
 - **Packaging**: macOS/Windows builds with code signing
 
 ---

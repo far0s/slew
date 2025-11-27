@@ -25,8 +25,8 @@ Backend services handle input (OSC, MIDI, audio), state management, modulation, 
 - **React** (SPA)
 - **Vite** for build tooling
 - **react-three-fiber (r3f)** for scene graph
-- **Three.js + WebGPU backend**
-- **TSL (Three Shader Language)** for modular shader authoring
+- **Three.js** with WebGL (WebGPU upgrade planned)
+- **Custom GLSL shaders** for procedural effects (TSL-style patterns)
 
 ---
 
@@ -39,7 +39,7 @@ Backend services handle input (OSC, MIDI, audio), state management, modulation, 
 **Characteristics**:
 
 - Runs full-screen or as a borderless window
-- Dedicated render loop using r3f + WebGPU
+- Dedicated render loop using r3f + WebGL (WebGPU planned)
 - Receives parameters/uniform updates from backend
 - Supports layering (active/target slot blending)
 - Exposes rendered frames via:
@@ -211,6 +211,10 @@ These plugins read directly from Window A’s GPU texture.
         index.tsx
       /GreenPulse
         index.tsx
+      /TslText3D
+        index.tsx          # 3D text with hue shift and glow
+      /TslNoiseBlob
+        index.tsx          # Procedural noise blob with color gradients
       index.ts             # SKETCH_REGISTRY, exports
       types.ts             # SketchDescriptor, SketchProps, ParameterTemplate
     /scenes                # Slot system utilities
@@ -367,8 +371,8 @@ You are tasked with generating the initial codebase for a modular VJ application
 4. **Generate a clean project structure** matching the architecture above.
 
 5. **Provide minimal demo functionality**:
-   - A rotating cube sketch (BlueCube)
-   - A pulsing sketch (GreenPulse)
+   - Basic sketches: BlueCube, OrangeCube, GreenPulse
+   - Shader-based sketches: TslText3D, TslNoiseBlob
    - Crossfade slider in Window B controlling blend in Window A
    - A couple of adjustable parameters (speed, color, distortion)
 
@@ -426,9 +430,9 @@ A rough sequence for implementation:
 - Implement Syphon/Spout/NDI plugin
 - Allow Window A to be used as input inside Resolume/VDMX
 
-### Phase 6 — Scene/Ecosystem Expansion
+### Phase 6 — Scene/Ecosystem Expansion ✅ (Started)
 
-- Add more scenes using TSL utilities
+- Add more scenes using shader techniques ✅
 - Add more input modalities
 - Add recording, multi-display, presets, project saving
 
