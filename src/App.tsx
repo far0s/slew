@@ -9,8 +9,9 @@ import {
   type BackendParameter,
   type SlotConfig,
 } from "./controls/useParameterStore";
-import type { SceneId } from "./scenes/sceneTypes";
-import { getSceneDescriptor, makeSlotParameterId } from "./scenes/sceneTypes";
+import type { SketchId } from "./sketches";
+import { getSketchDescriptor } from "./sketches";
+import { makeSlotParameterId } from "./scenes/sceneTypes";
 import { ScenesArea, RendererPreview, DebugPanel } from "./components";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings } from "./inputs/audio";
@@ -59,14 +60,14 @@ function App() {
       try {
         // CRITICAL: Set slot pairing BEFORE changing crossfade value
         // This ensures the Renderer knows which slots to show before the fade starts
-        const targetSceneId = sceneSlots.getSceneId(targetSlotIndex);
-        const activeSceneId = sceneSlots.getSceneId(sceneSlots.activeIndex);
-        if (targetSceneId && activeSceneId) {
+        const targetSketchId = sceneSlots.getSketchId(targetSlotIndex);
+        const activeSketchId = sceneSlots.getSketchId(sceneSlots.activeIndex);
+        if (targetSketchId && activeSketchId) {
           await invoke("set_slot_pairing", {
             activeSlotIndex: sceneSlots.activeIndex,
-            activeSceneId,
+            activeSceneId: activeSketchId,
             nextSlotIndex: targetSlotIndex,
-            nextSceneId: targetSceneId,
+            nextSceneId: targetSketchId,
           });
         }
 
@@ -93,9 +94,9 @@ function App() {
   const getTargetSceneParameters = useCallback(() => {
     // Use macropad selection if available, otherwise use active slot
     const targetIndex = macropadSelectedIndex ?? sceneSlots.activeIndex;
-    const sceneId = sceneSlots.getSceneId(targetIndex);
-    if (!sceneId) return [];
-    const descriptor = getSceneDescriptor(sceneId);
+    const sketchId = sceneSlots.getSketchId(targetIndex);
+    if (!sketchId) return [];
+    const descriptor = getSketchDescriptor(sketchId);
     if (!descriptor) return [];
     // Sort by orderHint (ascending) and include slot index for parameter ID generation
     return [...descriptor.parameters]
@@ -194,10 +195,10 @@ function App() {
     },
   );
 
-  // Handle slot scene change
-  async function handleSlotSceneChange(slotIndex: number, sceneId: SceneId) {
+  // Handle slot sketch change
+  async function handleSlotSketchChange(slotIndex: number, sketchId: SketchId) {
     // This will return parameters to initialize
-    const initParams = sceneSlots.setSlotScene(slotIndex, sceneId);
+    const initParams = sceneSlots.setSlotSketch(slotIndex, sketchId);
 
     if (initParams) {
       // Initialize the new parameters in the store
@@ -207,7 +208,7 @@ function App() {
       try {
         await invoke("initialize_slot_parameters", {
           slotIndex,
-          sceneId,
+          sceneId: sketchId,
         });
       } catch (error) {
         console.error("[Controls] Failed to initialize slot parameters", error);
@@ -216,23 +217,23 @@ function App() {
 
     // Update backend slot pairing if this affects the active/target pair
     try {
-      const activeSceneId = sceneSlots.isActiveSlot(slotIndex)
-        ? sceneId
-        : sceneSlots.getSceneId(sceneSlots.activeIndex);
+      const activeSketchId = sceneSlots.isActiveSlot(slotIndex)
+        ? sketchId
+        : sceneSlots.getSketchId(sceneSlots.activeIndex);
 
-      const targetSceneId = sceneSlots.isCrossfadeTarget(slotIndex)
-        ? sceneId
+      const targetSketchId = sceneSlots.isCrossfadeTarget(slotIndex)
+        ? sketchId
         : sceneSlots.crossfadeTargetIndex !== null
-          ? sceneSlots.getSceneId(sceneSlots.crossfadeTargetIndex)
+          ? sceneSlots.getSketchId(sceneSlots.crossfadeTargetIndex)
           : null;
 
-      if (activeSceneId) {
+      if (activeSketchId) {
         await invoke("set_slot_pairing", {
           activeSlotIndex: sceneSlots.activeIndex,
-          activeSceneId,
+          activeSceneId: activeSketchId,
           nextSlotIndex:
             sceneSlots.crossfadeTargetIndex ?? sceneSlots.activeIndex,
-          nextSceneId: targetSceneId ?? activeSceneId,
+          nextSceneId: targetSketchId ?? activeSketchId,
         });
       }
     } catch (error) {
@@ -241,12 +242,12 @@ function App() {
   }
 
   // Handle add slot with defaults
-  async function handleAddSlot(sceneId?: SceneId) {
-    const initParams = sceneSlots.addSlot(sceneId);
+  async function handleAddSlot(sketchId?: SketchId) {
+    const initParams = sceneSlots.addSlot(sketchId);
     if (!initParams) return;
 
     // Use the returned slotIndex (state hasn't updated yet)
-    const { slotIndex, sceneId: newSceneId, parameters } = initParams;
+    const { slotIndex, sketchId: newSketchId, parameters } = initParams;
 
     // Initialize parameters in the store
     paramStore.initializeSlotWithValues(slotIndex, parameters);
@@ -255,7 +256,7 @@ function App() {
     try {
       await invoke("initialize_slot_parameters", {
         slotIndex,
-        sceneId: newSceneId,
+        sceneId: newSketchId,
       });
     } catch (error) {
       console.error("[Controls] Failed to initialize slot parameters", error);
@@ -311,7 +312,7 @@ function App() {
       // Build slot config
       const slotConfig: SlotConfig[] = sceneSlots.slots.map((slot) => ({
         index: slot.index,
-        sceneId: slot.sceneId,
+        sketchId: slot.sketchId,
       }));
 
       // Update parameter store's slot configuration
@@ -323,7 +324,7 @@ function App() {
 
       // Initialize any missing slot parameters
       for (const slot of sceneSlots.slots) {
-        paramStore.initializeSlot(slot.index, slot.sceneId);
+        paramStore.initializeSlot(slot.index, slot.sketchId);
       }
     } catch (error) {
       paramStore.setError("Failed to load parameters from backend");
@@ -345,7 +346,7 @@ function App() {
       if (crossfade >= 0.99) {
         // Capture the new active slot info BEFORE completing (target becomes active)
         const newActiveSlotIndex = sceneSlots.crossfadeTargetIndex;
-        const newActiveSceneId = sceneSlots.getSceneId(newActiveSlotIndex);
+        const newActiveSketchId = sceneSlots.getSketchId(newActiveSlotIndex);
 
         // Complete the crossfade in local state
         sceneSlots.completeCrossfade();
@@ -354,12 +355,12 @@ function App() {
         void (async () => {
           try {
             // CRITICAL: Tell Renderer the new active slot BEFORE resetting crossfade
-            if (newActiveSceneId) {
+            if (newActiveSketchId) {
               await invoke("set_slot_pairing", {
                 activeSlotIndex: newActiveSlotIndex,
-                activeSceneId: newActiveSceneId,
+                activeSceneId: newActiveSketchId,
                 nextSlotIndex: newActiveSlotIndex,
-                nextSceneId: newActiveSceneId,
+                nextSceneId: newActiveSketchId,
               });
             }
 
@@ -381,13 +382,13 @@ function App() {
   useEffect(() => {
     if (!isInitialized) return;
 
-    const activeSceneId = sceneSlots.getSceneId(sceneSlots.activeIndex);
-    if (activeSceneId) {
+    const activeSketchId = sceneSlots.getSketchId(sceneSlots.activeIndex);
+    if (activeSketchId) {
       void invoke("set_slot_pairing", {
         activeSlotIndex: sceneSlots.activeIndex,
-        activeSceneId,
+        activeSceneId: activeSketchId,
         nextSlotIndex: sceneSlots.activeIndex,
-        nextSceneId: activeSceneId,
+        nextSceneId: activeSketchId,
       }).catch((error) => {
         console.error("[Controls] Failed to sync initial slot pairing", error);
       });
@@ -447,22 +448,22 @@ function App() {
   useEffect(() => {
     const slotConfig: SlotConfig[] = sceneSlots.slots.map((slot) => ({
       index: slot.index,
-      sceneId: slot.sceneId,
+      sketchId: slot.sketchId,
     }));
     paramStore.setCurrentSlots(slotConfig);
   }, [sceneSlots.slots, paramStore.setCurrentSlots]);
 
   // Get scene params for a slot (target values for sliders)
-  const getSlotSceneParams = useCallback(
-    (slotIndex: number, sceneId: SceneId) =>
-      buildSlotSceneParams(slotIndex, sceneId, paramStore),
+  const getSlotSketchParams = useCallback(
+    (slotIndex: number, sketchId: SketchId) =>
+      buildSlotSceneParams(slotIndex, sketchId, paramStore),
     [paramStore],
   );
 
-  // Get scene params with interpolated values (for smooth preview rendering)
-  const getSlotSceneParamsInterpolated = useCallback(
-    (slotIndex: number, sceneId: SceneId) =>
-      buildSlotSceneParamsInterpolated(slotIndex, sceneId, paramStore),
+  // Get sketch params with interpolated values (for smooth preview rendering)
+  const getSlotSketchParamsInterpolated = useCallback(
+    (slotIndex: number, sketchId: SketchId) =>
+      buildSlotSceneParamsInterpolated(slotIndex, sketchId, paramStore),
     [paramStore],
   );
 
@@ -481,9 +482,10 @@ function App() {
 
   // Get active and target slot info for preview
   const activeSlotIndex = sceneSlots.activeIndex;
-  const activeSceneId = sceneSlots.getSceneId(activeSlotIndex) ?? "sceneA";
+  const activeSketchId = sceneSlots.getSketchId(activeSlotIndex) ?? "blueCube";
   const targetSlotIndex = sceneSlots.crossfadeTargetIndex ?? activeSlotIndex;
-  const targetSceneId = sceneSlots.getSceneId(targetSlotIndex) ?? activeSceneId;
+  const targetSketchId =
+    sceneSlots.getSketchId(targetSlotIndex) ?? activeSketchId;
 
   return (
     <div className={styles.root}>
@@ -501,12 +503,12 @@ function App() {
             canRemoveSlot={sceneSlots.canRemoveSlot}
             getValue={getValue}
             setValue={setValue}
-            getSlotSceneParams={getSlotSceneParams}
-            getSlotSceneParamsInterpolated={getSlotSceneParamsInterpolated}
+            getSlotSketchParams={getSlotSketchParams}
+            getSlotSketchParamsInterpolated={getSlotSketchParamsInterpolated}
             audioMappings={audioMappings}
             modulationTargets={modulationTargets}
             lfos={lfos}
-            onSlotSceneChange={handleSlotSceneChange}
+            onSlotSketchChange={handleSlotSketchChange}
             onCrossfade={handleCrossfade}
             onRemoveSlot={handleRemoveSlot}
             onAddSlot={handleAddSlot}
@@ -517,16 +519,16 @@ function App() {
         {/* Sidebar (1/5 width) */}
         <aside className={styles.sidebar} aria-label="Preview and debug">
           <RendererPreview
-            activeSceneId={activeSceneId}
-            nextSceneId={targetSceneId}
+            activeSceneId={activeSketchId}
+            nextSceneId={targetSketchId}
             crossfade={paramStore.getInterpolated("crossfade")}
-            activeSceneParams={getSlotSceneParamsInterpolated(
+            activeSceneParams={getSlotSketchParamsInterpolated(
               activeSlotIndex,
-              activeSceneId,
+              activeSketchId,
             )}
-            nextSceneParams={getSlotSceneParamsInterpolated(
+            nextSceneParams={getSlotSketchParamsInterpolated(
               targetSlotIndex,
-              targetSceneId,
+              targetSketchId,
             )}
             sceneATintLfoDepth={paramStore.getInterpolated(
               makeSlotParameterId(activeSlotIndex, "tint_lfo_depth"),

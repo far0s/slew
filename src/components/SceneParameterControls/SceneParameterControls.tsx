@@ -1,10 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { SceneId } from "../../scenes/sceneTypes";
-import {
-  getSceneDescriptor,
-  makeSlotParameterId,
-  type ParameterTemplate,
-} from "../../scenes/sceneTypes";
+import type { SketchId, ParameterTemplate } from "../../sketches";
+import { getSketchDescriptor } from "../../sketches";
+import { makeSlotParameterId } from "../../scenes/sceneTypes";
 import {
   ParameterSlider,
   type AudioMappingIndicator,
@@ -21,8 +18,8 @@ import styles from "./SceneParameterControls.module.css";
 /**
  * Props for the SceneParameterControls component.
  *
- * @property slotIndex - Slot index for this scene instance
- * @property sceneId - Scene type to render controls for
+ * @property slotIndex - Slot index for this sketch instance
+ * @property sketchId - Sketch type to render controls for
  * @property getValue - Get current value for a parameter
  * @property setValue - Set value for a parameter
  * @property audioMappings - Optional list of audio mappings to show indicators
@@ -31,7 +28,7 @@ import styles from "./SceneParameterControls.module.css";
  */
 export interface SceneParameterControlsProps {
   slotIndex: number;
-  sceneId: SceneId;
+  sketchId: SketchId;
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
   audioMappings?: AudioMapping[];
@@ -139,11 +136,11 @@ function getModulationIndicator(
 /**
  * SceneParameterControls
  *
- * Auto-generates parameter sliders for a scene slot.
+ * Auto-generates parameter sliders for a slot's sketch.
  * Uses slot-prefixed parameter IDs for multi-instance support.
  *
  * Features:
- * - Reads parameter templates from SCENE_REGISTRY
+ * - Reads parameter templates from SKETCH_REGISTRY
  * - Generates slot-prefixed parameter IDs (e.g., slot_0_brightness)
  * - Renders ParameterSlider for each parameter
  * - Handles all backend communication
@@ -152,19 +149,19 @@ function getModulationIndicator(
  */
 export function SceneParameterControls({
   slotIndex,
-  sceneId,
+  sketchId,
   getValue,
   setValue,
   audioMappings,
   modulationTargets,
   lfos,
 }: SceneParameterControlsProps) {
-  const descriptor = getSceneDescriptor(sceneId);
+  const descriptor = getSketchDescriptor(sketchId);
 
   if (!descriptor) {
     return (
       <div className={styles.container}>
-        <p className={styles.errorMessage}>Unknown scene: {sceneId}</p>
+        <p className={styles.errorMessage}>Unknown sketch: {sketchId}</p>
       </div>
     );
   }

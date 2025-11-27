@@ -3,10 +3,12 @@ import { Canvas } from "@react-three/fiber";
 import * as Select from "@radix-ui/react-select";
 import { ChevronDownIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { motion } from "motion/react";
-import type { SceneId } from "../../scenes/sceneTypes";
-import { SCENE_REGISTRY, ALL_SCENE_IDS } from "../../scenes/sceneTypes";
-import { SCENE_COMPONENT_REGISTRY } from "../../scenes/sceneComponents";
-import type { SceneProps } from "../../scenes/sceneComponents";
+import type { SketchId, SketchProps } from "../../sketches";
+import {
+  SKETCH_REGISTRY,
+  ALL_SKETCH_IDS,
+  SKETCH_COMPONENT_REGISTRY,
+} from "../../sketches";
 import { SceneParameterControls } from "../SceneParameterControls";
 import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
@@ -16,13 +18,13 @@ import styles from "./SceneColumn.module.css";
  * Props for the SceneColumn component.
  *
  * @property slotIndex - Slot index (0-based)
- * @property sceneId - Scene ID loaded in this slot
+ * @property sketchId - Sketch ID loaded in this slot
  * @property isActive - Whether this slot is the active (output) slot
  * @property isCrossfadeTarget - Whether this slot is the crossfade target
  * @property crossfadeProgress - Current crossfade progress (0-100) for this slot
  * @property isCrossfading - Whether crossfade is in progress
  * @property isMacropadSelected - Whether this slot is selected via macropad (keys 1-4)
- * @property excludeSceneIds - Scene IDs to exclude from dropdown (already in use)
+ * @property excludeSketchIds - Sketch IDs to exclude from dropdown (already in use)
  * @property canRemove - Whether the slot can be removed
  * @property params - Scene params for controls (target values)
  * @property previewParams - Scene params for preview rendering (interpolated values for smooth animation)
@@ -31,38 +33,38 @@ import styles from "./SceneColumn.module.css";
  * @property audioMappings - Optional audio mappings for parameter indicators
  * @property modulationTargets - Optional modulation targets for parameter indicators
  * @property lfos - Optional LFO sources (for modulation indicator labels)
- * @property onSceneChange - Callback when scene selection changes
+ * @property onSketchChange - Callback when sketch selection changes
  * @property onCrossfade - Callback when crossfade button is clicked
  * @property onRemove - Callback when remove button is clicked
  */
 export interface SceneColumnProps {
   slotIndex: number;
-  sceneId: SceneId;
+  sketchId: SketchId;
   isActive: boolean;
   isCrossfadeTarget: boolean;
   crossfadeProgress: number;
   isCrossfading: boolean;
   isMacropadSelected?: boolean;
-  excludeSceneIds: SceneId[];
+  excludeSketchIds: SketchId[];
   canRemove: boolean;
-  params?: SceneProps["params"];
-  previewParams?: SceneProps["params"];
+  params?: SketchProps["params"];
+  previewParams?: SketchProps["params"];
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
   audioMappings?: AudioMapping[];
   modulationTargets?: ModulationTarget[];
   lfos?: LfoSource[];
-  onSceneChange: (sceneId: SceneId) => void;
+  onSketchChange: (sketchId: SketchId) => void;
   onCrossfade: () => void;
   onRemove: () => void;
 }
 
 /**
- * Get display label for a scene ID.
+ * Get display label for a sketch ID.
  */
-function getSceneLabel(sceneId: SceneId): string {
-  const descriptor = SCENE_REGISTRY.find((s) => s.id === sceneId);
-  return descriptor?.shortLabel ?? sceneId;
+function getSketchLabel(sketchId: SketchId): string {
+  const descriptor = SKETCH_REGISTRY.find((s) => s.id === sketchId);
+  return descriptor?.shortLabel ?? sketchId;
 }
 
 /**
@@ -77,13 +79,13 @@ function getSceneLabel(sceneId: SceneId): string {
  */
 export function SceneColumn({
   slotIndex,
-  sceneId,
+  sketchId,
   isActive,
   isCrossfadeTarget,
   crossfadeProgress,
   isCrossfading,
   isMacropadSelected = false,
-  excludeSceneIds,
+  excludeSketchIds,
   canRemove,
   params,
   previewParams,
@@ -92,17 +94,17 @@ export function SceneColumn({
   audioMappings,
   modulationTargets,
   lfos,
-  onSceneChange,
+  onSketchChange,
   onCrossfade,
   onRemove,
 }: SceneColumnProps) {
-  const SceneComponent = SCENE_COMPONENT_REGISTRY[sceneId];
-  const displayLabel = getSceneLabel(sceneId);
+  const SketchComponent = SKETCH_COMPONENT_REGISTRY[sketchId];
+  const displayLabel = getSketchLabel(sketchId);
   const displayNumber = slotIndex + 1;
 
-  // Filter available options (exclude scenes in other slots)
-  const availableOptions = ALL_SCENE_IDS.filter(
-    (id) => id === sceneId || !excludeSceneIds.includes(id),
+  // Filter available options (exclude sketches in other slots)
+  const availableOptions = ALL_SKETCH_IDS.filter(
+    (id) => id === sketchId || !excludeSketchIds.includes(id),
   );
 
   // Determine button state and label
@@ -136,7 +138,7 @@ export function SceneColumn({
   return (
     <motion.article
       className={columnClassNames}
-      aria-label={`Scene slot ${displayNumber}${isMacropadSelected ? " (macropad selected)" : ""}`}
+      aria-label={`Slot ${displayNumber}${isMacropadSelected ? " (macropad selected)" : ""}`}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
@@ -145,7 +147,7 @@ export function SceneColumn({
     >
       {/* Preview Canvas with overlay controls */}
       <div className={styles.previewContainer}>
-        {SceneComponent ? (
+        {SketchComponent ? (
           <Suspense fallback={<div className={styles.fallback}>Loading…</div>}>
             <Canvas
               className={styles.canvas}
@@ -162,11 +164,11 @@ export function SceneColumn({
               <ambientLight intensity={0.4} />
               <directionalLight position={[4, 6, 3]} intensity={1.1} />
               <directionalLight position={[-4, -4, -2]} intensity={0.4} />
-              <SceneComponent opacity={1} params={previewParams ?? params} />
+              <SketchComponent opacity={1} params={previewParams ?? params} />
             </Canvas>
           </Suspense>
         ) : (
-          <div className={styles.fallback}>Unknown scene: {sceneId}</div>
+          <div className={styles.fallback}>Unknown sketch: {sketchId}</div>
         )}
 
         {/* Slot number badge (top-left) - highlight when macropad selected */}
@@ -179,18 +181,18 @@ export function SceneColumn({
           )}
         </div>
 
-        {/* Bottom overlay with scene selector, crossfade button, and remove button */}
+        {/* Bottom overlay with sketch selector, crossfade button, and remove button */}
         <div className={styles.bottomOverlay}>
-          {/* Scene selector (left half) */}
+          {/* Sketch selector (left half) */}
           <div className={styles.selectorWrapper}>
             <Select.Root
-              value={sceneId}
+              value={sketchId}
               disabled={isSelectDisabled}
-              onValueChange={(v) => onSceneChange(v as SceneId)}
+              onValueChange={(v) => onSketchChange(v as SketchId)}
             >
               <Select.Trigger
                 className={styles.selectTrigger}
-                aria-label={`Scene ${displayNumber} selection`}
+                aria-label={`Slot ${displayNumber} sketch selection`}
               >
                 <Select.Value>{displayLabel}</Select.Value>
                 <Select.Icon className={styles.selectIcon}>
@@ -211,7 +213,7 @@ export function SceneColumn({
                         className={styles.selectItem}
                       >
                         <Select.ItemText>
-                          {getSceneLabel(option)}
+                          {getSketchLabel(option)}
                         </Select.ItemText>
                       </Select.Item>
                     ))}
@@ -237,7 +239,7 @@ export function SceneColumn({
                 type="button"
                 className={styles.removeButton}
                 onClick={onRemove}
-                aria-label={`Remove scene slot ${displayNumber}`}
+                aria-label={`Remove slot ${displayNumber}`}
               >
                 <Cross2Icon />
               </button>
@@ -250,7 +252,7 @@ export function SceneColumn({
       <div className={styles.controls}>
         <SceneParameterControls
           slotIndex={slotIndex}
-          sceneId={sceneId}
+          sketchId={sketchId}
           getValue={getValue}
           setValue={setValue}
           audioMappings={audioMappings}

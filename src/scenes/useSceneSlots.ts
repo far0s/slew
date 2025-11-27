@@ -8,27 +8,16 @@ import {
   getSketchParameterTemplateIds,
 } from "./sceneTypes";
 
-// Backwards compatibility alias
-export type SceneId = SketchId;
-
 /**
  * Represents a single slot in the UI.
  *
  * @property index - Slot index (0-based, displayed as 1-based in UI)
  * @property sketchId - Which sketch type is loaded in this slot
- * @property sceneId - Backwards-compatible alias for sketchId
  */
 export interface Slot {
   index: number;
   sketchId: SketchId;
-  /** @deprecated Use sketchId instead */
-  sceneId: SketchId;
 }
-
-/**
- * @deprecated Use Slot interface instead
- */
-export type SceneSlot = Slot;
 
 /**
  * Configuration for the slots system.
@@ -36,20 +25,12 @@ export type SceneSlot = Slot;
  * @property minSlots - Minimum number of slots allowed
  * @property maxSlots - Maximum number of slots allowed
  * @property initialSketches - Initial sketch IDs for slots (defaults to first sketch)
- * @property initialScenes - Backwards-compatible alias for initialSketches
  */
 export interface SlotsConfig {
   minSlots: number;
   maxSlots: number;
   initialSketches?: SketchId[];
-  /** @deprecated Use initialSketches instead */
-  initialScenes?: SketchId[];
 }
-
-/**
- * @deprecated Use SlotsConfig instead
- */
-export type SceneSlotsConfig = SlotsConfig;
 
 /**
  * Parameters to initialize for a new slot.
@@ -58,8 +39,6 @@ export interface SlotInitParams {
   slotIndex: number;
   sketchId: SketchId;
   parameters: Map<SlotParameterId, number>;
-  /** @deprecated Use sketchId instead */
-  sceneId: SketchId;
 }
 
 /**
@@ -115,24 +94,7 @@ export interface SlotsState {
   isCrossfadeTarget: (index: number) => boolean;
   findSlotsWithSketch: (sketchId: SketchId) => number[];
   getSlotParameterIds: (slotIndex: number) => SlotParameterId[];
-  // Backwards compatibility aliases
-  /** @deprecated Use setSlotSketch instead */
-  setSlotScene: (
-    index: number,
-    sketchId: SketchId,
-    copyFromSlotIndex?: number,
-    getParameterValue?: (id: string) => number | undefined,
-  ) => SlotInitParams | null;
-  /** @deprecated Use getSketchId instead */
-  getSceneId: (index: number) => SketchId | undefined;
-  /** @deprecated Use findSlotsWithSketch instead */
-  findSlotsWithScene: (sketchId: SketchId) => number[];
 }
-
-/**
- * @deprecated Use SlotsState instead
- */
-export type SceneSlotsState = SlotsState;
 
 const DEFAULT_CONFIG: SlotsConfig = {
   minSlots: 1,
@@ -155,16 +117,12 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
     ...config,
   };
 
-  // Handle both old and new config property names
-  const initialSketches = config.initialSketches ?? config.initialScenes;
-
   // Initialize with default sketches
   const getInitialSlots = (): Slot[] => {
-    const sketches = initialSketches ?? [ALL_SKETCH_IDS[0]];
+    const sketches = config.initialSketches ?? [ALL_SKETCH_IDS[0]];
     return sketches.slice(0, maxSlots).map((sketchId, index) => ({
       index,
       sketchId,
-      sceneId: sketchId, // backwards compat
     }));
   };
 
@@ -212,17 +170,13 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
       const newSketchId = sketchId ?? ALL_SKETCH_IDS[0];
       const newIndex = slots.length;
 
-      setSlots((prev) => [
-        ...prev,
-        { index: newIndex, sketchId: newSketchId, sceneId: newSketchId },
-      ]);
+      setSlots((prev) => [...prev, { index: newIndex, sketchId: newSketchId }]);
 
       // Return the slot info and default parameters
       const parameters = buildSlotDefaultParameters(newIndex, newSketchId);
       return {
         slotIndex: newIndex,
         sketchId: newSketchId,
-        sceneId: newSketchId, // backwards compat
         parameters,
       };
     },
@@ -247,7 +201,6 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
         {
           index: newIndex,
           sketchId: sourceSlot.sketchId,
-          sceneId: sourceSlot.sketchId,
         },
       ]);
 
@@ -261,7 +214,6 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
       return {
         slotIndex: newIndex,
         sketchId: sourceSlot.sketchId,
-        sceneId: sourceSlot.sketchId, // backwards compat
         parameters,
       };
     },
@@ -278,7 +230,7 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
       setSlots((prev) => {
         const newSlots = prev
           .filter((_, i) => i !== index)
-          .map((slot, i) => ({ ...slot, index: i, sceneId: slot.sketchId }));
+          .map((slot, i) => ({ ...slot, index: i }));
         return newSlots;
       });
 
@@ -316,9 +268,7 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
       // Update the slot's sketch ID
       setSlots((prev) =>
         prev.map((slot) =>
-          slot.index === index
-            ? { ...slot, sketchId, sceneId: sketchId }
-            : slot,
+          slot.index === index ? { ...slot, sketchId } : slot,
         ),
       );
 
@@ -337,7 +287,6 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
         return {
           slotIndex: index,
           sketchId,
-          sceneId: sketchId, // backwards compat
           parameters,
         };
       }
@@ -347,7 +296,6 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
       return {
         slotIndex: index,
         sketchId,
-        sceneId: sketchId, // backwards compat
         parameters,
       };
     },
@@ -427,9 +375,5 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
     isCrossfadeTarget,
     findSlotsWithSketch,
     getSlotParameterIds,
-    // Backwards compatibility aliases
-    setSlotScene: setSlotSketch,
-    getSceneId: getSketchId,
-    findSlotsWithScene: findSlotsWithSketch,
   };
 }

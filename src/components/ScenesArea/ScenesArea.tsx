@@ -2,9 +2,9 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import { PlusIcon, CopyIcon } from "@radix-ui/react-icons";
 import { motion, AnimatePresence } from "motion/react";
 
-import type { SceneId } from "../../scenes/sceneTypes";
-import type { SceneSlot } from "../../scenes/useSceneSlots";
-import type { SceneProps } from "../../scenes/sceneComponents";
+import type { SketchId, SketchProps } from "../../sketches";
+import { getSketchDescriptor } from "../../sketches";
+import type { Slot } from "../../scenes/useSceneSlots";
 import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import { SceneColumn } from "../SceneColumn";
@@ -13,7 +13,7 @@ import styles from "./ScenesArea.module.css";
 /**
  * Props for the ScenesArea component.
  *
- * @property slots - Array of scene slots to render
+ * @property slots - Array of slots to render
  * @property activeIndex - Index of the active (output) slot
  * @property crossfadeTargetIndex - Index of crossfade target slot, or null
  * @property crossfadeValue - Current crossfade value (0-1)
@@ -23,19 +23,19 @@ import styles from "./ScenesArea.module.css";
  * @property canRemoveSlot - Whether we can remove slots
  * @property getValue - Get parameter value for a given parameter ID
  * @property setValue - Set parameter value
- * @property getSlotSceneParams - Get scene params object for a slot (target values for sliders)
- * @property getSlotSceneParamsInterpolated - Get scene params with interpolated values (for smooth previews)
+ * @property getSlotSketchParams - Get sketch params object for a slot (target values for sliders)
+ * @property getSlotSketchParamsInterpolated - Get sketch params with interpolated values (for smooth previews)
  * @property audioMappings - Optional audio mappings for parameter indicators
  * @property modulationTargets - Optional modulation targets for parameter indicators
  * @property lfos - Optional LFO sources (for modulation indicator labels)
- * @property onSlotSceneChange - Callback to change scene in a slot
+ * @property onSlotSketchChange - Callback to change sketch in a slot
  * @property onCrossfade - Callback to start crossfade to a slot
  * @property onRemoveSlot - Callback to remove a slot
  * @property onAddSlot - Callback to add a new slot with defaults
  * @property onCopySlot - Callback to add a new slot by copying an existing slot
  */
 export interface ScenesAreaProps {
-  slots: SceneSlot[];
+  slots: Slot[];
   activeIndex: number;
   crossfadeTargetIndex: number | null;
   crossfadeValue: number;
@@ -45,34 +45,34 @@ export interface ScenesAreaProps {
   canRemoveSlot: boolean;
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
-  getSlotSceneParams: (
+  getSlotSketchParams: (
     slotIndex: number,
-    sceneId: SceneId,
-  ) => SceneProps["params"];
-  getSlotSceneParamsInterpolated?: (
+    sketchId: SketchId,
+  ) => SketchProps["params"];
+  getSlotSketchParamsInterpolated?: (
     slotIndex: number,
-    sceneId: SceneId,
-  ) => SceneProps["params"];
+    sketchId: SketchId,
+  ) => SketchProps["params"];
   audioMappings?: AudioMapping[];
   modulationTargets?: ModulationTarget[];
   lfos?: LfoSource[];
-  onSlotSceneChange: (slotIndex: number, sceneId: SceneId) => void;
+  onSlotSketchChange: (slotIndex: number, sketchId: SketchId) => void;
   onCrossfade: (slotIndex: number) => void;
   onRemoveSlot: (slotIndex: number) => void;
-  onAddSlot: (sceneId?: SceneId) => void;
+  onAddSlot: (sketchId?: SketchId) => void;
   onCopySlot: (sourceSlotIndex: number) => void;
 }
 
 /**
  * ScenesArea
  *
- * Horizontally scrollable container for scene columns.
+ * Horizontally scrollable container for slot columns.
  * Designed to show ~3.5 columns at once with the 4th peeking in.
  *
  * Features:
- * - Horizontal scroll for 4+ scenes
- * - Add scene dropdown with "New Scene" and "Copy Scene" options
- * - Multi-instance support: same scene type can exist in multiple slots
+ * - Horizontal scroll for 4+ slots
+ * - Add slot panel with "New Slot" and "Copy Slot" options
+ * - Multi-instance support: same sketch type can exist in multiple slots
  * - Renders SceneColumn for each slot with slot-prefixed parameters
  * - AnimatePresence for enter/exit animations
  */
@@ -87,12 +87,12 @@ export function ScenesArea({
   canRemoveSlot,
   getValue,
   setValue,
-  getSlotSceneParams,
-  getSlotSceneParamsInterpolated,
+  getSlotSketchParams,
+  getSlotSketchParamsInterpolated,
   audioMappings,
   modulationTargets,
   lfos,
-  onSlotSceneChange,
+  onSlotSketchChange,
   onCrossfade,
   onRemoveSlot,
   onAddSlot,
@@ -151,7 +151,7 @@ export function ScenesArea({
   }, [updateScrollState, slots.length]);
 
   return (
-    <section className={styles.container} aria-label="Scene columns">
+    <section className={styles.container} aria-label="Slot columns">
       <div className={styles.scrollWrapper}>
         {canScrollLeft && (
           <div className={styles.fadeLeft} aria-hidden="true" />
@@ -163,36 +163,36 @@ export function ScenesArea({
                 <SceneColumn
                   key={slot.index}
                   slotIndex={slot.index}
-                  sceneId={slot.sceneId}
+                  sketchId={slot.sketchId}
                   isActive={slot.index === activeIndex}
                   isCrossfadeTarget={slot.index === crossfadeTargetIndex}
                   crossfadeProgress={getCrossfadeProgress(slot.index)}
                   isCrossfading={isCrossfading}
                   isMacropadSelected={slot.index === macropadSelectedIndex}
-                  excludeSceneIds={[]}
+                  excludeSketchIds={[]}
                   canRemove={canRemoveSlot && slot.index !== activeIndex}
-                  params={getSlotSceneParams(slot.index, slot.sceneId)}
-                  previewParams={getSlotSceneParamsInterpolated?.(
+                  params={getSlotSketchParams(slot.index, slot.sketchId)}
+                  previewParams={getSlotSketchParamsInterpolated?.(
                     slot.index,
-                    slot.sceneId,
+                    slot.sketchId,
                   )}
                   getValue={getValue}
                   setValue={setValue}
                   audioMappings={audioMappings}
                   modulationTargets={modulationTargets}
                   lfos={lfos}
-                  onSceneChange={(sceneId) =>
-                    onSlotSceneChange(slot.index, sceneId)
+                  onSketchChange={(sketchId) =>
+                    onSlotSketchChange(slot.index, sketchId)
                   }
                   onCrossfade={() => onCrossfade(slot.index)}
                   onRemove={() => onRemoveSlot(slot.index)}
                 />
               ))}
 
-              {/* Add Scene panel - inline options, no dropdown */}
+              {/* Add Slot panel - inline options, no dropdown */}
               {canAddSlot && (
                 <motion.div
-                  key="add-scene-panel"
+                  key="add-slot-panel"
                   className={styles.addPanel}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -201,7 +201,7 @@ export function ScenesArea({
                 >
                   <div className={styles.addPanelHeader}>
                     <PlusIcon className={styles.addPanelIcon} />
-                    <span className={styles.addPanelTitle}>Add Scene</span>
+                    <span className={styles.addPanelTitle}>Add Slot</span>
                   </div>
 
                   <div className={styles.addPanelOptions}>
@@ -211,7 +211,7 @@ export function ScenesArea({
                       onClick={() => void onAddSlot()}
                     >
                       <PlusIcon className={styles.addOptionIcon} />
-                      <span>New Scene</span>
+                      <span>New Slot</span>
                     </button>
 
                     {slots.length > 0 && (
@@ -220,26 +220,25 @@ export function ScenesArea({
                         <span className={styles.addPanelLabel}>
                           Copy from slot
                         </span>
-                        {slots.map((slot) => (
-                          <button
-                            key={`copy-${slot.index}`}
-                            type="button"
-                            className={styles.addOptionButton}
-                            onClick={() => void onCopySlot(slot.index)}
-                          >
-                            <CopyIcon className={styles.addOptionIcon} />
-                            <span>Slot {slot.index + 1}</span>
-                            <span className={styles.addOptionHint}>
-                              {slot.sceneId === "sceneA"
-                                ? "Scene A"
-                                : slot.sceneId === "sceneB"
-                                  ? "Scene B"
-                                  : slot.sceneId === "sceneC"
-                                    ? "Scene C"
-                                    : slot.sceneId}
-                            </span>
-                          </button>
-                        ))}
+                        {slots.map((slot) => {
+                          const sketchLabel =
+                            getSketchDescriptor(slot.sketchId)?.shortLabel ??
+                            slot.sketchId;
+                          return (
+                            <button
+                              key={`copy-${slot.index}`}
+                              type="button"
+                              className={styles.addOptionButton}
+                              onClick={() => void onCopySlot(slot.index)}
+                            >
+                              <CopyIcon className={styles.addOptionIcon} />
+                              <span>Slot {slot.index + 1}</span>
+                              <span className={styles.addOptionHint}>
+                                {sketchLabel}
+                              </span>
+                            </button>
+                          );
+                        })}
                       </>
                     )}
                   </div>

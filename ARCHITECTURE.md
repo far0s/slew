@@ -204,32 +204,34 @@ These plugins read directly from Window A’s GPU texture.
 ```
 /project
   /src
-    /sketches          # Visual programs (BlueCube, OrangeCube, GreenPulse)
+    /sketches              # Visual programs (self-contained modules)
       /BlueCube
-        index.tsx      # Component + SketchDescriptor
+        index.tsx          # Component + SketchDescriptor
       /OrangeCube
+        index.tsx
       /GreenPulse
-      index.ts         # Registry exports
-      types.ts         # SketchDescriptor, SketchProps
-    /scenes            # Slot management (backwards-compat naming)
-      sceneTypes.ts    # Parameter utilities
-      useSceneSlots.ts # Slot state management
-    /components        # UI components
-    /controls          # Parameter store
-    /inputs            # MIDI, OSC, Audio, HID
-    /renderer          # Window A renderer
+        index.tsx
+      index.ts             # SKETCH_REGISTRY, exports
+      types.ts             # SketchDescriptor, SketchProps, ParameterTemplate
+    /scenes                # Slot system utilities
+      sceneTypes.ts        # Parameter ID utilities, slot helpers
+      useSceneSlots.ts     # Slot state management hook
+    /components            # UI components (SceneColumn, ScenesArea, etc.)
+    /controls              # useParameterStore hook
+    /inputs                # MIDI, OSC, Audio, HID hooks and types
+    /renderer              # Window A (RendererRoot, VideoOutputCapture)
     /lib
       /shaders
       /utils
-  /src-tauri           # Rust backend
+  /src-tauri               # Rust backend
     /src
-      lib.rs           # Parameter server, commands
-      midi.rs
-      osc.rs
-      audio.rs
-      hid.rs
-      modulation.rs
-      video_out.rs
+      lib.rs               # Parameter server, tick loop, commands
+      midi.rs              # MIDI device management
+      osc.rs               # OSC server
+      audio.rs             # Audio capture, FFT, beat detection
+      hid.rs               # HID/macropad support
+      modulation.rs        # LFO engine, modulation matrix
+      video_out.rs         # Syphon, Spout, NDI backends
 ```
 
 ---
@@ -292,7 +294,7 @@ Each React component should have a JSDoc block describing:
  *
  * Features:
  * - Horizontal scroll for 4+ slots
- * - Add slot button when < maxSlots
+ * - Add slot panel with "New Slot" and "Copy from Slot" options
  * - AnimatePresence for enter/exit animations
  */
 export function ScenesArea({ ... }: ScenesAreaProps) {
@@ -308,17 +310,16 @@ Custom hooks should document:
 
 ```ts
 /**
- * Hook for managing numbered scene slots.
- *
- * Replaces the old "Active/Next" paradigm with a flexible
- * system supporting 1-4 numbered slots.
+ * Hook for managing numbered slots with multi-instance support.
  *
  * Key concepts:
- * - Each slot has an index (0-3) and a scene ID
+ * - Each slot has an index (0-5) and a sketchId
+ * - Same sketch type can exist in multiple slots
  * - One slot is "active" (being rendered to output)
  * - Crossfading transitions from active to a target slot
+ * - Each slot has independent parameters (slot-prefixed IDs)
  */
-export function useSceneSlots(config?: Partial<SceneSlotsConfig>): SceneSlotsState {
+export function useSceneSlots(config?: Partial<SlotsConfig>): SlotsState {
 ```
 
 ---

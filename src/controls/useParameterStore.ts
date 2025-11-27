@@ -1,17 +1,13 @@
 import { useState, useCallback, useRef } from "react";
-import type {
-  ParameterId,
-  SceneId,
-  SlotParameterId,
-  ParameterTemplateId,
-} from "../scenes/sceneTypes";
+import type { SketchId, ParameterTemplateId } from "../sketches";
+import { getSketchDescriptor } from "../sketches";
+import type { ParameterId, SlotParameterId } from "../scenes/sceneTypes";
 import {
   buildSlotDefaultParameters,
   buildAllSlotsDefaultParameters,
   copySlotParameters,
   makeSlotParameterId,
   parseSlotParameterId,
-  getSceneDescriptor,
 } from "../scenes/sceneTypes";
 
 /**
@@ -36,7 +32,9 @@ export interface BackendParameter {
  */
 export interface SlotConfig {
   index: number;
-  sceneId: SceneId;
+  sketchId: SketchId;
+  /** @deprecated Use sketchId. Kept for backend compatibility. */
+  sceneId?: SketchId;
 }
 
 /**
@@ -76,7 +74,7 @@ export interface ParameterStoreState {
   set: (id: ParameterId, value: number) => void;
   setMany: (updates: Array<[ParameterId, number]>) => void;
   setInterpolated: (id: ParameterId, value: number) => void;
-  initializeSlot: (slotIndex: number, sceneId: SceneId) => void;
+  initializeSlot: (slotIndex: number, sketchId: SketchId) => void;
   initializeSlotWithValues: (
     slotIndex: number,
     values: Map<SlotParameterId, number>,
@@ -85,9 +83,9 @@ export interface ParameterStoreState {
   copySlotParametersTo: (
     sourceSlotIndex: number,
     targetSlotIndex: number,
-    sceneId: SceneId,
+    sketchId: SketchId,
   ) => void;
-  resetSlotToDefaults: (slotIndex: number, sceneId: SceneId) => void;
+  resetSlotToDefaults: (slotIndex: number, sketchId: SketchId) => void;
   resetAllToDefaults: (slots: SlotConfig[]) => void;
   applyBackendParams: (params: BackendParameter[]) => void;
   getSlotParameter: (
@@ -137,9 +135,9 @@ function getParameterRange(
   if (parsed) {
     const slot = slots.find((s) => s.index === parsed.slotIndex);
     if (slot) {
-      const scene = getSceneDescriptor(slot.sceneId);
-      if (scene) {
-        const template = scene.parameters.find(
+      const sketch = getSketchDescriptor(slot.sketchId);
+      if (sketch) {
+        const template = sketch.parameters.find(
           (p) => p.templateId === parsed.templateId,
         );
         if (template) {
@@ -169,9 +167,9 @@ function getParameterDefault(
   if (parsed) {
     const slot = slots.find((s) => s.index === parsed.slotIndex);
     if (slot) {
-      const scene = getSceneDescriptor(slot.sceneId);
-      if (scene) {
-        const template = scene.parameters.find(
+      const sketch = getSketchDescriptor(slot.sketchId);
+      if (sketch) {
+        const template = sketch.parameters.find(
           (p) => p.templateId === parsed.templateId,
         );
         if (template) {
@@ -188,14 +186,12 @@ function getParameterDefault(
  * Hook for centralized parameter state management with multi-instance support.
  *
  * Uses a Map internally for efficient lookups and updates.
- * Parameters are now slot-scoped (e.g., `slot_0_brightness`) instead of
- * scene-scoped (e.g., `scene_a_brightness`).
+ * Parameters are slot-scoped (e.g., `slot_0_brightness`).
  *
  * Features:
  * - Dynamic slot-based parameter management
  * - Slot parameter initialization and copying
- * - Legacy parameter migration support
- * - Automatic clamping based on scene registry ranges
+ * - Automatic clamping based on sketch registry ranges
  * - Separate interpolated values for smooth preview rendering
  */
 export function useParameterStore(): ParameterStoreState {
@@ -293,29 +289,32 @@ export function useParameterStore(): ParameterStoreState {
   );
 
   // Initialize parameters for a new slot with defaults
-  const initializeSlot = useCallback((slotIndex: number, sceneId: SceneId) => {
-    const defaults = buildSlotDefaultParameters(slotIndex, sceneId);
+  const initializeSlot = useCallback(
+    (slotIndex: number, sketchId: SketchId) => {
+      const defaults = buildSlotDefaultParameters(slotIndex, sketchId);
 
-    setParameters((prev) => {
-      const next = new Map(prev);
-      for (const [id, value] of defaults) {
-        next.set(id, value);
-      }
-      return next;
-    });
+      setParameters((prev) => {
+        const next = new Map(prev);
+        for (const [id, value] of defaults) {
+          next.set(id, value);
+        }
+        return next;
+      });
 
-    // Also update interpolated values
-    for (const [id, value] of defaults) {
-      interpolatedRef.current.set(id, value);
-    }
-    setInterpolatedValues((prev) => {
-      const next = new Map(prev);
+      // Also update interpolated values
       for (const [id, value] of defaults) {
-        next.set(id, value);
+        interpolatedRef.current.set(id, value);
       }
-      return next;
-    });
-  }, []);
+      setInterpolatedValues((prev) => {
+        const next = new Map(prev);
+        for (const [id, value] of defaults) {
+          next.set(id, value);
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   // Initialize slot with specific values (from copy operation)
   const initializeSlotWithValues = useCallback(
@@ -372,11 +371,11 @@ export function useParameterStore(): ParameterStoreState {
 
   // Copy parameters from one slot to another
   const copySlotParametersTo = useCallback(
-    (sourceSlotIndex: number, targetSlotIndex: number, sceneId: SceneId) => {
+    (sourceSlotIndex: number, targetSlotIndex: number, sketchId: SketchId) => {
       const copied = copySlotParameters(
         sourceSlotIndex,
         targetSlotIndex,
-        sceneId,
+        sketchId,
         (id) => parameters.get(id),
       );
 
@@ -405,8 +404,8 @@ export function useParameterStore(): ParameterStoreState {
 
   // Reset a slot's parameters to defaults
   const resetSlotToDefaults = useCallback(
-    (slotIndex: number, sceneId: SceneId) => {
-      const defaults = buildSlotDefaultParameters(slotIndex, sceneId);
+    (slotIndex: number, sketchId: SketchId) => {
+      const defaults = buildSlotDefaultParameters(slotIndex, sketchId);
 
       setParameters((prev) => {
         const next = new Map(prev);
@@ -432,7 +431,9 @@ export function useParameterStore(): ParameterStoreState {
 
   // Reset all to defaults
   const resetAllToDefaults = useCallback((slots: SlotConfig[]) => {
-    const defaults = buildAllSlotsDefaultParameters(slots);
+    const defaults = buildAllSlotsDefaultParameters(
+      slots.map((s) => ({ index: s.index, sceneId: s.sketchId })),
+    );
 
     setParameters(new Map(defaults));
 
@@ -542,15 +543,15 @@ const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
  */
 export function buildSlotSceneParams(
   slotIndex: number,
-  sceneId: SceneId,
+  sketchId: SketchId,
   store: ParameterStoreState,
 ): Record<string, number> {
-  const scene = getSceneDescriptor(sceneId);
-  if (!scene) return {};
+  const sketch = getSketchDescriptor(sketchId);
+  if (!sketch) return {};
 
   const params: Record<string, number> = {};
 
-  for (const template of scene.parameters) {
+  for (const template of sketch.parameters) {
     const propsKey = TEMPLATE_ID_TO_PROPS_KEY[template.templateId];
     if (propsKey) {
       const paramId = makeSlotParameterId(slotIndex, template.templateId);
@@ -566,15 +567,15 @@ export function buildSlotSceneParams(
  */
 export function buildSlotSceneParamsInterpolated(
   slotIndex: number,
-  sceneId: SceneId,
+  sketchId: SketchId,
   store: ParameterStoreState,
 ): Record<string, number> {
-  const scene = getSceneDescriptor(sceneId);
-  if (!scene) return {};
+  const sketch = getSketchDescriptor(sketchId);
+  if (!sketch) return {};
 
   const params: Record<string, number> = {};
 
-  for (const template of scene.parameters) {
+  for (const template of sketch.parameters) {
     const propsKey = TEMPLATE_ID_TO_PROPS_KEY[template.templateId];
     if (propsKey) {
       const paramId = makeSlotParameterId(slotIndex, template.templateId);

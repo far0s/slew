@@ -15,20 +15,20 @@ For detailed design, see `ARCHITECTURE.md`.
 
 ## 1. High-Level Status
 
-| System            | Status | Notes                                                         |
-| ----------------- | ------ | ------------------------------------------------------------- |
-| Tauri + React app | ✅     | Dual-window (Renderer + Controls)                             |
-| Parameter Server  | ✅     | Rust backend with ~60Hz transitions                           |
-| Scene System      | ✅     | Slot-based (1-6), multi-instance, auto-generated controls     |
-| Crossfade         | ✅     | Smooth blending with correct scene pairing                    |
-| MIDI Input        | ✅     | Hot-plug detection, auto-reconnect, Learn workflow            |
-| OSC Input         | ✅     | UDP server (port 9000), default mappings                      |
-| Audio Input       | ✅     | Hot-plug detection, auto-reconnect, FFT, beat detection       |
-| Audio → Parameter | ✅     | Full mapping system with modes (continuous/trigger/add)       |
-| HID Input         | ✅     | DOIO Megalodon macropad with encoders, auto-connect           |
-| Modulation Engine | ✅     | Backend LFOs, modulation matrix, audio→LFO, slider indicators |
-| Video Output      | ✅     | Syphon + NDI working, 1080p@60 optimization backlogged        |
-| Packaging         | 🧪     | macOS bundle config, entitlements, scripts; signing untested  |
+| System             | Status | Notes                                                         |
+| ------------------ | ------ | ------------------------------------------------------------- |
+| Tauri + React app  | ✅     | Dual-window (Renderer + Controls)                             |
+| Parameter Server   | ✅     | Rust backend with ~60Hz transitions                           |
+| Sketch/Slot System | ✅     | Slot-based (1-6), multi-instance, auto-generated controls     |
+| Crossfade          | ✅     | Smooth blending with correct scene pairing                    |
+| MIDI Input         | ✅     | Hot-plug detection, auto-reconnect, Learn workflow            |
+| OSC Input          | ✅     | UDP server (port 9000), default mappings                      |
+| Audio Input        | ✅     | Hot-plug detection, auto-reconnect, FFT, beat detection       |
+| Audio → Parameter  | ✅     | Full mapping system with modes (continuous/trigger/add)       |
+| HID Input          | ✅     | DOIO Megalodon macropad with encoders, auto-connect           |
+| Modulation Engine  | ✅     | Backend LFOs, modulation matrix, audio→LFO, slider indicators |
+| Video Output       | ✅     | Syphon + NDI working, 1080p@60 optimization backlogged        |
+| Packaging          | 🧪     | macOS bundle config, entitlements, scripts; signing untested  |
 
 ---
 
@@ -56,15 +56,18 @@ Both windows share the same frontend bundle; `src/main.tsx` dispatches based on 
 - Persistence to `parameters.json`
 - Events: `parameter_changed`, `parameters_cleared`
 
-### Scene System
+### Sketch/Slot System
 
-- **Scene Descriptors** (`src/scenes/sceneTypes.ts`): Template-based parameter definitions
-- **Slot-based UI**: 1-6 numbered slots, add/remove dynamically
-- **Multi-instance support**: Same scene type can exist in multiple slots with independent parameters
+- **Sketches** (`/src/sketches/`): Self-contained visual programs with descriptors
+  - `BlueCube`, `OrangeCube`, `GreenPulse` sketches
+  - Each exports `descriptor: SketchDescriptor` + React component
+  - Registry in `/src/sketches/index.ts`
+- **Slots**: 1-6 numbered containers, add/remove dynamically
+- **Multi-instance support**: Same sketch type can exist in multiple slots with independent parameters
 - **Slot-prefixed parameters**: IDs use format `slot_{index}_{templateId}` (e.g., `slot_0_brightness`)
-- **Auto-generated controls**: `SceneParameterControls` reads from descriptors
+- **Auto-generated controls**: `SceneParameterControls` reads from sketch descriptors
 - **Parameter store**: `useParameterStore` hook with dynamic slot-based state
-- **Add Scene panel**: Inline options panel showing "New Scene" (defaults) and "Copy from Slot" buttons directly
+- **Add Slot panel**: Inline options showing "New Slot" (defaults) and "Copy from Slot" buttons
 - **Renderer slot awareness**: Renders by slot index, listens for `slot_pairing_changed` events
 
 ### Input Layer
@@ -91,7 +94,7 @@ All inputs follow the same pattern:
 
 - UDP server via `rosc` crate (default port 9000)
 - Address → parameter mappings with value scaling
-- Default mappings for all parameters (e.g., `/scene_a/brightness`)
+- Default mappings for slot parameters (e.g., `/slot/0/brightness`)
 
 ### Audio (`src-tauri/src/audio.rs`)
 
@@ -213,11 +216,11 @@ All input systems now support automatic device detection:
 | `src-tauri/src/hid.rs`                | HID device management (macropads)                  |
 | `src-tauri/src/video_out.rs`          | Video output backends (Syphon, Spout, NDI)         |
 | `src-tauri/src/syphon.rs`             | Native Syphon bindings (macOS only)                |
-| `src/scenes/sceneTypes.ts`            | Scene/parameter templates, slot ID generation      |
+| `src/sketches/`                       | Self-contained sketch modules (BlueCube, etc.)     |
+| `src/scenes/sceneTypes.ts`            | Parameter utilities, slot ID generation            |
+| `src/scenes/useSceneSlots.ts`         | Slot management hook with multi-instance support   |
 | `src/controls/useParameterStore.ts`   | Map-based parameter state                          |
 | `src/renderer/VideoOutputCapture.tsx` | Frame capture component (inside r3f Canvas)        |
-| `src/scenes/useSceneSlots.ts`         | Slot management hook with multi-instance support   |
-| `src/scenes/sceneComponents.ts`       | Scene component registry and generic SceneProps    |
 
 ---
 
@@ -232,7 +235,7 @@ All input systems now support automatic device detection:
 7. **Video Output**: NDI enabled by default (requires SDK)
 8. **Multi-instance**: Slot-prefixed parameter IDs (`slot_0_brightness` format)
 9. **Parameter persistence**: Backend keeps parameters when slots are removed (for re-use)
-10. **Legacy migration**: Old scene-prefixed parameters auto-migrated to slot format
+10. **Terminology**: Use `SketchId`, `sketchId`, import from `/src/sketches`
 
 ---
 
@@ -242,11 +245,11 @@ All input systems now support automatic device detection:
 
 1. **Scene System Expansion**
    - Add more scenes with different visual styles
-   - Scene library/browser UI (scene type selector in Add Scene panel)
-   - Scene presets (save parameter values per scene)
+   - Sketch library/browser UI (sketch type selector in Add Slot panel)
+   - Sketch presets (save parameter values per sketch)
 
 2. **UX Polish**
-   - MIDI/OSC "follow active slot" mapping mode (knobs control active slot's parameters)
+   - MIDI/OSC "follow active slot" mode (knobs control active slot's parameters)
    - Mapping import/export (JSON)
 
 3. **Video Output Optimization**
@@ -255,47 +258,14 @@ All input systems now support automatic device detection:
 
 ### Future Phases
 
-- **Presets & Projects**: Save/load parameter snapshots, scene selections, mappings
+- **Presets & Projects**: Save/load parameter snapshots, slot configurations, mappings
 - **Multi-display**: Multiple renderer windows
 - **Recording**: GPU-based capture or frame export
 - **Packaging**: macOS/Windows builds with code signing
 
 ---
 
-## 9. Sketch/Slot Refactoring ✅
-
-**Status:** Complete
-
-Separated the concepts of **Slots** (numbered containers 1-6) and **Sketches** (visual programs like `BlueCube`, `OrangeCube`, `GreenPulse`).
-
-### Key Changes
-
-| Area             | Change                                                                           |
-| ---------------- | -------------------------------------------------------------------------------- |
-| **Sketches**     | New `/src/sketches/` folder with self-contained modules (descriptor + component) |
-| **Registry**     | `SKETCH_REGISTRY` in `/src/sketches/index.ts`                                    |
-| **Parameters**   | Format: `slot_{index}_{templateId}` (e.g., `slot_0_brightness`)                  |
-| **Input Panels** | Filter to active slots only, cleaner labels (`3 - Brightness`)                   |
-| **Backend**      | Legacy migration code removed (migration complete)                               |
-
-### Backwards Compatibility
-
-Old names still work via aliases: `SceneId` → `SketchId`, `sceneId` → `sketchId`
-
-### File Structure
-
-```
-/src/sketches/
-  BlueCube/index.tsx    # Sketch component + descriptor
-  OrangeCube/index.tsx
-  GreenPulse/index.tsx
-  index.ts              # Registry exports
-  types.ts              # SketchDescriptor, SketchProps
-```
-
----
-
-## 10. Housekeeping
+## 9. Housekeeping
 
 - Run `npx tsc --noEmit` and `cargo check` after changes
 - Keep this document updated as features land

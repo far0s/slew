@@ -2,8 +2,7 @@
  * Slot System Types
  *
  * This file provides slot-related types and utilities for managing visual slots.
- * It imports sketch definitions from the new /src/sketches system and provides
- * backwards-compatible aliases for existing code.
+ * It imports sketch definitions from /src/sketches and provides parameter utilities.
  *
  * Key concepts:
  * - Slots are numbered containers (1-6) that hold a visual and its parameters
@@ -12,65 +11,7 @@
  * - Slot parameter IDs are generated as `slot_{slotIndex}_{templateId}`
  */
 
-// Import types and registry from the new sketches system
-import {
-  type SketchId,
-  type SketchDescriptor,
-  type SketchProps,
-  type SketchComponent,
-  type ParameterTemplate,
-  type ParameterTemplateId,
-  type SliderColor,
-  SKETCH_REGISTRY,
-  ALL_SKETCH_IDS,
-  getSketchDescriptor,
-  getSketchParameterTemplateIds,
-  getSketchParameterTemplate,
-  LEGACY_SKETCH_ID_MAP,
-  resolveSketchId,
-} from "../sketches";
-
-// ============================================================================
-// Backwards Compatibility Aliases
-// ============================================================================
-
-/**
- * @deprecated Use SketchId from '../sketches' instead
- */
-export type SceneId = SketchId;
-
-/**
- * @deprecated Use SketchDescriptor from '../sketches' instead
- */
-export type SceneDescriptor = SketchDescriptor;
-
-/**
- * @deprecated Use ALL_SKETCH_IDS from '../sketches' instead
- */
-export const ALL_SCENE_IDS: SceneId[] = ALL_SKETCH_IDS;
-
-/**
- * @deprecated Use SKETCH_REGISTRY from '../sketches' instead
- */
-export const SCENE_REGISTRY: SceneDescriptor[] = SKETCH_REGISTRY;
-
-/**
- * @deprecated Use getSketchDescriptor from '../sketches' instead
- */
-export function getSceneDescriptor(id: SceneId): SceneDescriptor | undefined {
-  return getSketchDescriptor(id);
-}
-
-/**
- * @deprecated Use getSketchParameterTemplateIds from '../sketches' instead
- */
-export function getSceneParameterTemplateIds(
-  sceneId: SceneId,
-): ParameterTemplateId[] {
-  return getSketchParameterTemplateIds(sceneId);
-}
-
-// Re-export sketch types for convenience
+// Re-export sketch types and utilities
 export type {
   SketchId,
   SketchDescriptor,
@@ -79,7 +20,7 @@ export type {
   ParameterTemplate,
   ParameterTemplateId,
   SliderColor,
-};
+} from "../sketches";
 
 export {
   SKETCH_REGISTRY,
@@ -89,7 +30,18 @@ export {
   getSketchParameterTemplate,
   LEGACY_SKETCH_ID_MAP,
   resolveSketchId,
-};
+} from "../sketches";
+
+import {
+  type SketchId,
+  type ParameterTemplate,
+  type ParameterTemplateId,
+  type SliderColor,
+  SKETCH_REGISTRY,
+  getSketchDescriptor,
+  getSketchParameterTemplate,
+  getSketchParameterTemplateIds,
+} from "../sketches";
 
 // ============================================================================
 // Global Parameter Types
@@ -222,7 +174,7 @@ export function buildSlotDefaultParameters(
  * Build default parameters for all slots.
  */
 export function buildAllSlotsDefaultParameters(
-  slots: Array<{ index: number; sceneId: SceneId }>,
+  slots: Array<{ index: number; sceneId: SketchId }>,
 ): Map<ParameterId, number> {
   const map = new Map<ParameterId, number>();
 
@@ -285,7 +237,7 @@ export function getSlotParameterIds(
  * Used by AudioPanel and ModulationPanel for parameter selection dropdowns.
  */
 export function getAllSlotParameterIds(
-  slots: Array<{ index: number; sceneId: SceneId }>,
+  slots: Array<{ index: number; sceneId: SketchId }>,
 ): ParameterId[] {
   const ids: ParameterId[] = [];
 
