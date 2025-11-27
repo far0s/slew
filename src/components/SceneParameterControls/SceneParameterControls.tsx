@@ -1,9 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
-import type {
-  SceneId,
-  SceneParameterDescriptor,
+import type { SceneId } from "../../scenes/sceneTypes";
+import {
+  getSceneDescriptor,
+  makeSlotParameterId,
+  type ParameterTemplate,
 } from "../../scenes/sceneTypes";
-import { getSceneDescriptor } from "../../scenes/sceneTypes";
 import {
   ParameterSlider,
   type AudioMappingIndicator,
@@ -20,7 +21,8 @@ import styles from "./SceneParameterControls.module.css";
 /**
  * Props for the SceneParameterControls component.
  *
- * @property sceneId - Scene ID to render controls for
+ * @property slotIndex - Slot index for this scene instance
+ * @property sceneId - Scene type to render controls for
  * @property getValue - Get current value for a parameter
  * @property setValue - Set value for a parameter
  * @property audioMappings - Optional list of audio mappings to show indicators
@@ -28,6 +30,7 @@ import styles from "./SceneParameterControls.module.css";
  * @property lfos - Optional list of LFO sources (for indicator labels)
  */
 export interface SceneParameterControlsProps {
+  slotIndex: number;
   sceneId: SceneId;
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
@@ -60,23 +63,23 @@ async function forwardControlsEvent(
  * Handle parameter change: update local state + backend + forward to renderer.
  */
 function createChangeHandler(
-  descriptor: SceneParameterDescriptor,
+  slotIndex: number,
+  template: ParameterTemplate,
   setValue: (id: string, value: number) => void,
 ) {
+  const paramId = makeSlotParameterId(slotIndex, template.templateId);
+
   return (value: number) => {
-    setValue(descriptor.id, value);
+    setValue(paramId, value);
     void (async () => {
       try {
-        await setParameter(descriptor.id, value);
+        await setParameter(paramId, value);
         // Forward brightness events for low-latency rendering
-        if (descriptor.id.includes("brightness")) {
-          await forwardControlsEvent(descriptor.id, value);
+        if (template.templateId === "brightness") {
+          await forwardControlsEvent(paramId, value);
         }
       } catch (error) {
-        console.error(
-          `[Controls] Failed to set ${descriptor.id} parameter`,
-          error,
-        );
+        console.error(`[Controls] Failed to set ${paramId} parameter`, error);
       }
     })();
   };
@@ -136,17 +139,19 @@ function getModulationIndicator(
 /**
  * SceneParameterControls
  *
- * Auto-generates parameter sliders from a scene's descriptor.
- * This replaces the manually-coded SceneAControls, SceneBControls, etc.
+ * Auto-generates parameter sliders for a scene slot.
+ * Uses slot-prefixed parameter IDs for multi-instance support.
  *
  * Features:
- * - Reads parameter metadata from SCENE_REGISTRY
+ * - Reads parameter templates from SCENE_REGISTRY
+ * - Generates slot-prefixed parameter IDs (e.g., slot_0_brightness)
  * - Renders ParameterSlider for each parameter
  * - Handles all backend communication
  * - Supports MIDI learn via midiParameterId
  * - Shows audio mapping indicators when a parameter is audio-mapped
  */
 export function SceneParameterControls({
+  slotIndex,
   sceneId,
   getValue,
   setValue,
@@ -172,28 +177,32 @@ export function SceneParameterControls({
   return (
     <div className={styles.container}>
       <div className={styles.controls}>
-        {sortedParameters.map((param, index) => (
-          <ParameterSlider
-            key={param.id}
-            id={`${sceneId}-${param.id}`}
-            label={param.label}
-            value={getValue(param.id)}
-            min={param.min}
-            max={param.max}
-            step={param.step}
-            color={param.color ?? "emerald"}
-            showSpacing={index > 0}
-            description={param.description}
-            onChange={createChangeHandler(param, setValue)}
-            midiParameterId={param.id}
-            audioMapping={getAudioMappingIndicator(param.id, audioMappings)}
-            modulationIndicator={getModulationIndicator(
-              param.id,
-              modulationTargets,
-              lfos,
-            )}
-          />
-        ))}
+        {sortedParameters.map((template, index) => {
+          const paramId = makeSlotParameterId(slotIndex, template.templateId);
+
+          return (
+            <ParameterSlider
+              key={paramId}
+              id={`slot-${slotIndex}-${template.templateId}`}
+              label={template.label}
+              value={getValue(paramId)}
+              min={template.min}
+              max={template.max}
+              step={template.step}
+              color={template.color ?? "emerald"}
+              showSpacing={index > 0}
+              description={template.description}
+              onChange={createChangeHandler(slotIndex, template, setValue)}
+              midiParameterId={paramId}
+              audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
+              modulationIndicator={getModulationIndicator(
+                paramId,
+                modulationTargets,
+                lfos,
+              )}
+            />
+          );
+        })}
       </div>
     </div>
   );

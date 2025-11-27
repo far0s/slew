@@ -8,8 +8,8 @@ import {
   SCENE_COMPONENT_REGISTRY,
   type SceneProps,
 } from "../scenes/sceneComponents";
-import { ALL_SCENE_IDS, type SceneId } from "../scenes/sceneTypes";
-import { getSceneDescriptor } from "../scenes/sceneTypes";
+import type { SceneId, ParameterTemplateId } from "../scenes/sceneTypes";
+import { getSceneDescriptor, makeSlotParameterId } from "../scenes/sceneTypes";
 import { useStatsToggle } from "../hooks";
 import styles from "./RendererRoot.module.css";
 
@@ -29,38 +29,39 @@ interface BackendParameter {
 }
 
 /**
- * Scene pairing event payload from backend.
+ * Slot pairing event payload from backend.
+ * Uses slot indices instead of scene IDs for multi-instance support.
  */
-interface ScenePairingPayload {
+interface SlotPairingPayload {
+  active_slot_index: number;
   active_scene_id: SceneId;
+  next_slot_index: number;
   next_scene_id: SceneId;
 }
 
+/**
+ * Slot configuration for rendering.
+ */
+interface SlotInfo {
+  index: number;
+  sceneId: SceneId;
+}
+
 // =============================================================================
-// Parameter ID to Props Key Mapping
+// Template ID to Props Key Mapping
 // =============================================================================
 
 /**
- * Maps backend parameter IDs (snake_case) to SceneProps param keys (camelCase).
- * This is the single source of truth for the mapping.
+ * Maps template IDs (snake_case) to SceneProps param keys (camelCase).
  */
-const PARAM_ID_TO_PROPS_KEY: Record<string, string> = {
-  // Scene A
-  rotationSpeed: "rotationSpeed",
-  scene_a_brightness: "sceneABrightness",
-  scene_a_wobble: "sceneAWobble",
-  scene_a_tint: "sceneATint",
-  scene_a_tint_lfo_depth: "sceneATintLfoDepth",
-  // Scene B
-  scene_b_brightness: "sceneBBrightness",
-  scene_b_rotation_speed: "sceneBRotationSpeed",
-  scene_b_tint: "sceneBTint",
-  scene_b_scale: "sceneBScale",
-  // Scene C
-  scene_c_brightness: "sceneCBrightness",
-  scene_c_pulse_speed: "sceneCPulseSpeed",
-  scene_c_rotation_speed: "sceneCRotationSpeed",
-  scene_c_tint: "sceneCTint",
+const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
+  brightness: "brightness",
+  rotation_speed: "rotationSpeed",
+  tint: "tint",
+  wobble: "wobble",
+  tint_lfo_depth: "tintLfoDepth",
+  scale: "scale",
+  pulse_speed: "pulseSpeed",
 };
 
 // =============================================================================
@@ -90,11 +91,11 @@ function TintLfoDriver({ depth, setPhase }: TintLfoDriverProps) {
 // =============================================================================
 
 /**
- * Build SceneProps params for a given scene from the generic parameter store.
- * Uses the scene descriptor to know which parameters the scene cares about,
- * then maps them to the camelCase keys the scene component expects.
+ * Build SceneProps params for a slot from the parameter store.
+ * Uses slot-prefixed parameter IDs (e.g., slot_0_brightness).
  */
-function buildSceneParams(
+function buildSlotParams(
+  slotIndex: number,
   sceneId: SceneId,
   paramStore: Map<string, number>,
   tintLfoPhase: number,
@@ -104,24 +105,22 @@ function buildSceneParams(
 
   const params: Record<string, number> = {};
 
-  // Build params from scene descriptor
-  for (const paramDesc of descriptor.parameters) {
-    const backendId = paramDesc.id;
-    const propsKey = PARAM_ID_TO_PROPS_KEY[backendId];
+  // Build params from scene descriptor using slot-prefixed IDs
+  for (const template of descriptor.parameters) {
+    const paramId = makeSlotParameterId(slotIndex, template.templateId);
+    const propsKey = TEMPLATE_ID_TO_PROPS_KEY[template.templateId];
 
-    if (propsKey && paramStore.has(backendId)) {
-      params[propsKey] = paramStore.get(backendId)!;
-    } else if (propsKey) {
-      // Use default from descriptor if not in store
-      params[propsKey] = paramDesc.defaultValue;
+    if (propsKey) {
+      const value = paramStore.get(paramId);
+      params[propsKey] = value !== undefined ? value : template.defaultValue;
     }
   }
 
-  // Apply Scene A tint LFO modulation if this is Scene A
-  if (sceneId === "sceneA") {
-    const tintBase = params.sceneATint ?? 0;
-    const tintDepth = paramStore.get("scene_a_tint_lfo_depth") ?? 0;
-    params.sceneATint = Math.max(
+  // Apply tint LFO modulation for scenes that support it
+  if (params.tintLfoDepth !== undefined && params.tint !== undefined) {
+    const tintBase = params.tint;
+    const tintDepth = params.tintLfoDepth;
+    params.tint = Math.max(
       0,
       Math.min(1, tintBase + Math.sin(tintLfoPhase) * tintDepth),
     );
@@ -135,41 +134,40 @@ function buildSceneParams(
 // =============================================================================
 
 /**
- * Calculate the opacity for a scene based on:
- * - Whether it's the active scene (shown at crossfade=0)
- * - Whether it's the next scene (shown at crossfade=1)
- * - The current crossfade value
+ * Calculate the opacity for a slot based on crossfade state.
  *
- * If a scene is neither active nor next, its opacity is 0.
- * If active === next (no crossfade in progress), that scene gets opacity 1.
+ * @param slotIndex - The slot being rendered
+ * @param activeSlotIndex - The currently active (output) slot
+ * @param nextSlotIndex - The slot we're crossfading to
+ * @param crossfade - Current crossfade value (0 = fully active, 1 = fully next)
  */
-function calculateSceneOpacity(
-  sceneId: SceneId,
-  activeSceneId: SceneId,
-  nextSceneId: SceneId,
+function calculateSlotOpacity(
+  slotIndex: number,
+  activeSlotIndex: number,
+  nextSlotIndex: number,
   crossfade: number,
 ): number {
   const clampedCrossfade = Math.max(0, Math.min(1, crossfade));
 
-  const isActive = sceneId === activeSceneId;
-  const isNext = sceneId === nextSceneId;
+  const isActive = slotIndex === activeSlotIndex;
+  const isNext = slotIndex === nextSlotIndex;
 
-  // If this scene is both active and next (same scene), show at full opacity
+  // If this slot is both active and next (same slot), show at full opacity
   if (isActive && isNext) {
     return 1;
   }
 
-  // If this is the active scene, fade out as crossfade increases
+  // If this is the active slot, fade out as crossfade increases
   if (isActive) {
     return 1 - clampedCrossfade;
   }
 
-  // If this is the next scene, fade in as crossfade increases
+  // If this is the next slot, fade in as crossfade increases
   if (isNext) {
     return clampedCrossfade;
   }
 
-  // Scene is neither active nor next - hide it
+  // Slot is neither active nor next - hide it
   return 0;
 }
 
@@ -178,52 +176,76 @@ function calculateSceneOpacity(
 // =============================================================================
 
 interface RendererContentProps {
-  activeSceneId: SceneId;
-  nextSceneId: SceneId;
-  paramStore: Record<string, number>;
+  activeSlot: SlotInfo;
+  nextSlot: SlotInfo;
+  paramStore: Map<string, number>;
 }
 
 function RendererContent({
-  activeSceneId,
-  nextSceneId,
+  activeSlot,
+  nextSlot,
   paramStore,
 }: RendererContentProps) {
   const [tintLfoPhase, setTintLfoPhase] = useState(0);
 
-  const crossfade = paramStore["crossfade"] ?? 0;
-  const tintLfoDepth = paramStore["scene_a_tint_lfo_depth"] ?? 0;
+  const crossfade = paramStore.get("crossfade") ?? 0;
 
-  // Convert to Map for buildSceneParams
-  const paramMap = new Map(Object.entries(paramStore));
+  // Calculate max tint LFO depth across active slots for the driver
+  const activeTintLfoDepth =
+    paramStore.get(makeSlotParameterId(activeSlot.index, "tint_lfo_depth")) ??
+    0;
+  const nextTintLfoDepth =
+    paramStore.get(makeSlotParameterId(nextSlot.index, "tint_lfo_depth")) ?? 0;
+  const maxTintLfoDepth = Math.max(activeTintLfoDepth, nextTintLfoDepth);
+
+  // Determine which slots to render (active and/or next)
+  const slotsToRender: SlotInfo[] = [];
+
+  // Always include active slot
+  slotsToRender.push(activeSlot);
+
+  // Include next slot if different from active and crossfading
+  if (
+    nextSlot.index !== activeSlot.index &&
+    crossfade > 0.001 &&
+    crossfade < 0.999
+  ) {
+    slotsToRender.push(nextSlot);
+  }
 
   return (
     <>
-      <TintLfoDriver depth={tintLfoDepth} setPhase={setTintLfoPhase} />
+      <TintLfoDriver depth={maxTintLfoDepth} setPhase={setTintLfoPhase} />
       <color attach="background" args={["#020617"]} />
       <ambientLight intensity={0.4} />
       <directionalLight position={[4, 6, 3]} intensity={1.1} />
       <directionalLight position={[-4, -4, -2]} intensity={0.4} />
 
-      {/* Render ALL scenes, controlling visibility via opacity */}
-      {ALL_SCENE_IDS.map((sceneId) => {
-        const SceneComponent = SCENE_COMPONENT_REGISTRY[sceneId];
+      {/* Render slots based on active/next pairing */}
+      {slotsToRender.map((slot) => {
+        const SceneComponent = SCENE_COMPONENT_REGISTRY[slot.sceneId];
         if (!SceneComponent) return null;
 
-        const opacity = calculateSceneOpacity(
-          sceneId,
-          activeSceneId,
-          nextSceneId,
+        const opacity = calculateSlotOpacity(
+          slot.index,
+          activeSlot.index,
+          nextSlot.index,
           crossfade,
         );
 
-        // Skip rendering scenes with zero opacity for performance
+        // Skip rendering slots with zero opacity for performance
         if (opacity < 0.001) return null;
 
-        const sceneParams = buildSceneParams(sceneId, paramMap, tintLfoPhase);
+        const sceneParams = buildSlotParams(
+          slot.index,
+          slot.sceneId,
+          paramStore,
+          tintLfoPhase,
+        );
 
         return (
           <SceneComponent
-            key={sceneId}
+            key={`slot-${slot.index}`}
             opacity={opacity}
             params={sceneParams}
           />
@@ -238,27 +260,35 @@ function RendererContent({
 // =============================================================================
 
 /**
- * RendererRoot - Main renderer window component.
+ * RendererRoot - Main renderer window component with multi-instance support.
  *
  * Architecture:
- * 1. Stores ALL parameters in a generic Record<string, number>
- * 2. Listens to `scene_pairing_changed` for active/next scene IDs
+ * 1. Stores ALL parameters in a generic Map (including slot-prefixed IDs)
+ * 2. Listens to `slot_pairing_changed` for active/next slot indices and scene IDs
  * 3. Listens to `parameter_changed` for ANY parameter update
- * 4. Renders ALL scenes but controls visibility via opacity
- * 5. Dynamically builds scene params based on scene descriptors
+ * 4. Renders slots based on the active/next pairing
+ * 5. Dynamically builds scene params based on slot index and scene descriptors
  *
- * Key insight: Instead of conditionally mounting/unmounting scene components
- * based on active/next, we render all scenes and let the opacity calculation
- * determine which are visible. This avoids race conditions between scene
- * pairing updates and crossfade value changes.
+ * Key changes for multi-instance:
+ * - Parameters use slot-prefixed IDs (e.g., `slot_0_brightness`)
+ * - Scene pairing uses slot indices instead of just scene IDs
+ * - Each slot renders its own instance of the scene component
  */
 export function RendererRoot() {
-  // Scene pairing state
-  const [activeSceneId, setActiveSceneId] = useState<SceneId>("sceneA");
-  const [nextSceneId, setNextSceneId] = useState<SceneId>("sceneA");
+  // Slot pairing state
+  const [activeSlot, setActiveSlot] = useState<SlotInfo>({
+    index: 0,
+    sceneId: "sceneA",
+  });
+  const [nextSlot, setNextSlot] = useState<SlotInfo>({
+    index: 0,
+    sceneId: "sceneA",
+  });
 
   // Generic parameter store - stores ANY parameter by its backend ID
-  const [paramStore, setParamStore] = useState<Record<string, number>>({});
+  const [paramStore, setParamStore] = useState<Map<string, number>>(
+    () => new Map([["crossfade", 0]]),
+  );
 
   // Stats toggle (press "D" to show/hide performance stats)
   const { showStats } = useStatsToggle();
@@ -267,8 +297,10 @@ export function RendererRoot() {
   const updateParam = useCallback((id: string, value: number) => {
     setParamStore((prev) => {
       // Only update if value actually changed to avoid unnecessary re-renders
-      if (prev[id] === value) return prev;
-      return { ...prev, [id]: value };
+      if (prev.get(id) === value) return prev;
+      const next = new Map(prev);
+      next.set(id, value);
+      return next;
     });
   }, []);
 
@@ -280,21 +312,42 @@ export function RendererRoot() {
     [updateParam],
   );
 
-  // Handle scene pairing change
-  const handleScenePairingChanged = useCallback(
-    (payload: ScenePairingPayload) => {
+  // Handle slot pairing change (new multi-instance format)
+  const handleSlotPairingChanged = useCallback(
+    (payload: SlotPairingPayload) => {
       console.log(
-        "[Renderer] Scene pairing:",
+        "[Renderer] Slot pairing: slot",
+        payload.active_slot_index,
+        "(" + payload.active_scene_id + ") ->",
+        "slot",
+        payload.next_slot_index,
+        "(" + payload.next_scene_id + ")",
+      );
+
+      setActiveSlot({
+        index: payload.active_slot_index,
+        sceneId: payload.active_scene_id,
+      });
+      setNextSlot({
+        index: payload.next_slot_index,
+        sceneId: payload.next_scene_id,
+      });
+    },
+    [],
+  );
+
+  // Legacy handler for scene_pairing_changed (backwards compatibility during migration)
+  const handleLegacyScenePairingChanged = useCallback(
+    (payload: { active_scene_id: SceneId; next_scene_id: SceneId }) => {
+      console.log(
+        "[Renderer] Legacy scene pairing:",
         payload.active_scene_id,
         "->",
         payload.next_scene_id,
       );
-      if (payload.active_scene_id) {
-        setActiveSceneId(payload.active_scene_id);
-      }
-      if (payload.next_scene_id) {
-        setNextSceneId(payload.next_scene_id);
-      }
+      // Map legacy scene IDs to slot 0 for backwards compatibility
+      setActiveSlot({ index: 0, sceneId: payload.active_scene_id });
+      setNextSlot({ index: 0, sceneId: payload.next_scene_id });
     },
     [],
   );
@@ -332,21 +385,53 @@ export function RendererRoot() {
     };
   }, [handleParameterChanged]);
 
-  // Listen for scene pairing changes
+  // Listen for slot pairing changes (new format)
   useEffect(() => {
     let unlisten: (() => void) | undefined;
 
     async function subscribe() {
       try {
-        unlisten = await listen<ScenePairingPayload>(
-          "scene_pairing_changed",
+        unlisten = await listen<SlotPairingPayload>(
+          "slot_pairing_changed",
           (event) => {
             if (event.payload) {
-              handleScenePairingChanged(event.payload);
+              handleSlotPairingChanged(event.payload);
             }
           },
         );
-        console.log("[Renderer] Subscribed to scene_pairing_changed events");
+        console.log("[Renderer] Subscribed to slot_pairing_changed events");
+      } catch (error) {
+        console.error(
+          "[Renderer] Failed to subscribe to slot_pairing_changed:",
+          error,
+        );
+      }
+    }
+
+    void subscribe();
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, [handleSlotPairingChanged]);
+
+  // Listen for legacy scene pairing changes (backwards compatibility)
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    async function subscribe() {
+      try {
+        unlisten = await listen<{
+          active_scene_id: SceneId;
+          next_scene_id: SceneId;
+        }>("scene_pairing_changed", (event) => {
+          if (event.payload) {
+            handleLegacyScenePairingChanged(event.payload);
+          }
+        });
+        console.log(
+          "[Renderer] Subscribed to scene_pairing_changed events (legacy)",
+        );
       } catch (error) {
         console.error(
           "[Renderer] Failed to subscribe to scene_pairing_changed:",
@@ -360,7 +445,7 @@ export function RendererRoot() {
     return () => {
       if (unlisten) unlisten();
     };
-  }, [handleScenePairingChanged]);
+  }, [handleLegacyScenePairingChanged]);
 
   // Listen for parameter changes
   useEffect(() => {
@@ -406,8 +491,8 @@ export function RendererRoot() {
         {/* Video output capture - sends frames to Syphon/Spout/NDI when active */}
         <VideoOutputCapture />
         <RendererContent
-          activeSceneId={activeSceneId}
-          nextSceneId={nextSceneId}
+          activeSlot={activeSlot}
+          nextSlot={nextSlot}
           paramStore={paramStore}
         />
       </Canvas>

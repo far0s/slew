@@ -1,6 +1,20 @@
-import { useState, useCallback, useMemo, useRef } from "react";
-import type { ParameterId } from "../scenes/sceneTypes";
-import { buildDefaultParameterMap, SCENE_REGISTRY } from "../scenes/sceneTypes";
+import { useState, useCallback, useRef } from "react";
+import type {
+  ParameterId,
+  SceneId,
+  SlotParameterId,
+  ParameterTemplateId,
+} from "../scenes/sceneTypes";
+import {
+  buildSlotDefaultParameters,
+  buildAllSlotsDefaultParameters,
+  copySlotParameters,
+  makeSlotParameterId,
+  parseSlotParameterId,
+  getSceneDescriptor,
+  LEGACY_PARAMETER_MAPPING,
+  buildLegacyMigrationMap,
+} from "../scenes/sceneTypes";
 
 /**
  * Backend parameter shape (from Rust Parameter Server).
@@ -20,6 +34,14 @@ export interface BackendParameter {
 }
 
 /**
+ * Slot configuration for parameter store initialization.
+ */
+export interface SlotConfig {
+  index: number;
+  sceneId: SceneId;
+}
+
+/**
  * State and actions for the parameter store.
  *
  * @property parameters - Map of parameter ID → target value (for UI sliders)
@@ -29,10 +51,15 @@ export interface BackendParameter {
  * @property set - Set a parameter value locally
  * @property setMany - Set multiple parameters at once
  * @property setInterpolated - Set an interpolated value (from backend tick loop)
- * @property resetToDefault - Reset a parameter to its default value
+ * @property initializeSlot - Initialize parameters for a new slot
+ * @property removeSlotParameters - Remove parameters for a slot (local only, keeps in backend)
+ * @property copySlotParametersTo - Copy parameters from one slot to another
+ * @property resetSlotToDefaults - Reset a slot's parameters to defaults
  * @property resetAllToDefaults - Reset all parameters to defaults
  * @property applyBackendParams - Apply backend parameters to local state
- * @property getDefault - Get the default value for a parameter
+ * @property migrateBackendParams - Migrate legacy parameters to new slot-based IDs
+ * @property getSlotParameter - Get a parameter value for a specific slot and template
+ * @property setSlotParameter - Set a parameter value for a specific slot and template
  * @property has - Check if a parameter exists in the store
  * @property entries - Get all parameter entries as an array
  * @property backendSnapshot - Backend parameters snapshot (for debug/inspector)
@@ -41,6 +68,8 @@ export interface BackendParameter {
  * @property setIsLoading - Set loading state
  * @property error - Error state
  * @property setError - Set error state
+ * @property currentSlots - Current slot configuration
+ * @property setCurrentSlots - Update slot configuration
  */
 export interface ParameterStoreState {
   parameters: Map<ParameterId, number>;
@@ -50,10 +79,33 @@ export interface ParameterStoreState {
   set: (id: ParameterId, value: number) => void;
   setMany: (updates: Array<[ParameterId, number]>) => void;
   setInterpolated: (id: ParameterId, value: number) => void;
-  resetToDefault: (id: ParameterId) => void;
-  resetAllToDefaults: () => void;
+  initializeSlot: (slotIndex: number, sceneId: SceneId) => void;
+  initializeSlotWithValues: (
+    slotIndex: number,
+    values: Map<SlotParameterId, number>,
+  ) => void;
+  removeSlotParameters: (slotIndex: number) => void;
+  copySlotParametersTo: (
+    sourceSlotIndex: number,
+    targetSlotIndex: number,
+    sceneId: SceneId,
+  ) => void;
+  resetSlotToDefaults: (slotIndex: number, sceneId: SceneId) => void;
+  resetAllToDefaults: (slots: SlotConfig[]) => void;
   applyBackendParams: (params: BackendParameter[]) => void;
-  getDefault: (id: ParameterId) => number;
+  migrateBackendParams: (
+    params: BackendParameter[],
+    slots: SlotConfig[],
+  ) => BackendParameter[];
+  getSlotParameter: (
+    slotIndex: number,
+    templateId: ParameterTemplateId,
+  ) => number;
+  setSlotParameter: (
+    slotIndex: number,
+    templateId: ParameterTemplateId,
+    value: number,
+  ) => void;
   has: (id: ParameterId) => boolean;
   entries: () => Array<[ParameterId, number]>;
   backendSnapshot: BackendParameter[] | null;
@@ -62,6 +114,8 @@ export interface ParameterStoreState {
   setIsLoading: (loading: boolean) => void;
   error: string | null;
   setError: (error: string | null) => void;
+  currentSlots: SlotConfig[];
+  setCurrentSlots: (slots: SlotConfig[]) => void;
 }
 
 /**
@@ -73,51 +127,100 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 /**
- * Get the min/max range for a parameter from the scene registry.
+ * Get the min/max range for a parameter.
+ * For slot parameters, we need to look up the template in the scene descriptor.
  */
 function getParameterRange(
   id: ParameterId,
+  slots: SlotConfig[],
 ): { min: number; max: number } | undefined {
-  for (const scene of SCENE_REGISTRY) {
-    const param = scene.parameters.find((p) => p.id === id);
-    if (param) {
-      return { min: param.min, max: param.max };
-    }
-  }
-  // Special case for crossfade
+  // Handle global crossfade parameter
   if (id === "crossfade") {
     return { min: 0, max: 1 };
   }
+
+  // Handle slot parameters
+  const parsed = parseSlotParameterId(id);
+  if (parsed) {
+    const slot = slots.find((s) => s.index === parsed.slotIndex);
+    if (slot) {
+      const scene = getSceneDescriptor(slot.sceneId);
+      if (scene) {
+        const template = scene.parameters.find(
+          (p) => p.templateId === parsed.templateId,
+        );
+        if (template) {
+          return { min: template.min, max: template.max };
+        }
+      }
+    }
+  }
+
   return undefined;
 }
 
 /**
- * Hook for centralized parameter state management.
+ * Get the default value for a parameter.
+ */
+function getParameterDefault(
+  id: ParameterId,
+  slots: SlotConfig[],
+): number | undefined {
+  // Handle global crossfade parameter
+  if (id === "crossfade") {
+    return 0;
+  }
+
+  // Handle slot parameters
+  const parsed = parseSlotParameterId(id);
+  if (parsed) {
+    const slot = slots.find((s) => s.index === parsed.slotIndex);
+    if (slot) {
+      const scene = getSceneDescriptor(slot.sceneId);
+      if (scene) {
+        const template = scene.parameters.find(
+          (p) => p.templateId === parsed.templateId,
+        );
+        if (template) {
+          return template.defaultValue;
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Hook for centralized parameter state management with multi-instance support.
  *
  * Uses a Map internally for efficient lookups and updates.
- * Replaces the old pattern of individual useState calls per parameter.
+ * Parameters are now slot-scoped (e.g., `slot_0_brightness`) instead of
+ * scene-scoped (e.g., `scene_a_brightness`).
  *
  * Features:
- * - Single source of truth for all parameter values
+ * - Dynamic slot-based parameter management
+ * - Slot parameter initialization and copying
+ * - Legacy parameter migration support
  * - Automatic clamping based on scene registry ranges
- * - Default values from scene descriptors
- * - Backend synchronization helpers
  * - Separate interpolated values for smooth preview rendering
  */
 export function useParameterStore(): ParameterStoreState {
-  // Initialize with defaults from scene registry
-  const defaultMap = useMemo(() => buildDefaultParameterMap(), []);
+  // Track current slot configuration
+  const [currentSlots, setCurrentSlots] = useState<SlotConfig[]>([]);
 
+  // Initialize with just the crossfade parameter
   const [parameters, setParameters] = useState<Map<ParameterId, number>>(
-    () => new Map(defaultMap),
+    () => new Map([["crossfade", 0]]),
   );
 
-  // Interpolated values for smooth preview rendering (matches Renderer behavior)
-  // Uses ref + state combo: ref for fast updates, state for triggering re-renders
-  const interpolatedRef = useRef<Map<ParameterId, number>>(new Map(defaultMap));
+  // Interpolated values for smooth preview rendering
+  const interpolatedRef = useRef<Map<ParameterId, number>>(
+    new Map([["crossfade", 0]]),
+  );
   const [interpolatedValues, setInterpolatedValues] = useState<
     Map<ParameterId, number>
-  >(() => new Map(defaultMap));
+  >(() => new Map([["crossfade", 0]]));
 
   const [backendSnapshot, setBackendSnapshot] = useState<
     BackendParameter[] | null
@@ -126,119 +229,300 @@ export function useParameterStore(): ParameterStoreState {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Get a parameter target value (for sliders)
+  // Get a parameter target value
   const get = useCallback(
     (id: ParameterId): number => {
-      return parameters.get(id) ?? defaultMap.get(id) ?? 0;
+      const value = parameters.get(id);
+      if (value !== undefined) return value;
+      return getParameterDefault(id, currentSlots) ?? 0;
     },
-    [parameters, defaultMap],
+    [parameters, currentSlots],
   );
 
   // Get interpolated value (for smooth preview rendering)
   const getInterpolated = useCallback(
     (id: ParameterId): number => {
-      return interpolatedValues.get(id) ?? defaultMap.get(id) ?? 0;
+      const value = interpolatedValues.get(id);
+      if (value !== undefined) return value;
+      return getParameterDefault(id, currentSlots) ?? 0;
     },
-    [interpolatedValues, defaultMap],
+    [interpolatedValues, currentSlots],
   );
 
   // Set a single parameter
-  const set = useCallback((id: ParameterId, value: number) => {
-    const range = getParameterRange(id);
-    const clampedValue = range ? clamp(value, range.min, range.max) : value;
+  const set = useCallback(
+    (id: ParameterId, value: number) => {
+      const range = getParameterRange(id, currentSlots);
+      const clampedValue = range ? clamp(value, range.min, range.max) : value;
 
-    setParameters((prev) => {
-      const next = new Map(prev);
-      next.set(id, clampedValue);
-      return next;
-    });
-  }, []);
+      setParameters((prev) => {
+        const next = new Map(prev);
+        next.set(id, clampedValue);
+        return next;
+      });
+    },
+    [currentSlots],
+  );
 
   // Set multiple parameters
-  const setMany = useCallback((updates: Array<[ParameterId, number]>) => {
+  const setMany = useCallback(
+    (updates: Array<[ParameterId, number]>) => {
+      setParameters((prev) => {
+        const next = new Map(prev);
+        for (const [id, value] of updates) {
+          const range = getParameterRange(id, currentSlots);
+          const clampedValue = range
+            ? clamp(value, range.min, range.max)
+            : value;
+          next.set(id, clampedValue);
+        }
+        return next;
+      });
+    },
+    [currentSlots],
+  );
+
+  // Set an interpolated value (from backend tick loop)
+  const setInterpolated = useCallback(
+    (id: ParameterId, value: number) => {
+      const range = getParameterRange(id, currentSlots);
+      const clampedValue = range ? clamp(value, range.min, range.max) : value;
+
+      interpolatedRef.current.set(id, clampedValue);
+
+      setInterpolatedValues((prev) => {
+        const next = new Map(prev);
+        next.set(id, clampedValue);
+        return next;
+      });
+    },
+    [currentSlots],
+  );
+
+  // Initialize parameters for a new slot with defaults
+  const initializeSlot = useCallback((slotIndex: number, sceneId: SceneId) => {
+    const defaults = buildSlotDefaultParameters(slotIndex, sceneId);
+
     setParameters((prev) => {
       const next = new Map(prev);
-      for (const [id, value] of updates) {
-        const range = getParameterRange(id);
-        const clampedValue = range ? clamp(value, range.min, range.max) : value;
-        next.set(id, clampedValue);
+      for (const [id, value] of defaults) {
+        next.set(id, value);
       }
       return next;
     });
-  }, []);
 
-  // Set an interpolated value (from backend tick loop for smooth animation)
-  const setInterpolated = useCallback((id: ParameterId, value: number) => {
-    const range = getParameterRange(id);
-    const clampedValue = range ? clamp(value, range.min, range.max) : value;
-
-    // Update ref immediately
-    interpolatedRef.current.set(id, clampedValue);
-
-    // Batch state updates for performance (React will dedupe rapid updates)
+    // Also update interpolated values
+    for (const [id, value] of defaults) {
+      interpolatedRef.current.set(id, value);
+    }
     setInterpolatedValues((prev) => {
       const next = new Map(prev);
-      next.set(id, clampedValue);
+      for (const [id, value] of defaults) {
+        next.set(id, value);
+      }
       return next;
     });
   }, []);
 
-  // Reset a parameter to default
-  const resetToDefault = useCallback(
-    (id: ParameterId) => {
-      const defaultValue = defaultMap.get(id);
-      if (defaultValue !== undefined) {
-        set(id, defaultValue);
+  // Initialize slot with specific values (from copy operation)
+  const initializeSlotWithValues = useCallback(
+    (_slotIndex: number, values: Map<SlotParameterId, number>) => {
+      setParameters((prev) => {
+        const next = new Map(prev);
+        for (const [id, value] of values) {
+          next.set(id, value);
+        }
+        return next;
+      });
+
+      // Also update interpolated values
+      for (const [id, value] of values) {
+        interpolatedRef.current.set(id, value);
       }
+      setInterpolatedValues((prev) => {
+        const next = new Map(prev);
+        for (const [id, value] of values) {
+          next.set(id, value);
+        }
+        return next;
+      });
     },
-    [defaultMap, set],
+    [],
+  );
+
+  // Remove slot parameters from local state (backend keeps them)
+  const removeSlotParameters = useCallback((slotIndex: number) => {
+    const prefix = `slot_${slotIndex}_`;
+
+    setParameters((prev) => {
+      const next = new Map(prev);
+      for (const key of prev.keys()) {
+        if (typeof key === "string" && key.startsWith(prefix)) {
+          next.delete(key);
+        }
+      }
+      return next;
+    });
+
+    // Also remove from interpolated values
+    setInterpolatedValues((prev) => {
+      const next = new Map(prev);
+      for (const key of prev.keys()) {
+        if (typeof key === "string" && key.startsWith(prefix)) {
+          next.delete(key);
+          interpolatedRef.current.delete(key);
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  // Copy parameters from one slot to another
+  const copySlotParametersTo = useCallback(
+    (sourceSlotIndex: number, targetSlotIndex: number, sceneId: SceneId) => {
+      const copied = copySlotParameters(
+        sourceSlotIndex,
+        targetSlotIndex,
+        sceneId,
+        (id) => parameters.get(id),
+      );
+
+      setParameters((prev) => {
+        const next = new Map(prev);
+        for (const [id, value] of copied) {
+          next.set(id, value);
+        }
+        return next;
+      });
+
+      // Also update interpolated values
+      for (const [id, value] of copied) {
+        interpolatedRef.current.set(id, value);
+      }
+      setInterpolatedValues((prev) => {
+        const next = new Map(prev);
+        for (const [id, value] of copied) {
+          next.set(id, value);
+        }
+        return next;
+      });
+    },
+    [parameters],
+  );
+
+  // Reset a slot's parameters to defaults
+  const resetSlotToDefaults = useCallback(
+    (slotIndex: number, sceneId: SceneId) => {
+      const defaults = buildSlotDefaultParameters(slotIndex, sceneId);
+
+      setParameters((prev) => {
+        const next = new Map(prev);
+        for (const [id, value] of defaults) {
+          next.set(id, value);
+        }
+        return next;
+      });
+
+      for (const [id, value] of defaults) {
+        interpolatedRef.current.set(id, value);
+      }
+      setInterpolatedValues((prev) => {
+        const next = new Map(prev);
+        for (const [id, value] of defaults) {
+          next.set(id, value);
+        }
+        return next;
+      });
+    },
+    [],
   );
 
   // Reset all to defaults
-  const resetAllToDefaults = useCallback(() => {
-    setParameters(new Map(defaultMap));
-    interpolatedRef.current = new Map(defaultMap);
-    setInterpolatedValues(new Map(defaultMap));
-  }, [defaultMap]);
+  const resetAllToDefaults = useCallback((slots: SlotConfig[]) => {
+    const defaults = buildAllSlotsDefaultParameters(slots);
 
-  // Apply backend parameters to local state
-  // Uses `target` (the intended value) rather than `value` (interpolated)
-  // because Controls should show what the user set, not intermediate states.
-  // This prevents the tick loop's interpolated values from "fighting" with
-  // user input from macropad encoders or sliders.
-  const applyBackendParams = useCallback((params: BackendParameter[]) => {
-    setParameters((prev) => {
-      const next = new Map(prev);
+    setParameters(new Map(defaults));
 
-      for (const param of params) {
-        const id = param.id as ParameterId;
-        const range = getParameterRange(id);
-        // Use target (intended value) not value (interpolated)
-        const targetValue = param.target;
-        const clampedValue = range
-          ? clamp(targetValue, range.min, range.max)
-          : targetValue;
-        next.set(id, clampedValue);
-      }
-
-      return next;
-    });
+    interpolatedRef.current = new Map(defaults);
+    setInterpolatedValues(new Map(defaults));
   }, []);
 
-  // Get default value
-  const getDefault = useCallback(
-    (id: ParameterId): number => {
-      return defaultMap.get(id) ?? 0;
+  // Migrate legacy backend parameters to new slot-based IDs
+  const migrateBackendParams = useCallback(
+    (params: BackendParameter[], slots: SlotConfig[]): BackendParameter[] => {
+      const migrationMap = buildLegacyMigrationMap(slots);
+      const migratedParams: BackendParameter[] = [];
+      const seenIds = new Set<string>();
+
+      for (const param of params) {
+        // Check if this is a legacy parameter that needs migration
+        if (LEGACY_PARAMETER_MAPPING[param.id]) {
+          const newId = migrationMap.get(param.id);
+          if (newId && !seenIds.has(newId)) {
+            migratedParams.push({
+              ...param,
+              id: newId,
+            });
+            seenIds.add(newId);
+          }
+        } else if (!seenIds.has(param.id)) {
+          // Keep non-legacy parameters as-is
+          migratedParams.push(param);
+          seenIds.add(param.id);
+        }
+      }
+
+      return migratedParams;
     },
-    [defaultMap],
+    [],
+  );
+
+  // Apply backend parameters to local state
+  const applyBackendParams = useCallback(
+    (params: BackendParameter[]) => {
+      setParameters((prev) => {
+        const next = new Map(prev);
+
+        for (const param of params) {
+          const id = param.id as ParameterId;
+          const range = getParameterRange(id, currentSlots);
+          const targetValue = param.target;
+          const clampedValue = range
+            ? clamp(targetValue, range.min, range.max)
+            : targetValue;
+          next.set(id, clampedValue);
+        }
+
+        return next;
+      });
+    },
+    [currentSlots],
+  );
+
+  // Get slot parameter value
+  const getSlotParameter = useCallback(
+    (slotIndex: number, templateId: ParameterTemplateId): number => {
+      const id = makeSlotParameterId(slotIndex, templateId);
+      return get(id);
+    },
+    [get],
+  );
+
+  // Set slot parameter value
+  const setSlotParameter = useCallback(
+    (slotIndex: number, templateId: ParameterTemplateId, value: number) => {
+      const id = makeSlotParameterId(slotIndex, templateId);
+      set(id, value);
+    },
+    [set],
   );
 
   // Check if parameter exists
   const has = useCallback(
     (id: ParameterId): boolean => {
-      return parameters.has(id) || defaultMap.has(id);
+      return parameters.has(id);
     },
-    [parameters, defaultMap],
+    [parameters],
   );
 
   // Get all entries
@@ -254,10 +538,16 @@ export function useParameterStore(): ParameterStoreState {
     set,
     setMany,
     setInterpolated,
-    resetToDefault,
+    initializeSlot,
+    initializeSlotWithValues,
+    removeSlotParameters,
+    copySlotParametersTo,
+    resetSlotToDefaults,
     resetAllToDefaults,
     applyBackendParams,
-    getDefault,
+    migrateBackendParams,
+    getSlotParameter,
+    setSlotParameter,
     has,
     entries,
     backendSnapshot,
@@ -266,88 +556,78 @@ export function useParameterStore(): ParameterStoreState {
     setIsLoading,
     error,
     setError,
+    currentSlots,
+    setCurrentSlots,
   };
 }
 
 /**
- * Helper to convert ParameterId to the camelCase key used in SceneProps.params.
- *
- * This bridges the gap between backend parameter IDs (snake_case) and
- * the renderer's expected prop names (camelCase).
+ * Map from template ID (snake_case) to props key (camelCase).
  */
-export function paramIdToPropsKey(
-  id: ParameterId,
-):
-  | keyof NonNullable<import("../scenes/sceneComponents").SceneProps["params"]>
-  | null {
-  const mapping: Record<string, string> = {
-    // Scene A
-    rotationSpeed: "rotationSpeed",
-    scene_a_brightness: "sceneABrightness",
-    scene_a_wobble: "sceneAWobble",
-    scene_a_tint: "sceneATint",
-    scene_a_tint_lfo_depth: "sceneATintLfoDepth",
-    // Scene B
-    scene_b_brightness: "sceneBBrightness",
-    scene_b_rotation_speed: "sceneBRotationSpeed",
-    scene_b_tint: "sceneBTint",
-    scene_b_scale: "sceneBScale",
-    // Scene C
-    scene_c_brightness: "sceneCBrightness",
-    scene_c_pulse_speed: "sceneCPulseSpeed",
-    scene_c_rotation_speed: "sceneCRotationSpeed",
-    scene_c_tint: "sceneCTint",
-  };
-
-  return (
-    (mapping[id] as keyof NonNullable<
-      import("../scenes/sceneComponents").SceneProps["params"]
-    >) ?? null
-  );
-}
+const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
+  brightness: "brightness",
+  rotation_speed: "rotationSpeed",
+  tint: "tint",
+  wobble: "wobble",
+  tint_lfo_depth: "tintLfoDepth",
+  scale: "scale",
+  pulse_speed: "pulseSpeed",
+};
 
 /**
- * Build scene params object from parameter store for a given scene.
+ * Build scene props object from parameter store for a slot.
  * Uses target values (for sliders/controls).
  */
-export function buildSceneParams(
-  sceneId: import("../scenes/sceneTypes").SceneId,
+export function buildSlotSceneParams(
+  slotIndex: number,
+  sceneId: SceneId,
   store: ParameterStoreState,
-): import("../scenes/sceneComponents").SceneProps["params"] {
-  const scene = SCENE_REGISTRY.find((s) => s.id === sceneId);
+): Record<string, number> {
+  const scene = getSceneDescriptor(sceneId);
   if (!scene) return {};
 
   const params: Record<string, number> = {};
 
-  for (const paramDesc of scene.parameters) {
-    const propsKey = paramIdToPropsKey(paramDesc.id);
+  for (const template of scene.parameters) {
+    const propsKey = TEMPLATE_ID_TO_PROPS_KEY[template.templateId];
     if (propsKey) {
-      params[propsKey] = store.get(paramDesc.id);
+      const paramId = makeSlotParameterId(slotIndex, template.templateId);
+      params[propsKey] = store.get(paramId);
     }
   }
 
-  return params as import("../scenes/sceneComponents").SceneProps["params"];
+  return params;
 }
 
 /**
- * Build scene params object using interpolated values for smooth preview rendering.
- * This matches the Renderer's behavior for accurate previews.
+ * Build scene props object using interpolated values for smooth preview rendering.
  */
-export function buildSceneParamsInterpolated(
-  sceneId: import("../scenes/sceneTypes").SceneId,
+export function buildSlotSceneParamsInterpolated(
+  slotIndex: number,
+  sceneId: SceneId,
   store: ParameterStoreState,
-): import("../scenes/sceneComponents").SceneProps["params"] {
-  const scene = SCENE_REGISTRY.find((s) => s.id === sceneId);
+): Record<string, number> {
+  const scene = getSceneDescriptor(sceneId);
   if (!scene) return {};
 
   const params: Record<string, number> = {};
 
-  for (const paramDesc of scene.parameters) {
-    const propsKey = paramIdToPropsKey(paramDesc.id);
+  for (const template of scene.parameters) {
+    const propsKey = TEMPLATE_ID_TO_PROPS_KEY[template.templateId];
     if (propsKey) {
-      params[propsKey] = store.getInterpolated(paramDesc.id);
+      const paramId = makeSlotParameterId(slotIndex, template.templateId);
+      params[propsKey] = store.getInterpolated(paramId);
     }
   }
 
-  return params as import("../scenes/sceneComponents").SceneProps["params"];
+  return params;
 }
+
+/**
+ * Legacy compatibility exports.
+ * These are deprecated but kept for backwards compatibility during migration.
+ */
+export {
+  buildSlotSceneParams as buildSceneParams,
+  buildSlotSceneParamsInterpolated as buildSceneParamsInterpolated,
+};

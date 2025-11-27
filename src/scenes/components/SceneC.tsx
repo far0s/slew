@@ -8,20 +8,20 @@ import type { SceneProps } from "../sceneComponents";
  *
  * A cool-toned cube with a pulsing scale and rotation.
  * Supports:
- * - sceneCBrightness: overall brightness/emissive intensity
- * - sceneCPulseSpeed: how fast the cube pulses in size
- * - sceneCRotationSpeed: how fast the cube rotates
- * - sceneCTint: shifts color from cyan (0) to lime (1)
+ * - brightness: overall brightness/emissive intensity
+ * - pulseSpeed: how fast the cube pulses in size
+ * - rotationSpeed: how fast the cube rotates
+ * - tint: shifts color from cyan (0) to lime (1)
  */
 export function SceneC({ opacity, params }: SceneProps) {
   const meshRef = React.useRef<THREE.Mesh | null>(null);
   const timeRef = React.useRef(0);
 
   // Extract params with defaults
-  const brightness = params?.sceneCBrightness ?? 1;
-  const pulseSpeed = params?.sceneCPulseSpeed ?? 1.5;
-  const rotationSpeed = params?.sceneCRotationSpeed ?? 0.4;
-  const tint = params?.sceneCTint ?? 0.5;
+  const brightness = params?.brightness ?? 1;
+  const pulseSpeed = params?.pulseSpeed ?? 1.5;
+  const rotationSpeed = params?.rotationSpeed ?? 0.4;
+  const tint = params?.tint ?? 0.5;
 
   // Interpolate between cyan (#22d3ee) and lime (#84cc16) based on tint
   const baseColor = React.useMemo(() => {

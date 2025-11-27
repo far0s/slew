@@ -4,12 +4,13 @@ import { listen } from "@tauri-apps/api/event";
 import { useSceneSlots } from "./scenes/useSceneSlots";
 import {
   useParameterStore,
-  buildSceneParams,
-  buildSceneParamsInterpolated,
+  buildSlotSceneParams,
+  buildSlotSceneParamsInterpolated,
   type BackendParameter,
+  type SlotConfig,
 } from "./controls/useParameterStore";
 import type { SceneId } from "./scenes/sceneTypes";
-import { getSceneDescriptor } from "./scenes/sceneTypes";
+import { getSceneDescriptor, makeSlotParameterId } from "./scenes/sceneTypes";
 import { ScenesArea, RendererPreview, DebugPanel } from "./components";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings } from "./inputs/audio";
@@ -27,6 +28,9 @@ function App() {
 
   // Parameter store (replaces individual useState calls)
   const paramStore = useParameterStore();
+
+  // Track whether initial migration/hydration has happened
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Audio mappings for parameter indicators
   const { mappings: audioMappings } = useAudioMappings();
@@ -53,13 +57,15 @@ function App() {
       sceneSlots.startCrossfade(targetSlotIndex);
 
       try {
-        // CRITICAL: Set scene pairing BEFORE changing crossfade value
-        // This ensures the Renderer knows which scenes to show before the fade starts
+        // CRITICAL: Set slot pairing BEFORE changing crossfade value
+        // This ensures the Renderer knows which slots to show before the fade starts
         const targetSceneId = sceneSlots.getSceneId(targetSlotIndex);
         const activeSceneId = sceneSlots.getSceneId(sceneSlots.activeIndex);
         if (targetSceneId && activeSceneId) {
-          await invoke("set_scene_pairing", {
+          await invoke("set_slot_pairing", {
+            activeSlotIndex: sceneSlots.activeIndex,
             activeSceneId,
+            nextSlotIndex: targetSlotIndex,
             nextSceneId: targetSceneId,
           });
         }
@@ -91,10 +97,14 @@ function App() {
     if (!sceneId) return [];
     const descriptor = getSceneDescriptor(sceneId);
     if (!descriptor) return [];
-    // Sort by orderHint (ascending)
-    return [...descriptor.parameters].sort(
-      (a, b) => (a.orderHint ?? 0) - (b.orderHint ?? 0),
-    );
+    // Sort by orderHint (ascending) and include slot index for parameter ID generation
+    return [...descriptor.parameters]
+      .sort((a, b) => (a.orderHint ?? 0) - (b.orderHint ?? 0))
+      .map((template) => ({
+        ...template,
+        slotIndex: targetIndex,
+        parameterId: makeSlotParameterId(targetIndex, template.templateId),
+      }));
   }, [macropadSelectedIndex, sceneSlots]);
 
   // Handle macropad slot selection
@@ -134,7 +144,7 @@ function App() {
       if (encoderIndex >= params.length) return;
 
       const param = params[encoderIndex];
-      const currentValue = paramStore.get(param.id);
+      const currentValue = paramStore.get(param.parameterId);
 
       // Use the larger of: sensitivity-based change OR one step
       // This ensures parameters with large step sizes (like rotationSpeed: 0.05)
@@ -156,15 +166,15 @@ function App() {
       if (stepped === currentValue) return;
 
       // Update local state immediately for responsive UI
-      paramStore.set(param.id, stepped);
+      paramStore.set(param.parameterId, stepped);
 
       // Send to backend so Renderer receives the update via parameter_changed event
       void invoke("set_parameter", {
-        id: param.id,
+        id: param.parameterId,
         value: stepped,
         app: undefined,
       }).catch((error) => {
-        console.error(`[Macropad] Failed to set ${param.id}:`, error);
+        console.error(`[Macropad] Failed to set ${param.parameterId}:`, error);
       });
     },
     [getTargetSceneParameters, paramStore],
@@ -186,9 +196,25 @@ function App() {
 
   // Handle slot scene change
   async function handleSlotSceneChange(slotIndex: number, sceneId: SceneId) {
-    sceneSlots.setSlotScene(slotIndex, sceneId);
+    // This will return parameters to initialize
+    const initParams = sceneSlots.setSlotScene(slotIndex, sceneId);
 
-    // Update backend if this affects the active/target pair
+    if (initParams) {
+      // Initialize the new parameters in the store
+      paramStore.initializeSlotWithValues(slotIndex, initParams.parameters);
+
+      // Also initialize in the backend
+      try {
+        await invoke("initialize_slot_parameters", {
+          slotIndex,
+          sceneId,
+        });
+      } catch (error) {
+        console.error("[Controls] Failed to initialize slot parameters", error);
+      }
+    }
+
+    // Update backend slot pairing if this affects the active/target pair
     try {
       const activeSceneId = sceneSlots.isActiveSlot(slotIndex)
         ? sceneId
@@ -201,39 +227,121 @@ function App() {
           : null;
 
       if (activeSceneId) {
-        await invoke("set_scene_pairing", {
+        await invoke("set_slot_pairing", {
+          activeSlotIndex: sceneSlots.activeIndex,
           activeSceneId,
+          nextSlotIndex:
+            sceneSlots.crossfadeTargetIndex ?? sceneSlots.activeIndex,
           nextSceneId: targetSceneId ?? activeSceneId,
         });
       }
     } catch (error) {
-      console.error("[Controls] Failed to update scene pairing", error);
+      console.error("[Controls] Failed to update slot pairing", error);
     }
   }
 
-  // Handle add slot
-  function handleAddSlot() {
-    sceneSlots.addSlot();
+  // Handle add slot with defaults
+  async function handleAddSlot(sceneId?: SceneId) {
+    const initParams = sceneSlots.addSlot(sceneId);
+    if (!initParams) return;
+
+    // Use the returned slotIndex (state hasn't updated yet)
+    const { slotIndex, sceneId: newSceneId, parameters } = initParams;
+
+    // Initialize parameters in the store
+    paramStore.initializeSlotWithValues(slotIndex, parameters);
+
+    // Initialize in the backend
+    try {
+      await invoke("initialize_slot_parameters", {
+        slotIndex,
+        sceneId: newSceneId,
+      });
+    } catch (error) {
+      console.error("[Controls] Failed to initialize slot parameters", error);
+    }
+  }
+
+  // Handle copy slot (add new slot with copied parameters)
+  async function handleCopySlot(sourceSlotIndex: number) {
+    const initParams = sceneSlots.addSlotWithCopy(sourceSlotIndex, (id) =>
+      paramStore.get(id),
+    );
+    if (!initParams) return;
+
+    // Use the returned slotIndex (state hasn't updated yet)
+    const { slotIndex, parameters } = initParams;
+
+    // Initialize parameters in the store with copied values
+    paramStore.initializeSlotWithValues(slotIndex, parameters);
+
+    // Send copied values to backend
+    try {
+      for (const [paramId, value] of parameters) {
+        await invoke("set_parameter", {
+          id: paramId,
+          value,
+          app: undefined,
+        });
+      }
+    } catch (error) {
+      console.error(
+        "[Controls] Failed to copy slot parameters to backend",
+        error,
+      );
+    }
   }
 
   // Handle remove slot
   function handleRemoveSlot(slotIndex: number) {
     sceneSlots.removeSlot(slotIndex);
+    // Note: We don't remove parameters from the backend (per user requirement)
+    // but we do remove them from the local store for cleanliness
+    paramStore.removeSlotParameters(slotIndex);
   }
 
-  // Refresh backend parameters
+  // Refresh backend parameters and migrate legacy IDs
   async function refreshBackendParameters() {
     paramStore.setIsLoading(true);
     paramStore.setError(null);
     try {
+      // Get all backend parameters
       const response = (await invoke("get_parameters")) as BackendParameter[];
-      paramStore.setBackendSnapshot(response);
-      paramStore.applyBackendParams(response);
+
+      // Build slot config for migration
+      const slotConfig: SlotConfig[] = sceneSlots.slots.map((slot) => ({
+        index: slot.index,
+        sceneId: slot.sceneId,
+      }));
+
+      // Update parameter store's slot configuration
+      paramStore.setCurrentSlots(slotConfig);
+
+      // Migrate legacy parameters if needed
+      const migratedParams = paramStore.migrateBackendParams(
+        response,
+        slotConfig,
+      );
+
+      // Also trigger backend migration
+      await invoke("migrate_parameters", {
+        slots: slotConfig.map((s) => ({ index: s.index, sceneId: s.sceneId })),
+      });
+
+      // Apply migrated parameters to store
+      paramStore.setBackendSnapshot(migratedParams);
+      paramStore.applyBackendParams(migratedParams);
+
+      // Initialize any missing slot parameters
+      for (const slot of sceneSlots.slots) {
+        paramStore.initializeSlot(slot.index, slot.sceneId);
+      }
     } catch (error) {
       paramStore.setError("Failed to load parameters from backend");
       console.error("[Controls] get_parameters failed", error);
     } finally {
       paramStore.setIsLoading(false);
+      setIsInitialized(true);
     }
   }
 
@@ -246,10 +354,9 @@ function App() {
 
       // Complete crossfade when we reach the target
       if (crossfade >= 0.99) {
-        // Capture the new active scene ID BEFORE completing (target becomes active)
-        const newActiveSceneId = sceneSlots.getSceneId(
-          sceneSlots.crossfadeTargetIndex,
-        );
+        // Capture the new active slot info BEFORE completing (target becomes active)
+        const newActiveSlotIndex = sceneSlots.crossfadeTargetIndex;
+        const newActiveSceneId = sceneSlots.getSceneId(newActiveSlotIndex);
 
         // Complete the crossfade in local state
         sceneSlots.completeCrossfade();
@@ -257,10 +364,12 @@ function App() {
         // Update Renderer and reset crossfade
         void (async () => {
           try {
-            // CRITICAL: Tell Renderer the new active scene BEFORE resetting crossfade
+            // CRITICAL: Tell Renderer the new active slot BEFORE resetting crossfade
             if (newActiveSceneId) {
-              await invoke("set_scene_pairing", {
+              await invoke("set_slot_pairing", {
+                activeSlotIndex: newActiveSlotIndex,
                 activeSceneId: newActiveSceneId,
+                nextSlotIndex: newActiveSlotIndex,
                 nextSceneId: newActiveSceneId,
               });
             }
@@ -279,20 +388,22 @@ function App() {
     }
   }, [paramStore.get("crossfade"), sceneSlots.crossfadeTargetIndex]);
 
-  // Sync initial scene pairing to Renderer on startup
+  // Sync initial slot pairing to Renderer on startup
   useEffect(() => {
+    if (!isInitialized) return;
+
     const activeSceneId = sceneSlots.getSceneId(sceneSlots.activeIndex);
     if (activeSceneId) {
-      void invoke("set_scene_pairing", {
+      void invoke("set_slot_pairing", {
+        activeSlotIndex: sceneSlots.activeIndex,
         activeSceneId,
+        nextSlotIndex: sceneSlots.activeIndex,
         nextSceneId: activeSceneId,
       }).catch((error) => {
-        console.error("[Controls] Failed to sync initial scene pairing", error);
+        console.error("[Controls] Failed to sync initial slot pairing", error);
       });
     }
-    // Only run once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isInitialized]);
 
   // Initial load and event subscription
   useEffect(() => {
@@ -308,10 +419,7 @@ function App() {
 
             // Always update interpolated values with the smooth backend value
             // This is what the Renderer uses, so previews will match
-            paramStore.setInterpolated(
-              updated.id as import("./scenes/sceneTypes").ParameterId,
-              updated.value,
-            );
+            paramStore.setInterpolated(updated.id, updated.value);
 
             // For crossfade, use interpolated value (smooth animation)
             // For other parameters, use target (immediate response to user input)
@@ -346,40 +454,47 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Get scene params for a scene ID (target values for sliders)
-  const getSceneParams = useCallback(
-    (sceneId: SceneId) => buildSceneParams(sceneId, paramStore),
+  // Update slot configuration when slots change
+  useEffect(() => {
+    const slotConfig: SlotConfig[] = sceneSlots.slots.map((slot) => ({
+      index: slot.index,
+      sceneId: slot.sceneId,
+    }));
+    paramStore.setCurrentSlots(slotConfig);
+  }, [sceneSlots.slots, paramStore.setCurrentSlots]);
+
+  // Get scene params for a slot (target values for sliders)
+  const getSlotSceneParams = useCallback(
+    (slotIndex: number, sceneId: SceneId) =>
+      buildSlotSceneParams(slotIndex, sceneId, paramStore),
     [paramStore],
   );
 
   // Get scene params with interpolated values (for smooth preview rendering)
-  const getSceneParamsInterpolated = useCallback(
-    (sceneId: SceneId) => buildSceneParamsInterpolated(sceneId, paramStore),
+  const getSlotSceneParamsInterpolated = useCallback(
+    (slotIndex: number, sceneId: SceneId) =>
+      buildSlotSceneParamsInterpolated(slotIndex, sceneId, paramStore),
     [paramStore],
   );
 
   // Get/set parameter value wrappers
   const getValue = useCallback(
-    (id: string) =>
-      paramStore.get(id as import("./scenes/sceneTypes").ParameterId),
+    (id: string) => paramStore.get(id),
     [paramStore],
   );
 
   const setValue = useCallback(
     (id: string, value: number) => {
-      paramStore.set(id as import("./scenes/sceneTypes").ParameterId, value);
+      paramStore.set(id, value);
     },
     [paramStore],
   );
 
-  // Get active and target scene IDs for preview
-  const activeSceneId =
-    sceneSlots.getSceneId(sceneSlots.activeIndex) ?? "sceneA";
-  const targetSceneId =
-    sceneSlots.crossfadeTargetIndex !== null
-      ? (sceneSlots.getSceneId(sceneSlots.crossfadeTargetIndex) ??
-        activeSceneId)
-      : activeSceneId;
+  // Get active and target slot info for preview
+  const activeSlotIndex = sceneSlots.activeIndex;
+  const activeSceneId = sceneSlots.getSceneId(activeSlotIndex) ?? "sceneA";
+  const targetSlotIndex = sceneSlots.crossfadeTargetIndex ?? activeSlotIndex;
+  const targetSceneId = sceneSlots.getSceneId(targetSlotIndex) ?? activeSceneId;
 
   return (
     <div className={styles.root}>
@@ -397,8 +512,8 @@ function App() {
             canRemoveSlot={sceneSlots.canRemoveSlot}
             getValue={getValue}
             setValue={setValue}
-            getSceneParams={getSceneParams}
-            getSceneParamsInterpolated={getSceneParamsInterpolated}
+            getSlotSceneParams={getSlotSceneParams}
+            getSlotSceneParamsInterpolated={getSlotSceneParamsInterpolated}
             audioMappings={audioMappings}
             modulationTargets={modulationTargets}
             lfos={lfos}
@@ -406,6 +521,7 @@ function App() {
             onCrossfade={handleCrossfade}
             onRemoveSlot={handleRemoveSlot}
             onAddSlot={handleAddSlot}
+            onCopySlot={handleCopySlot}
           />
         </div>
 
@@ -415,10 +531,16 @@ function App() {
             activeSceneId={activeSceneId}
             nextSceneId={targetSceneId}
             crossfade={paramStore.getInterpolated("crossfade")}
-            activeSceneParams={getSceneParamsInterpolated(activeSceneId)}
-            nextSceneParams={getSceneParamsInterpolated(targetSceneId)}
+            activeSceneParams={getSlotSceneParamsInterpolated(
+              activeSlotIndex,
+              activeSceneId,
+            )}
+            nextSceneParams={getSlotSceneParamsInterpolated(
+              targetSlotIndex,
+              targetSceneId,
+            )}
             sceneATintLfoDepth={paramStore.getInterpolated(
-              "scene_a_tint_lfo_depth",
+              makeSlotParameterId(activeSlotIndex, "tint_lfo_depth"),
             )}
             showStats={showStats}
           />

@@ -17,7 +17,7 @@ export interface RendererPreviewProps {
   activeSceneParams?: SceneProps["params"];
   /** Scene-specific parameters for the next scene */
   nextSceneParams?: SceneProps["params"];
-  /** Scene A tint LFO depth for modulation (only applies when active/next is sceneA) */
+  /** Tint LFO depth for modulation (applies to scenes with tintLfoDepth param) */
   sceneATintLfoDepth?: number;
   /** Show performance stats (toggled with "D" key) */
   showStats?: boolean;
@@ -78,17 +78,19 @@ function RendererPreviewContent({
 }: RendererPreviewContentProps) {
   const sceneWeights = mapCrossfadeToSceneWeights(crossfade);
 
-  // Track tint LFO phase for Scene A modulation
+  // Track tint LFO phase for tint modulation
   const [tintLfoPhase, setTintLfoPhase] = useState(0);
 
-  // Apply tint modulation if Scene A is active or next
+  // Apply tint modulation for scenes that have tintLfoDepth
   const getModulatedParams = (
     sceneId: SceneId,
     params?: SceneProps["params"],
   ): SceneProps["params"] => {
+    // Only apply tint modulation to sceneA (which has the tint LFO feature)
     if (sceneId !== "sceneA" || !params) return params;
 
-    const tintBase = (params as { sceneATint?: number }).sceneATint ?? 0.5;
+    // Use the generic 'tint' property name
+    const tintBase = params.tint ?? 0.5;
     const tintModulated = Math.max(
       0,
       Math.min(1, tintBase + Math.sin(tintLfoPhase) * sceneATintLfoDepth),
@@ -96,7 +98,7 @@ function RendererPreviewContent({
 
     return {
       ...params,
-      sceneATint: tintModulated,
+      tint: tintModulated,
     };
   };
 
@@ -150,7 +152,7 @@ function RendererPreviewContent({
  *
  * Features:
  * - Accurate crossfade blending matching the main renderer
- * - Scene A tint LFO modulation support
+ * - Tint LFO modulation support for Scene A
  * - Fixed 16:9 aspect ratio
  * - Optimized for performance with reduced DPR
  */

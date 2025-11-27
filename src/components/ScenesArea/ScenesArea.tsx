@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, useEffect } from "react";
-import { PlusIcon } from "@radix-ui/react-icons";
+import { PlusIcon, CopyIcon } from "@radix-ui/react-icons";
 import { motion, AnimatePresence } from "motion/react";
+
 import type { SceneId } from "../../scenes/sceneTypes";
 import type { SceneSlot } from "../../scenes/useSceneSlots";
 import type { SceneProps } from "../../scenes/sceneComponents";
@@ -22,15 +23,16 @@ import styles from "./ScenesArea.module.css";
  * @property canRemoveSlot - Whether we can remove slots
  * @property getValue - Get parameter value for a given parameter ID
  * @property setValue - Set parameter value
- * @property getSceneParams - Get scene params object for a scene ID (target values for sliders)
- * @property getSceneParamsInterpolated - Get scene params with interpolated values (for smooth previews)
+ * @property getSlotSceneParams - Get scene params object for a slot (target values for sliders)
+ * @property getSlotSceneParamsInterpolated - Get scene params with interpolated values (for smooth previews)
  * @property audioMappings - Optional audio mappings for parameter indicators
  * @property modulationTargets - Optional modulation targets for parameter indicators
  * @property lfos - Optional LFO sources (for modulation indicator labels)
  * @property onSlotSceneChange - Callback to change scene in a slot
  * @property onCrossfade - Callback to start crossfade to a slot
  * @property onRemoveSlot - Callback to remove a slot
- * @property onAddSlot - Callback to add a new slot
+ * @property onAddSlot - Callback to add a new slot with defaults
+ * @property onCopySlot - Callback to add a new slot by copying an existing slot
  */
 export interface ScenesAreaProps {
   slots: SceneSlot[];
@@ -43,15 +45,22 @@ export interface ScenesAreaProps {
   canRemoveSlot: boolean;
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
-  getSceneParams: (sceneId: SceneId) => SceneProps["params"];
-  getSceneParamsInterpolated?: (sceneId: SceneId) => SceneProps["params"];
+  getSlotSceneParams: (
+    slotIndex: number,
+    sceneId: SceneId,
+  ) => SceneProps["params"];
+  getSlotSceneParamsInterpolated?: (
+    slotIndex: number,
+    sceneId: SceneId,
+  ) => SceneProps["params"];
   audioMappings?: AudioMapping[];
   modulationTargets?: ModulationTarget[];
   lfos?: LfoSource[];
   onSlotSceneChange: (slotIndex: number, sceneId: SceneId) => void;
   onCrossfade: (slotIndex: number) => void;
   onRemoveSlot: (slotIndex: number) => void;
-  onAddSlot: () => void;
+  onAddSlot: (sceneId?: SceneId) => void;
+  onCopySlot: (sourceSlotIndex: number) => void;
 }
 
 /**
@@ -62,8 +71,9 @@ export interface ScenesAreaProps {
  *
  * Features:
  * - Horizontal scroll for 4+ scenes
- * - Add scene button when < maxSlots (same size as columns)
- * - Renders SceneColumn for each slot
+ * - Add scene dropdown with "New Scene" and "Copy Scene" options
+ * - Multi-instance support: same scene type can exist in multiple slots
+ * - Renders SceneColumn for each slot with slot-prefixed parameters
  * - AnimatePresence for enter/exit animations
  */
 export function ScenesArea({
@@ -77,8 +87,8 @@ export function ScenesArea({
   canRemoveSlot,
   getValue,
   setValue,
-  getSceneParams,
-  getSceneParamsInterpolated,
+  getSlotSceneParams,
+  getSlotSceneParamsInterpolated,
   audioMappings,
   modulationTargets,
   lfos,
@@ -86,10 +96,8 @@ export function ScenesArea({
   onCrossfade,
   onRemoveSlot,
   onAddSlot,
+  onCopySlot,
 }: ScenesAreaProps) {
-  // Get list of scene IDs in use (for exclusion in dropdowns)
-  const usedSceneIds = slots.map((s) => s.sceneId);
-
   // Calculate crossfade progress for a slot
   const getCrossfadeProgress = useCallback(
     (slotIndex: number): number => {
@@ -161,12 +169,13 @@ export function ScenesArea({
                   crossfadeProgress={getCrossfadeProgress(slot.index)}
                   isCrossfading={isCrossfading}
                   isMacropadSelected={slot.index === macropadSelectedIndex}
-                  excludeSceneIds={usedSceneIds.filter(
-                    (id) => id !== slot.sceneId,
-                  )}
+                  excludeSceneIds={[]}
                   canRemove={canRemoveSlot && slot.index !== activeIndex}
-                  params={getSceneParams(slot.sceneId)}
-                  previewParams={getSceneParamsInterpolated?.(slot.sceneId)}
+                  params={getSlotSceneParams(slot.index, slot.sceneId)}
+                  previewParams={getSlotSceneParamsInterpolated?.(
+                    slot.index,
+                    slot.sceneId,
+                  )}
                   getValue={getValue}
                   setValue={setValue}
                   audioMappings={audioMappings}
@@ -180,23 +189,61 @@ export function ScenesArea({
                 />
               ))}
 
-              {/* Add Scene button - same size as columns */}
+              {/* Add Scene panel - inline options, no dropdown */}
               {canAddSlot && (
-                <motion.button
-                  key="add-scene-button"
-                  type="button"
-                  className={styles.addButton}
-                  onClick={onAddSlot}
-                  aria-label="Add scene slot"
+                <motion.div
+                  key="add-scene-panel"
+                  className={styles.addPanel}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2, ease: "easeOut" }}
-                  layout
                 >
-                  <PlusIcon className={styles.addIcon} />
-                  <span className={styles.addLabel}>Add Scene</span>
-                </motion.button>
+                  <div className={styles.addPanelHeader}>
+                    <PlusIcon className={styles.addPanelIcon} />
+                    <span className={styles.addPanelTitle}>Add Scene</span>
+                  </div>
+
+                  <div className={styles.addPanelOptions}>
+                    <button
+                      type="button"
+                      className={styles.addOptionButton}
+                      onClick={() => void onAddSlot()}
+                    >
+                      <PlusIcon className={styles.addOptionIcon} />
+                      <span>New Scene</span>
+                    </button>
+
+                    {slots.length > 0 && (
+                      <>
+                        <div className={styles.addPanelDivider} />
+                        <span className={styles.addPanelLabel}>
+                          Copy from slot
+                        </span>
+                        {slots.map((slot) => (
+                          <button
+                            key={`copy-${slot.index}`}
+                            type="button"
+                            className={styles.addOptionButton}
+                            onClick={() => void onCopySlot(slot.index)}
+                          >
+                            <CopyIcon className={styles.addOptionIcon} />
+                            <span>Slot {slot.index + 1}</span>
+                            <span className={styles.addOptionHint}>
+                              {slot.sceneId === "sceneA"
+                                ? "Scene A"
+                                : slot.sceneId === "sceneB"
+                                  ? "Scene B"
+                                  : slot.sceneId === "sceneC"
+                                    ? "Scene C"
+                                    : slot.sceneId}
+                            </span>
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>

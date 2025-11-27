@@ -7,19 +7,19 @@ import type { SceneProps } from "../sceneComponents";
  * Scene B — orange cube used as the default "next" scene in crossfades.
  *
  * Parameters consumed from `params`:
- * - `sceneBBrightness` — overall brightness/emissive intensity
- * - `sceneBRotationSpeed` — how fast the cube rotates
- * - `sceneBTint` — shifts color between red (0) and yellow (1)
- * - `sceneBScale` — size multiplier for the cube
+ * - `brightness` — overall brightness/emissive intensity
+ * - `rotationSpeed` — how fast the cube rotates
+ * - `tint` — shifts color between red (0) and yellow (1)
+ * - `scale` — size multiplier for the cube
  */
 export function SceneB({ opacity, params }: SceneProps) {
   const meshRef = React.useRef<THREE.Mesh | null>(null);
 
   // Extract params with defaults
-  const brightness = params?.sceneBBrightness ?? 1;
-  const rotationSpeed = params?.sceneBRotationSpeed ?? 0.4;
-  const tint = params?.sceneBTint ?? 0.5;
-  const scale = params?.sceneBScale ?? 1;
+  const brightness = params?.brightness ?? 1;
+  const rotationSpeed = params?.rotationSpeed ?? 0.4;
+  const tint = params?.tint ?? 0.5;
+  const scale = params?.scale ?? 1;
 
   // Compute color based on tint: 0 = red-orange, 0.5 = orange, 1 = yellow-orange
   const baseColor = React.useMemo(() => {

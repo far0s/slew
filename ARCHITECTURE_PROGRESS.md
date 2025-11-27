@@ -19,7 +19,7 @@ For detailed design, see `ARCHITECTURE.md`.
 | ----------------- | ------ | ------------------------------------------------------------- |
 | Tauri + React app | ✅     | Dual-window (Renderer + Controls)                             |
 | Parameter Server  | ✅     | Rust backend with ~60Hz transitions                           |
-| Scene System      | ✅     | Slot-based (1-6), auto-generated controls                     |
+| Scene System      | ✅     | Slot-based (1-6), multi-instance, auto-generated controls     |
 | Crossfade         | ✅     | Smooth blending with correct scene pairing                    |
 | MIDI Input        | ✅     | Device enumeration, Learn workflow, per-slider integration    |
 | OSC Input         | ✅     | UDP server (port 9000), default mappings                      |
@@ -41,6 +41,13 @@ For detailed design, see `ARCHITECTURE.md`.
 
 Both windows share the same frontend bundle; `src/main.tsx` dispatches based on path.
 
+### Recent Changes (Multi-Instance Scenes)
+
+- Refactored scene system from scene-type keyed parameters to slot-prefixed parameters
+- Implemented "Add Scene" inline panel with direct options (New Scene / Copy from Slot)
+- Added parameter migration for legacy `parameters.json` entries
+- Fixed Add Scene button sizing and dropdown positioning issues
+
 ### Parameter Server (Rust)
 
 - `Parameter` struct: `id`, `value`, `target`, `transition_speed`, `curve`
@@ -50,10 +57,14 @@ Both windows share the same frontend bundle; `src/main.tsx` dispatches based on 
 
 ### Scene System
 
-- **Scene Descriptors** (`src/scenes/sceneTypes.ts`): Single source of truth for parameters
+- **Scene Descriptors** (`src/scenes/sceneTypes.ts`): Template-based parameter definitions
 - **Slot-based UI**: 1-6 numbered slots, add/remove dynamically
+- **Multi-instance support**: Same scene type can exist in multiple slots with independent parameters
+- **Slot-prefixed parameters**: IDs use format `slot_{index}_{templateId}` (e.g., `slot_0_brightness`)
 - **Auto-generated controls**: `SceneParameterControls` reads from descriptors
-- **Parameter store**: `useParameterStore` hook with Map-based state
+- **Parameter store**: `useParameterStore` hook with dynamic slot-based state
+- **Add Scene panel**: Inline options panel showing "New Scene" (defaults) and "Copy from Slot" buttons directly
+- **Renderer slot awareness**: Renders by slot index, listens for `slot_pairing_changed` events
 
 ### Input Layer
 
@@ -171,9 +182,11 @@ All inputs follow the same pattern:
 | `src-tauri/src/hid.rs`                | HID device management (macropads)                  |
 | `src-tauri/src/video_out.rs`          | Video output backends (Syphon, Spout, NDI)         |
 | `src-tauri/src/syphon.rs`             | Native Syphon bindings (macOS only)                |
-| `src/scenes/sceneTypes.ts`            | Scene/parameter descriptors (source of truth)      |
+| `src/scenes/sceneTypes.ts`            | Scene/parameter templates, slot ID generation      |
 | `src/controls/useParameterStore.ts`   | Map-based parameter state                          |
 | `src/renderer/VideoOutputCapture.tsx` | Frame capture component (inside r3f Canvas)        |
+| `src/scenes/useSceneSlots.ts`         | Slot management hook with multi-instance support   |
+| `src/scenes/sceneComponents.ts`       | Scene component registry and generic SceneProps    |
 
 ---
 
@@ -181,11 +194,14 @@ All inputs follow the same pattern:
 
 1. **Rendering**: WebGL via Three.js/r3f (WebGPU planned for future)
 2. **State**: Backend Parameter Server is canonical source
-3. **Messaging**: Event-based (`parameter_changed`, `*_changed` events)
+3. **Messaging**: Event-based (`parameter_changed`, `slot_pairing_changed` events)
 4. **Platforms**: macOS-first, cross-platform via chosen Rust crates
 5. **Tick source**: Backend ~60Hz timer (independent of renderer FPS)
 6. **Modulation**: Backend-driven for deterministic behavior
 7. **Video Output**: NDI enabled by default (requires SDK)
+8. **Multi-instance**: Slot-prefixed parameter IDs (`slot_0_brightness` format)
+9. **Parameter persistence**: Backend keeps parameters when slots are removed (for re-use)
+10. **Legacy migration**: Old scene-prefixed parameters auto-migrated to slot format
 
 ---
 
@@ -195,13 +211,14 @@ All inputs follow the same pattern:
 
 1. **Scene System Expansion**
    - Add more scenes with different visual styles
-   - Scene library/browser UI
+   - Scene library/browser UI (scene type selector in Add Scene panel)
    - Scene presets (save parameter values per scene)
 
 2. **UX Polish**
-   - MIDI/OSC binding indicators on sliders
+   - MIDI/OSC "follow active slot" mapping mode (knobs control active slot's parameters)
    - Mapping import/export (JSON)
    - Better device hot-plug handling
+   - Auto-scroll to newly added slot
 
 3. **Video Output Optimization**
    - 1080p@60fps performance (zero-copy IOSurface, binary IPC)
@@ -209,7 +226,6 @@ All inputs follow the same pattern:
 
 ### Future Phases
 
-- **Multi-Instance Scenes**: Allow same scene in multiple slots with independent parameters
 - **Presets & Projects**: Save/load parameter snapshots, scene selections, mappings
 - **Multi-display**: Multiple renderer windows
 - **Recording**: GPU-based capture or frame export

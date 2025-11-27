@@ -13,6 +13,10 @@ import { SceneC } from "./components/SceneC";
  *
  * This keeps the renderer ↔ scene contract narrow and forward-compatible:
  * new parameters can be added to `params` without breaking existing scenes.
+ *
+ * With multi-instance support, parameters are now generic (e.g., `brightness`)
+ * rather than scene-prefixed (e.g., `sceneABrightness`). Each slot gets its
+ * own independent parameters.
  */
 export interface SceneProps {
   /**
@@ -22,35 +26,31 @@ export interface SceneProps {
    * - 1 → fully visible
    *
    * The renderer is responsible for mapping the global `crossfade`
-   * parameter into per-scene `opacity` values via `useSceneManager`.
+   * parameter into per-scene `opacity` values.
    */
   opacity: number;
 
   /**
    * Optional bag of additional parameters.
    *
-   * Keys here are intentionally aligned with the renderer's local
-   * `RendererParameters` shape, not the backend IDs. The renderer
-   * is responsible for mapping backend IDs → these props.
+   * These are generic parameter names that apply to all scenes.
+   * Each scene uses whichever parameters are relevant to it.
    */
   params?: Partial<{
-    // Scene A params
+    // Common parameters (used by multiple scenes)
+    brightness: number;
     rotationSpeed: number;
-    sceneABrightness: number;
-    sceneAWobble: number;
-    sceneATint: number;
+    tint: number;
 
-    // Scene B params
-    sceneBBrightness: number;
-    sceneBRotationSpeed: number;
-    sceneBTint: number;
-    sceneBScale: number;
+    // Scene A specific
+    wobble: number;
+    tintLfoDepth: number;
 
-    // Scene C params
-    sceneCBrightness: number;
-    sceneCPulseSpeed: number;
-    sceneCRotationSpeed: number;
-    sceneCTint: number;
+    // Scene B specific
+    scale: number;
+
+    // Scene C specific
+    pulseSpeed: number;
   }>;
 }
 
@@ -66,7 +66,7 @@ export type SceneComponent = ComponentType<SceneProps>;
  *
  * This file defines the mapping used by the renderer (and any future
  * Scene Manager) to look up a concrete React component for a given
- * SceneId. For now, all known scenes are registered here.
+ * SceneId.
  */
 export const SCENE_COMPONENT_REGISTRY: Partial<
   Record<SceneId, SceneComponent>

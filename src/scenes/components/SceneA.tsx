@@ -8,20 +8,21 @@ import type { SceneProps } from "../sceneComponents";
  *
  * Props:
  * - opacity: 0..1, used for crossfade
+ * - params.brightness: 0..2, scales emissive intensity
  * - params.rotationSpeed: radians/sec for base rotation
- * - params.sceneABrightness: 0..2, scales emissive intensity
- * - params.sceneAWobble: 0..1, controls wobble amplitude
- * - params.sceneATint: 0..1, blends base blue → cyan for color/emissive
+ * - params.wobble: 0..1, controls wobble amplitude
+ * - params.tint: 0..1, blends base blue → cyan for color/emissive
+ * - params.tintLfoDepth: 0..1, LFO modulation depth for tint
  */
 export function SceneA({ opacity, params }: SceneProps) {
   const meshRef = React.useRef<THREE.Mesh | null>(null);
   const timeRef = React.useRef(0);
 
   // Derive per-scene values from the optional params bag, with sensible defaults.
+  const brightness = params?.brightness ?? 1;
   const rotationSpeed = params?.rotationSpeed ?? 0.6;
-  const brightness = params?.sceneABrightness ?? 1;
-  const wobble = params?.sceneAWobble ?? 0;
-  const tint = params?.sceneATint ?? 0;
+  const wobble = params?.wobble ?? 0;
+  const tint = params?.tint ?? 0;
 
   useFrame((_, delta) => {
     if (!meshRef.current) return;

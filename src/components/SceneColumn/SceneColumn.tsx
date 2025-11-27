@@ -249,6 +249,7 @@ export function SceneColumn({
       {/* Parameter Controls */}
       <div className={styles.controls}>
         <SceneParameterControls
+          slotIndex={slotIndex}
           sceneId={sceneId}
           getValue={getValue}
           setValue={setValue}
