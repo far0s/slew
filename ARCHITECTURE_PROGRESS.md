@@ -20,6 +20,7 @@ For detailed design, see `ARCHITECTURE.md`.
 | Tauri + React app  | ✅     | Dual-window (Renderer + Controls)                             |
 | Parameter Server   | ✅     | Rust backend with ~60Hz transitions                           |
 | Sketch/Slot System | ✅     | Slot-based (1-6), multi-instance, auto-generated controls     |
+| Sketch Browser UI  | ✅     | Scrollable list with descriptions, parameters, click-to-add   |
 | Crossfade          | ✅     | Smooth blending with correct scene pairing                    |
 | MIDI Input         | ✅     | Hot-plug detection, auto-reconnect, Learn workflow            |
 | OSC Input          | ✅     | UDP server (port 9000), default mappings                      |
@@ -69,7 +70,7 @@ Both windows share the same frontend bundle; `src/main.tsx` dispatches based on 
 - **Slot-prefixed parameters**: IDs use format `slot_{index}_{templateId}` (e.g., `slot_0_brightness`)
 - **Auto-generated controls**: `SceneParameterControls` reads from sketch descriptors
 - **Parameter store**: `useParameterStore` hook with dynamic slot-based state
-- **Add Slot panel**: Inline options showing "New Slot" (defaults) and "Copy from Slot" buttons
+- **Sketch Browser**: Scrollable list of sketches with descriptions, parameter lists, and copy-from-slot
 - **Renderer slot awareness**: Renders by slot index, listens for `slot_pairing_changed` events
 
 ### Input Layer
@@ -208,21 +209,22 @@ All input systems now support automatic device detection:
 
 ## 6. Key Files
 
-| File                                  | Purpose                                            |
-| ------------------------------------- | -------------------------------------------------- |
-| `src-tauri/src/lib.rs`                | Parameter Server, tick loop, command registration  |
-| `src-tauri/src/audio.rs`              | Audio capture, FFT, beat detection, audio mappings |
-| `src-tauri/src/modulation.rs`         | LFO engine, modulation matrix                      |
-| `src-tauri/src/midi.rs`               | MIDI device management and mappings                |
-| `src-tauri/src/osc.rs`                | OSC server and mappings                            |
-| `src-tauri/src/hid.rs`                | HID device management (macropads)                  |
-| `src-tauri/src/video_out.rs`          | Video output backends (Syphon, Spout, NDI)         |
-| `src-tauri/src/syphon.rs`             | Native Syphon bindings (macOS only)                |
-| `src/sketches/`                       | Self-contained sketch modules (BlueCube, etc.)     |
-| `src/scenes/sceneTypes.ts`            | Parameter utilities, slot ID generation            |
-| `src/scenes/useSceneSlots.ts`         | Slot management hook with multi-instance support   |
-| `src/controls/useParameterStore.ts`   | Map-based parameter state                          |
-| `src/renderer/VideoOutputCapture.tsx` | Frame capture component (inside r3f Canvas)        |
+| File                                  | Purpose                                             |
+| ------------------------------------- | --------------------------------------------------- |
+| `src-tauri/src/lib.rs`                | Parameter Server, tick loop, command registration   |
+| `src-tauri/src/audio.rs`              | Audio capture, FFT, beat detection, audio mappings  |
+| `src-tauri/src/modulation.rs`         | LFO engine, modulation matrix                       |
+| `src-tauri/src/midi.rs`               | MIDI device management and mappings                 |
+| `src-tauri/src/osc.rs`                | OSC server and mappings                             |
+| `src-tauri/src/hid.rs`                | HID device management (macropads)                   |
+| `src-tauri/src/video_out.rs`          | Video output backends (Syphon, Spout, NDI)          |
+| `src-tauri/src/syphon.rs`             | Native Syphon bindings (macOS only)                 |
+| `src/sketches/`                       | Self-contained sketch modules (BlueCube, etc.)      |
+| `src/scenes/sceneTypes.ts`            | Parameter utilities, slot ID generation             |
+| `src/scenes/useSceneSlots.ts`         | Slot management hook with multi-instance support    |
+| `src/controls/useParameterStore.ts`   | Map-based parameter state                           |
+| `src/renderer/VideoOutputCapture.tsx` | Frame capture component (inside r3f Canvas)         |
+| `src/components/SketchBrowser/`       | Sketch picker with descriptions and parameter lists |
 
 ---
 
@@ -245,16 +247,7 @@ All input systems now support automatic device detection:
 
 ### Suggested Next Steps
 
-#### 1. Sketch Browser UI (High Priority)
-
-Add a sketch type selector in the Add Slot panel:
-
-- Grid/list view of available sketches with thumbnails
-- Preview on hover (optional)
-- Filter/search by name or tags
-- Shows sketch description from descriptor
-
-#### 2. Sketch Presets
+#### 1. Sketch Presets
 
 Save/load parameter values per sketch:
 
@@ -263,7 +256,7 @@ Save/load parameter values per sketch:
 - Persist to JSON files (`presets/{sketchId}/{presetName}.json`)
 - Default preset per sketch type
 
-#### 3. More Shader Sketches
+#### 2. More Shader Sketches
 
 Expand the visual library with new procedural sketches:
 
@@ -272,7 +265,7 @@ Expand the visual library with new procedural sketches:
 - **Kaleidoscope**: Mirror/reflection patterns
 - **Waveform**: Audio-reactive visualization
 
-#### 4. MIDI/OSC "Follow Active Slot" Mode
+#### 3. MIDI/OSC "Follow Active Slot" Mode
 
 Simplify live control:
 
@@ -280,7 +273,7 @@ Simplify live control:
 - Auto-remap when slot changes
 - Visual indicator in UI when mode is active
 
-#### 5. Video Output Optimization
+#### 4. Video Output Optimization
 
 Improve 1080p@60fps performance:
 
@@ -289,7 +282,7 @@ Improve 1080p@60fps performance:
 - PBOs for async GPU readback
 - Spout implementation for Windows
 
-#### 6. Presets & Projects
+#### 5. Presets & Projects
 
 Full session management:
 

@@ -1,13 +1,12 @@
 import { useCallback, useRef, useState, useEffect } from "react";
-import { PlusIcon, CopyIcon } from "@radix-ui/react-icons";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence } from "motion/react";
 
 import type { SketchId, SketchProps } from "../../sketches";
-import { getSketchDescriptor } from "../../sketches";
 import type { Slot } from "../../scenes/useSceneSlots";
 import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import { SceneColumn } from "../SceneColumn";
+import { SketchBrowser } from "../SketchBrowser";
 import styles from "./ScenesArea.module.css";
 
 /**
@@ -189,60 +188,14 @@ export function ScenesArea({
                 />
               ))}
 
-              {/* Add Slot panel - inline options, no dropdown */}
+              {/* Sketch Browser panel */}
               {canAddSlot && (
-                <motion.div
-                  key="add-slot-panel"
-                  className={styles.addPanel}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                >
-                  <div className={styles.addPanelHeader}>
-                    <PlusIcon className={styles.addPanelIcon} />
-                    <span className={styles.addPanelTitle}>Add Slot</span>
-                  </div>
-
-                  <div className={styles.addPanelOptions}>
-                    <button
-                      type="button"
-                      className={styles.addOptionButton}
-                      onClick={() => void onAddSlot()}
-                    >
-                      <PlusIcon className={styles.addOptionIcon} />
-                      <span>New Slot</span>
-                    </button>
-
-                    {slots.length > 0 && (
-                      <>
-                        <div className={styles.addPanelDivider} />
-                        <span className={styles.addPanelLabel}>
-                          Copy from slot
-                        </span>
-                        {slots.map((slot) => {
-                          const sketchLabel =
-                            getSketchDescriptor(slot.sketchId)?.shortLabel ??
-                            slot.sketchId;
-                          return (
-                            <button
-                              key={`copy-${slot.index}`}
-                              type="button"
-                              className={styles.addOptionButton}
-                              onClick={() => void onCopySlot(slot.index)}
-                            >
-                              <CopyIcon className={styles.addOptionIcon} />
-                              <span>Slot {slot.index + 1}</span>
-                              <span className={styles.addOptionHint}>
-                                {sketchLabel}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </>
-                    )}
-                  </div>
-                </motion.div>
+                <SketchBrowser
+                  key="sketch-browser"
+                  slots={slots}
+                  onSelectSketch={onAddSlot}
+                  onCopySlot={onCopySlot}
+                />
               )}
             </AnimatePresence>
           </div>
