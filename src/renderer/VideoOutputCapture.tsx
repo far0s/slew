@@ -70,7 +70,7 @@ const MIN_SCALE = 0.25;
  */
 function uint8ArrayToBase64(bytes: Uint8Array): Promise<string> {
   return new Promise((resolve, reject) => {
-    const blob = new Blob([bytes], { type: "application/octet-stream" });
+    const blob = new Blob([bytes as any], { type: "application/octet-stream" });
     const reader = new FileReader();
     reader.onloadend = () => {
       const dataUrl = reader.result as string;
