@@ -1,8 +1,44 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* Global tweaks specific to sebcat-vj Controls window */
+/* ==========================================================================
+   Theme Configuration (migrated from tailwind.config.cjs)
+   ========================================================================== */
+
+@theme {
+  /* Colors */
+  --color-background: #05060a;
+  --color-background-elevated: #0b0c12;
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-accent: #38bdf8;
+  --color-accent-muted: #0f172a;
+  --color-accent-soft: #1e293b;
+
+  /* Font Families */
+  --font-sans:
+    system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    Roboto, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  /* Box Shadows */
+  --shadow-subtle:
+    0 1px 0 0 rgba(15, 23, 42, 0.9), 0 0 0 1px rgba(15, 23, 42, 1);
+  --shadow-subtle-elevated:
+    0 8px 24px rgba(15, 23, 42, 0.65), 0 0 0 1px rgba(15, 23, 42, 1);
+
+  /* Custom Spacing */
+  --spacing-4_5: 1.125rem;
+}
+
+/* ==========================================================================
+   Global tweaks specific to sebcat-vj Controls window
+   ========================================================================== */
 
 /* Ensure the root fills the viewport and uses the shared font stack.
    Note: reset.css already normalizes most elements; Tailwind builds on top. */
@@ -14,7 +50,11 @@
 /* Body baseline for both windows; the Controls shell will refine this via CSS Modules. */
 body {
   @apply bg-black text-neutral-100 antialiased;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
     sans-serif;
 }
 
