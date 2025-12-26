@@ -71,6 +71,15 @@ function App() {
           });
         }
 
+        // Ensure target slot alpha is 1 so it fades in fully
+        const targetAlphaId = makeSlotParameterId(targetSlotIndex, "alpha");
+        await invoke("set_parameter", {
+          id: targetAlphaId,
+          value: 1,
+          app: undefined,
+        });
+        paramStore.set(targetAlphaId, 1);
+
         // Now set crossfade target to 1 (will transition from active to target)
         await invoke("set_parameter", {
           id: "crossfade",
@@ -86,7 +95,7 @@ function App() {
         sceneSlots.cancelCrossfade();
       }
     },
-    [sceneSlots],
+    [sceneSlots, paramStore],
   );
 
   // Get parameters for the target scene (macropad-selected or active slot)
@@ -344,7 +353,8 @@ function App() {
 
       // Complete crossfade when we reach the target
       if (crossfade >= 0.99) {
-        // Capture the new active slot info BEFORE completing (target becomes active)
+        // Capture slot info BEFORE completing
+        const oldActiveSlotIndex = sceneSlots.activeIndex;
         const newActiveSlotIndex = sceneSlots.crossfadeTargetIndex;
         const newActiveSketchId = sceneSlots.getSketchId(newActiveSlotIndex);
 
@@ -364,6 +374,24 @@ function App() {
               });
             }
 
+            // Set old active slot alpha to 0 (it faded out)
+            const oldAlphaId = makeSlotParameterId(oldActiveSlotIndex, "alpha");
+            await invoke("set_parameter", {
+              id: oldAlphaId,
+              value: 0,
+              app: undefined,
+            });
+            paramStore.set(oldAlphaId, 0);
+
+            // Ensure new active slot alpha is 1 (it faded in)
+            const newAlphaId = makeSlotParameterId(newActiveSlotIndex, "alpha");
+            await invoke("set_parameter", {
+              id: newAlphaId,
+              value: 1,
+              app: undefined,
+            });
+            paramStore.set(newAlphaId, 1);
+
             // Now reset crossfade to 0 for next transition
             await invoke("set_parameter", {
               id: "crossfade",
@@ -376,7 +404,12 @@ function App() {
         })();
       }
     }
-  }, [paramStore.get("crossfade"), sceneSlots.crossfadeTargetIndex]);
+  }, [
+    paramStore.get("crossfade"),
+    sceneSlots.crossfadeTargetIndex,
+    sceneSlots.activeIndex,
+    paramStore,
+  ]);
 
   // Sync initial slot pairing to Renderer on startup
   useEffect(() => {
@@ -394,6 +427,29 @@ function App() {
       });
     }
   }, [isInitialized]);
+
+  // Sync all slots to Renderer for multi-layer alpha rendering
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const slots = sceneSlots.slots.map((slot) => ({
+      index: slot.index,
+      sketch_id: slot.sketchId,
+    }));
+
+    void invoke("set_all_slots", {
+      slots,
+      activeSlotIndex: sceneSlots.activeIndex,
+      crossfadeTargetIndex: sceneSlots.crossfadeTargetIndex,
+    }).catch((error) => {
+      console.error("[Controls] Failed to sync all slots to renderer", error);
+    });
+  }, [
+    isInitialized,
+    sceneSlots.slots,
+    sceneSlots.activeIndex,
+    sceneSlots.crossfadeTargetIndex,
+  ]);
 
   // Initial load and event subscription
   useEffect(() => {
@@ -480,12 +536,8 @@ function App() {
     [paramStore],
   );
 
-  // Get active and target slot info for preview
+  // Get active slot info for preview
   const activeSlotIndex = sceneSlots.activeIndex;
-  const activeSketchId = sceneSlots.getSketchId(activeSlotIndex) ?? "blueCube";
-  const targetSlotIndex = sceneSlots.crossfadeTargetIndex ?? activeSlotIndex;
-  const targetSketchId =
-    sceneSlots.getSketchId(targetSlotIndex) ?? activeSketchId;
 
   return (
     <div className={styles.root}>
@@ -519,20 +571,13 @@ function App() {
         {/* Sidebar (1/5 width) */}
         <aside className={styles.sidebar} aria-label="Preview and debug">
           <RendererPreview
-            activeSceneId={activeSketchId}
-            nextSceneId={targetSketchId}
-            crossfade={paramStore.getInterpolated("crossfade")}
-            activeSceneParams={getSlotSketchParamsInterpolated(
-              activeSlotIndex,
-              activeSketchId,
-            )}
-            nextSceneParams={getSlotSketchParamsInterpolated(
-              targetSlotIndex,
-              targetSketchId,
-            )}
-            sceneATintLfoDepth={paramStore.getInterpolated(
-              makeSlotParameterId(activeSlotIndex, "tint_lfo_depth"),
-            )}
+            allSlots={sceneSlots.slots.map((slot) => ({
+              index: slot.index,
+              sketchId: slot.sketchId,
+            }))}
+            activeSlotIndex={activeSlotIndex}
+            crossfadeTargetIndex={sceneSlots.crossfadeTargetIndex}
+            getParam={(id) => paramStore.getInterpolated(id)}
             showStats={showStats}
           />
           <DebugPanel

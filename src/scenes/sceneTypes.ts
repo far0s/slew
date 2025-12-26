@@ -44,6 +44,35 @@ import {
 } from "../sketches";
 
 // ============================================================================
+// Slot-Level Parameter Templates
+// ============================================================================
+
+/**
+ * Alpha (master opacity) parameter template for slots.
+ * This is a slot-level parameter independent of the loaded sketch.
+ * It controls the overall opacity of the slot's output, multiplied with crossfade.
+ */
+export const SLOT_ALPHA_TEMPLATE: ParameterTemplate = {
+  templateId: "alpha",
+  label: "Alpha",
+  group: "sketch",
+  orderHint: 0, // Show first, before sketch parameters
+  min: 0,
+  max: 1,
+  step: 0.01,
+  defaultValue: 1,
+  color: "rose",
+  description: "Master opacity for this slot (independent of crossfade)",
+};
+
+/**
+ * All slot-level parameter templates (parameters that exist on every slot).
+ */
+export const SLOT_PARAMETER_TEMPLATES: ParameterTemplate[] = [
+  SLOT_ALPHA_TEMPLATE,
+];
+
+// ============================================================================
 // Global Parameter Types
 // ============================================================================
 
@@ -154,19 +183,29 @@ export function getSlotParameterRange(
 
 /**
  * Build a map of slot parameter IDs → default values for a slot.
+ * Includes both slot-level parameters (like alpha) and sketch-specific parameters.
  */
 export function buildSlotDefaultParameters(
   slotIndex: number,
   sketchId: SketchId,
 ): Map<SlotParameterId, number> {
-  const sketch = getSketchDescriptor(sketchId);
-  if (!sketch) return new Map();
-
   const map = new Map<SlotParameterId, number>();
-  for (const param of sketch.parameters) {
+
+  // Add slot-level parameters (alpha, etc.)
+  for (const param of SLOT_PARAMETER_TEMPLATES) {
     const id = makeSlotParameterId(slotIndex, param.templateId);
     map.set(id, param.defaultValue);
   }
+
+  // Add sketch-specific parameters
+  const sketch = getSketchDescriptor(sketchId);
+  if (sketch) {
+    for (const param of sketch.parameters) {
+      const id = makeSlotParameterId(slotIndex, param.templateId);
+      map.set(id, param.defaultValue);
+    }
+  }
+
   return map;
 }
 
@@ -221,15 +260,26 @@ export function copySlotParameters(
 
 /**
  * Get all slot parameter IDs for a slot.
+ * Includes both slot-level parameters (like alpha) and sketch-specific parameters.
  */
 export function getSlotParameterIds(
   slotIndex: number,
   sketchId: SketchId,
 ): SlotParameterId[] {
+  const ids: SlotParameterId[] = [];
+
+  // Add slot-level parameters
+  for (const param of SLOT_PARAMETER_TEMPLATES) {
+    ids.push(makeSlotParameterId(slotIndex, param.templateId));
+  }
+
+  // Add sketch-specific parameters
   const templateIds = getSketchParameterTemplateIds(sketchId);
-  return templateIds.map((templateId) =>
-    makeSlotParameterId(slotIndex, templateId),
-  );
+  for (const templateId of templateIds) {
+    ids.push(makeSlotParameterId(slotIndex, templateId));
+  }
+
+  return ids;
 }
 
 /**
@@ -310,26 +360,50 @@ export interface SceneParameterDescriptor {
 /**
  * Build realized parameter descriptors for a slot.
  * This bridges the gap between templates and the existing UI code.
+ * Includes both slot-level parameters (like alpha) and sketch-specific parameters.
  */
 export function buildSlotParameterDescriptors(
   slotIndex: number,
   sketchId: SketchId,
 ): SceneParameterDescriptor[] {
-  const sketch = getSketchDescriptor(sketchId);
-  if (!sketch) return [];
+  const descriptors: SceneParameterDescriptor[] = [];
 
-  return sketch.parameters.map((template) => ({
-    id: makeSlotParameterId(slotIndex, template.templateId),
-    label: template.label,
-    group: template.group,
-    orderHint: template.orderHint,
-    min: template.min,
-    max: template.max,
-    step: template.step,
-    defaultValue: template.defaultValue,
-    color: template.color,
-    description: template.description,
-  }));
+  // Add slot-level parameters (alpha, etc.)
+  for (const template of SLOT_PARAMETER_TEMPLATES) {
+    descriptors.push({
+      id: makeSlotParameterId(slotIndex, template.templateId),
+      label: template.label,
+      group: template.group,
+      orderHint: template.orderHint,
+      min: template.min,
+      max: template.max,
+      step: template.step,
+      defaultValue: template.defaultValue,
+      color: template.color,
+      description: template.description,
+    });
+  }
+
+  // Add sketch-specific parameters
+  const sketch = getSketchDescriptor(sketchId);
+  if (sketch) {
+    for (const template of sketch.parameters) {
+      descriptors.push({
+        id: makeSlotParameterId(slotIndex, template.templateId),
+        label: template.label,
+        group: template.group,
+        orderHint: template.orderHint,
+        min: template.min,
+        max: template.max,
+        step: template.step,
+        defaultValue: template.defaultValue,
+        color: template.color,
+        description: template.description,
+      });
+    }
+  }
+
+  return descriptors;
 }
 
 /**
@@ -379,6 +453,25 @@ export function getParameterDescriptor(
   // Handle slot parameters
   const parsed = parseSlotParameterId(parameterId);
   if (parsed) {
+    // Check slot-level parameters first (alpha, etc.)
+    const slotTemplate = SLOT_PARAMETER_TEMPLATES.find(
+      (p) => p.templateId === parsed.templateId,
+    );
+    if (slotTemplate) {
+      return {
+        id: parameterId,
+        label: `Slot ${parsed.slotIndex + 1}: ${slotTemplate.label}`,
+        group: slotTemplate.group,
+        orderHint: slotTemplate.orderHint,
+        min: slotTemplate.min,
+        max: slotTemplate.max,
+        step: slotTemplate.step,
+        defaultValue: slotTemplate.defaultValue,
+        color: slotTemplate.color,
+        description: slotTemplate.description,
+      };
+    }
+
     // If sketch ID provided, use it directly
     if (sketchIdForSlot) {
       const template = getParameterTemplate(sketchIdForSlot, parsed.templateId);
@@ -443,6 +536,14 @@ export function getParameterDropdownLabel(
   const parsed = parseSlotParameterId(parameterId);
   if (parsed) {
     const slotNum = parsed.slotIndex + 1;
+
+    // Check slot-level parameters first (alpha, etc.)
+    const slotTemplate = SLOT_PARAMETER_TEMPLATES.find(
+      (p) => p.templateId === parsed.templateId,
+    );
+    if (slotTemplate) {
+      return `${slotNum} - ${slotTemplate.label}`;
+    }
 
     // If sketch ID provided, use it directly
     if (sketchIdForSlot) {

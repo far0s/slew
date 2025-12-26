@@ -76,6 +76,25 @@
   background: #020617;
 }
 
+/* Alpha indicator overlay - shown when slot alpha < 1 */
+.alphaOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.7);
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.alphaValue {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: rgb(255 255 255 / 0.9);
+  text-shadow: 0 2px 8px rgb(0 0 0 / 0.5);
+}
+
 /* Slot number badge (top-left) */
 .slotBadge {
   position: absolute;

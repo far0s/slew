@@ -38,12 +38,12 @@ chrono = "0.4"       # Date/time for logging
 tokio = { version = "1", features = ["time"] }  # Async runtime for delays
 base64 = "0.22"      # Fast base64 decoding for video frames
 env_logger = "0.11"  # Logging implementation
+dirs = "5.0"         # Home directory detection for config/mappings
 
 # Video Output (macOS Syphon)
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"                    # Objective-C runtime (must match Tauri's version)
 block2 = "0.6"                   # Objective-C blocks support
-dirs = "5.0"                     # Home directory detection for framework search
 
 # Video Output (NDI - cross-platform, optional)
 [dependencies.grafton-ndi]

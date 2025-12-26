@@ -1,7 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { SketchId, ParameterTemplate } from "../../sketches";
 import { getSketchDescriptor } from "../../sketches";
-import { makeSlotParameterId } from "../../scenes/sceneTypes";
+import {
+  makeSlotParameterId,
+  SLOT_PARAMETER_TEMPLATES,
+} from "../../scenes/sceneTypes";
 import {
   ParameterSlider,
   type AudioMappingIndicator,
@@ -166,8 +169,10 @@ export function SceneParameterControls({
     );
   }
 
-  // Sort parameters by orderHint
-  const sortedParameters = [...descriptor.parameters].sort(
+  // Combine slot-level parameters (alpha, etc.) with sketch-specific parameters
+  // and sort by orderHint
+  const allParameters = [...SLOT_PARAMETER_TEMPLATES, ...descriptor.parameters];
+  const sortedParameters = allParameters.sort(
     (a, b) => (a.orderHint ?? 0) - (b.orderHint ?? 0),
   );
 

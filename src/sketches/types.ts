@@ -27,6 +27,8 @@ export type SliderColor =
  * These are the base names used in parameter templates.
  */
 export type ParameterTemplateId =
+  // Slot-level parameters (independent of sketch)
+  | "alpha"
   // Common parameters (used across sketches)
   | "brightness"
   | "rotation_speed"

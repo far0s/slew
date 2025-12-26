@@ -7,15 +7,27 @@
  */
 
 import { useState, useEffect } from "react";
-import { useMidiLearn, useMidiMappings, type MidiMapping } from "../../inputs/midi";
+import {
+  useMidiLearn,
+  useMidiMappings,
+  type MidiMapping,
+} from "../../inputs/midi";
 import styles from "./MidiLearnButton.module.css";
 
+/**
+ * Props for the MidiLearnButton component.
+ *
+ * @property parameterId - The parameter ID this button controls MIDI Learn for
+ * @property min - Minimum value for the parameter (used for MIDI scaling)
+ * @property max - Maximum value for the parameter (used for MIDI scaling)
+ * @property compact - Optional: compact mode for tighter layouts
+ * @property className - Optional: additional class name
+ */
 export interface MidiLearnButtonProps {
-  /** The parameter ID this button controls MIDI Learn for */
   parameterId: string;
-  /** Optional: compact mode for tighter layouts */
+  min: number;
+  max: number;
   compact?: boolean;
-  /** Optional: additional class name */
   className?: string;
 }
 
@@ -38,16 +50,19 @@ function formatMappingShort(mapping: MidiMapping): string {
  */
 export function MidiLearnButton({
   parameterId,
+  min,
+  max,
   compact = false,
   className,
 }: MidiLearnButtonProps) {
-  const { isLearning, learningParameterId, startLearn, cancelLearn } = useMidiLearn();
+  const { isLearning, learningParameterId, startLearn, cancelLearn } =
+    useMidiLearn();
   const { getMappingForParameter, removeMapping } = useMidiMappings();
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Get current mapping for this parameter
   const [currentMapping, setCurrentMapping] = useState<MidiMapping | undefined>(
-    undefined
+    undefined,
   );
 
   // Update mapping when mappings change
@@ -70,8 +85,8 @@ export function MidiLearnButton({
         await removeMapping(parameterId);
         setCurrentMapping(undefined);
       } else {
-        // Start learn mode
-        await startLearn(parameterId);
+        // Start learn mode with parameter's value range
+        await startLearn(parameterId, min, max);
       }
     } catch (e) {
       console.error("[MidiLearnButton] Action failed:", e);

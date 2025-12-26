@@ -266,6 +266,7 @@ fn get_parameter(id: String) -> Option<Parameter> {
 
 /// Set a parameter's target. Emits immediate feedback for most parameters,
 /// but lets crossfade animate smoothly via the tick loop.
+/// Also sends MIDI feedback to connected controllers.
 #[tauri::command]
 fn set_parameter(app: AppHandle, id: String, value: f64) -> Parameter {
     let updated = with_parameter_store(|store| store.set_target(id.clone(), value));
@@ -283,6 +284,10 @@ fn set_parameter(app: AppHandle, id: String, value: f64) -> Parameter {
     };
 
     let _ = app.emit("parameter_changed", &immediate);
+
+    // Send MIDI feedback for this parameter (if it has a mapping)
+    midi::send_parameter_feedback(&id, value);
+
     updated
 }
 
@@ -332,6 +337,41 @@ fn set_slot_pairing(
         }),
     )
     .map_err(|e| format!("Failed to emit slot_pairing_changed: {e}"))
+}
+
+/// Slot info for multi-layer rendering.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct SlotInfo {
+    index: usize,
+    sketch_id: String,
+}
+
+/// Notify Renderer of ALL slots for multi-layer alpha rendering.
+/// This allows the renderer to render all slots based on their alpha values.
+#[tauri::command]
+fn set_all_slots(
+    app: AppHandle,
+    slots: Vec<SlotInfo>,
+    active_slot_index: usize,
+    crossfade_target_index: Option<usize>,
+) -> Result<(), String> {
+    // Update MIDI engine with slot states for LED feedback
+    // A slot "has a sketch" if the sketch_id is not empty
+    let slot_states: Vec<(usize, bool)> = slots
+        .iter()
+        .map(|s| (s.index, !s.sketch_id.is_empty()))
+        .collect();
+    midi::set_active_slots(slot_states);
+
+    app.emit(
+        "all_slots_changed",
+        serde_json::json!({
+            "slots": slots,
+            "active_slot_index": active_slot_index,
+            "crossfade_target_index": crossfade_target_index,
+        }),
+    )
+    .map_err(|e| format!("Failed to emit all_slots_changed: {e}"))
 }
 
 /// Initialize parameters for a new slot with default values.
@@ -527,10 +567,11 @@ pub fn run() {
             clear_parameters,
             set_scene_pairing,
             set_slot_pairing,
+            set_all_slots,
             initialize_slot_parameters,
             restart_controls_window,
             get_crash_log_path,
-            // MIDI
+            // MIDI Input
             midi::list_midi_devices,
             midi::open_midi_device,
             midi::close_midi_device,
@@ -544,6 +585,16 @@ pub fn run() {
             midi::set_midi_auto_reconnect,
             midi::get_midi_auto_reconnect,
             midi::clear_midi_auto_reconnect_devices,
+            // MIDI Output
+            midi::list_midi_output_devices,
+            midi::open_midi_output_device,
+            midi::close_midi_output_device,
+            midi::send_midi_cc,
+            midi::send_midi_note_on,
+            midi::send_midi_note_off,
+            midi::set_midi_output_config,
+            midi::get_midi_output_config,
+            midi::trigger_midi_feedback,
             // OSC
             osc::start_osc_server,
             osc::stop_osc_server,

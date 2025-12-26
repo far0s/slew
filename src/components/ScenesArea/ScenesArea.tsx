@@ -5,6 +5,7 @@ import type { SketchId, SketchProps } from "../../sketches";
 import type { Slot } from "../../scenes/useSceneSlots";
 import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
+import { makeSlotParameterId } from "../../scenes/sceneTypes";
 import { SceneColumn } from "../SceneColumn";
 import { SketchBrowser } from "../SketchBrowser";
 import styles from "./ScenesArea.module.css";
@@ -158,35 +159,42 @@ export function ScenesArea({
         <div ref={scrollRef} className={styles.scrollArea}>
           <div className={styles.columnsWrapper}>
             <AnimatePresence mode="popLayout">
-              {slots.map((slot) => (
-                <SceneColumn
-                  key={slot.index}
-                  slotIndex={slot.index}
-                  sketchId={slot.sketchId}
-                  isActive={slot.index === activeIndex}
-                  isCrossfadeTarget={slot.index === crossfadeTargetIndex}
-                  crossfadeProgress={getCrossfadeProgress(slot.index)}
-                  isCrossfading={isCrossfading}
-                  isMacropadSelected={slot.index === macropadSelectedIndex}
-                  excludeSketchIds={[]}
-                  canRemove={canRemoveSlot && slot.index !== activeIndex}
-                  params={getSlotSketchParams(slot.index, slot.sketchId)}
-                  previewParams={getSlotSketchParamsInterpolated?.(
-                    slot.index,
-                    slot.sketchId,
-                  )}
-                  getValue={getValue}
-                  setValue={setValue}
-                  audioMappings={audioMappings}
-                  modulationTargets={modulationTargets}
-                  lfos={lfos}
-                  onSketchChange={(sketchId) =>
-                    onSlotSketchChange(slot.index, sketchId)
-                  }
-                  onCrossfade={() => onCrossfade(slot.index)}
-                  onRemove={() => onRemoveSlot(slot.index)}
-                />
-              ))}
+              {slots.map((slot) => {
+                // Get alpha (master opacity) for this slot
+                const alphaParamId = makeSlotParameterId(slot.index, "alpha");
+                const alpha = getValue(alphaParamId) ?? 1;
+
+                return (
+                  <SceneColumn
+                    key={slot.index}
+                    slotIndex={slot.index}
+                    sketchId={slot.sketchId}
+                    isActive={slot.index === activeIndex}
+                    isCrossfadeTarget={slot.index === crossfadeTargetIndex}
+                    crossfadeProgress={getCrossfadeProgress(slot.index)}
+                    isCrossfading={isCrossfading}
+                    isMacropadSelected={slot.index === macropadSelectedIndex}
+                    excludeSketchIds={[]}
+                    canRemove={canRemoveSlot && slot.index !== activeIndex}
+                    params={getSlotSketchParams(slot.index, slot.sketchId)}
+                    previewParams={getSlotSketchParamsInterpolated?.(
+                      slot.index,
+                      slot.sketchId,
+                    )}
+                    alpha={alpha}
+                    getValue={getValue}
+                    setValue={setValue}
+                    audioMappings={audioMappings}
+                    modulationTargets={modulationTargets}
+                    lfos={lfos}
+                    onSketchChange={(sketchId) =>
+                      onSlotSketchChange(slot.index, sketchId)
+                    }
+                    onCrossfade={() => onCrossfade(slot.index)}
+                    onRemove={() => onRemoveSlot(slot.index)}
+                  />
+                );
+              })}
 
               {/* Sketch Browser panel */}
               {canAddSlot && (

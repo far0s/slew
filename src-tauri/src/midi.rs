@@ -1,18 +1,18 @@
-//! MIDI Input Engine
+//! MIDI Input/Output Engine
 //!
 //! Provides MIDI device enumeration, connection management, message parsing,
-//! and MIDI Learn functionality for binding controllers to parameters.
+//! MIDI Learn functionality, and MIDI output for controller feedback.
 //!
 //! Features hot-plug detection via background polling and optional auto-reconnect.
 
-use midir::{Ignore, MidiInput, MidiInputConnection};
+use midir::{Ignore, MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 
 // ============================================================================
 // Constants
@@ -20,6 +20,19 @@ use tauri::{AppHandle, Emitter, Manager};
 
 /// Interval for polling device list changes (in milliseconds)
 const DEVICE_POLL_INTERVAL_MS: u64 = 2000;
+
+/// Known device profiles for automatic setup
+const MIDIMIX_NAME_PATTERN: &str = "MIDI Mix";
+
+/// Midimix fader CC numbers (channel 0): faders 1-8
+const MIDIMIX_FADER_CCS: [u8; 8] = [19, 23, 27, 31, 49, 53, 57, 61];
+
+/// Midimix LED note numbers for Mute row (channel 0)
+const MIDIMIX_MUTE_NOTES: [u8; 8] = [1, 4, 7, 10, 13, 16, 19, 22];
+/// Midimix LED note numbers for Solo row (channel 0)
+const MIDIMIX_SOLO_NOTES: [u8; 8] = [2, 5, 8, 11, 14, 17, 20, 23];
+/// Midimix LED note numbers for Rec Arm row (channel 0)
+const MIDIMIX_REC_ARM_NOTES: [u8; 8] = [3, 6, 9, 12, 15, 18, 21, 24];
 
 // ============================================================================
 // Types
@@ -33,6 +46,17 @@ pub struct MidiDeviceInfo {
     /// Human-readable device name
     pub name: String,
     /// Whether this device is currently connected/opened
+    pub is_connected: bool,
+}
+
+/// Information about an available MIDI output device.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MidiOutputDeviceInfo {
+    /// Unique identifier for the output device (port index as string)
+    pub id: String,
+    /// Human-readable device name
+    pub name: String,
+    /// Whether this device is currently connected/opened for output
     pub is_connected: bool,
 }
 
@@ -77,6 +101,10 @@ pub struct MidiLearnState {
     pub is_learning: bool,
     /// The parameter ID we're learning a mapping for
     pub parameter_id: Option<String>,
+    /// Pending min value for the mapping (from parameter template)
+    pub pending_min_value: f64,
+    /// Pending max value for the mapping (from parameter template)
+    pub pending_max_value: f64,
 }
 
 /// Event emitted when MIDI Learn captures a mapping.
@@ -86,12 +114,30 @@ pub struct MidiLearnComplete {
     pub mapping: MidiMapping,
 }
 
+/// Configuration for MIDI output feedback.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MidiOutputConfig {
+    /// Whether to send CC feedback when parameters change
+    pub send_cc_feedback: bool,
+    /// Output device ID to send feedback to (None = all connected outputs)
+    pub output_device_id: Option<String>,
+}
+
+impl Default for MidiOutputConfig {
+    fn default() -> Self {
+        Self {
+            send_cc_feedback: true,
+            output_device_id: None,
+        }
+    }
+}
+
 // ============================================================================
 // Global State
 // ============================================================================
 
-/// Holds an active MIDI connection along with its device info.
-struct ActiveConnection {
+/// Holds an active MIDI input connection along with its device info.
+struct ActiveInputConnection {
     #[allow(dead_code)]
     device_id: String,
     device_name: String,
@@ -100,10 +146,30 @@ struct ActiveConnection {
     connection: Option<MidiInputConnection<()>>,
 }
 
+/// Holds an active MIDI output connection along with its device info.
+struct ActiveOutputConnection {
+    #[allow(dead_code)]
+    device_id: String,
+    device_name: String,
+    // The connection must be kept alive; dropping it closes the port.
+    connection: Option<MidiOutputConnection>,
+}
+
 /// Global MIDI engine state.
+/// Information about an active slot (for LED feedback)
+#[derive(Debug, Clone)]
+struct SlotState {
+    /// Slot index (0-5)
+    index: usize,
+    /// Whether this slot has an active sketch
+    has_sketch: bool,
+}
+
 struct MidiEngineState {
-    /// Currently open connections, keyed by device ID
-    connections: HashMap<String, ActiveConnection>,
+    /// Currently open input connections, keyed by device ID
+    connections: HashMap<String, ActiveInputConnection>,
+    /// Currently open output connections, keyed by device ID
+    output_connections: HashMap<String, ActiveOutputConnection>,
     /// All known mappings
     mappings: Vec<MidiMapping>,
     /// MIDI Learn state
@@ -112,27 +178,85 @@ struct MidiEngineState {
     app_handle: Option<AppHandle>,
     /// Previously known device names (for hot-plug detection)
     known_device_names: HashSet<String>,
+    /// Previously known output device names (for hot-plug detection)
+    known_output_device_names: HashSet<String>,
     /// Device names that were intentionally connected (for auto-reconnect)
     auto_reconnect_devices: HashSet<String>,
+    /// Output device names that were intentionally connected (for auto-reconnect)
+    auto_reconnect_output_devices: HashSet<String>,
     /// Whether auto-reconnect is enabled
     auto_reconnect_enabled: bool,
+    /// MIDI output configuration
+    output_config: MidiOutputConfig,
+    /// Track last sent CC values to avoid redundant sends (device_id -> (channel, cc) -> value)
+    last_sent_cc: HashMap<String, HashMap<(u8, u8), u8>>,
+    /// Current slot states for LED feedback
+    active_slots: Vec<SlotState>,
 }
 
 impl Default for MidiEngineState {
     fn default() -> Self {
         Self {
             connections: HashMap::new(),
+            output_connections: HashMap::new(),
             mappings: Vec::new(),
             learn_state: MidiLearnState {
                 is_learning: false,
                 parameter_id: None,
+                pending_min_value: 0.0,
+                pending_max_value: 1.0,
             },
             app_handle: None,
             known_device_names: HashSet::new(),
+            known_output_device_names: HashSet::new(),
             auto_reconnect_devices: HashSet::new(),
+            auto_reconnect_output_devices: HashSet::new(),
             auto_reconnect_enabled: true,
+            output_config: MidiOutputConfig::default(),
+            last_sent_cc: HashMap::new(),
+            active_slots: Vec::new(),
         }
     }
+}
+
+/// Check if a device name matches the Midimix pattern
+fn is_midimix_device(name: &str) -> bool {
+    name.contains(MIDIMIX_NAME_PATTERN)
+}
+
+/// Find the paired output device for an input device (by name matching)
+fn find_paired_output_device(input_name: &str) -> Option<MidiOutputDeviceInfo> {
+    // For Midimix and similar devices, input and output share the same base name
+    if let Ok(outputs) = list_output_devices() {
+        // First try exact match
+        if let Some(output) = outputs.iter().find(|o| o.name == input_name) {
+            return Some(output.clone());
+        }
+        // Then try partial match (e.g., "MIDI Mix" in both names)
+        if is_midimix_device(input_name) {
+            if let Some(output) = outputs.iter().find(|o| is_midimix_device(&o.name)) {
+                return Some(output.clone());
+            }
+        }
+    }
+    None
+}
+
+/// Find the paired input device for an output device (by name matching)
+fn find_paired_input_device(output_name: &str) -> Option<MidiDeviceInfo> {
+    if let Ok(inputs) = list_devices() {
+        // First try exact match
+        if let Some(input) = inputs.iter().find(|i| i.name == output_name) {
+            return Some(input.clone());
+        }
+        // Then try partial match for Midimix
+        if is_midimix_device(output_name) {
+            if let Some(input) = inputs.iter().find(|i| is_midimix_device(&i.name)) {
+                return Some(input.clone());
+            }
+        }
+    }
+    None
 }
 
 static MIDI_ENGINE: Lazy<Arc<Mutex<MidiEngineState>>> =
@@ -158,17 +282,44 @@ pub fn init_midi_engine(app_handle: AppHandle) {
     // Load mappings from disk
     load_mappings_from_disk();
 
-    // Initialize known devices list
+    // Initialize known devices list and auto-connect Midimix if present
+    let mut midimix_input: Option<MidiDeviceInfo> = None;
     if let Ok(devices) = list_devices() {
         with_midi_engine(|state| {
             state.known_device_names = devices.iter().map(|d| d.name.clone()).collect();
+        });
+
+        // Check for Midimix
+        midimix_input = devices.into_iter().find(|d| is_midimix_device(&d.name));
+    }
+
+    // Initialize known output devices list
+    if let Ok(devices) = list_output_devices() {
+        with_midi_engine(|state| {
+            state.known_output_device_names = devices.iter().map(|d| d.name.clone()).collect();
         });
     }
 
     // Start device watcher thread
     start_device_watcher_thread();
 
-    log::debug!("[MIDI] Engine initialized with hot-plug detection");
+    // Auto-connect Midimix if found at startup
+    if let Some(midimix) = midimix_input {
+        log::info!(
+            "[MIDI] Midimix found at startup, auto-connecting: {}",
+            midimix.name
+        );
+        // Delay slightly to let the engine fully initialize
+        let device_id = midimix.id;
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(500));
+            if let Err(e) = open_device(device_id) {
+                log::warn!("[MIDI] Failed to auto-connect Midimix at startup: {}", e);
+            }
+        });
+    }
+
+    log::debug!("[MIDI] Engine initialized with hot-plug detection and output support");
 }
 
 /// Start the background thread that polls for device changes.
@@ -181,7 +332,7 @@ fn start_device_watcher_thread() {
         loop {
             thread::sleep(Duration::from_millis(DEVICE_POLL_INTERVAL_MS));
 
-            // Get current device list
+            // Get current input device list
             let current_devices = match list_devices_internal() {
                 Ok(devices) => devices,
                 Err(e) => {
@@ -190,14 +341,30 @@ fn start_device_watcher_thread() {
                 }
             };
 
+            // Get current output device list
+            let current_output_devices = match list_output_devices_internal() {
+                Ok(devices) => devices,
+                Err(e) => {
+                    log::debug!("[MIDI] Output device enumeration error: {}", e);
+                    Vec::new()
+                }
+            };
+
             let current_names: HashSet<String> =
                 current_devices.iter().map(|d| d.name.clone()).collect();
+            let current_output_names: HashSet<String> = current_output_devices
+                .iter()
+                .map(|d| d.name.clone())
+                .collect();
 
             // Get previous state
             let (
                 previous_names,
+                previous_output_names,
                 connected_device_names,
+                connected_output_device_names,
                 auto_reconnect_devices,
+                auto_reconnect_output_devices,
                 auto_reconnect_enabled,
                 app_handle,
             ) = {
@@ -207,30 +374,57 @@ fn start_device_watcher_thread() {
                     .values()
                     .map(|c| c.device_name.clone())
                     .collect();
+                let connected_output_names: HashSet<String> = state
+                    .output_connections
+                    .values()
+                    .map(|c| c.device_name.clone())
+                    .collect();
                 (
                     state.known_device_names.clone(),
+                    state.known_output_device_names.clone(),
                     connected_names,
+                    connected_output_names,
                     state.auto_reconnect_devices.clone(),
+                    state.auto_reconnect_output_devices.clone(),
                     state.auto_reconnect_enabled,
                     state.app_handle.clone(),
                 )
             };
 
-            // Detect changes
+            // Detect input changes
             let added: Vec<String> = current_names.difference(&previous_names).cloned().collect();
             let removed: Vec<String> = previous_names.difference(&current_names).cloned().collect();
 
-            let has_changes = !added.is_empty() || !removed.is_empty();
+            // Detect output changes
+            let output_added: Vec<String> = current_output_names
+                .difference(&previous_output_names)
+                .cloned()
+                .collect();
+            let output_removed: Vec<String> = previous_output_names
+                .difference(&current_output_names)
+                .cloned()
+                .collect();
+
+            let has_changes = !added.is_empty()
+                || !removed.is_empty()
+                || !output_added.is_empty()
+                || !output_removed.is_empty();
 
             // Log changes
             for name in &added {
-                log::debug!("[MIDI] Device connected: {}", name);
+                log::debug!("[MIDI] Input device connected: {}", name);
             }
             for name in &removed {
-                log::debug!("[MIDI] Device disconnected: {}", name);
+                log::debug!("[MIDI] Input device disconnected: {}", name);
+            }
+            for name in &output_added {
+                log::debug!("[MIDI] Output device connected: {}", name);
+            }
+            for name in &output_removed {
+                log::debug!("[MIDI] Output device disconnected: {}", name);
             }
 
-            // Handle disconnected devices that were open
+            // Handle disconnected input devices that were open
             let mut disconnected_open_devices = Vec::new();
             for name in &removed {
                 if connected_device_names.contains(name) {
@@ -238,7 +432,15 @@ fn start_device_watcher_thread() {
                 }
             }
 
-            // Close connections to disconnected devices
+            // Handle disconnected output devices that were open
+            let mut disconnected_open_output_devices = Vec::new();
+            for name in &output_removed {
+                if connected_output_device_names.contains(name) {
+                    disconnected_open_output_devices.push(name.clone());
+                }
+            }
+
+            // Close connections to disconnected input devices
             if !disconnected_open_devices.is_empty() {
                 let mut state = engine.lock().unwrap();
                 let device_ids_to_remove: Vec<String> = state
@@ -257,7 +459,37 @@ fn start_device_watcher_thread() {
                             }));
                         }
                         log::debug!(
-                            "[MIDI] Closed connection to disconnected device: {}",
+                            "[MIDI] Closed input connection to disconnected device: {}",
+                            conn.device_name
+                        );
+                    }
+                }
+            }
+
+            // Close connections to disconnected output devices
+            if !disconnected_open_output_devices.is_empty() {
+                let mut state = engine.lock().unwrap();
+                let device_ids_to_remove: Vec<String> = state
+                    .output_connections
+                    .iter()
+                    .filter(|(_, conn)| {
+                        disconnected_open_output_devices.contains(&conn.device_name)
+                    })
+                    .map(|(id, _)| id.clone())
+                    .collect();
+
+                for device_id in device_ids_to_remove {
+                    if let Some(mut conn) = state.output_connections.remove(&device_id) {
+                        if let Some(c) = conn.connection.take() {
+                            // Close the connection (ignore errors, device is already gone)
+                            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                drop(c);
+                            }));
+                        }
+                        // Clear cached CC values for this device
+                        state.last_sent_cc.remove(&device_id);
+                        log::debug!(
+                            "[MIDI] Closed output connection to disconnected device: {}",
                             conn.device_name
                         );
                     }
@@ -268,6 +500,7 @@ fn start_device_watcher_thread() {
             {
                 let mut state = engine.lock().unwrap();
                 state.known_device_names = current_names.clone();
+                state.known_output_device_names = current_output_names.clone();
             }
 
             // Emit event if devices changed
@@ -277,19 +510,57 @@ fn start_device_watcher_thread() {
                     if let Ok(devices) = list_devices() {
                         let _ = handle.emit("midi_devices_changed", &devices);
                     }
+                    if let Ok(devices) = list_output_devices() {
+                        let _ = handle.emit("midi_output_devices_changed", &devices);
+                    }
                 }
             }
 
-            // Auto-reconnect logic
+            // Auto-reconnect logic for input devices
             if auto_reconnect_enabled && !added.is_empty() {
                 for name in &added {
-                    if auto_reconnect_devices.contains(name) {
+                    // Auto-reconnect known devices OR Midimix (always auto-connect Midimix)
+                    let should_connect =
+                        auto_reconnect_devices.contains(name) || is_midimix_device(name);
+
+                    if should_connect {
                         // Find the device ID for this name
                         if let Ok(devices) = list_devices() {
                             if let Some(device) = devices.iter().find(|d| &d.name == name) {
-                                log::debug!("[MIDI] Auto-reconnecting to: {}", name);
+                                log::debug!("[MIDI] Auto-reconnecting input: {}", name);
                                 if let Err(e) = open_device(device.id.clone()) {
-                                    log::warn!("[MIDI] Auto-reconnect failed for {}: {}", name, e);
+                                    log::warn!(
+                                        "[MIDI] Auto-reconnect failed for input {}: {}",
+                                        name,
+                                        e
+                                    );
+                                }
+                                // Note: open_device handles paired output connection for Midimix
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Auto-reconnect logic for output devices (only for non-Midimix, since Midimix is handled by input)
+            if auto_reconnect_enabled && !output_added.is_empty() {
+                for name in &output_added {
+                    // Skip Midimix outputs - they're handled when input connects
+                    if is_midimix_device(name) {
+                        continue;
+                    }
+
+                    if auto_reconnect_output_devices.contains(name) {
+                        // Find the device ID for this name
+                        if let Ok(devices) = list_output_devices() {
+                            if let Some(device) = devices.iter().find(|d| &d.name == name) {
+                                log::debug!("[MIDI] Auto-reconnecting output: {}", name);
+                                if let Err(e) = open_output_device(device.id.clone()) {
+                                    log::warn!(
+                                        "[MIDI] Auto-reconnect failed for output {}: {}",
+                                        name,
+                                        e
+                                    );
                                 }
                             }
                         }
@@ -300,7 +571,7 @@ fn start_device_watcher_thread() {
     });
 }
 
-/// Internal device listing that doesn't require the mutex.
+/// Internal input device listing that doesn't require the mutex.
 fn list_devices_internal() -> Result<Vec<MidiDeviceInfo>, String> {
     let midi_in = MidiInput::new("sebcat-vj-probe")
         .map_err(|e| format!("Failed to create MIDI input: {}", e))?;
@@ -324,39 +595,72 @@ fn list_devices_internal() -> Result<Vec<MidiDeviceInfo>, String> {
     Ok(devices)
 }
 
-// ============================================================================
-// Device Enumeration
-// ============================================================================
+/// Internal output device listing that doesn't require the mutex.
+fn list_output_devices_internal() -> Result<Vec<MidiOutputDeviceInfo>, String> {
+    let midi_out = MidiOutput::new("sebcat-vj-probe-out")
+        .map_err(|e| format!("Failed to create MIDI output: {}", e))?;
 
-/// List all available MIDI input devices.
-pub fn list_devices() -> Result<Vec<MidiDeviceInfo>, String> {
-    let midi_in = MidiInput::new("sebcat-vj-probe")
-        .map_err(|e| format!("Failed to create MIDI input: {}", e))?;
-
-    let ports = midi_in.ports();
-    let connected_ids: Vec<String> =
-        with_midi_engine(|state| state.connections.keys().cloned().collect());
+    let ports = midi_out.ports();
 
     let mut devices = Vec::new();
     for (idx, port) in ports.iter().enumerate() {
-        let name = midi_in
-            .port_name(port)
-            .unwrap_or_else(|_| format!("Unknown Device {}", idx));
-        let id = format!("{}", idx);
-        let is_connected = connected_ids.contains(&id);
+        let name = midi_out
+            .port_name(&port)
+            .unwrap_or_else(|_| format!("Unknown Output Device {}", idx));
+        let id = format!("out_{}", idx);
 
-        devices.push(MidiDeviceInfo {
+        devices.push(MidiOutputDeviceInfo {
             id,
             name,
-            is_connected,
+            is_connected: false, // Will be updated by caller if needed
         });
     }
 
     Ok(devices)
 }
 
+/// List available MIDI input devices (with connection status).
+pub fn list_devices() -> Result<Vec<MidiDeviceInfo>, String> {
+    let mut devices = list_devices_internal()?;
+
+    // Update connection status from global state
+    let connected_names: HashSet<String> = with_midi_engine(|state| {
+        state
+            .connections
+            .values()
+            .map(|c| c.device_name.clone())
+            .collect()
+    });
+
+    for device in &mut devices {
+        device.is_connected = connected_names.contains(&device.name);
+    }
+
+    Ok(devices)
+}
+
+/// List available MIDI output devices (with connection status).
+pub fn list_output_devices() -> Result<Vec<MidiOutputDeviceInfo>, String> {
+    let mut devices = list_output_devices_internal()?;
+
+    // Update connection status from global state
+    let connected_names: HashSet<String> = with_midi_engine(|state| {
+        state
+            .output_connections
+            .values()
+            .map(|c| c.device_name.clone())
+            .collect()
+    });
+
+    for device in &mut devices {
+        device.is_connected = connected_names.contains(&device.name);
+    }
+
+    Ok(devices)
+}
+
 // ============================================================================
-// Connection Management
+// Input Connection Management
 // ============================================================================
 
 /// Open a MIDI device for input.
@@ -412,10 +716,11 @@ pub fn open_device(device_id: String) -> Result<(), String> {
         .map_err(|e| format!("Failed to connect to device: {}", e))?;
 
     // Store the connection and mark for auto-reconnect
+    let is_midimix = is_midimix_device(&port_name);
     with_midi_engine(|state| {
         state.connections.insert(
             device_id.clone(),
-            ActiveConnection {
+            ActiveInputConnection {
                 device_id: device_id.clone(),
                 device_name: port_name.clone(),
                 connection: Some(connection),
@@ -425,10 +730,31 @@ pub fn open_device(device_id: String) -> Result<(), String> {
         state.auto_reconnect_devices.insert(port_name.clone());
     });
 
-    log::debug!("[MIDI] Opened device: {} ({})", device_id, port_name);
+    log::debug!("[MIDI] Opened input device: {} ({})", device_id, port_name);
 
     // Emit device change event
     emit_devices_changed();
+
+    // For Midimix: auto-connect paired output and setup default mappings
+    if is_midimix {
+        log::debug!("[MIDI] Midimix detected, setting up paired output and default mappings");
+
+        // Try to connect the paired output device
+        if let Some(output) = find_paired_output_device(&port_name) {
+            if !output.is_connected {
+                if let Err(e) = open_output_device(output.id.clone()) {
+                    log::warn!("[MIDI] Failed to auto-connect Midimix output: {}", e);
+                } else {
+                    log::debug!("[MIDI] Auto-connected Midimix output: {}", output.name);
+                    // Send LED startup animation
+                    send_midimix_startup_animation(&output.id);
+                }
+            }
+        }
+
+        // Setup default alpha mappings for slots 0-5
+        setup_midimix_default_mappings();
+    }
 
     Ok(())
 }
@@ -450,11 +776,12 @@ pub fn is_auto_reconnect_enabled() -> bool {
 pub fn clear_auto_reconnect_devices() {
     with_midi_engine(|state| {
         state.auto_reconnect_devices.clear();
+        state.auto_reconnect_output_devices.clear();
     });
     log::debug!("[MIDI] Cleared auto-reconnect device list");
 }
 
-/// Close a MIDI device.
+/// Close a MIDI input device.
 pub fn close_device(device_id: String) -> Result<(), String> {
     let connection = with_midi_engine(|state| state.connections.remove(&device_id));
 
@@ -464,7 +791,7 @@ pub fn close_device(device_id: String) -> Result<(), String> {
             if let Some(c) = conn.connection.take() {
                 c.close();
             }
-            log::debug!("[MIDI] Closed device: {}", device_id);
+            log::debug!("[MIDI] Closed input device: {}", device_id);
             emit_devices_changed();
             Ok(())
         }
@@ -472,7 +799,7 @@ pub fn close_device(device_id: String) -> Result<(), String> {
     }
 }
 
-/// Close all MIDI devices.
+/// Close all MIDI input devices.
 pub fn close_all_devices() {
     let device_ids: Vec<String> =
         with_midi_engine(|state| state.connections.keys().cloned().collect());
@@ -480,6 +807,618 @@ pub fn close_all_devices() {
     for device_id in device_ids {
         let _ = close_device(device_id);
     }
+}
+
+// ============================================================================
+// Output Connection Management
+// ============================================================================
+
+/// Open a MIDI device for output.
+pub fn open_output_device(device_id: String) -> Result<(), String> {
+    // Check if already connected
+    let already_connected =
+        with_midi_engine(|state| state.output_connections.contains_key(&device_id));
+
+    if already_connected {
+        return Err(format!("Output device {} is already connected", device_id));
+    }
+
+    // Parse device ID (format: "out_N" where N is the port index)
+    let port_idx: usize = device_id
+        .strip_prefix("out_")
+        .ok_or_else(|| format!("Invalid output device ID format: {}", device_id))?
+        .parse()
+        .map_err(|_| format!("Invalid output device ID: {}", device_id))?;
+
+    // Create MIDI output
+    let midi_out = MidiOutput::new("sebcat-vj-output")
+        .map_err(|e| format!("Failed to create MIDI output: {}", e))?;
+
+    let ports = midi_out.ports();
+    let port = ports
+        .get(port_idx)
+        .ok_or_else(|| format!("Output device {} not found", device_id))?;
+
+    let port_name = midi_out
+        .port_name(&port)
+        .unwrap_or_else(|_| format!("Output Device {}", port_idx));
+
+    let connection = midi_out
+        .connect(&port, "sebcat-vj-midi-out")
+        .map_err(|e| format!("Failed to connect to output device: {}", e))?;
+
+    // Store the connection and mark for auto-reconnect
+    let is_midimix = is_midimix_device(&port_name);
+    with_midi_engine(|state| {
+        state.output_connections.insert(
+            device_id.clone(),
+            ActiveOutputConnection {
+                device_id: device_id.clone(),
+                device_name: port_name.clone(),
+                connection: Some(connection),
+            },
+        );
+        // Remember this device for auto-reconnect
+        state
+            .auto_reconnect_output_devices
+            .insert(port_name.clone());
+        // Initialize CC cache for this device
+        state.last_sent_cc.insert(device_id.clone(), HashMap::new());
+    });
+
+    log::debug!("[MIDI] Opened output device: {} ({})", device_id, port_name);
+
+    // Emit device change event
+    emit_output_devices_changed();
+
+    // For Midimix: auto-connect paired input if not already connected
+    if is_midimix {
+        log::debug!("[MIDI] Midimix output detected, checking for paired input");
+
+        // Try to connect the paired input device
+        if let Some(input) = find_paired_input_device(&port_name) {
+            if !input.is_connected {
+                if let Err(e) = open_device(input.id.clone()) {
+                    log::warn!("[MIDI] Failed to auto-connect Midimix input: {}", e);
+                }
+                // Note: open_device will handle the startup animation and mappings
+            } else {
+                // Input already connected, just send startup animation
+                send_midimix_startup_animation(&device_id);
+            }
+        } else {
+            // No paired input found, still send startup animation
+            send_midimix_startup_animation(&device_id);
+        }
+    }
+
+    Ok(())
+}
+
+/// Send a startup animation to Midimix LEDs
+fn send_midimix_startup_animation(output_device_id: &str) {
+    log::debug!("[MIDI] Sending Midimix startup animation");
+
+    // Staggered cascade animation with final state based on active slots
+    std::thread::spawn({
+        let device_id = output_device_id.to_string();
+        move || {
+            // First, turn off all LEDs
+            for i in 0..8 {
+                let _ = send_note_off(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
+                let _ = send_note_off(Some(&device_id), 0, MIDIMIX_SOLO_NOTES[i], 0);
+                let _ = send_note_off(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 0);
+            }
+
+            std::thread::sleep(Duration::from_millis(100));
+
+            // Staggered cascade: each LED turns on then off with overlap
+            // Creates a wave effect across columns and rows
+            let stagger_delay = Duration::from_millis(25);
+            let hold_time = Duration::from_millis(80);
+
+            // Wave 1: Mute row left to right
+            for i in 0..6 {
+                let _ = send_note_on(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 127);
+                std::thread::sleep(stagger_delay);
+            }
+            std::thread::sleep(hold_time);
+            for i in 0..6 {
+                let _ = send_note_off(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
+                std::thread::sleep(stagger_delay);
+            }
+
+            // Wave 2: Solo row left to right
+            for i in 0..6 {
+                let _ = send_note_on(Some(&device_id), 0, MIDIMIX_SOLO_NOTES[i], 127);
+                std::thread::sleep(stagger_delay);
+            }
+            std::thread::sleep(hold_time);
+            for i in 0..6 {
+                let _ = send_note_off(Some(&device_id), 0, MIDIMIX_SOLO_NOTES[i], 0);
+                std::thread::sleep(stagger_delay);
+            }
+
+            // Wave 3: Rec Arm row left to right
+            for i in 0..6 {
+                let _ = send_note_on(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 127);
+                std::thread::sleep(stagger_delay);
+            }
+            std::thread::sleep(hold_time);
+            for i in 0..6 {
+                let _ = send_note_off(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 0);
+                std::thread::sleep(stagger_delay);
+            }
+
+            std::thread::sleep(Duration::from_millis(150));
+
+            // Final state: light up Mute + Rec Arm ONLY for slots with active sketches
+            // At startup, active_slots may be empty - that's fine, no LEDs will light up
+            // The frontend will call set_all_slots shortly after, which will update LEDs
+            let active_slots = with_midi_engine(|state| state.active_slots.clone());
+
+            for i in 0..6 {
+                // Only light up if we have slot info AND the slot has a sketch
+                let has_sketch = active_slots
+                    .iter()
+                    .find(|s| s.index == i)
+                    .map(|s| s.has_sketch)
+                    .unwrap_or(false); // Default to false (LED off) if no slot info
+
+                if has_sketch {
+                    let _ = send_note_on(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 127);
+                    let _ = send_note_on(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 127);
+                }
+                // Explicitly ensure LEDs are off if no sketch (in case of stale state)
+                else {
+                    let _ = send_note_off(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
+                    let _ = send_note_off(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 0);
+                }
+            }
+
+            log::debug!("[MIDI] Midimix startup animation complete");
+        }
+    });
+}
+
+/// Send a shutdown animation to Midimix LEDs (synchronous - blocks until complete)
+fn send_midimix_shutdown_animation_sync(device_id: &str) {
+    log::debug!("[MIDI] Sending Midimix shutdown animation");
+
+    let stagger_delay = Duration::from_millis(20);
+
+    // Turn off LEDs in reverse order: Rec Arm, Solo, Mute (right to left)
+    // Wave 1: Rec Arm row right to left
+    for i in (0..6).rev() {
+        let _ = send_note_off(Some(device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 0);
+        std::thread::sleep(stagger_delay);
+    }
+
+    // Wave 2: Solo row right to left
+    for i in (0..6).rev() {
+        let _ = send_note_off(Some(device_id), 0, MIDIMIX_SOLO_NOTES[i], 0);
+        std::thread::sleep(stagger_delay);
+    }
+
+    // Wave 3: Mute row right to left
+    for i in (0..6).rev() {
+        let _ = send_note_off(Some(device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
+        std::thread::sleep(stagger_delay);
+    }
+
+    // Also turn off columns 7-8 just in case
+    for i in 6..8 {
+        let _ = send_note_off(Some(device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
+        let _ = send_note_off(Some(device_id), 0, MIDIMIX_SOLO_NOTES[i], 0);
+        let _ = send_note_off(Some(device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 0);
+    }
+
+    std::thread::sleep(Duration::from_millis(50));
+
+    log::debug!("[MIDI] Midimix shutdown animation complete");
+}
+
+/// Update Midimix LEDs based on current slot states
+pub fn update_midimix_leds() {
+    let (active_slots, output_device_ids) = with_midi_engine(|state| {
+        let slots = state.active_slots.clone();
+        // Find all connected Midimix output devices
+        let midimix_outputs: Vec<String> = state
+            .output_connections
+            .iter()
+            .filter(|(_, conn)| is_midimix_device(&conn.device_name))
+            .map(|(id, _)| id.clone())
+            .collect();
+        (slots, midimix_outputs)
+    });
+
+    if output_device_ids.is_empty() {
+        return;
+    }
+
+    for device_id in output_device_ids {
+        // Update Mute + Rec Arm LEDs for first 6 columns
+        for i in 0..6 {
+            let has_sketch = active_slots
+                .iter()
+                .find(|s| s.index == i)
+                .map(|s| s.has_sketch)
+                .unwrap_or(false);
+
+            if has_sketch {
+                let _ = send_note_on(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 127);
+                let _ = send_note_on(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 127);
+            } else {
+                let _ = send_note_off(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
+                let _ = send_note_off(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 0);
+            }
+            // Solo row stays off (could be used for other feedback later)
+            let _ = send_note_off(Some(&device_id), 0, MIDIMIX_SOLO_NOTES[i], 0);
+        }
+    }
+
+    log::debug!(
+        "[MIDI] Updated Midimix LEDs for {} slots",
+        active_slots.len()
+    );
+}
+
+/// Update the active slots state (called from lib.rs when slots change)
+pub fn set_active_slots(slots: Vec<(usize, bool)>) {
+    with_midi_engine(|state| {
+        state.active_slots = slots
+            .into_iter()
+            .map(|(index, has_sketch)| SlotState { index, has_sketch })
+            .collect();
+    });
+
+    // Update LEDs to reflect new state
+    update_midimix_leds();
+}
+
+/// Setup default Midimix mappings (faders 1-6 to slot 0-5 alpha)
+fn setup_midimix_default_mappings() {
+    log::debug!("[MIDI] Setting up Midimix default mappings for slot alphas");
+
+    // Check if we already have mappings for these parameters (don't override user mappings)
+    let existing_mappings = with_midi_engine(|state| state.mappings.clone());
+
+    for slot in 0..6 {
+        let param_id = format!("slot_{}_alpha", slot);
+
+        // Skip if there's already a mapping for this parameter
+        if existing_mappings.iter().any(|m| m.parameter_id == param_id) {
+            log::debug!("[MIDI] Skipping {} - already has a mapping", param_id);
+            continue;
+        }
+
+        let mapping = MidiMapping {
+            parameter_id: param_id.clone(),
+            channel: Some(0),
+            cc_number: MIDIMIX_FADER_CCS[slot],
+            min_value: 0.0,
+            max_value: 1.0,
+            device_id: None, // Accept from any device
+        };
+
+        with_midi_engine(|state| {
+            state.mappings.push(mapping);
+        });
+
+        log::debug!(
+            "[MIDI] Added default mapping: fader {} (CC {}) -> {}",
+            slot + 1,
+            MIDIMIX_FADER_CCS[slot],
+            param_id
+        );
+    }
+
+    save_mappings_to_disk();
+}
+
+/// Close a MIDI output device.
+pub fn close_output_device(device_id: String) -> Result<(), String> {
+    // Check if this is a Midimix and send shutdown animation BEFORE removing the connection
+    let is_midimix = with_midi_engine(|state| {
+        state
+            .output_connections
+            .get(&device_id)
+            .map(|conn| is_midimix_device(&conn.device_name))
+            .unwrap_or(false)
+    });
+
+    if is_midimix {
+        // Send shutdown animation synchronously (blocking)
+        send_midimix_shutdown_animation_sync(&device_id);
+    }
+
+    let connection = with_midi_engine(|state| {
+        state.last_sent_cc.remove(&device_id);
+        state.output_connections.remove(&device_id)
+    });
+
+    match connection {
+        Some(mut conn) => {
+            // Dropping the connection closes it
+            if let Some(c) = conn.connection.take() {
+                drop(c);
+            }
+            log::debug!("[MIDI] Closed output device: {}", device_id);
+            emit_output_devices_changed();
+            Ok(())
+        }
+        None => Err(format!("Output device {} is not connected", device_id)),
+    }
+}
+
+/// Close all MIDI output devices.
+pub fn close_all_output_devices() {
+    let device_ids: Vec<String> =
+        with_midi_engine(|state| state.output_connections.keys().cloned().collect());
+
+    for device_id in device_ids {
+        let _ = close_output_device(device_id);
+    }
+}
+
+// ============================================================================
+// MIDI Output Functions
+// ============================================================================
+
+/// Send a MIDI Control Change message.
+///
+/// # Arguments
+/// * `device_id` - The output device ID to send to, or None to send to all connected outputs
+/// * `channel` - MIDI channel (0-15)
+/// * `cc_number` - CC number (0-127)
+/// * `value` - CC value (0-127)
+pub fn send_cc(
+    device_id: Option<&str>,
+    channel: u8,
+    cc_number: u8,
+    value: u8,
+) -> Result<(), String> {
+    if channel > 15 {
+        return Err("MIDI channel must be 0-15".to_string());
+    }
+    if cc_number > 127 {
+        return Err("CC number must be 0-127".to_string());
+    }
+    if value > 127 {
+        return Err("CC value must be 0-127".to_string());
+    }
+
+    // Build the CC message: status byte (0xB0 + channel), CC number, value
+    let message = [0xB0 | channel, cc_number, value];
+
+    with_midi_engine(|state| {
+        let device_ids: Vec<String> = if let Some(id) = device_id {
+            if state.output_connections.contains_key(id) {
+                vec![id.to_string()]
+            } else {
+                return Err(format!("Output device {} is not connected", id));
+            }
+        } else {
+            state.output_connections.keys().cloned().collect()
+        };
+
+        for id in device_ids {
+            // Check if value has changed to avoid redundant sends
+            if let Some(cache) = state.last_sent_cc.get(&id) {
+                if cache.get(&(channel, cc_number)) == Some(&value) {
+                    continue; // Skip if value hasn't changed
+                }
+            }
+
+            if let Some(conn) = state.output_connections.get_mut(&id) {
+                if let Some(ref mut connection) = conn.connection {
+                    if let Err(e) = connection.send(&message) {
+                        log::warn!("[MIDI] Failed to send CC to {}: {}", id, e);
+                    } else {
+                        // Update cache
+                        state
+                            .last_sent_cc
+                            .entry(id.clone())
+                            .or_insert_with(HashMap::new)
+                            .insert((channel, cc_number), value);
+                        log::trace!(
+                            "[MIDI] Sent CC {} = {} on channel {} to {}",
+                            cc_number,
+                            value,
+                            channel,
+                            id
+                        );
+                    }
+                }
+            }
+        }
+        Ok(())
+    })
+}
+
+/// Send a MIDI Note On message.
+///
+/// # Arguments
+/// * `device_id` - The output device ID to send to, or None to send to all connected outputs
+/// * `channel` - MIDI channel (0-15)
+/// * `note` - Note number (0-127)
+/// * `velocity` - Note velocity (0-127, 0 is often treated as Note Off)
+pub fn send_note_on(
+    device_id: Option<&str>,
+    channel: u8,
+    note: u8,
+    velocity: u8,
+) -> Result<(), String> {
+    if channel > 15 {
+        return Err("MIDI channel must be 0-15".to_string());
+    }
+    if note > 127 {
+        return Err("Note number must be 0-127".to_string());
+    }
+    if velocity > 127 {
+        return Err("Velocity must be 0-127".to_string());
+    }
+
+    // Build the Note On message: status byte (0x90 + channel), note, velocity
+    let message = [0x90 | channel, note, velocity];
+
+    with_midi_engine(|state| {
+        let device_ids: Vec<String> = if let Some(id) = device_id {
+            if state.output_connections.contains_key(id) {
+                vec![id.to_string()]
+            } else {
+                return Err(format!("Output device {} is not connected", id));
+            }
+        } else {
+            state.output_connections.keys().cloned().collect()
+        };
+
+        for id in device_ids {
+            if let Some(conn) = state.output_connections.get_mut(&id) {
+                if let Some(ref mut connection) = conn.connection {
+                    if let Err(e) = connection.send(&message) {
+                        log::warn!("[MIDI] Failed to send Note On to {}: {}", id, e);
+                    } else {
+                        log::trace!(
+                            "[MIDI] Sent Note On {} vel {} on channel {} to {}",
+                            note,
+                            velocity,
+                            channel,
+                            id
+                        );
+                    }
+                }
+            }
+        }
+        Ok(())
+    })
+}
+
+/// Send a MIDI Note Off message.
+///
+/// # Arguments
+/// * `device_id` - The output device ID to send to, or None to send to all connected outputs
+/// * `channel` - MIDI channel (0-15)
+/// * `note` - Note number (0-127)
+/// * `velocity` - Release velocity (0-127, often ignored)
+pub fn send_note_off(
+    device_id: Option<&str>,
+    channel: u8,
+    note: u8,
+    velocity: u8,
+) -> Result<(), String> {
+    if channel > 15 {
+        return Err("MIDI channel must be 0-15".to_string());
+    }
+    if note > 127 {
+        return Err("Note number must be 0-127".to_string());
+    }
+    if velocity > 127 {
+        return Err("Velocity must be 0-127".to_string());
+    }
+
+    // Build the Note Off message: status byte (0x80 + channel), note, velocity
+    let message = [0x80 | channel, note, velocity];
+
+    with_midi_engine(|state| {
+        let device_ids: Vec<String> = if let Some(id) = device_id {
+            if state.output_connections.contains_key(id) {
+                vec![id.to_string()]
+            } else {
+                return Err(format!("Output device {} is not connected", id));
+            }
+        } else {
+            state.output_connections.keys().cloned().collect()
+        };
+
+        for id in device_ids {
+            if let Some(conn) = state.output_connections.get_mut(&id) {
+                if let Some(ref mut connection) = conn.connection {
+                    if let Err(e) = connection.send(&message) {
+                        log::warn!("[MIDI] Failed to send Note Off to {}: {}", id, e);
+                    } else {
+                        log::trace!(
+                            "[MIDI] Sent Note Off {} vel {} on channel {} to {}",
+                            note,
+                            velocity,
+                            channel,
+                            id
+                        );
+                    }
+                }
+            }
+        }
+        Ok(())
+    })
+}
+
+/// Send MIDI feedback for a parameter value change.
+/// This looks up the MIDI mapping for the parameter and sends the appropriate CC.
+///
+/// # Arguments
+/// * `parameter_id` - The parameter ID to send feedback for
+/// * `value` - The current parameter value
+pub fn send_parameter_feedback(parameter_id: &str, value: f64) {
+    // Get the mapping and output config
+    let (mapping, config) = with_midi_engine(|state| {
+        let mapping = state
+            .mappings
+            .iter()
+            .find(|m| m.parameter_id == parameter_id)
+            .cloned();
+        (mapping, state.output_config.clone())
+    });
+
+    // If feedback is disabled or no mapping, skip
+    if !config.send_cc_feedback {
+        return;
+    }
+
+    let Some(mapping) = mapping else {
+        return;
+    };
+
+    // Convert parameter value back to CC value (0-127)
+    let range = mapping.max_value - mapping.min_value;
+    if range.abs() < f64::EPSILON {
+        return;
+    }
+
+    let normalized = (value - mapping.min_value) / range;
+    let cc_value = (normalized.clamp(0.0, 1.0) * 127.0).round() as u8;
+
+    // Get channel (default to 0 if not specified)
+    let channel = mapping.channel.unwrap_or(0);
+
+    // Note: mapping.device_id is for INPUT filtering, not output selection.
+    // For output, we use config.output_device_id (or send to all connected outputs if None).
+    let device_id = config.output_device_id.as_deref();
+
+    if let Err(e) = send_cc(device_id, channel, mapping.cc_number, cc_value) {
+        log::debug!("[MIDI] Failed to send feedback for {}: {}", parameter_id, e);
+    } else {
+        log::debug!(
+            "[MIDI] Sent feedback for {} = {} (CC {} = {} on channel {})",
+            parameter_id,
+            value,
+            mapping.cc_number,
+            cc_value,
+            channel
+        );
+    }
+}
+
+/// Set the MIDI output configuration.
+pub fn set_output_config(config: MidiOutputConfig) {
+    with_midi_engine(|state| {
+        state.output_config = config;
+    });
+    log::debug!("[MIDI] Output config updated");
+}
+
+/// Get the current MIDI output configuration.
+pub fn get_output_config() -> MidiOutputConfig {
+    with_midi_engine(|state| state.output_config.clone())
 }
 
 // ============================================================================
@@ -561,8 +1500,8 @@ fn handle_midi_message(
                 parameter_id: param_id,
                 channel: Some(channel),
                 cc_number: control,
-                min_value: 0.0,
-                max_value: 1.0,
+                min_value: learn_state.pending_min_value,
+                max_value: learn_state.pending_max_value,
                 device_id: Some(device_id.to_string()),
             };
 
@@ -610,14 +1549,25 @@ fn handle_midi_message(
                     mapping.min_value + normalized * (mapping.max_value - mapping.min_value);
 
                 // Apply to parameter via the parameter server
-                apply_midi_to_parameter(&mapping.parameter_id, mapped_value, app_handle.as_ref());
+                // Note: We pass skip_feedback=true to avoid feedback loops
+                apply_midi_to_parameter(
+                    &mapping.parameter_id,
+                    mapped_value,
+                    app_handle.as_ref(),
+                    true,
+                );
             }
         }
     }
 }
 
 /// Apply a MIDI-derived value to a parameter.
-fn apply_midi_to_parameter(parameter_id: &str, value: f64, app_handle: Option<&AppHandle>) {
+fn apply_midi_to_parameter(
+    parameter_id: &str,
+    value: f64,
+    app_handle: Option<&AppHandle>,
+    skip_feedback: bool,
+) {
     // We need to call the parameter server's set_parameter logic.
     // Since we can't directly call Tauri commands from here, we'll emit an event
     // that the frontend can catch and forward, OR we can directly manipulate
@@ -635,6 +1585,11 @@ fn apply_midi_to_parameter(parameter_id: &str, value: f64, app_handle: Option<&A
         }
     }
 
+    // Send MIDI feedback if not skipped (to avoid feedback loops when value comes from MIDI)
+    if !skip_feedback {
+        send_parameter_feedback(parameter_id, value);
+    }
+
     log::debug!(
         "[MIDI] Applied value {} to parameter {}",
         value,
@@ -646,18 +1601,25 @@ fn apply_midi_to_parameter(parameter_id: &str, value: f64, app_handle: Option<&A
 // MIDI Learn
 // ============================================================================
 
-/// Start MIDI Learn mode for a parameter.
-pub fn start_learn(parameter_id: String) -> Result<(), String> {
+/// Start MIDI Learn mode for a parameter with specified value range.
+pub fn start_learn(parameter_id: String, min_value: f64, max_value: f64) -> Result<(), String> {
     with_midi_engine(|state| {
         if state.learn_state.is_learning {
             return Err("Already in learn mode".to_string());
         }
         state.learn_state.is_learning = true;
         state.learn_state.parameter_id = Some(parameter_id.clone());
+        state.learn_state.pending_min_value = min_value;
+        state.learn_state.pending_max_value = max_value;
         Ok(())
     })?;
 
-    log::debug!("[MIDI] Started learn mode for parameter: {}", parameter_id);
+    log::debug!(
+        "[MIDI] Started learn mode for parameter: {} (range: {} - {})",
+        parameter_id,
+        min_value,
+        max_value
+    );
 
     // Emit learn state change
     emit_learn_state_changed();
@@ -670,6 +1632,8 @@ pub fn cancel_learn() -> Result<(), String> {
     with_midi_engine(|state| {
         state.learn_state.is_learning = false;
         state.learn_state.parameter_id = None;
+        state.learn_state.pending_min_value = 0.0;
+        state.learn_state.pending_max_value = 1.0;
     });
 
     log::debug!("[MIDI] Cancelled learn mode");
@@ -743,67 +1707,71 @@ pub fn clear_mappings() {
 // ============================================================================
 
 /// Path to the MIDI mappings file.
-fn mappings_path(app_handle: &AppHandle) -> Option<std::path::PathBuf> {
-    app_handle
-        .path()
-        .app_config_dir()
-        .ok()
-        .map(|p| p.join("midi_mappings.json"))
+fn mappings_path() -> Option<std::path::PathBuf> {
+    dirs::data_local_dir().map(|mut path| {
+        path.push("sebcat-vj");
+        path.push("midi_mappings.json");
+        path
+    })
 }
 
 /// Load MIDI mappings from disk.
 fn load_mappings_from_disk() {
-    let app_handle = with_midi_engine(|state| state.app_handle.clone());
+    let Some(path) = mappings_path() else {
+        log::warn!("[MIDI] Could not determine mappings file path");
+        return;
+    };
 
-    if let Some(handle) = app_handle {
-        if let Some(path) = mappings_path(&handle) {
-            if path.exists() {
-                match std::fs::read_to_string(&path) {
-                    Ok(contents) => match serde_json::from_str::<Vec<MidiMapping>>(&contents) {
-                        Ok(mappings) => {
-                            with_midi_engine(|state| {
-                                state.mappings = mappings;
-                            });
-                            log::debug!(
-                                "[MIDI] Loaded {} mappings from disk",
-                                with_midi_engine(|s| s.mappings.len())
-                            );
-                        }
-                        Err(e) => {
-                            log::warn!("[MIDI] Failed to parse mappings file: {}", e);
-                        }
-                    },
-                    Err(e) => {
-                        log::warn!("[MIDI] Failed to read mappings file: {}", e);
-                    }
-                }
+    if !path.exists() {
+        log::debug!("[MIDI] No mappings file found at {:?}", path);
+        return;
+    }
+
+    match std::fs::read_to_string(&path) {
+        Ok(contents) => match serde_json::from_str::<Vec<MidiMapping>>(&contents) {
+            Ok(mappings) => {
+                with_midi_engine(|state| {
+                    state.mappings = mappings;
+                });
+                log::debug!("[MIDI] Loaded mappings from {:?}", path);
             }
+            Err(e) => {
+                log::warn!("[MIDI] Failed to parse mappings file: {}", e);
+            }
+        },
+        Err(e) => {
+            log::warn!("[MIDI] Failed to read mappings file: {}", e);
         }
     }
 }
 
 /// Save MIDI mappings to disk.
 fn save_mappings_to_disk() {
-    let (app_handle, mappings) =
-        with_midi_engine(|state| (state.app_handle.clone(), state.mappings.clone()));
+    let Some(path) = mappings_path() else {
+        log::warn!("[MIDI] Could not determine mappings file path");
+        return;
+    };
 
-    if let Some(handle) = app_handle {
-        if let Some(path) = mappings_path(&handle) {
-            // Ensure directory exists
-            if let Some(parent) = path.parent() {
-                let _ = std::fs::create_dir_all(parent);
-            }
+    // Ensure directory exists
+    if let Some(parent) = path.parent() {
+        if let Err(e) = std::fs::create_dir_all(parent) {
+            log::warn!("[MIDI] Failed to create mappings directory: {}", e);
+            return;
+        }
+    }
 
-            match serde_json::to_string_pretty(&mappings) {
-                Ok(json) => {
-                    if let Err(e) = std::fs::write(&path, json) {
-                        log::error!("[MIDI] Failed to write mappings file: {}", e);
-                    }
-                }
-                Err(e) => {
-                    log::error!("[MIDI] Failed to serialize mappings: {}", e);
-                }
+    let mappings = with_midi_engine(|state| state.mappings.clone());
+
+    match serde_json::to_string_pretty(&mappings) {
+        Ok(json) => {
+            if let Err(e) = std::fs::write(&path, json) {
+                log::warn!("[MIDI] Failed to write mappings file: {}", e);
+            } else {
+                log::debug!("[MIDI] Saved mappings to {:?}", path);
             }
+        }
+        Err(e) => {
+            log::warn!("[MIDI] Failed to serialize mappings: {}", e);
         }
     }
 }
@@ -812,24 +1780,29 @@ fn save_mappings_to_disk() {
 // Event Emission
 // ============================================================================
 
-/// Emit a midi_devices_changed event.
+/// Emit a devices_changed event.
 fn emit_devices_changed() {
-    let app_handle = with_midi_engine(|state| state.app_handle.clone());
-
-    if let Some(handle) = app_handle {
+    if let Some(handle) = with_midi_engine(|state| state.app_handle.clone()) {
         if let Ok(devices) = list_devices() {
-            let _ = handle.emit("midi_devices_changed", devices);
+            let _ = handle.emit("midi_devices_changed", &devices);
         }
     }
 }
 
-/// Emit a midi_learn_state_changed event.
-fn emit_learn_state_changed() {
-    let (app_handle, learn_state) =
-        with_midi_engine(|state| (state.app_handle.clone(), state.learn_state.clone()));
+/// Emit an output_devices_changed event.
+fn emit_output_devices_changed() {
+    if let Some(handle) = with_midi_engine(|state| state.app_handle.clone()) {
+        if let Ok(devices) = list_output_devices() {
+            let _ = handle.emit("midi_output_devices_changed", &devices);
+        }
+    }
+}
 
-    if let Some(handle) = app_handle {
-        let _ = handle.emit("midi_learn_state_changed", learn_state);
+/// Emit a learn_state_changed event.
+fn emit_learn_state_changed() {
+    if let Some(handle) = with_midi_engine(|state| state.app_handle.clone()) {
+        let learn_state = get_learn_state();
+        let _ = handle.emit("midi_learn_state_changed", &learn_state);
     }
 }
 
@@ -837,10 +1810,16 @@ fn emit_learn_state_changed() {
 // Tauri Commands
 // ============================================================================
 
-/// List available MIDI devices.
+/// List available MIDI input devices.
 #[tauri::command]
 pub fn list_midi_devices() -> Result<Vec<MidiDeviceInfo>, String> {
     list_devices()
+}
+
+/// List available MIDI output devices.
+#[tauri::command]
+pub fn list_midi_output_devices() -> Result<Vec<MidiOutputDeviceInfo>, String> {
+    list_output_devices()
 }
 
 /// Open a MIDI device for input.
@@ -849,16 +1828,32 @@ pub fn open_midi_device(device_id: String) -> Result<(), String> {
     open_device(device_id)
 }
 
-/// Close a MIDI device.
+/// Open a MIDI device for output.
+#[tauri::command]
+pub fn open_midi_output_device(device_id: String) -> Result<(), String> {
+    open_output_device(device_id)
+}
+
+/// Close a MIDI input device.
 #[tauri::command]
 pub fn close_midi_device(device_id: String) -> Result<(), String> {
     close_device(device_id)
 }
 
+/// Close a MIDI output device.
+#[tauri::command]
+pub fn close_midi_output_device(device_id: String) -> Result<(), String> {
+    close_output_device(device_id)
+}
+
 /// Start MIDI Learn mode for a parameter.
 #[tauri::command]
-pub fn start_midi_learn(parameter_id: String) -> Result<(), String> {
-    start_learn(parameter_id)
+pub fn start_midi_learn(
+    parameter_id: String,
+    min_value: f64,
+    max_value: f64,
+) -> Result<(), String> {
+    start_learn(parameter_id, min_value, max_value)
 }
 
 /// Cancel MIDI Learn mode.
@@ -913,4 +1908,55 @@ pub fn get_midi_auto_reconnect() -> bool {
 #[tauri::command]
 pub fn clear_midi_auto_reconnect_devices() {
     clear_auto_reconnect_devices()
+}
+
+/// Send a MIDI CC message to an output device.
+#[tauri::command]
+pub fn send_midi_cc(
+    device_id: Option<String>,
+    channel: u8,
+    cc_number: u8,
+    value: u8,
+) -> Result<(), String> {
+    send_cc(device_id.as_deref(), channel, cc_number, value)
+}
+
+/// Send a MIDI Note On message to an output device.
+#[tauri::command]
+pub fn send_midi_note_on(
+    device_id: Option<String>,
+    channel: u8,
+    note: u8,
+    velocity: u8,
+) -> Result<(), String> {
+    send_note_on(device_id.as_deref(), channel, note, velocity)
+}
+
+/// Send a MIDI Note Off message to an output device.
+#[tauri::command]
+pub fn send_midi_note_off(
+    device_id: Option<String>,
+    channel: u8,
+    note: u8,
+    velocity: u8,
+) -> Result<(), String> {
+    send_note_off(device_id.as_deref(), channel, note, velocity)
+}
+
+/// Set MIDI output configuration.
+#[tauri::command]
+pub fn set_midi_output_config(config: MidiOutputConfig) {
+    set_output_config(config)
+}
+
+/// Get MIDI output configuration.
+#[tauri::command]
+pub fn get_midi_output_config() -> MidiOutputConfig {
+    get_output_config()
+}
+
+/// Trigger MIDI feedback for a parameter.
+#[tauri::command]
+pub fn trigger_midi_feedback(parameter_id: String, value: f64) {
+    send_parameter_feedback(&parameter_id, value)
 }

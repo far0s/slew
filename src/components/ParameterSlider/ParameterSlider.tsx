@@ -146,7 +146,12 @@ export function ParameterSlider({
           <span className={styles.value}>{formatValue(value)}</span>
         </label>
         {midiParameterId && (
-          <MidiLearnButton parameterId={midiParameterId} compact />
+          <MidiLearnButton
+            parameterId={midiParameterId}
+            min={min}
+            max={max}
+            compact
+          />
         )}
       </div>
 

@@ -1,10 +1,11 @@
 /**
- * MIDI Input Types and Hooks
+ * MIDI Input/Output Types and Hooks
  *
  * Provides TypeScript types matching the Rust MIDI module and
- * React hooks for managing MIDI devices, mappings, and Learn mode.
+ * React hooks for managing MIDI devices, mappings, Learn mode, and output.
  *
  * Supports hot-plug detection via backend events and optional auto-reconnect.
+ * Includes MIDI output for controller feedback (LEDs, motorized faders, etc.).
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -63,12 +64,38 @@ export interface MidiLearnState {
   is_learning: boolean;
   /** The parameter ID we're learning a mapping for */
   parameter_id: string | null;
+  /** Pending min value for the mapping (from parameter template) */
+  pending_min_value: number;
+  /** Pending max value for the mapping (from parameter template) */
+  pending_max_value: number;
 }
 
 /** Event emitted when MIDI Learn captures a mapping. */
 export interface MidiLearnComplete {
   /** The captured mapping */
   mapping: MidiMapping;
+}
+
+// ============================================================================
+// Output Types
+// ============================================================================
+
+/** Information about an available MIDI output device. */
+export interface MidiOutputDeviceInfo {
+  /** Unique identifier for the output device */
+  id: string;
+  /** Human-readable device name */
+  name: string;
+  /** Whether this device is currently connected/opened for output */
+  is_connected: boolean;
+}
+
+/** Configuration for MIDI output feedback. */
+export interface MidiOutputConfig {
+  /** Whether to send CC feedback when parameters change */
+  send_cc_feedback: boolean;
+  /** Output device ID to send feedback to (null = all connected outputs) */
+  output_device_id: string | null;
 }
 
 // ============================================================================
@@ -90,9 +117,13 @@ export async function closeMidiDevice(deviceId: string): Promise<void> {
   return invoke("close_midi_device", { deviceId });
 }
 
-/** Start MIDI Learn mode for a parameter. */
-export async function startMidiLearn(parameterId: string): Promise<void> {
-  return invoke("start_midi_learn", { parameterId });
+/** Start MIDI Learn mode for a parameter with specified value range. */
+export async function startMidiLearn(
+  parameterId: string,
+  minValue: number,
+  maxValue: number,
+): Promise<void> {
+  return invoke("start_midi_learn", { parameterId, minValue, maxValue });
 }
 
 /** Cancel MIDI Learn mode. */
@@ -138,6 +169,75 @@ export async function getMidiAutoReconnect(): Promise<boolean> {
 /** Clear the auto-reconnect device list (forgets which devices to reconnect to). */
 export async function clearMidiAutoReconnectDevices(): Promise<void> {
   return invoke("clear_midi_auto_reconnect_devices");
+}
+
+// ============================================================================
+// Output API Functions
+// ============================================================================
+
+/** List all available MIDI output devices. */
+export async function listMidiOutputDevices(): Promise<MidiOutputDeviceInfo[]> {
+  return invoke<MidiOutputDeviceInfo[]>("list_midi_output_devices");
+}
+
+/** Open a MIDI device for output. */
+export async function openMidiOutputDevice(deviceId: string): Promise<void> {
+  return invoke("open_midi_output_device", { deviceId });
+}
+
+/** Close a MIDI output device. */
+export async function closeMidiOutputDevice(deviceId: string): Promise<void> {
+  return invoke("close_midi_output_device", { deviceId });
+}
+
+/** Send a MIDI CC message to an output device. */
+export async function sendMidiCc(
+  deviceId: string | null,
+  channel: number,
+  ccNumber: number,
+  value: number,
+): Promise<void> {
+  return invoke("send_midi_cc", { deviceId, channel, ccNumber, value });
+}
+
+/** Send a MIDI Note On message to an output device. */
+export async function sendMidiNoteOn(
+  deviceId: string | null,
+  channel: number,
+  note: number,
+  velocity: number,
+): Promise<void> {
+  return invoke("send_midi_note_on", { deviceId, channel, note, velocity });
+}
+
+/** Send a MIDI Note Off message to an output device. */
+export async function sendMidiNoteOff(
+  deviceId: string | null,
+  channel: number,
+  note: number,
+  velocity: number,
+): Promise<void> {
+  return invoke("send_midi_note_off", { deviceId, channel, note, velocity });
+}
+
+/** Set MIDI output configuration. */
+export async function setMidiOutputConfig(
+  config: MidiOutputConfig,
+): Promise<void> {
+  return invoke("set_midi_output_config", { config });
+}
+
+/** Get MIDI output configuration. */
+export async function getMidiOutputConfig(): Promise<MidiOutputConfig> {
+  return invoke<MidiOutputConfig>("get_midi_output_config");
+}
+
+/** Trigger MIDI feedback for a parameter (sends CC based on mapping). */
+export async function triggerMidiFeedback(
+  parameterId: string,
+  value: number,
+): Promise<void> {
+  return invoke("trigger_midi_feedback", { parameterId, value });
 }
 
 // ============================================================================
@@ -204,6 +304,24 @@ export function useMidiDevices() {
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
+    try {
+      const result = await listMidiDevices();
+      setDevices(result);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Retry with delay - useful when MIDI system needs time to initialize
+  const retryWithDelay = useCallback(async (delayMs: number = 1000) => {
+    setIsLoading(true);
+    setError(null);
+    // Wait for the delay to give MIDI system time to initialize
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
     try {
       const result = await listMidiDevices();
       setDevices(result);
@@ -216,8 +334,12 @@ export function useMidiDevices() {
   }, []);
 
   const connect = useCallback(async (deviceId: string) => {
+    setError(null);
     try {
       await openMidiDevice(deviceId);
+      // Refresh device list to get updated connection status
+      const result = await listMidiDevices();
+      setDevices(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       throw e;
@@ -225,8 +347,12 @@ export function useMidiDevices() {
   }, []);
 
   const disconnect = useCallback(async (deviceId: string) => {
+    setError(null);
     try {
       await closeMidiDevice(deviceId);
+      // Refresh device list to get updated connection status
+      const result = await listMidiDevices();
+      setDevices(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       throw e;
@@ -256,6 +382,7 @@ export function useMidiDevices() {
     error,
     autoReconnect,
     refresh,
+    retryWithDelay,
     connect,
     disconnect,
     setAutoReconnect,
@@ -268,6 +395,8 @@ export function useMidiLearn() {
   const [learnState, setLearnState] = useState<MidiLearnState>({
     is_learning: false,
     parameter_id: null,
+    pending_min_value: 0,
+    pending_max_value: 1,
   });
 
   // Subscribe to learn state changes
@@ -291,9 +420,12 @@ export function useMidiLearn() {
     };
   }, []);
 
-  const startLearn = useCallback(async (parameterId: string) => {
-    await startMidiLearn(parameterId);
-  }, []);
+  const startLearn = useCallback(
+    async (parameterId: string, minValue: number, maxValue: number) => {
+      await startMidiLearn(parameterId, minValue, maxValue);
+    },
+    [],
+  );
 
   const cancelLearn = useCallback(async () => {
     await cancelMidiLearn();
@@ -402,5 +534,201 @@ export function useMidiActivity() {
     lastMessage,
     messageCount,
     resetCount,
+  };
+}
+
+// ============================================================================
+// Output Hooks
+// ============================================================================
+
+/** Hook for managing MIDI output devices with hot-plug detection support. */
+export function useMidiOutputDevices() {
+  const [devices, setDevices] = useState<MidiOutputDeviceInfo[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch devices on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    async function fetchData() {
+      try {
+        const deviceList = await listMidiOutputDevices();
+        if (isMounted) {
+          setDevices(deviceList);
+          setError(null);
+        }
+      } catch (e) {
+        if (isMounted) {
+          setError(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void fetchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Subscribe to device changes
+  useEffect(() => {
+    let unlisten: UnlistenFn | undefined;
+
+    void (async () => {
+      unlisten = await listen<MidiOutputDeviceInfo[]>(
+        "midi_output_devices_changed",
+        (event) => {
+          setDevices(event.payload);
+        },
+      );
+    })();
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  const refresh = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await listMidiOutputDevices();
+      setDevices(result);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const connect = useCallback(async (deviceId: string) => {
+    try {
+      await openMidiOutputDevice(deviceId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      throw e;
+    }
+  }, []);
+
+  const disconnect = useCallback(async (deviceId: string) => {
+    try {
+      await closeMidiOutputDevice(deviceId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      throw e;
+    }
+  }, []);
+
+  return {
+    devices,
+    isLoading,
+    error,
+    refresh,
+    connect,
+    disconnect,
+  };
+}
+
+/** Hook for MIDI output configuration. */
+export function useMidiOutputConfig() {
+  const [config, setConfig] = useState<MidiOutputConfig>({
+    send_cc_feedback: true,
+    output_device_id: null,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch config on mount
+  useEffect(() => {
+    void getMidiOutputConfig()
+      .then(setConfig)
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const updateConfig = useCallback(async (newConfig: MidiOutputConfig) => {
+    await setMidiOutputConfig(newConfig);
+    setConfig(newConfig);
+  }, []);
+
+  const setFeedbackEnabled = useCallback(
+    async (enabled: boolean) => {
+      const newConfig = { ...config, send_cc_feedback: enabled };
+      await updateConfig(newConfig);
+    },
+    [config, updateConfig],
+  );
+
+  const setOutputDevice = useCallback(
+    async (deviceId: string | null) => {
+      const newConfig = { ...config, output_device_id: deviceId };
+      await updateConfig(newConfig);
+    },
+    [config, updateConfig],
+  );
+
+  return {
+    config,
+    isLoading,
+    updateConfig,
+    setFeedbackEnabled,
+    setOutputDevice,
+  };
+}
+
+/** Hook for sending MIDI output messages. */
+export function useMidiOutput() {
+  const sendCc = useCallback(
+    async (
+      channel: number,
+      ccNumber: number,
+      value: number,
+      deviceId?: string,
+    ) => {
+      await sendMidiCc(deviceId ?? null, channel, ccNumber, value);
+    },
+    [],
+  );
+
+  const sendNoteOn = useCallback(
+    async (
+      channel: number,
+      note: number,
+      velocity: number,
+      deviceId?: string,
+    ) => {
+      await sendMidiNoteOn(deviceId ?? null, channel, note, velocity);
+    },
+    [],
+  );
+
+  const sendNoteOff = useCallback(
+    async (
+      channel: number,
+      note: number,
+      velocity: number = 0,
+      deviceId?: string,
+    ) => {
+      await sendMidiNoteOff(deviceId ?? null, channel, note, velocity);
+    },
+    [],
+  );
+
+  const sendFeedback = useCallback(
+    async (parameterId: string, value: number) => {
+      await triggerMidiFeedback(parameterId, value);
+    },
+    [],
+  );
+
+  return {
+    sendCc,
+    sendNoteOn,
+    sendNoteOff,
+    sendFeedback,
   };
 }

@@ -28,6 +28,7 @@ import styles from "./SceneColumn.module.css";
  * @property canRemove - Whether the slot can be removed
  * @property params - Scene params for controls (target values)
  * @property previewParams - Scene params for preview rendering (interpolated values for smooth animation)
+ * @property alpha - Slot alpha (master opacity) value for preview rendering
  * @property getValue - Get parameter value for controls
  * @property setValue - Set parameter value for controls
  * @property audioMappings - Optional audio mappings for parameter indicators
@@ -49,6 +50,7 @@ export interface SceneColumnProps {
   canRemove: boolean;
   params?: SketchProps["params"];
   previewParams?: SketchProps["params"];
+  alpha?: number;
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
   audioMappings?: AudioMapping[];
@@ -89,6 +91,7 @@ export function SceneColumn({
   canRemove,
   params,
   previewParams,
+  alpha = 1,
   getValue,
   setValue,
   audioMappings,
@@ -164,8 +167,24 @@ export function SceneColumn({
               <ambientLight intensity={0.4} />
               <directionalLight position={[4, 6, 3]} intensity={1.1} />
               <directionalLight position={[-4, -4, -2]} intensity={0.4} />
-              <SketchComponent opacity={1} params={previewParams ?? params} />
+              <SketchComponent
+                opacity={alpha}
+                params={previewParams ?? params}
+              />
             </Canvas>
+            {/* Alpha indicator overlay when alpha < 1 */}
+            {alpha < 0.99 && (
+              <div
+                className={styles.alphaOverlay}
+                style={{
+                  opacity: 1 - alpha,
+                }}
+              >
+                <span className={styles.alphaValue}>
+                  {Math.round(alpha * 100)}%
+                </span>
+              </div>
+            )}
           </Suspense>
         ) : (
           <div className={styles.fallback}>Unknown sketch: {sketchId}</div>

@@ -528,6 +528,9 @@ export function useParameterStore(): ParameterStoreState {
  * Map from template ID (snake_case) to props key (camelCase).
  */
 const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
+  // Slot-level parameters
+  alpha: "alpha",
+  // Common parameters
   brightness: "brightness",
   rotation_speed: "rotationSpeed",
   tint: "tint",

@@ -397,3 +397,24 @@
   color: rgb(252 165 165);
   margin: 0;
 }
+
+/* ==========================================================================
+   Output Configuration
+   ========================================================================== */
+
+.configSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid rgb(255 255 255 / 0.06);
+}
+
+.configHint {
+  font-size: 0.65rem;
+  color: rgb(255 255 255 / 0.4);
+  margin: 0;
+  padding-left: 1.25rem;
+  line-height: 1.4;
+}

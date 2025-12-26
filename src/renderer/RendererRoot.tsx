@@ -30,14 +30,22 @@ interface BackendParameter {
 }
 
 /**
- * Slot pairing event payload from backend.
- * Uses slot indices instead of scene IDs for multi-instance support.
+ * Slot pairing event payload from backend (legacy, still used for crossfade).
  */
 interface SlotPairingPayload {
   active_slot_index: number;
   active_scene_id: SketchId;
   next_slot_index: number;
   next_scene_id: SketchId;
+}
+
+/**
+ * All slots changed event payload for multi-layer rendering.
+ */
+interface AllSlotsPayload {
+  slots: Array<{ index: number; sketch_id: SketchId }>;
+  active_slot_index: number;
+  crossfade_target_index: number | null;
 }
 
 /**
@@ -56,6 +64,9 @@ interface SlotInfo {
  * Maps template IDs (snake_case) to SceneProps param keys (camelCase).
  */
 const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
+  // Slot-level parameters
+  alpha: "alpha", // Note: alpha is handled separately, not passed to sketch
+  // Common parameters
   brightness: "brightness",
   rotation_speed: "rotationSpeed",
   tint: "tint",
@@ -142,41 +153,51 @@ function buildSlotParams(
 // =============================================================================
 
 /**
- * Calculate the opacity for a slot based on crossfade state.
+ * Calculate the final opacity for a slot in multi-layer mode.
+ *
+ * For slots involved in a crossfade transition, the opacity is:
+ *   crossfadeWeight * alpha
+ *
+ * For other slots, the opacity is simply their alpha value.
  *
  * @param slotIndex - The slot being rendered
  * @param activeSlotIndex - The currently active (output) slot
- * @param nextSlotIndex - The slot we're crossfading to
- * @param crossfade - Current crossfade value (0 = fully active, 1 = fully next)
+ * @param crossfadeTargetIndex - The slot we're crossfading to (or null)
+ * @param crossfade - Current crossfade value (0 = fully active, 1 = fully target)
+ * @param alpha - The slot's master opacity (0-1)
  */
 function calculateSlotOpacity(
   slotIndex: number,
   activeSlotIndex: number,
-  nextSlotIndex: number,
+  crossfadeTargetIndex: number | null,
   crossfade: number,
+  alpha: number,
 ): number {
+  const clampedAlpha = Math.max(0, Math.min(1, alpha));
   const clampedCrossfade = Math.max(0, Math.min(1, crossfade));
 
   const isActive = slotIndex === activeSlotIndex;
-  const isNext = slotIndex === nextSlotIndex;
+  const isTarget =
+    crossfadeTargetIndex !== null && slotIndex === crossfadeTargetIndex;
 
-  // If this slot is both active and next (same slot), show at full opacity
-  if (isActive && isNext) {
-    return 1;
+  // If this slot is both active and target (same slot), just use alpha
+  if (isActive && isTarget) {
+    return clampedAlpha;
   }
 
-  // If this is the active slot, fade out as crossfade increases
-  if (isActive) {
-    return 1 - clampedCrossfade;
+  // If this is the active slot and we're crossfading, fade out
+  if (isActive && crossfadeTargetIndex !== null && clampedCrossfade > 0.001) {
+    return (1 - clampedCrossfade) * clampedAlpha;
   }
 
-  // If this is the next slot, fade in as crossfade increases
-  if (isNext) {
-    return clampedCrossfade;
+  // If this is the target slot, fade in
+  if (isTarget && clampedCrossfade > 0.001) {
+    return clampedCrossfade * clampedAlpha;
   }
 
-  // Slot is neither active nor next - hide it
-  return 0;
+  // For all other slots (not in crossfade), just use their alpha directly
+  // This enables multi-layer rendering where any slot with alpha > 0 is visible
+  return clampedAlpha;
 }
 
 // =============================================================================
@@ -184,47 +205,52 @@ function calculateSlotOpacity(
 // =============================================================================
 
 interface RendererContentProps {
-  activeSlot: SlotInfo;
-  nextSlot: SlotInfo;
+  allSlots: SlotInfo[];
+  activeSlotIndex: number;
+  crossfadeTargetIndex: number | null;
   paramStore: Map<string, number>;
 }
 
 function RendererContent({
-  activeSlot,
-  nextSlot,
+  allSlots,
+  activeSlotIndex,
+  crossfadeTargetIndex,
   paramStore,
 }: RendererContentProps) {
   const [tintLfoPhase, setTintLfoPhase] = useState(0);
 
   const crossfade = paramStore.get("crossfade") ?? 0;
 
-  // Calculate max tint LFO depth across active slots for the driver
-  const activeTintLfoDepthParamId = makeSlotParameterId(
-    activeSlot.index,
-    "tint_lfo_depth",
-  );
-  const activeTintLfoDepth = paramStore.get(activeTintLfoDepthParamId) ?? 0;
-  const nextTintLfoDepthParamId = makeSlotParameterId(
-    nextSlot.index,
-    "tint_lfo_depth",
-  );
-  const nextTintLfoDepth = paramStore.get(nextTintLfoDepthParamId) ?? 0;
-  const maxTintLfoDepth = Math.max(activeTintLfoDepth, nextTintLfoDepth);
-
-  // Determine which slots to render (active and/or next)
-  const slotsToRender: SlotInfo[] = [];
-
-  // Always include active slot
-  slotsToRender.push(activeSlot);
-
-  // Include next slot if different from active and crossfading
-  if (
-    nextSlot.index !== activeSlot.index &&
-    crossfade > 0.001 &&
-    crossfade < 0.999
-  ) {
-    slotsToRender.push(nextSlot);
+  // Calculate max tint LFO depth across all visible slots for the driver
+  let maxTintLfoDepth = 0;
+  for (const slot of allSlots) {
+    const alphaParamId = makeSlotParameterId(slot.index, "alpha");
+    const alpha = paramStore.get(alphaParamId) ?? 1;
+    if (alpha > 0.001) {
+      const tintLfoDepthParamId = makeSlotParameterId(
+        slot.index,
+        "tint_lfo_depth",
+      );
+      const tintLfoDepth = paramStore.get(tintLfoDepthParamId) ?? 0;
+      maxTintLfoDepth = Math.max(maxTintLfoDepth, tintLfoDepth);
+    }
   }
+
+  // Render all slots with alpha > 0, in index order (lower index = behind)
+  const slotsToRender = allSlots
+    .filter((slot) => {
+      const alphaParamId = makeSlotParameterId(slot.index, "alpha");
+      const alpha = paramStore.get(alphaParamId) ?? 1;
+      const opacity = calculateSlotOpacity(
+        slot.index,
+        activeSlotIndex,
+        crossfadeTargetIndex,
+        crossfade,
+        alpha,
+      );
+      return opacity > 0.001;
+    })
+    .sort((a, b) => a.index - b.index); // Ensure index order for z-layering
 
   return (
     <>
@@ -234,20 +260,22 @@ function RendererContent({
       <directionalLight position={[4, 6, 3]} intensity={1.1} />
       <directionalLight position={[-4, -4, -2]} intensity={0.4} />
 
-      {/* Render slots based on active/next pairing */}
+      {/* Render all visible slots in index order */}
       {slotsToRender.map((slot) => {
         const SketchComponent = SKETCH_COMPONENT_REGISTRY[slot.sketchId];
         if (!SketchComponent) return null;
 
+        // Get the slot's alpha (master opacity) parameter
+        const alphaParamId = makeSlotParameterId(slot.index, "alpha");
+        const alpha = paramStore.get(alphaParamId) ?? 1;
+
         const opacity = calculateSlotOpacity(
           slot.index,
-          activeSlot.index,
-          nextSlot.index,
+          activeSlotIndex,
+          crossfadeTargetIndex,
           crossfade,
+          alpha,
         );
-
-        // Skip rendering slots with zero opacity for performance
-        if (opacity < 0.001) return null;
 
         const sketchParams = buildSlotParams(
           slot.index,
@@ -273,30 +301,31 @@ function RendererContent({
 // =============================================================================
 
 /**
- * RendererRoot - Main renderer window component with multi-instance support.
+ * RendererRoot - Main renderer window component with multi-layer alpha support.
  *
  * Architecture:
  * 1. Stores ALL parameters in a generic Map (including slot-prefixed IDs)
- * 2. Listens to `slot_pairing_changed` for active/next slot indices and scene IDs
- * 3. Listens to `parameter_changed` for ANY parameter update
- * 4. Renders slots based on the active/next pairing
- * 5. Dynamically builds scene params based on slot index and scene descriptors
+ * 2. Listens to `all_slots_changed` for the complete list of slots
+ * 3. Listens to `slot_pairing_changed` for active/crossfade target info
+ * 4. Listens to `parameter_changed` for ANY parameter update
+ * 5. Renders ALL slots with alpha > 0 (multi-layer rendering)
+ * 6. Uses crossfade only for smooth transitions between active and target
  *
- * Key changes for multi-instance:
+ * Key features:
  * - Parameters use slot-prefixed IDs (e.g., `slot_0_brightness`)
- * - Scene pairing uses slot indices instead of just scene IDs
- * - Each slot renders its own instance of the scene component
+ * - Each slot has an independent alpha for visibility control
+ * - Slots render in index order (0 = back, higher = front)
+ * - Crossfade smoothly transitions between active and target slots
  */
 export function RendererRoot() {
-  // Slot pairing state
-  const [activeSlot, setActiveSlot] = useState<SlotInfo>({
-    index: 0,
-    sketchId: "blueCube",
-  });
-  const [nextSlot, setNextSlot] = useState<SlotInfo>({
-    index: 0,
-    sketchId: "blueCube",
-  });
+  // All slots state for multi-layer rendering
+  const [allSlots, setAllSlots] = useState<SlotInfo[]>([
+    { index: 0, sketchId: "blueCube" },
+  ]);
+  const [activeSlotIndex, setActiveSlotIndex] = useState(0);
+  const [crossfadeTargetIndex, setCrossfadeTargetIndex] = useState<
+    number | null
+  >(null);
 
   // Generic parameter store - stores ANY parameter by its backend ID
   const [paramStore, setParamStore] = useState<Map<string, number>>(
@@ -325,7 +354,28 @@ export function RendererRoot() {
     [updateParam],
   );
 
-  // Handle slot pairing change (new multi-instance format)
+  // Handle all slots changed event (new multi-layer format)
+  const handleAllSlotsChanged = useCallback((payload: AllSlotsPayload) => {
+    console.log(
+      "[Renderer] All slots changed:",
+      payload.slots.length,
+      "slots, active:",
+      payload.active_slot_index,
+      "target:",
+      payload.crossfade_target_index,
+    );
+
+    setAllSlots(
+      payload.slots.map((s) => ({
+        index: s.index,
+        sketchId: s.sketch_id,
+      })),
+    );
+    setActiveSlotIndex(payload.active_slot_index);
+    setCrossfadeTargetIndex(payload.crossfade_target_index);
+  }, []);
+
+  // Handle slot pairing change (legacy format, still used for crossfade)
   const handleSlotPairingChanged = useCallback(
     (payload: SlotPairingPayload) => {
       console.log(
@@ -337,19 +387,44 @@ export function RendererRoot() {
         "(" + payload.next_scene_id + ")",
       );
 
-      setActiveSlot({
-        index: payload.active_slot_index,
-        sketchId: payload.active_scene_id,
-      });
-      setNextSlot({
-        index: payload.next_slot_index,
-        sketchId: payload.next_scene_id,
+      setActiveSlotIndex(payload.active_slot_index);
+
+      // Set crossfade target if different from active
+      if (payload.next_slot_index !== payload.active_slot_index) {
+        setCrossfadeTargetIndex(payload.next_slot_index);
+      } else {
+        setCrossfadeTargetIndex(null);
+      }
+
+      // Update slot info if we don't have it yet
+      setAllSlots((prev) => {
+        const hasActive = prev.some(
+          (s) => s.index === payload.active_slot_index,
+        );
+        const hasNext = prev.some((s) => s.index === payload.next_slot_index);
+
+        if (hasActive && hasNext) return prev;
+
+        const updated = [...prev];
+        if (!hasActive) {
+          updated.push({
+            index: payload.active_slot_index,
+            sketchId: payload.active_scene_id,
+          });
+        }
+        if (!hasNext && payload.next_slot_index !== payload.active_slot_index) {
+          updated.push({
+            index: payload.next_slot_index,
+            sketchId: payload.next_scene_id,
+          });
+        }
+        return updated.sort((a, b) => a.index - b.index);
       });
     },
     [],
   );
 
-  // Legacy handler for scene_pairing_changed (backwards compatibility during migration)
+  // Legacy handler for scene_pairing_changed (backwards compatibility)
   const handleLegacyScenePairingChanged = useCallback(
     (payload: { active_scene_id: SketchId; next_scene_id: SketchId }) => {
       console.log(
@@ -359,8 +434,9 @@ export function RendererRoot() {
         payload.next_scene_id,
       );
       // Map legacy scene IDs to slot 0 for backwards compatibility
-      setActiveSlot({ index: 0, sketchId: payload.active_scene_id });
-      setNextSlot({ index: 0, sketchId: payload.next_scene_id });
+      setAllSlots([{ index: 0, sketchId: payload.active_scene_id }]);
+      setActiveSlotIndex(0);
+      setCrossfadeTargetIndex(null);
     },
     [],
   );
@@ -398,7 +474,37 @@ export function RendererRoot() {
     };
   }, [handleParameterChanged]);
 
-  // Listen for slot pairing changes (new format)
+  // Listen for all slots changed (new multi-layer format)
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    async function subscribe() {
+      try {
+        unlisten = await listen<AllSlotsPayload>(
+          "all_slots_changed",
+          (event) => {
+            if (event.payload) {
+              handleAllSlotsChanged(event.payload);
+            }
+          },
+        );
+        console.log("[Renderer] Subscribed to all_slots_changed events");
+      } catch (error) {
+        console.error(
+          "[Renderer] Failed to subscribe to all_slots_changed:",
+          error,
+        );
+      }
+    }
+
+    void subscribe();
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, [handleAllSlotsChanged]);
+
+  // Listen for slot pairing changes (still used for crossfade)
   useEffect(() => {
     let unlisten: (() => void) | undefined;
 
@@ -504,8 +610,9 @@ export function RendererRoot() {
         {/* Video output capture - sends frames to Syphon/Spout/NDI when active */}
         <VideoOutputCapture />
         <RendererContent
-          activeSlot={activeSlot}
-          nextSlot={nextSlot}
+          allSlots={allSlots}
+          activeSlotIndex={activeSlotIndex}
+          crossfadeTargetIndex={crossfadeTargetIndex}
           paramStore={paramStore}
         />
       </Canvas>
