@@ -355,11 +355,11 @@ fn set_all_slots(
     active_slot_index: usize,
     crossfade_target_index: Option<usize>,
 ) -> Result<(), String> {
-    // Update MIDI engine with slot states for LED feedback
-    // A slot "has a sketch" if the sketch_id is not empty
-    let slot_states: Vec<(usize, bool)> = slots
+    // Update MIDI engine with slot states for LED feedback and knob mappings
+    // A slot "exists" if it's in the slots array (LEDs indicate slot count)
+    let slot_states: Vec<(usize, bool, String)> = slots
         .iter()
-        .map(|s| (s.index, !s.sketch_id.is_empty()))
+        .map(|s| (s.index, true, s.sketch_id.clone()))
         .collect();
     midi::set_active_slots(slot_states);
 

@@ -134,9 +134,8 @@ Rework the renderer to support true multi-layer mixing where each slot's alpha c
    - Added hooks: `useMidiOutputDevices`, `useMidiOutputConfig`, `useMidiOutput`
 
 4. **`src/components/MidiPanel/MidiPanel.tsx`**
-   - Added "Output / Feedback" collapsible section
-   - Added `OutputDeviceList` component for output device management
-   - Added `OutputConfig` component for feedback toggle
+   - Added output device management (later unified in Phase 6)
+   - Added feedback toggle configuration
 
 5. **`src/components/MidiPanel/MidiPanel.module.css`**
    - Added `.configSection` and `.configHint` styles
@@ -199,52 +198,32 @@ Rework the renderer to support true multi-layer mixing where each slot's alpha c
 
 ## Quick Start for Next Agent
 
-**Phases 1-4 are complete!** Multi-layer alpha rendering and MIDI output are working.
+**Phases 1-6 are complete!** Multi-layer alpha rendering, MIDI I/O, and enhanced Midimix controls are working.
 
 **To test:**
 
 1. Start the app with `npm run tauri dev`
 2. Add multiple slots
-3. Use Midimix faders to control each slot's Alpha parameter
-4. All slots with alpha > 0 should be visible simultaneously in both Renderer AND Live Preview
-5. Crossfade still works for smooth transitions
-6. Open Debug Panel → MIDI → Output / Feedback section
-7. Connect a MIDI **output** device (e.g., Midimix appears as both input and output)
-8. Ensure "Send CC feedback to controllers" is enabled (on by default)
-9. Map a parameter via MIDI Learn
-10. Change that parameter from the UI - the controller should receive the CC value
+3. Connect Midimix (auto-connects both input and output)
+4. Use Midimix faders to control each slot's Alpha parameter
+5. Use Midimix knobs to control the first 3 parameters of each slot's sketch
+6. Use the master fader (rightmost) to fade all slots at once
+7. All slots with alpha > 0 should be visible simultaneously in both Renderer AND Live Preview
+8. LEDs indicate which slots exist (Mute + Rec Arm rows)
+9. Crossfade still works for smooth transitions
 
-**Important notes:**
+**Key features:**
 
-- You must connect BOTH the input AND output device separately
-- Input device IDs are like "0", "1", output device IDs are like "out_0", "out_1"
-- The mapping's device_id is for input filtering only; output goes to all connected outputs (or config-specified device)
-
-**Testing MIDI output programmatically:**
-
-```typescript
-import { sendMidiCc, sendMidiNoteOn, useMidiOutput } from "./inputs/midi";
-
-// Send a CC value (e.g., to set an LED ring level)
-await sendMidiCc(null, 0, 16, 64); // channel 0, CC 16, value 64
-
-// Send Note On (e.g., to light an LED)
-await sendMidiNoteOn(null, 0, 1, 127); // channel 0, note 1, velocity 127
-```
-
-**Next priorities:**
-
-All major features are complete! Potential future enhancements:
-
-1. **More device profiles** - Add auto-setup for other controllers (Launchpad, etc.)
-2. **Solo mode** - Button to solo a single slot (set all others to alpha 0)
-3. **Advanced LED feedback** - Map slot states to Midimix button LEDs dynamically
+- **Unified MIDI Panel**: Single "Devices" section connects both input and output at once
+- **Per-device feedback toggle**: Each connected device has its own feedback checkbox
+- **Auto knob mapping**: Top 3 knobs per column map to first 3 sketch parameters
+- **Master fader**: CC 62 controls all alphas (smart fade-down respects lower values)
 
 **Key files:**
 
 - `src-tauri/src/midi.rs` - MIDI input/output engine
 - `src/inputs/midi.ts` - TypeScript types, API functions, and hooks
-- `src/components/MidiPanel/` - UI for device and feedback management
+- `src/components/MidiPanel/` - Unified device list with feedback toggles
 
 ### Phase 5: Midimix Auto-Setup ✅ COMPLETE
 
@@ -278,7 +257,7 @@ All major features are complete! Potential future enhancements:
 
 6. **Dynamic LED feedback**
    - LEDs update automatically when slots are added/removed
-   - Mute + Rec Arm rows indicate which slots have sketches loaded
+   - Mute + Rec Arm rows indicate which slots exist (slot count)
    - Solo row reserved for future feedback (e.g., crossfade target)
 
 **Midimix CC/Note reference:**
@@ -290,6 +269,79 @@ All major features are complete! Potential future enhancements:
 
 **LED state meaning:**
 
-- Mute + Rec Arm ON: Slot has an active sketch (can be controlled)
-- All OFF: No sketch in that slot
+- Mute + Rec Arm ON: Slot exists (index is within current slot count)
+- All OFF: Slot index beyond current count (e.g., if 3 slots, LEDs 4-6 are off)
 - Solo: Reserved for future use (crossfade target indicator, etc.)
+
+**Important MIDI note:** Midimix LEDs require "Note On with velocity 0" to turn off, not actual Note Off (0x80) messages. The `send_note_off` function was updated to use this approach for compatibility.
+
+### Phase 6: Enhanced MIDI Control ✅ COMPLETE
+
+**Goal:** Improve MIDI panel UX and add advanced Midimix controls.
+
+**Implementation completed:**
+
+1. **Unified MIDI Panel**
+   - Merged Input/Output device selectors into single "Devices" section
+   - When connecting a device, both input and output are connected if available
+   - Per-device "Feedback" checkbox shown when device is connected and has output
+   - Cleaner UI with device status indicators ("In/Out", "Input only", etc.)
+
+2. **Automatic Knob Mappings**
+   - Top 3 knobs of each column auto-map to first 3 parameters of that slot's sketch
+   - Mappings update dynamically when sketches are loaded/changed
+   - User mappings are preserved (not overwritten by auto-mappings)
+   - Knob CCs per column:
+     - Col 1: CC 16, 17, 18 (top to bottom)
+     - Col 2: CC 20, 21, 22
+     - Col 3: CC 24, 25, 26
+     - Col 4: CC 28, 29, 30
+     - Col 5: CC 46, 47, 48
+     - Col 6: CC 50, 51, 52
+
+3. **Master Fader Control**
+   - Master fader (CC 62) controls all slot alphas simultaneously
+   - Smart fade-out behavior: when fading down, only affects slots with alpha > master value
+   - When fading up, brings all slots up to the master value uniformly
+   - Direction detection based on last master fader position
+
+**Key files modified:**
+
+- `src-tauri/src/midi.rs` - Added knob constants, master fader handling, dynamic knob mappings
+- `src/inputs/midi.ts` - Added `MidiCombinedDeviceInfo` type and `useMidiCombinedDevices` hook
+- `src/components/MidiPanel/MidiPanel.tsx` - Unified device list with per-device feedback toggle
+- `src/components/MidiPanel/MidiPanel.module.css` - Updated styles for new layout
+
+**Testing checklist:**
+
+- [x] Unified device list shows all MIDI devices
+- [x] Connecting a bidirectional device connects both input and output
+- [x] Per-device feedback toggle works
+- [x] Knobs auto-map to sketch parameters when loaded
+- [x] Master fader fades all slots down (respecting lower alphas)
+- [x] Master fader brings all slots up together
+- [x] LED startup animation flashes correctly (on then off)
+- [x] LEDs indicate slot existence (slot count)
+
+## Future Enhancements
+
+Potential additions for future phases:
+
+1. **Button Controls**
+   - Mute buttons to toggle slot visibility (alpha 0/1)
+   - Solo button to solo a single slot (set others to 0)
+   - Bank buttons to switch between slot groups (1-6, 7-12)
+
+2. **Advanced Feedback**
+   - Map Solo LEDs to crossfade target indicator
+   - Pulse LEDs on audio reactivity
+   - Color-coded LED states
+
+3. **Preset System**
+   - Save/load slot configurations via buttons
+   - Scene snapshots with smooth transitions
+
+4. **Additional Controller Profiles**
+   - Launchpad auto-setup
+   - APC Mini support
+   - Generic template for custom controllers

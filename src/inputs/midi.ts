@@ -98,6 +98,24 @@ export interface MidiOutputConfig {
   output_device_id: string | null;
 }
 
+/** Unified MIDI device info combining input and output capabilities. */
+export interface MidiCombinedDeviceInfo {
+  /** Base name of the device (without input/output suffix) */
+  name: string;
+  /** Input device info (if available) */
+  input: MidiDeviceInfo | null;
+  /** Output device info (if available) */
+  output: MidiOutputDeviceInfo | null;
+  /** Whether input is connected */
+  inputConnected: boolean;
+  /** Whether output is connected */
+  outputConnected: boolean;
+  /** Whether this device supports bidirectional MIDI */
+  isBidirectional: boolean;
+  /** Whether CC feedback is enabled for this device */
+  feedbackEnabled: boolean;
+}
+
 // ============================================================================
 // API Functions (Tauri command wrappers)
 // ============================================================================
@@ -534,6 +552,262 @@ export function useMidiActivity() {
     lastMessage,
     messageCount,
     resetCount,
+  };
+}
+
+// ============================================================================
+// Combined Device Hook
+// ============================================================================
+
+/** Hook for managing unified MIDI devices (input + output combined). */
+export function useMidiCombinedDevices() {
+  const [inputDevices, setInputDevices] = useState<MidiDeviceInfo[]>([]);
+  const [outputDevices, setOutputDevices] = useState<MidiOutputDeviceInfo[]>(
+    [],
+  );
+  const [feedbackConfig, setFeedbackConfig] = useState<Map<string, boolean>>(
+    new Map(),
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [autoReconnect, setAutoReconnectState] = useState(true);
+
+  // Fetch all devices on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    async function fetchData() {
+      try {
+        const [inputs, outputs, autoReconnectEnabled] = await Promise.all([
+          listMidiDevices(),
+          listMidiOutputDevices(),
+          getMidiAutoReconnect(),
+        ]);
+        if (isMounted) {
+          setInputDevices(inputs);
+          setOutputDevices(outputs);
+          setAutoReconnectState(autoReconnectEnabled);
+          // Initialize feedback config - all devices default to enabled
+          const config = new Map<string, boolean>();
+          outputs.forEach((d) => config.set(d.name, true));
+          setFeedbackConfig(config);
+          setError(null);
+        }
+      } catch (e) {
+        if (isMounted) {
+          setError(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void fetchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Subscribe to device changes
+  useEffect(() => {
+    let unlistenInput: UnlistenFn | undefined;
+    let unlistenOutput: UnlistenFn | undefined;
+
+    void (async () => {
+      unlistenInput = await listen<MidiDeviceInfo[]>(
+        "midi_devices_changed",
+        (event) => {
+          setInputDevices(event.payload);
+        },
+      );
+      unlistenOutput = await listen<MidiOutputDeviceInfo[]>(
+        "midi_output_devices_changed",
+        (event) => {
+          setOutputDevices(event.payload);
+        },
+      );
+    })();
+
+    return () => {
+      if (unlistenInput) unlistenInput();
+      if (unlistenOutput) unlistenOutput();
+    };
+  }, []);
+
+  // Combine input and output devices by name
+  const combinedDevices: MidiCombinedDeviceInfo[] = (() => {
+    const deviceMap = new Map<string, MidiCombinedDeviceInfo>();
+
+    // Process input devices
+    for (const input of inputDevices) {
+      deviceMap.set(input.name, {
+        name: input.name,
+        input,
+        output: null,
+        inputConnected: input.is_connected,
+        outputConnected: false,
+        isBidirectional: false,
+        feedbackEnabled: feedbackConfig.get(input.name) ?? true,
+      });
+    }
+
+    // Process output devices and merge with inputs
+    for (const output of outputDevices) {
+      const existing = deviceMap.get(output.name);
+      if (existing) {
+        existing.output = output;
+        existing.outputConnected = output.is_connected;
+        existing.isBidirectional = true;
+        existing.feedbackEnabled = feedbackConfig.get(output.name) ?? true;
+      } else {
+        deviceMap.set(output.name, {
+          name: output.name,
+          input: null,
+          output,
+          inputConnected: false,
+          outputConnected: output.is_connected,
+          isBidirectional: false,
+          feedbackEnabled: feedbackConfig.get(output.name) ?? true,
+        });
+      }
+    }
+
+    return Array.from(deviceMap.values());
+  })();
+
+  const connect = useCallback(
+    async (deviceName: string) => {
+      setError(null);
+      try {
+        // Find input and output devices by name
+        const input = inputDevices.find((d) => d.name === deviceName);
+        const output = outputDevices.find((d) => d.name === deviceName);
+
+        // Connect both if available
+        if (input && !input.is_connected) {
+          await openMidiDevice(input.id);
+        }
+        if (output && !output.is_connected) {
+          await openMidiOutputDevice(output.id);
+        }
+
+        // Refresh device lists
+        const [inputs, outputs] = await Promise.all([
+          listMidiDevices(),
+          listMidiOutputDevices(),
+        ]);
+        setInputDevices(inputs);
+        setOutputDevices(outputs);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+        throw e;
+      }
+    },
+    [inputDevices, outputDevices],
+  );
+
+  const disconnect = useCallback(
+    async (deviceName: string) => {
+      setError(null);
+      try {
+        // Find input and output devices by name
+        const input = inputDevices.find((d) => d.name === deviceName);
+        const output = outputDevices.find((d) => d.name === deviceName);
+
+        // Disconnect both if connected
+        if (input?.is_connected) {
+          await closeMidiDevice(input.id);
+        }
+        if (output?.is_connected) {
+          await closeMidiOutputDevice(output.id);
+        }
+
+        // Refresh device lists
+        const [inputs, outputs] = await Promise.all([
+          listMidiDevices(),
+          listMidiOutputDevices(),
+        ]);
+        setInputDevices(inputs);
+        setOutputDevices(outputs);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+        throw e;
+      }
+    },
+    [inputDevices, outputDevices],
+  );
+
+  const setDeviceFeedbackEnabled = useCallback(
+    (deviceName: string, enabled: boolean) => {
+      setFeedbackConfig((prev) => {
+        const next = new Map(prev);
+        next.set(deviceName, enabled);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const setAutoReconnect = useCallback(async (enabled: boolean) => {
+    try {
+      await setMidiAutoReconnect(enabled);
+      setAutoReconnectState(enabled);
+    } catch (e) {
+      console.error("[MIDI] Failed to set auto-reconnect:", e);
+    }
+  }, []);
+
+  const refresh = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [inputs, outputs] = await Promise.all([
+        listMidiDevices(),
+        listMidiOutputDevices(),
+      ]);
+      setInputDevices(inputs);
+      setOutputDevices(outputs);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const retryWithDelay = useCallback(async (delayMs: number = 1000) => {
+    setIsLoading(true);
+    setError(null);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    try {
+      const [inputs, outputs] = await Promise.all([
+        listMidiDevices(),
+        listMidiOutputDevices(),
+      ]);
+      setInputDevices(inputs);
+      setOutputDevices(outputs);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return {
+    devices: combinedDevices,
+    isLoading,
+    error,
+    autoReconnect,
+    connect,
+    disconnect,
+    setDeviceFeedbackEnabled,
+    setAutoReconnect,
+    refresh,
+    retryWithDelay,
   };
 }
 

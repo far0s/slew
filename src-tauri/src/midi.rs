@@ -27,6 +27,22 @@ const MIDIMIX_NAME_PATTERN: &str = "MIDI Mix";
 /// Midimix fader CC numbers (channel 0): faders 1-8
 const MIDIMIX_FADER_CCS: [u8; 8] = [19, 23, 27, 31, 49, 53, 57, 61];
 
+/// Midimix knob CC numbers (channel 0): 3 knobs per column, 8 columns
+/// Each inner array is [top, middle, bottom] knob for that column
+const MIDIMIX_KNOB_CCS: [[u8; 3]; 8] = [
+    [16, 17, 18], // Column 1
+    [20, 21, 22], // Column 2
+    [24, 25, 26], // Column 3
+    [28, 29, 30], // Column 4
+    [46, 47, 48], // Column 5
+    [50, 51, 52], // Column 6
+    [54, 55, 56], // Column 7
+    [58, 59, 60], // Column 8
+];
+
+/// Midimix master fader CC number (channel 0)
+const MIDIMIX_MASTER_FADER_CC: u8 = 62;
+
 /// Midimix LED note numbers for Mute row (channel 0)
 const MIDIMIX_MUTE_NOTES: [u8; 8] = [1, 4, 7, 10, 13, 16, 19, 22];
 /// Midimix LED note numbers for Solo row (channel 0)
@@ -156,13 +172,15 @@ struct ActiveOutputConnection {
 }
 
 /// Global MIDI engine state.
-/// Information about an active slot (for LED feedback)
+/// Information about an active slot (for LED feedback and knob mappings)
 #[derive(Debug, Clone)]
 struct SlotState {
     /// Slot index (0-5)
     index: usize,
-    /// Whether this slot has an active sketch
-    has_sketch: bool,
+    /// Whether this slot exists (is in the slots array)
+    exists: bool,
+    /// The sketch ID loaded in this slot (empty string if none)
+    sketch_id: String,
 }
 
 struct MidiEngineState {
@@ -192,6 +210,8 @@ struct MidiEngineState {
     last_sent_cc: HashMap<String, HashMap<(u8, u8), u8>>,
     /// Current slot states for LED feedback
     active_slots: Vec<SlotState>,
+    /// Last known master fader value (for direction detection)
+    last_master_value: Option<u8>,
 }
 
 impl Default for MidiEngineState {
@@ -215,6 +235,7 @@ impl Default for MidiEngineState {
             output_config: MidiOutputConfig::default(),
             last_sent_cc: HashMap::new(),
             active_slots: Vec::new(),
+            last_master_value: None,
         }
     }
 }
@@ -952,24 +973,24 @@ fn send_midimix_startup_animation(output_device_id: &str) {
 
             std::thread::sleep(Duration::from_millis(150));
 
-            // Final state: light up Mute + Rec Arm ONLY for slots with active sketches
+            // Final state: light up Mute + Rec Arm ONLY for slots that exist
             // At startup, active_slots may be empty - that's fine, no LEDs will light up
             // The frontend will call set_all_slots shortly after, which will update LEDs
             let active_slots = with_midi_engine(|state| state.active_slots.clone());
 
             for i in 0..6 {
-                // Only light up if we have slot info AND the slot has a sketch
-                let has_sketch = active_slots
+                // Only light up if the slot exists (is in the slots array)
+                let slot_exists = active_slots
                     .iter()
                     .find(|s| s.index == i)
-                    .map(|s| s.has_sketch)
+                    .map(|s| s.exists)
                     .unwrap_or(false); // Default to false (LED off) if no slot info
 
-                if has_sketch {
+                if slot_exists {
                     let _ = send_note_on(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 127);
                     let _ = send_note_on(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 127);
                 }
-                // Explicitly ensure LEDs are off if no sketch (in case of stale state)
+                // Explicitly ensure LEDs are off if slot doesn't exist
                 else {
                     let _ = send_note_off(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
                     let _ = send_note_off(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 0);
@@ -1037,15 +1058,15 @@ pub fn update_midimix_leds() {
     }
 
     for device_id in output_device_ids {
-        // Update Mute + Rec Arm LEDs for first 6 columns
+        // Update Mute + Rec Arm LEDs for first 6 columns (indicates slot existence)
         for i in 0..6 {
-            let has_sketch = active_slots
+            let slot_exists = active_slots
                 .iter()
                 .find(|s| s.index == i)
-                .map(|s| s.has_sketch)
+                .map(|s| s.exists)
                 .unwrap_or(false);
 
-            if has_sketch {
+            if slot_exists {
                 let _ = send_note_on(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 127);
                 let _ = send_note_on(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 127);
             } else {
@@ -1064,16 +1085,163 @@ pub fn update_midimix_leds() {
 }
 
 /// Update the active slots state (called from lib.rs when slots change)
-pub fn set_active_slots(slots: Vec<(usize, bool)>) {
+/// Accepts (index, exists, sketch_id) tuples for LED and knob mapping support.
+pub fn set_active_slots(slots: Vec<(usize, bool, String)>) {
     with_midi_engine(|state| {
         state.active_slots = slots
             .into_iter()
-            .map(|(index, has_sketch)| SlotState { index, has_sketch })
+            .map(|(index, exists, sketch_id)| SlotState {
+                index,
+                exists,
+                sketch_id,
+            })
             .collect();
     });
 
     // Update LEDs to reflect new state
     update_midimix_leds();
+
+    // Update knob mappings based on loaded sketches
+    update_midimix_knob_mappings();
+}
+
+/// Update Midimix knob mappings based on currently loaded sketches.
+/// Maps the top 3 knobs of each column to the first 3 parameters of that slot's sketch.
+fn update_midimix_knob_mappings() {
+    let active_slots = with_midi_engine(|state| state.active_slots.clone());
+
+    // Check if we have any Midimix connected
+    let has_midimix = with_midi_engine(|state| {
+        state
+            .connections
+            .values()
+            .any(|conn| is_midimix_device(&conn.device_name))
+    });
+
+    if !has_midimix {
+        return;
+    }
+
+    log::debug!(
+        "[MIDI] Updating Midimix knob mappings for {} slots",
+        active_slots.len()
+    );
+
+    // Get existing mappings to check for user overrides
+    let existing_mappings = with_midi_engine(|state| state.mappings.clone());
+
+    for slot_state in &active_slots {
+        if slot_state.index >= 6 || !slot_state.exists || slot_state.sketch_id.is_empty() {
+            continue;
+        }
+
+        // Get the first 3 parameter template IDs for this sketch
+        let param_ids = get_sketch_first_params(&slot_state.sketch_id, slot_state.index);
+
+        for (knob_idx, param_id) in param_ids.into_iter().enumerate() {
+            if knob_idx >= 3 {
+                break;
+            }
+
+            let cc_number = MIDIMIX_KNOB_CCS[slot_state.index][knob_idx];
+
+            // Skip if there's already a user mapping for this parameter
+            if existing_mappings.iter().any(|m| m.parameter_id == param_id) {
+                log::debug!("[MIDI] Skipping {} - already has a mapping", param_id);
+                continue;
+            }
+
+            // Also check if this CC is already mapped to something else by the user
+            // We only auto-map if the CC is unmapped
+            let cc_in_use = existing_mappings
+                .iter()
+                .any(|m| m.cc_number == cc_number && m.channel == Some(0));
+            if cc_in_use {
+                log::debug!(
+                    "[MIDI] Skipping CC {} - already mapped to another parameter",
+                    cc_number
+                );
+                continue;
+            }
+
+            // Get the parameter range from the sketch
+            let (min_val, max_val) = get_sketch_param_range(&slot_state.sketch_id, &param_id);
+
+            let mapping = MidiMapping {
+                parameter_id: param_id.clone(),
+                channel: Some(0),
+                cc_number,
+                min_value: min_val,
+                max_value: max_val,
+                device_id: None,
+            };
+
+            with_midi_engine(|state| {
+                // Remove any existing auto-mapping for this CC (from previous sketch loads)
+                state.mappings.retain(|m| {
+                    !(m.cc_number == cc_number && m.channel == Some(0) && m.device_id.is_none())
+                });
+                state.mappings.push(mapping);
+            });
+
+            log::debug!(
+                "[MIDI] Auto-mapped knob {} (CC {}) -> {} (range {}-{})",
+                knob_idx + 1,
+                cc_number,
+                param_id,
+                min_val,
+                max_val
+            );
+        }
+    }
+
+    save_mappings_to_disk();
+}
+
+/// Get the first 3 parameter IDs for a sketch (excluding alpha which is slot-level).
+fn get_sketch_first_params(sketch_id: &str, slot_index: usize) -> Vec<String> {
+    // Map sketch IDs to their parameter template IDs
+    // This is a simplified version - in a real implementation, you'd query the sketch registry
+    let params: Vec<&str> = match sketch_id {
+        "blueCube" => vec!["rotation_speed", "scale", "color_shift"],
+        "orangeCube" => vec!["rotation_speed", "scale", "color_shift"],
+        "greenPulse" => vec!["pulse_speed", "intensity", "color_hue"],
+        "tslText3D" => vec!["rotation_speed", "text_scale", "color_mix"],
+        "tslNoiseBlob" => vec!["noise_scale", "noise_speed", "color_mix"],
+        _ => vec![],
+    };
+
+    params
+        .into_iter()
+        .take(3)
+        .map(|p| format!("slot_{}_{}", slot_index, p))
+        .collect()
+}
+
+/// Get the parameter range for a sketch parameter.
+fn get_sketch_param_range(sketch_id: &str, param_id: &str) -> (f64, f64) {
+    // Extract template ID from param_id (format: slot_N_templateId)
+    let template_id = param_id.split('_').skip(2).collect::<Vec<_>>().join("_");
+
+    // Default ranges for known parameters
+    match (sketch_id, template_id.as_str()) {
+        // TslNoiseBlob
+        ("tslNoiseBlob", "noise_scale") => (0.1, 5.0),
+        ("tslNoiseBlob", "noise_speed") => (0.0, 3.0),
+        ("tslNoiseBlob", "color_mix") => (0.0, 1.0),
+        // BlueCube / OrangeCube
+        (_, "rotation_speed") => (0.0, 5.0),
+        (_, "scale") => (0.1, 3.0),
+        (_, "color_shift") => (0.0, 1.0),
+        // GreenPulse
+        ("greenPulse", "pulse_speed") => (0.0, 5.0),
+        ("greenPulse", "intensity") => (0.0, 2.0),
+        ("greenPulse", "color_hue") => (0.0, 1.0),
+        // TslText3D
+        ("tslText3D", "text_scale") => (0.1, 3.0),
+        // Default
+        _ => (0.0, 1.0),
+    }
 }
 
 /// Setup default Midimix mappings (faders 1-6 to slot 0-5 alpha)
@@ -1296,16 +1464,20 @@ pub fn send_note_on(
 
 /// Send a MIDI Note Off message.
 ///
+/// Note: This sends Note On with velocity 0, which is the more universally
+/// compatible way to turn off notes/LEDs. Many devices (including AKAI Midimix)
+/// don't respond to actual Note Off (0x80) messages for LED control.
+///
 /// # Arguments
 /// * `device_id` - The output device ID to send to, or None to send to all connected outputs
 /// * `channel` - MIDI channel (0-15)
 /// * `note` - Note number (0-127)
-/// * `velocity` - Release velocity (0-127, often ignored)
+/// * `_velocity` - Release velocity (ignored, always sends velocity 0)
 pub fn send_note_off(
     device_id: Option<&str>,
     channel: u8,
     note: u8,
-    velocity: u8,
+    _velocity: u8,
 ) -> Result<(), String> {
     if channel > 15 {
         return Err("MIDI channel must be 0-15".to_string());
@@ -1313,12 +1485,10 @@ pub fn send_note_off(
     if note > 127 {
         return Err("Note number must be 0-127".to_string());
     }
-    if velocity > 127 {
-        return Err("Velocity must be 0-127".to_string());
-    }
 
-    // Build the Note Off message: status byte (0x80 + channel), note, velocity
-    let message = [0x80 | channel, note, velocity];
+    // Send Note On with velocity 0 (more compatible than Note Off 0x80)
+    // This is the standard way to turn off LEDs on controllers like Midimix
+    let message = [0x90 | channel, note, 0];
 
     with_midi_engine(|state| {
         let device_ids: Vec<String> = if let Some(id) = device_id {
@@ -1338,9 +1508,8 @@ pub fn send_note_off(
                         log::warn!("[MIDI] Failed to send Note Off to {}: {}", id, e);
                     } else {
                         log::trace!(
-                            "[MIDI] Sent Note Off {} vel {} on channel {} to {}",
+                            "[MIDI] Sent Note Off {} (vel 0) on channel {} to {}",
                             note,
-                            velocity,
                             channel,
                             id
                         );
@@ -1534,6 +1703,12 @@ fn handle_midi_message(
         }
     }
 
+    // Handle Midimix master fader (CC 62) for global fade control
+    if type_str == "cc" && control == MIDIMIX_MASTER_FADER_CC && channel == 0 {
+        handle_master_fader(engine, value as u8, app_handle.as_ref());
+        // Don't return - still process regular mappings if any exist for CC 62
+    }
+
     // Apply mappings for CC messages
     if type_str == "cc" {
         for mapping in &mappings {
@@ -1558,6 +1733,85 @@ fn handle_midi_message(
                 );
             }
         }
+    }
+}
+
+/// Handle the Midimix master fader (CC 62).
+/// When fading down: only affects slots with alpha > new value (clamp down).
+/// When fading up: sets all slot alphas to the master value (bring up together).
+fn handle_master_fader(
+    engine: &Arc<Mutex<MidiEngineState>>,
+    cc_value: u8,
+    app_handle: Option<&AppHandle>,
+) {
+    let normalized = (cc_value as f64) / 127.0;
+
+    // Get last master value and current slot states
+    let (last_master, active_slots) = {
+        let state = engine.lock().unwrap();
+        (state.last_master_value, state.active_slots.clone())
+    };
+
+    // Determine direction
+    let is_fading_down = last_master.map_or(false, |last| cc_value < last);
+
+    // Update stored master value
+    {
+        let mut state = engine.lock().unwrap();
+        state.last_master_value = Some(cc_value);
+    }
+
+    log::debug!(
+        "[MIDI] Master fader: {} (normalized: {:.2}, direction: {})",
+        cc_value,
+        normalized,
+        if is_fading_down { "down" } else { "up" }
+    );
+
+    // Apply to all slot alphas
+    for slot_state in &active_slots {
+        if !slot_state.exists {
+            continue;
+        }
+
+        let param_id = format!("slot_{}_alpha", slot_state.index);
+
+        // Get current alpha value
+        let current_alpha = crate::with_parameter_store(|store| {
+            store.get(&param_id).map(|p| p.target).unwrap_or(1.0)
+        });
+
+        let new_alpha = if is_fading_down {
+            // Fading down: only clamp slots that are above the master value
+            if current_alpha > normalized {
+                normalized
+            } else {
+                // Don't change slots that are already below master
+                continue;
+            }
+        } else {
+            // Fading up: bring all slots up to the master value
+            normalized
+        };
+
+        // Apply the new alpha
+        crate::with_parameter_store(|store| {
+            store.set_target(param_id.clone(), new_alpha);
+        });
+
+        // Emit parameter_changed event
+        if let Some(handle) = app_handle {
+            if let Some(param) = crate::with_parameter_store(|store| store.get(&param_id)) {
+                let _ = handle.emit("parameter_changed", &param);
+            }
+        }
+
+        log::debug!(
+            "[MIDI] Master fader set slot {} alpha: {:.2} -> {:.2}",
+            slot_state.index,
+            current_alpha,
+            new_alpha
+        );
     }
 }
 

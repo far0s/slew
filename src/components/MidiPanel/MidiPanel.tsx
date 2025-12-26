@@ -10,12 +10,10 @@ import { useState } from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import {
-  useMidiDevices,
+  useMidiCombinedDevices,
   useMidiMappings,
-  useMidiActivity,
-  useMidiOutputDevices,
-  useMidiOutputConfig,
   type MidiMapping,
+  type MidiCombinedDeviceInfo,
 } from "../../inputs/midi";
 import styles from "./MidiPanel.module.css";
 
@@ -29,29 +27,80 @@ function formatMapping(mapping: MidiMapping): string {
 }
 
 /**
- * Activity indicator that pulses on MIDI input.
+ * Single device row in the unified device list.
  */
-function MidiActivityIndicator() {
-  const { lastMessage, messageCount } = useMidiActivity();
+function DeviceRow({
+  device,
+  onToggleConnection,
+  onToggleFeedback,
+  isConnecting,
+}: {
+  device: MidiCombinedDeviceInfo;
+  onToggleConnection: (deviceName: string, isConnected: boolean) => void;
+  onToggleFeedback: (deviceName: string, enabled: boolean) => void;
+  isConnecting: boolean;
+}) {
+  const isConnected = device.inputConnected || device.outputConnected;
+  const isBothConnected = device.inputConnected && device.outputConnected;
 
-  // Simple activity indicator - shows last message type
-  const isActive = lastMessage !== null && messageCount > 0;
+  // Connection status label
+  let statusLabel = "Disconnected";
+  if (isBothConnected) {
+    statusLabel = "In/Out";
+  } else if (device.inputConnected) {
+    statusLabel = "Input only";
+  } else if (device.outputConnected) {
+    statusLabel = "Output only";
+  }
 
   return (
-    <div className={styles.activityIndicator}>
-      <span
-        className={`${styles.activityDot} ${isActive ? styles.active : ""}`}
-        aria-label={isActive ? "MIDI activity detected" : "No MIDI activity"}
-      />
-      <span className={styles.activityLabel}>
-        {isActive ? `${messageCount} msgs` : "No activity"}
-      </span>
+    <div className={styles.deviceItem}>
+      <div className={styles.deviceInfo}>
+        <span
+          className={`${styles.connectionStatus} ${isConnected ? styles.connected : ""}`}
+          aria-label={isConnected ? "Connected" : "Disconnected"}
+        />
+        <div className={styles.deviceDetails}>
+          <span className={styles.deviceName} title={device.name}>
+            {device.name}
+          </span>
+          {isConnected && (
+            <span className={styles.deviceStatus}>{statusLabel}</span>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.deviceActions}>
+        {/* Feedback toggle - only show when connected and has output */}
+        {isConnected && device.output && (
+          <label
+            className={styles.feedbackToggle}
+            title="Send CC feedback to this device"
+          >
+            <input
+              type="checkbox"
+              checked={device.feedbackEnabled}
+              onChange={(e) => onToggleFeedback(device.name, e.target.checked)}
+            />
+            <span className={styles.feedbackLabel}>Feedback</span>
+          </label>
+        )}
+
+        <button
+          type="button"
+          onClick={() => onToggleConnection(device.name, isConnected)}
+          disabled={isConnecting}
+          className={`${styles.connectButton} ${isConnected ? styles.disconnect : ""}`}
+        >
+          {isConnecting ? "…" : isConnected ? "Disconnect" : "Connect"}
+        </button>
+      </div>
     </div>
   );
 }
 
 /**
- * Device list with connect/disconnect controls.
+ * Unified device list with connect/disconnect controls.
  */
 function DeviceList() {
   const {
@@ -59,12 +108,14 @@ function DeviceList() {
     isLoading,
     error,
     autoReconnect,
-    retryWithDelay,
     connect,
     disconnect,
+    setDeviceFeedbackEnabled,
     setAutoReconnect,
-  } = useMidiDevices();
-  const [connecting, setConnecting] = useState<string | null>(null);
+    retryWithDelay,
+  } = useMidiCombinedDevices();
+
+  const [connectingDevice, setConnectingDevice] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
 
   const handleRetry = async () => {
@@ -77,21 +128,25 @@ function DeviceList() {
   };
 
   const handleToggleConnection = async (
-    deviceId: string,
+    deviceName: string,
     isConnected: boolean,
   ) => {
-    setConnecting(deviceId);
+    setConnectingDevice(deviceName);
     try {
       if (isConnected) {
-        await disconnect(deviceId);
+        await disconnect(deviceName);
       } else {
-        await connect(deviceId);
+        await connect(deviceName);
       }
     } catch (e) {
       console.error("[MIDI] Connection error:", e);
     } finally {
-      setConnecting(null);
+      setConnectingDevice(null);
     }
+  };
+
+  const handleToggleFeedback = (deviceName: string, enabled: boolean) => {
+    setDeviceFeedbackEnabled(deviceName, enabled);
   };
 
   if (isLoading && devices.length === 0) {
@@ -137,31 +192,15 @@ function DeviceList() {
   return (
     <div className={styles.deviceList}>
       {devices.map((device) => (
-        <div key={device.id} className={styles.deviceItem}>
-          <div className={styles.deviceInfo}>
-            <span
-              className={`${styles.connectionStatus} ${device.is_connected ? styles.connected : ""}`}
-              aria-label={device.is_connected ? "Connected" : "Disconnected"}
-            />
-            <span className={styles.deviceName} title={device.name}>
-              {device.name}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() =>
-              void handleToggleConnection(device.id, device.is_connected)
-            }
-            disabled={connecting === device.id}
-            className={`${styles.connectButton} ${device.is_connected ? styles.disconnect : ""}`}
-          >
-            {connecting === device.id
-              ? "…"
-              : device.is_connected
-                ? "Disconnect"
-                : "Connect"}
-          </button>
-        </div>
+        <DeviceRow
+          key={device.name}
+          device={device}
+          onToggleConnection={(name, isConnected) =>
+            void handleToggleConnection(name, isConnected)
+          }
+          onToggleFeedback={handleToggleFeedback}
+          isConnecting={connectingDevice === device.name}
+        />
       ))}
       <label className={styles.autoReconnectToggle}>
         <input
@@ -171,123 +210,6 @@ function DeviceList() {
         />
         <span>Auto-reconnect devices</span>
       </label>
-    </div>
-  );
-}
-
-/**
- * Output device list with connect/disconnect controls.
- */
-function OutputDeviceList() {
-  const { devices, isLoading, error, refresh, connect, disconnect } =
-    useMidiOutputDevices();
-  const [connecting, setConnecting] = useState<string | null>(null);
-
-  const handleToggleConnection = async (
-    deviceId: string,
-    isConnected: boolean,
-  ) => {
-    setConnecting(deviceId);
-    try {
-      if (isConnected) {
-        await disconnect(deviceId);
-      } else {
-        await connect(deviceId);
-      }
-    } catch (e) {
-      console.error("[MIDI Output] Connection error:", e);
-    } finally {
-      setConnecting(null);
-    }
-  };
-
-  if (isLoading && devices.length === 0) {
-    return <p className={styles.loadingText}>Scanning for output devices…</p>;
-  }
-
-  if (error) {
-    return (
-      <div className={styles.errorBlock}>
-        <p className={styles.errorText}>{error}</p>
-        <button
-          type="button"
-          onClick={() => void refresh()}
-          className={styles.retryButton}
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  if (devices.length === 0) {
-    return (
-      <div className={styles.emptyState}>
-        <p className={styles.emptyText}>No MIDI output devices detected</p>
-        <p className={styles.emptyHint}>
-          Output devices will appear automatically when connected
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.deviceList}>
-      {devices.map((device) => (
-        <div key={device.id} className={styles.deviceItem}>
-          <div className={styles.deviceInfo}>
-            <span
-              className={`${styles.connectionStatus} ${device.is_connected ? styles.connected : ""}`}
-              aria-label={device.is_connected ? "Connected" : "Disconnected"}
-            />
-            <span className={styles.deviceName} title={device.name}>
-              {device.name}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() =>
-              void handleToggleConnection(device.id, device.is_connected)
-            }
-            disabled={connecting === device.id}
-            className={`${styles.connectButton} ${device.is_connected ? styles.disconnect : ""}`}
-          >
-            {connecting === device.id
-              ? "…"
-              : device.is_connected
-                ? "Disconnect"
-                : "Connect"}
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/**
- * Output configuration controls.
- */
-function OutputConfig() {
-  const { config, isLoading, setFeedbackEnabled } = useMidiOutputConfig();
-
-  if (isLoading) {
-    return <p className={styles.loadingText}>Loading config…</p>;
-  }
-
-  return (
-    <div className={styles.configSection}>
-      <label className={styles.autoReconnectToggle}>
-        <input
-          type="checkbox"
-          checked={config.send_cc_feedback}
-          onChange={(e) => void setFeedbackEnabled(e.target.checked)}
-        />
-        <span>Send CC feedback to controllers</span>
-      </label>
-      <p className={styles.configHint}>
-        When enabled, parameter changes are sent back to MIDI controllers via
-        their mapped CC numbers.
-      </p>
     </div>
   );
 }
@@ -366,43 +288,28 @@ export interface MidiPanelProps {
  *
  * Complete MIDI management panel with:
  * - Activity indicator
- * - Device list with connect/disconnect
+ * - Unified device list with connect/disconnect and per-device feedback toggle
  * - Mappings overview with remove options
  */
 export function MidiPanel({ className }: MidiPanelProps) {
   const [devicesOpen, setDevicesOpen] = useState(true);
-  const [outputOpen, setOutputOpen] = useState(false);
   const [mappingsOpen, setMappingsOpen] = useState(true);
 
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
       <div className={styles.header}>
         <h3 className={styles.title}>MIDI</h3>
-        <MidiActivityIndicator />
       </div>
 
       <Collapsible.Root open={devicesOpen} onOpenChange={setDevicesOpen}>
         <Collapsible.Trigger asChild>
           <button type="button" className={styles.sectionHeader}>
             {devicesOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Input Devices</span>
+            <span>Devices</span>
           </button>
         </Collapsible.Trigger>
         <Collapsible.Content className={styles.sectionContent}>
           <DeviceList />
-        </Collapsible.Content>
-      </Collapsible.Root>
-
-      <Collapsible.Root open={outputOpen} onOpenChange={setOutputOpen}>
-        <Collapsible.Trigger asChild>
-          <button type="button" className={styles.sectionHeader}>
-            {outputOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Output / Feedback</span>
-          </button>
-        </Collapsible.Trigger>
-        <Collapsible.Content className={styles.sectionContent}>
-          <OutputDeviceList />
-          <OutputConfig />
         </Collapsible.Content>
       </Collapsible.Root>
 
