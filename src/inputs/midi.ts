@@ -470,15 +470,22 @@ export function useMidiMappings() {
     });
   }, []);
 
-  // Subscribe to learn complete events to update mappings
+  // Subscribe to mappings changed events (covers add, remove, clear)
   useEffect(() => {
-    let unlisten: UnlistenFn | undefined;
+    let unlistenMappings: UnlistenFn | undefined;
+    let unlistenLearn: UnlistenFn | undefined;
 
     void (async () => {
-      unlisten = await listen<MidiLearnComplete>(
+      unlistenMappings = await listen<MidiMapping[]>(
+        "midi_mappings_changed",
+        (event) => {
+          setMappings(event.payload);
+        },
+      );
+
+      unlistenLearn = await listen<MidiLearnComplete>(
         "midi_learn_complete",
         async () => {
-          // Refresh mappings when a new one is added via Learn
           const result = await getMidiMappings();
           setMappings(result);
         },
@@ -486,7 +493,8 @@ export function useMidiMappings() {
     })();
 
     return () => {
-      if (unlisten) unlisten();
+      if (unlistenMappings) unlistenMappings();
+      if (unlistenLearn) unlistenLearn();
     };
   }, []);
 

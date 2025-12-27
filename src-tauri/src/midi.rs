@@ -1674,10 +1674,8 @@ fn handle_midi_message(
                 device_id: Some(device_id.to_string()),
             };
 
-            // Add the mapping and exit learn mode
             {
                 let mut state = engine.lock().unwrap();
-                // Remove any existing mapping for this parameter
                 state
                     .mappings
                     .retain(|m| m.parameter_id != mapping.parameter_id);
@@ -1686,10 +1684,9 @@ fn handle_midi_message(
                 state.learn_state.parameter_id = None;
             }
 
-            // Persist mappings
             save_mappings_to_disk();
+            emit_learn_state_changed();
 
-            // Emit learn complete event
             if let Some(ref handle) = app_handle {
                 let _ = handle.emit("midi_learn_complete", MidiLearnComplete { mapping });
             }
@@ -1938,6 +1935,7 @@ pub fn remove_mapping(parameter_id: String) -> Result<(), String> {
 
     if removed {
         save_mappings_to_disk();
+        emit_mappings_changed();
         log::debug!("[MIDI] Removed mapping for parameter: {}", parameter_id);
         Ok(())
     } else {
@@ -1952,6 +1950,7 @@ pub fn clear_mappings() {
     });
 
     save_mappings_to_disk();
+    emit_mappings_changed();
 
     log::debug!("[MIDI] Cleared all mappings");
 }
@@ -2057,6 +2056,16 @@ fn emit_learn_state_changed() {
     if let Some(handle) = with_midi_engine(|state| state.app_handle.clone()) {
         let learn_state = get_learn_state();
         let _ = handle.emit("midi_learn_state_changed", &learn_state);
+    }
+}
+
+/// Emit a mappings_changed event.
+fn emit_mappings_changed() {
+    let (app_handle, mappings) =
+        with_midi_engine(|state| (state.app_handle.clone(), state.mappings.clone()));
+
+    if let Some(handle) = app_handle {
+        let _ = handle.emit("midi_mappings_changed", mappings);
     }
 }
 

@@ -1,10 +1,3 @@
-/* ==========================================================================
-   MidiLearnButton.module.css
-
-   Styles for the MIDI Learn button component that appears next to
-   parameter controls.
-   ========================================================================== */
-
 .button {
   display: inline-flex;
   align-items: center;
@@ -23,7 +16,8 @@
     background-color 0.15s ease,
     border-color 0.15s ease,
     color 0.15s ease,
-    box-shadow 0.15s ease;
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
   user-select: none;
 }
 
@@ -31,6 +25,10 @@
   background: rgb(255 255 255 / 0.08);
   border-color: rgb(255 255 255 / 0.18);
   color: rgb(255 255 255 / 0.85);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .button:focus-visible {
@@ -43,20 +41,29 @@
   cursor: not-allowed;
 }
 
-/* ==========================================================================
-   Learning State
-   ========================================================================== */
+.midiIcon {
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+
+/* Learning State */
 
 .learning {
   background: rgb(234 179 8 / 0.15);
   border-color: rgb(234 179 8 / 0.4);
   color: rgb(253 224 71);
-  animation: pulse 1.5s ease-in-out infinite;
+  animation: pulse 1.2s ease-in-out infinite;
 }
 
 .learning:hover:not(:disabled) {
   background: rgb(234 179 8 / 0.2);
   border-color: rgb(234 179 8 / 0.5);
+}
+
+.learningIcon {
+  display: inline-flex;
+  animation: spin 2s linear infinite;
+  font-size: 0.8rem;
 }
 
 @keyframes pulse {
@@ -69,9 +76,16 @@
   }
 }
 
-/* ==========================================================================
-   Mapped State
-   ========================================================================== */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Mapped State */
 
 .mapped {
   background: rgb(34 197 94 / 0.12);
@@ -85,12 +99,98 @@
   color: rgb(252 165 165);
 }
 
-/* ==========================================================================
-   Compact Mode
-   ========================================================================== */
+.mappedContent {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  position: relative;
+}
+
+.mappingText {
+  transition: opacity 0.1s ease;
+}
+
+.mapped:hover .mappingText {
+  opacity: 0.7;
+}
+
+.removeIcon {
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1;
+  margin-left: 0.1rem;
+  color: rgb(252 165 165);
+  animation: fadeIn 0.1s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Success State */
+
+.success {
+  background: rgb(34 197 94 / 0.25);
+  border-color: rgb(34 197 94 / 0.5);
+  color: rgb(134 239 172);
+  animation: successFlash 0.6s ease-out;
+}
+
+@keyframes successFlash {
+  0% {
+    background: rgb(34 197 94 / 0.4);
+    border-color: rgb(34 197 94 / 0.7);
+    box-shadow: 0 0 12px 4px rgb(34 197 94 / 0.4);
+    transform: scale(1.05);
+  }
+  100% {
+    background: rgb(34 197 94 / 0.12);
+    border-color: rgb(34 197 94 / 0.3);
+    box-shadow: 0 0 0 0 rgb(34 197 94 / 0);
+    transform: scale(1);
+  }
+}
+
+/* Compact Mode */
 
 .compact {
   min-width: 28px;
   padding: 0.25rem 0.35rem;
   font-size: 0.6rem;
+}
+
+.compact .learningIcon {
+  font-size: 0.7rem;
+}
+
+.compact .removeIcon {
+  font-size: 0.75rem;
+}
+
+/* Reduced Motion */
+
+@media (prefers-reduced-motion: reduce) {
+  .learning {
+    animation: none;
+    box-shadow: 0 0 6px 2px rgb(234 179 8 / 0.25);
+  }
+
+  .learningIcon {
+    animation: none;
+  }
+
+  .success {
+    animation: none;
+  }
+
+  .removeIcon {
+    animation: none;
+  }
 }

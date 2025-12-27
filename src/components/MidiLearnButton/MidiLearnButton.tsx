@@ -1,12 +1,12 @@
 /**
  * MidiLearnButton
  *
- * A compact button that can be placed next to any parameter control
- * to enable MIDI Learn mode for that parameter. Shows current mapping
- * status and allows entering learn mode or clearing existing mappings.
+ * A compact button for MIDI Learn functionality.
+ * - One click to start learn mode → move any MIDI knob → binding complete
+ * - One click on mapped control to unbind
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   useMidiLearn,
   useMidiMappings,
@@ -15,8 +15,6 @@ import {
 import styles from "./MidiLearnButton.module.css";
 
 /**
- * Props for the MidiLearnButton component.
- *
  * @property parameterId - The parameter ID this button controls MIDI Learn for
  * @property min - Minimum value for the parameter (used for MIDI scaling)
  * @property max - Maximum value for the parameter (used for MIDI scaling)
@@ -31,23 +29,11 @@ export interface MidiLearnButtonProps {
   className?: string;
 }
 
-/**
- * Format a mapping for display in a tooltip or badge.
- */
 function formatMappingShort(mapping: MidiMapping): string {
   const channel = mapping.channel !== null ? mapping.channel + 1 : "*";
   return `CC${mapping.cc_number}@${channel}`;
 }
 
-/**
- * MidiLearnButton
- *
- * States:
- * - No mapping: Shows "Learn" button
- * - Has mapping: Shows mapping info with option to clear
- * - Learning (this param): Shows "Waiting…" with cancel option
- * - Learning (other param): Disabled
- */
 export function MidiLearnButton({
   parameterId,
   min,
@@ -59,15 +45,26 @@ export function MidiLearnButton({
     useMidiLearn();
   const { getMappingForParameter, removeMapping } = useMidiMappings();
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Get current mapping for this parameter
+  const [justMapped, setJustMapped] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const previousMappingRef = useRef<MidiMapping | undefined>(undefined);
   const [currentMapping, setCurrentMapping] = useState<MidiMapping | undefined>(
     undefined,
   );
 
-  // Update mapping when mappings change
   useEffect(() => {
-    setCurrentMapping(getMappingForParameter(parameterId));
+    const newMapping = getMappingForParameter(parameterId);
+
+    if (newMapping && !previousMappingRef.current) {
+      setJustMapped(true);
+      const timer = setTimeout(() => setJustMapped(false), 600);
+      previousMappingRef.current = newMapping;
+      setCurrentMapping(newMapping);
+      return () => clearTimeout(timer);
+    }
+
+    previousMappingRef.current = newMapping;
+    setCurrentMapping(newMapping);
   }, [getMappingForParameter, parameterId]);
 
   const isLearningThis = isLearning && learningParameterId === parameterId;
@@ -78,14 +75,12 @@ export function MidiLearnButton({
     setIsProcessing(true);
     try {
       if (isLearningThis) {
-        // Cancel learn mode
         await cancelLearn();
       } else if (hasMapping) {
-        // Clear existing mapping
         await removeMapping(parameterId);
         setCurrentMapping(undefined);
+        previousMappingRef.current = undefined;
       } else {
-        // Start learn mode with parameter's value range
         await startLearn(parameterId, min, max);
       }
     } catch (e) {
@@ -95,24 +90,35 @@ export function MidiLearnButton({
     }
   };
 
-  // Determine button content and style
   let buttonContent: React.ReactNode;
   let buttonTitle: string;
   let buttonClass = styles.button;
 
   if (isLearningThis) {
-    buttonContent = compact ? "…" : "Waiting…";
-    buttonTitle = "Click to cancel MIDI Learn";
+    buttonContent = compact ? (
+      <span className={styles.learningIcon}>◎</span>
+    ) : (
+      "Twist knob…"
+    );
+    buttonTitle = "Move any MIDI knob or fader to bind. Click to cancel.";
     buttonClass = `${styles.button} ${styles.learning}`;
   } else if (hasMapping) {
-    buttonContent = compact
-      ? formatMappingShort(currentMapping)
-      : formatMappingShort(currentMapping);
-    buttonTitle = `Mapped to ${formatMappingShort(currentMapping)}. Click to remove.`;
-    buttonClass = `${styles.button} ${styles.mapped}`;
+    const mappingText = formatMappingShort(currentMapping);
+    buttonContent = (
+      <span className={styles.mappedContent}>
+        <span className={styles.mappingText}>{mappingText}</span>
+        {isHovered && <span className={styles.removeIcon}>×</span>}
+      </span>
+    );
+    buttonTitle = `Mapped to ${mappingText}. Click to unbind.`;
+    buttonClass = `${styles.button} ${styles.mapped}${justMapped ? ` ${styles.success}` : ""}`;
   } else {
-    buttonContent = compact ? "M" : "Learn";
-    buttonTitle = "Click to start MIDI Learn for this parameter";
+    buttonContent = compact ? (
+      <span className={styles.midiIcon}>M</span>
+    ) : (
+      "Learn"
+    );
+    buttonTitle = "Click, then move a MIDI control to bind";
   }
 
   if (compact) {
@@ -123,6 +129,8 @@ export function MidiLearnButton({
     <button
       type="button"
       onClick={() => void handleClick()}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       disabled={isProcessing || isLearningOther}
       className={`${buttonClass} ${className ?? ""}`}
       title={buttonTitle}
