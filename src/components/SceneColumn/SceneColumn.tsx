@@ -171,10 +171,7 @@ export function SceneColumn({
               <ambientLight intensity={0.4} />
               <directionalLight position={[4, 6, 3]} intensity={1.1} />
               <directionalLight position={[-4, -4, -2]} intensity={0.4} />
-              <SketchComponent
-                opacity={alpha}
-                params={previewParams ?? params}
-              />
+              <SketchComponent opacity={1} params={previewParams ?? params} />
             </Canvas>
             {/* Alpha indicator badge when alpha < 1 */}
             {alpha < 0.99 && (
