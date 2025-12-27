@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useSceneSlots } from "./scenes/useSceneSlots";
@@ -17,7 +17,7 @@ import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings } from "./inputs/audio";
 import { useLfos, useModulationTargets } from "./inputs/modulation";
 import { useMidiMappings, useMidiDevices } from "./inputs/midi";
-import { useStatsToggle } from "./hooks";
+import { useStatsToggle, useWindowManager } from "./hooks";
 import styles from "./App.module.css";
 
 function App() {
@@ -31,8 +31,14 @@ function App() {
   // Parameter store (replaces individual useState calls)
   const paramStore = useParameterStore();
 
-  // Track whether initial migration/hydration has happened
   const [isInitialized, setIsInitialized] = useState(false);
+  const hasHydratedRef = useRef(false);
+
+  // Ref to access current paramStore in event callbacks
+  const paramStoreRef = useRef(paramStore);
+  useEffect(() => {
+    paramStoreRef.current = paramStore;
+  }, [paramStore]);
 
   // Audio mappings for parameter indicators
   const { mappings: audioMappings } = useAudioMappings();
@@ -55,6 +61,13 @@ function App() {
 
   // Stats toggle (press "D" to show/hide performance stats)
   const { showStats } = useStatsToggle();
+
+  // Window manager for heartbeat and recovery
+  useWindowManager({
+    windowLabel: "controls",
+    enableHeartbeat: true,
+    enableStatusPolling: false,
+  });
 
   // Handle crossfade to a slot
   const handleCrossfade = useCallback(
@@ -328,15 +341,15 @@ function App() {
     paramStore.removeSlotParameters(slotIndex);
   }
 
-  // Refresh backend parameters
-  async function refreshBackendParameters() {
+  // Refresh backend parameters - wrapped in useCallback with proper dependencies
+  const refreshBackendParameters = useCallback(async () => {
     paramStore.setIsLoading(true);
     paramStore.setError(null);
     try {
       // Get all backend parameters
       const response = (await invoke("get_parameters")) as BackendParameter[];
 
-      // Build slot config
+      // Build slot config from current slots
       const slotConfig: SlotConfig[] = sceneSlots.slots.map((slot) => ({
         index: slot.index,
         sketchId: slot.sketchId,
@@ -360,7 +373,7 @@ function App() {
       paramStore.setIsLoading(false);
       setIsInitialized(true);
     }
-  }
+  }, [sceneSlots.slots, paramStore]);
 
   // Handle crossfade completion when value reaches endpoint
   useEffect(() => {
@@ -430,8 +443,10 @@ function App() {
   ]);
 
   // Sync initial slot pairing to Renderer on startup
+  // Wait for hydration to complete before syncing
   useEffect(() => {
     if (!isInitialized) return;
+    if (!sceneSlots.isHydrated) return; // Don't sync until hydrated from backend
 
     const activeSketchId = sceneSlots.getSketchId(sceneSlots.activeIndex);
     if (activeSketchId) {
@@ -444,11 +459,13 @@ function App() {
         console.error("[Controls] Failed to sync initial slot pairing", error);
       });
     }
-  }, [isInitialized]);
+  }, [isInitialized, sceneSlots.isHydrated]);
 
   // Sync all slots to Renderer for multi-layer alpha rendering
+  // Wait for both initialization AND hydration to complete before syncing
   useEffect(() => {
     if (!isInitialized) return;
+    if (!sceneSlots.isHydrated) return; // Don't sync until hydrated from backend
 
     const slots = sceneSlots.slots.map((slot) => ({
       index: slot.index,
@@ -464,46 +481,48 @@ function App() {
     });
   }, [
     isInitialized,
+    sceneSlots.isHydrated,
     sceneSlots.slots,
     sceneSlots.activeIndex,
     sceneSlots.crossfadeTargetIndex,
   ]);
 
-  // Initial load and event subscription
+  // Initial parameter load (run once after slot hydration)
   useEffect(() => {
+    if (!sceneSlots.isHydrated) return;
+    if (hasHydratedRef.current) return;
+    hasHydratedRef.current = true;
     void refreshBackendParameters();
+  }, [sceneSlots.isHydrated, refreshBackendParameters]);
 
+  // Subscribe to parameter changes
+  useEffect(() => {
     let unlisten: (() => void) | undefined;
+
     void (async () => {
       try {
         unlisten = await listen<BackendParameter>(
           "parameter_changed",
           (event) => {
             const updated = event.payload;
+            const store = paramStoreRef.current;
 
-            // Always update interpolated values with the smooth backend value
-            // This is what the Renderer uses, so previews will match
-            paramStore.setInterpolated(updated.id, updated.value);
+            store.setInterpolated(updated.id, updated.value);
 
-            // For crossfade, use interpolated value (smooth animation)
-            // For other parameters, use target (immediate response to user input)
             if (updated.id === "crossfade") {
-              // Use value for smooth crossfade animation in UI
-              paramStore.set("crossfade", updated.value);
+              store.set("crossfade", updated.value);
             } else {
-              // Use target for immediate response to user input (for sliders)
-              paramStore.applyBackendParams([updated]);
+              store.setFromBackend(updated.id, updated.target);
             }
 
-            // Update backend snapshot
-            const current = paramStore.backendSnapshot ?? [];
+            const current = store.backendSnapshot ?? [];
             const index = current.findIndex((p) => p.id === updated.id);
             if (index === -1) {
-              paramStore.setBackendSnapshot([...current, updated]);
+              store.setBackendSnapshot([...current, updated]);
             } else {
               const next = current.slice();
               next[index] = updated;
-              paramStore.setBackendSnapshot(next);
+              store.setBackendSnapshot(next);
             }
           },
         );
@@ -515,7 +534,6 @@ function App() {
     return () => {
       if (unlisten) unlisten();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update slot configuration when slots change
@@ -528,6 +546,7 @@ function App() {
   }, [sceneSlots.slots, paramStore.setCurrentSlots]);
 
   // Get scene params for a slot (target values for sliders)
+  // paramStore functions are now stable (use refs internally)
   const getSlotSketchParams = useCallback(
     (slotIndex: number, sketchId: SketchId) =>
       buildSlotSceneParams(slotIndex, sketchId, paramStore),
@@ -542,16 +561,17 @@ function App() {
   );
 
   // Get/set parameter value wrappers
+  // paramStore.get and paramStore.set are now stable functions
   const getValue = useCallback(
     (id: string) => paramStore.get(id),
-    [paramStore],
+    [paramStore.get],
   );
 
   const setValue = useCallback(
     (id: string, value: number) => {
       paramStore.set(id, value);
     },
-    [paramStore],
+    [paramStore.set],
   );
 
   // Get active slot info for preview

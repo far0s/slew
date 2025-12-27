@@ -30,6 +30,7 @@ For detailed design, see `ARCHITECTURE.md`.
 | Modulation Engine  | ✅     | Backend LFOs, modulation matrix, audio→LFO, slider indicators |
 | Video Output       | ✅     | Syphon + NDI working, 1080p@60 optimization backlogged        |
 | Shader Sketches    | ✅     | TslText3D (3D text), TslNoiseBlob (procedural noise)          |
+| Window Manager     | ✅     | Native menu, heartbeat monitoring, emergency recovery overlay |
 | Packaging          | 🧪     | macOS bundle config, entitlements, scripts; signing untested  |
 
 ---
@@ -43,7 +44,25 @@ For detailed design, see `ARCHITECTURE.md`.
 
 Both windows share the same frontend bundle; `src/main.tsx` dispatches based on path.
 
-### Recent Changes (Device Hot-Plug)
+### Recent Changes (Window Manager)
+
+- Added `window_manager.rs` module for window lifecycle management
+- Native macOS menu bar with Window menu (⌘⇧C restart Controls, ⌘⇧R restart Renderer)
+- Heartbeat monitoring: windows send periodic pings, backend detects frozen windows
+- **Slot state persistence**: slots, active index, and crossfade target are persisted to `slots.json`
+- **Parameter state persistence**: all parameters persist in `parameters.json` and are reloaded on restart
+- **Window state persistence**: window positions/sizes saved and restored via `tauri-plugin-window-state`
+- Controls window hydrates slot state from backend on restart (no visual change in Renderer)
+- Fixed parameter re-render dependencies in App.tsx to ensure sliders show correct values after restart
+- Events: `window_restarted`, `window_unresponsive` for cross-window coordination
+
+**Recovery workflow**:
+
+1. If Controls becomes unresponsive, use ⌘⇧C from the macOS menu bar
+2. Controls window restarts and hydrates slots + parameters from backend
+3. Renderer continues uninterrupted with the same visuals and parameter values
+
+### Previous Changes (Device Hot-Plug)
 
 - Added background device watcher threads for MIDI and Audio (2s polling interval)
 - Implemented auto-reconnect for MIDI (remembers connected devices) and Audio (reconnects to last active)
@@ -212,6 +231,7 @@ All input systems now support automatic device detection:
 | File                                  | Purpose                                             |
 | ------------------------------------- | --------------------------------------------------- |
 | `src-tauri/src/lib.rs`                | Parameter Server, tick loop, command registration   |
+| `src-tauri/src/window_manager.rs`     | Window lifecycle, heartbeat monitoring, native menu |
 | `src-tauri/src/audio.rs`              | Audio capture, FFT, beat detection, audio mappings  |
 | `src-tauri/src/modulation.rs`         | LFO engine, modulation matrix                       |
 | `src-tauri/src/midi.rs`               | MIDI device management and mappings                 |
@@ -219,6 +239,7 @@ All input systems now support automatic device detection:
 | `src-tauri/src/hid.rs`                | HID device management (macropads)                   |
 | `src-tauri/src/video_out.rs`          | Video output backends (Syphon, Spout, NDI)          |
 | `src-tauri/src/syphon.rs`             | Native Syphon bindings (macOS only)                 |
+| `src/hooks/useWindowManager.ts`       | Window manager hook (heartbeat, restart, status)    |
 | `src/sketches/`                       | Self-contained sketch modules (BlueCube, etc.)      |
 | `src/scenes/sceneTypes.ts`            | Parameter utilities, slot ID generation             |
 | `src/scenes/useSceneSlots.ts`         | Slot management hook with multi-instance support    |

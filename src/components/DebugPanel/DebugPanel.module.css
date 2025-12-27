@@ -135,6 +135,11 @@
   color: rgb(203 213 225);
 }
 
+.restartButtons {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .restartButton {
   padding: 0.25rem 0.5rem;
   background: rgb(239 68 68 / 0.1);

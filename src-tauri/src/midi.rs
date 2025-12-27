@@ -1819,33 +1819,19 @@ fn apply_midi_to_parameter(
     app_handle: Option<&AppHandle>,
     skip_feedback: bool,
 ) {
-    // We need to call the parameter server's set_parameter logic.
-    // Since we can't directly call Tauri commands from here, we'll emit an event
-    // that the frontend can catch and forward, OR we can directly manipulate
-    // the parameter store.
-    //
-    // For now, let's directly update the parameter store for lower latency.
     crate::with_parameter_store(|store| {
         store.set_target(parameter_id.to_string(), value);
     });
 
-    // Emit parameter_changed event so UI stays in sync
     if let Some(handle) = app_handle {
         if let Some(param) = crate::with_parameter_store(|store| store.get(parameter_id)) {
             let _ = handle.emit("parameter_changed", &param);
         }
     }
 
-    // Send MIDI feedback if not skipped (to avoid feedback loops when value comes from MIDI)
     if !skip_feedback {
         send_parameter_feedback(parameter_id, value);
     }
-
-    log::debug!(
-        "[MIDI] Applied value {} to parameter {}",
-        value,
-        parameter_id
-    );
 }
 
 // ============================================================================

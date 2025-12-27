@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Canvas, useFrame } from "@react-three/fiber";
@@ -13,6 +13,9 @@ import type { ParameterTemplateId } from "../scenes/sceneTypes";
 import { getSketchDescriptor, makeSlotParameterId } from "../scenes/sceneTypes";
 import { useStatsToggle } from "../hooks";
 import styles from "./RendererRoot.module.css";
+
+// Heartbeat interval for health monitoring
+const HEARTBEAT_INTERVAL_MS = 5000;
 
 // =============================================================================
 // Types
@@ -44,6 +47,15 @@ interface SlotPairingPayload {
  */
 interface AllSlotsPayload {
   slots: Array<{ index: number; sketch_id: SketchId }>;
+  active_slot_index: number;
+  crossfade_target_index: number | null;
+}
+
+/**
+ * Backend slot state returned from get_slot_state command.
+ */
+interface BackendSlotState {
+  slots: Array<{ index: number; sketch_id: string }>;
   active_slot_index: number;
   crossfade_target_index: number | null;
 }
@@ -335,18 +347,42 @@ export function RendererRoot() {
   // Stats toggle (press "D" to show/hide performance stats)
   const { showStats } = useStatsToggle();
 
-  // Update a parameter and trigger re-render
+  // Heartbeat for window health monitoring
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    // Send initial heartbeat
+    invoke("window_heartbeat", { label: "renderer" }).catch((e) =>
+      console.warn("[Renderer] Initial heartbeat failed:", e),
+    );
+
+    // Set up interval
+    heartbeatRef.current = setInterval(() => {
+      invoke("window_heartbeat", { label: "renderer" }).catch((e) =>
+        console.warn("[Renderer] Heartbeat failed:", e),
+      );
+    }, HEARTBEAT_INTERVAL_MS);
+
+    return () => {
+      if (heartbeatRef.current) {
+        clearInterval(heartbeatRef.current);
+        heartbeatRef.current = null;
+      }
+    };
+  }, []);
+
   const updateParam = useCallback((id: string, value: number) => {
     setParamStore((prev) => {
-      // Only update if value actually changed to avoid unnecessary re-renders
-      if (prev.get(id) === value) return prev;
+      const current = prev.get(id);
+      if (current !== undefined && Math.abs(current - value) < 0.0001) {
+        return prev;
+      }
       const next = new Map(prev);
       next.set(id, value);
       return next;
     });
   }, []);
 
-  // Handle incoming parameter from backend
   const handleParameterChanged = useCallback(
     (param: BackendParameter) => {
       updateParam(param.id, param.value);
@@ -441,12 +477,36 @@ export function RendererRoot() {
     [],
   );
 
-  // Hydrate from backend on startup
+  // Hydrate from backend on startup (both slots and parameters)
   useEffect(() => {
     let mounted = true;
 
     async function hydrate() {
       try {
+        // Hydrate slot state first
+        const slotState = await invoke<BackendSlotState>("get_slot_state");
+
+        if (!mounted) return;
+
+        if (slotState.slots && slotState.slots.length > 0) {
+          setAllSlots(
+            slotState.slots.map((s) => ({
+              index: s.index,
+              sketchId: s.sketch_id as SketchId,
+            })),
+          );
+          setActiveSlotIndex(slotState.active_slot_index);
+          setCrossfadeTargetIndex(slotState.crossfade_target_index);
+
+          console.log(
+            "[Renderer] Hydrated",
+            slotState.slots.length,
+            "slots from backend, active:",
+            slotState.active_slot_index,
+          );
+        }
+
+        // Then hydrate parameters
         const backendParams = (await invoke(
           "get_parameters",
         )) as BackendParameter[];
@@ -463,7 +523,7 @@ export function RendererRoot() {
           "parameters from backend",
         );
       } catch (error) {
-        console.error("[Renderer] Failed to hydrate parameters:", error);
+        console.error("[Renderer] Failed to hydrate from backend:", error);
       }
     }
 

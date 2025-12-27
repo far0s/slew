@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import type { SketchId, SlotParameterId } from "./sceneTypes";
 import {
   ALL_SKETCH_IDS,
@@ -7,6 +8,15 @@ import {
   makeSlotParameterId,
   getSketchParameterTemplateIds,
 } from "./sceneTypes";
+
+/**
+ * Backend slot state returned from get_slot_state command.
+ */
+interface BackendSlotState {
+  slots: Array<{ index: number; sketch_id: string }>;
+  active_slot_index: number;
+  crossfade_target_index: number | null;
+}
 
 /**
  * Represents a single slot in the UI.
@@ -64,6 +74,10 @@ export interface SlotInitParams {
  * @property isCrossfadeTarget - Check if a slot is the crossfade target
  * @property findSlotsWithSketch - Find all slot indices that have a given sketch type
  * @property getSlotParameterIds - Get all parameter IDs for a slot
+ * @property isHydrated - Whether the slot state has been hydrated from backend
+ * @property hydrateFromBackend - Manually trigger hydration from backend state
+ * @property setSlots - Directly set slots array (for hydration)
+ * @property setActiveIndex - Directly set active index (for hydration)
  */
 export interface SlotsState {
   slots: Slot[];
@@ -94,6 +108,10 @@ export interface SlotsState {
   isCrossfadeTarget: (index: number) => boolean;
   findSlotsWithSketch: (sketchId: SketchId) => number[];
   getSlotParameterIds: (slotIndex: number) => SlotParameterId[];
+  isHydrated: boolean;
+  hydrateFromBackend: () => Promise<boolean>;
+  setSlots: (slots: Slot[]) => void;
+  setActiveIndex: (index: number) => void;
 }
 
 const DEFAULT_CONFIG: SlotsConfig = {
@@ -132,6 +150,45 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
     number | null
   >(null);
   const [crossfadeValue, setCrossfadeValue] = useState(0);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Hydrate slot state from backend on mount
+  const hydrateFromBackend = useCallback(async (): Promise<boolean> => {
+    try {
+      const backendState = await invoke<BackendSlotState>("get_slot_state");
+
+      // If backend has valid slot state, use it
+      if (backendState.slots && backendState.slots.length > 0) {
+        const hydratedSlots: Slot[] = backendState.slots.map((s) => ({
+          index: s.index,
+          sketchId: s.sketch_id as SketchId,
+        }));
+
+        setSlots(hydratedSlots);
+        setActiveIndex(backendState.active_slot_index);
+        setCrossfadeTargetIndex(backendState.crossfade_target_index);
+        setIsHydrated(true);
+
+        console.log(
+          `[useSceneSlots] Hydrated ${hydratedSlots.length} slots from backend, active: ${backendState.active_slot_index}`,
+        );
+        return true;
+      }
+    } catch (e) {
+      console.warn("[useSceneSlots] Failed to hydrate from backend:", e);
+    }
+
+    // Mark as hydrated even if we used defaults (first run)
+    setIsHydrated(true);
+    return false;
+  }, []);
+
+  // Auto-hydrate on mount
+  useEffect(() => {
+    if (!isHydrated) {
+      void hydrateFromBackend();
+    }
+  }, [isHydrated, hydrateFromBackend]);
 
   // Derived state
   const isCrossfading =
@@ -375,5 +432,9 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
     isCrossfadeTarget,
     findSlotsWithSketch,
     getSlotParameterIds,
+    isHydrated,
+    hydrateFromBackend,
+    setSlots,
+    setActiveIndex,
   };
 }
