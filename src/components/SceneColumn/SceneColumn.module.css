@@ -76,23 +76,27 @@
   background: #020617;
 }
 
-/* Alpha indicator overlay - shown when slot alpha < 1 */
+/* Alpha indicator badge - shown when slot alpha < 1 */
 .alphaOverlay {
   position: absolute;
-  inset: 0;
+  top: 0.5rem;
+  right: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(0 0 0 / 0.7);
+  padding: 0.2rem 0.4rem;
+  background: rgb(0 0 0 / 0.6);
+  border-radius: 0.25rem;
+  backdrop-filter: blur(4px);
   pointer-events: none;
   transition: opacity 0.15s ease;
 }
 
 .alphaValue {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: rgb(255 255 255 / 0.9);
-  text-shadow: 0 2px 8px rgb(0 0 0 / 0.5);
+  font-size: 0.65rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: rgb(255 255 255 / 0.8);
 }
 
 /* Slot number badge (top-left) */

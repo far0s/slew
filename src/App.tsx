@@ -16,6 +16,7 @@ import { ScenesArea, RendererPreview, DebugPanel } from "./components";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings } from "./inputs/audio";
 import { useLfos, useModulationTargets } from "./inputs/modulation";
+import { useMidiMappings, useMidiDevices } from "./inputs/midi";
 import { useStatsToggle } from "./hooks";
 import styles from "./App.module.css";
 
@@ -35,6 +36,13 @@ function App() {
 
   // Audio mappings for parameter indicators
   const { mappings: audioMappings } = useAudioMappings();
+
+  // MIDI mappings and device state (to disable direct input for MIDI-controlled parameters)
+  const { mappings: midiMappings } = useMidiMappings();
+  const { devices: midiDevices } = useMidiDevices();
+
+  // Check if any MIDI device is connected (for disabling direct input on mapped controls)
+  const isMidiDeviceConnected = midiDevices.some((d) => d.is_connected);
 
   // Modulation state for parameter indicators
   const { lfos } = useLfos();
@@ -258,6 +266,10 @@ function App() {
     // Use the returned slotIndex (state hasn't updated yet)
     const { slotIndex, sketchId: newSketchId, parameters } = initParams;
 
+    // Override alpha to 0 for newly added slots (start hidden)
+    const alphaParamId = makeSlotParameterId(slotIndex, "alpha");
+    parameters.set(alphaParamId, 0);
+
     // Initialize parameters in the store
     paramStore.initializeSlotWithValues(slotIndex, parameters);
 
@@ -266,6 +278,12 @@ function App() {
       await invoke("initialize_slot_parameters", {
         slotIndex,
         sceneId: newSketchId,
+      });
+      // Set alpha to 0 in backend (override the default of 1)
+      await invoke("set_parameter", {
+        id: alphaParamId,
+        value: 0,
+        app: undefined,
       });
     } catch (error) {
       console.error("[Controls] Failed to initialize slot parameters", error);
@@ -560,6 +578,7 @@ function App() {
             audioMappings={audioMappings}
             modulationTargets={modulationTargets}
             lfos={lfos}
+            midiMappings={isMidiDeviceConnected ? midiMappings : undefined}
             onSlotSketchChange={handleSlotSketchChange}
             onCrossfade={handleCrossfade}
             onRemoveSlot={handleRemoveSlot}

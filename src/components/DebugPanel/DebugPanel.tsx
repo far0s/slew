@@ -55,7 +55,7 @@ export function DebugPanel({
   }, [isRestarting]);
 
   return (
-    <Tabs.Root defaultValue="hid" className={styles.container}>
+    <Tabs.Root defaultValue="midi" className={styles.container}>
       <Tabs.List className={styles.tabList} aria-label="Debug panel tabs">
         <Tabs.Trigger value="midi" className={styles.tabTrigger}>
           MIDI

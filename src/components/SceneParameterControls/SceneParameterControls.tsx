@@ -16,6 +16,7 @@ import {
   AUDIO_SOURCE_COLORS,
 } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
+import type { MidiMapping } from "../../inputs/midi";
 import styles from "./SceneParameterControls.module.css";
 
 /**
@@ -28,6 +29,7 @@ import styles from "./SceneParameterControls.module.css";
  * @property audioMappings - Optional list of audio mappings to show indicators
  * @property modulationTargets - Optional list of modulation targets to show indicators
  * @property lfos - Optional list of LFO sources (for indicator labels)
+ * @property midiMappings - Optional list of MIDI mappings to disable direct input for mapped controls
  */
 export interface SceneParameterControlsProps {
   slotIndex: number;
@@ -37,6 +39,7 @@ export interface SceneParameterControlsProps {
   audioMappings?: AudioMapping[];
   modulationTargets?: ModulationTarget[];
   lfos?: LfoSource[];
+  midiMappings?: MidiMapping[];
 }
 
 /**
@@ -149,6 +152,7 @@ function getModulationIndicator(
  * - Handles all backend communication
  * - Supports MIDI learn via midiParameterId
  * - Shows audio mapping indicators when a parameter is audio-mapped
+ * - Disables direct input for MIDI-controlled parameters (prevents desync)
  */
 export function SceneParameterControls({
   slotIndex,
@@ -158,6 +162,7 @@ export function SceneParameterControls({
   audioMappings,
   modulationTargets,
   lfos,
+  midiMappings,
 }: SceneParameterControlsProps) {
   const descriptor = getSketchDescriptor(sketchId);
 
@@ -181,6 +186,10 @@ export function SceneParameterControls({
       <div className={styles.controls}>
         {sortedParameters.map((template, index) => {
           const paramId = makeSlotParameterId(slotIndex, template.templateId);
+          // Check if this parameter has a MIDI mapping (should disable direct input)
+          const hasMidiMapping = midiMappings?.some(
+            (m) => m.parameter_id === paramId,
+          );
 
           return (
             <ParameterSlider
@@ -202,6 +211,7 @@ export function SceneParameterControls({
                 modulationTargets,
                 lfos,
               )}
+              isMidiControlled={hasMidiMapping}
             />
           );
         })}

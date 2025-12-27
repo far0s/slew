@@ -5,6 +5,7 @@ import type { SketchId, SketchProps } from "../../sketches";
 import type { Slot } from "../../scenes/useSceneSlots";
 import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
+import type { MidiMapping } from "../../inputs/midi";
 import { makeSlotParameterId } from "../../scenes/sceneTypes";
 import { SceneColumn } from "../SceneColumn";
 import { SketchBrowser } from "../SketchBrowser";
@@ -28,6 +29,7 @@ import styles from "./ScenesArea.module.css";
  * @property audioMappings - Optional audio mappings for parameter indicators
  * @property modulationTargets - Optional modulation targets for parameter indicators
  * @property lfos - Optional LFO sources (for modulation indicator labels)
+ * @property midiMappings - Optional MIDI mappings to disable direct input for mapped controls
  * @property onSlotSketchChange - Callback to change sketch in a slot
  * @property onCrossfade - Callback to start crossfade to a slot
  * @property onRemoveSlot - Callback to remove a slot
@@ -56,6 +58,7 @@ export interface ScenesAreaProps {
   audioMappings?: AudioMapping[];
   modulationTargets?: ModulationTarget[];
   lfos?: LfoSource[];
+  midiMappings?: MidiMapping[];
   onSlotSketchChange: (slotIndex: number, sketchId: SketchId) => void;
   onCrossfade: (slotIndex: number) => void;
   onRemoveSlot: (slotIndex: number) => void;
@@ -92,6 +95,7 @@ export function ScenesArea({
   audioMappings,
   modulationTargets,
   lfos,
+  midiMappings,
   onSlotSketchChange,
   onCrossfade,
   onRemoveSlot,
@@ -187,6 +191,7 @@ export function ScenesArea({
                     audioMappings={audioMappings}
                     modulationTargets={modulationTargets}
                     lfos={lfos}
+                    midiMappings={midiMappings}
                     onSketchChange={(sketchId) =>
                       onSlotSketchChange(slot.index, sketchId)
                     }

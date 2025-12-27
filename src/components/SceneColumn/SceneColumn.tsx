@@ -12,6 +12,7 @@ import {
 import { SceneParameterControls } from "../SceneParameterControls";
 import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
+import type { MidiMapping } from "../../inputs/midi";
 import styles from "./SceneColumn.module.css";
 
 /**
@@ -34,6 +35,7 @@ import styles from "./SceneColumn.module.css";
  * @property audioMappings - Optional audio mappings for parameter indicators
  * @property modulationTargets - Optional modulation targets for parameter indicators
  * @property lfos - Optional LFO sources (for modulation indicator labels)
+ * @property midiMappings - Optional MIDI mappings to disable direct input for mapped controls
  * @property onSketchChange - Callback when sketch selection changes
  * @property onCrossfade - Callback when crossfade button is clicked
  * @property onRemove - Callback when remove button is clicked
@@ -56,6 +58,7 @@ export interface SceneColumnProps {
   audioMappings?: AudioMapping[];
   modulationTargets?: ModulationTarget[];
   lfos?: LfoSource[];
+  midiMappings?: MidiMapping[];
   onSketchChange: (sketchId: SketchId) => void;
   onCrossfade: () => void;
   onRemove: () => void;
@@ -97,6 +100,7 @@ export function SceneColumn({
   audioMappings,
   modulationTargets,
   lfos,
+  midiMappings,
   onSketchChange,
   onCrossfade,
   onRemove,
@@ -172,14 +176,9 @@ export function SceneColumn({
                 params={previewParams ?? params}
               />
             </Canvas>
-            {/* Alpha indicator overlay when alpha < 1 */}
+            {/* Alpha indicator badge when alpha < 1 */}
             {alpha < 0.99 && (
-              <div
-                className={styles.alphaOverlay}
-                style={{
-                  opacity: 1 - alpha,
-                }}
-              >
+              <div className={styles.alphaOverlay}>
                 <span className={styles.alphaValue}>
                   {Math.round(alpha * 100)}%
                 </span>
@@ -277,6 +276,7 @@ export function SceneColumn({
           audioMappings={audioMappings}
           modulationTargets={modulationTargets}
           lfos={lfos}
+          midiMappings={midiMappings}
         />
       </div>
     </motion.article>
