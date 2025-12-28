@@ -1,8 +1,14 @@
-# Multi-Layer Alpha Rendering Plan
+# Midimix & Multi-Layer Alpha Rendering
+
+Task documentation for the Midimix integration and multi-slot alpha rendering system.
+
+---
 
 ## Goal
 
 Render all slots simultaneously based on their alpha values, with 1:1 Midimix integration.
+
+---
 
 ## Status Summary
 
@@ -50,7 +56,7 @@ Render all slots simultaneously based on their alpha values, with 1:1 Midimix in
 
 ---
 
-## To Do
+## Remaining Tasks
 
 - [ ] Look up Midimix master column button note numbers (SEND ALL, BANK LEFT/RIGHT, SOLO)
 - [ ] Performance test with 8 active sketches at 1080p@60
@@ -91,7 +97,7 @@ Render all slots simultaneously based on their alpha values, with 1:1 Midimix in
 | `src/renderer/RendererRoot.tsx` | Multi-slot rendering loop                 |
 | `src/scenes/useSceneSlots.ts`   | 8-slot state management                   |
 | `src/components/SceneColumn/`   | Slot UI with inline sketch browser        |
-| `CONTROLLERS.md`                | Controller layouts and MIDI/HID reference |
+| `docs/CONTROLLERS.md`           | Controller layouts and MIDI/HID reference |
 
 ---
 

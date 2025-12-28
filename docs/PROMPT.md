@@ -1,0 +1,109 @@
+# Agent Prompt – sebcat-vj
+
+Welcome! This document is your starting point for understanding the **sebcat-vj** project.
+
+---
+
+## Quick Orientation
+
+1. **Read the architecture**: Start with `docs/ARCHITECTURE.md` for the full system design, technology stack, and code conventions.
+2. **Check current status**: See `docs/CHANGELOG.md` for what's been built, recent changes, and key decisions.
+3. **Review the backlog**: See `docs/BACKLOG.md` for prioritized work items and future plans.
+4. **Active work**: Check `docs/working/` for any in-progress task documentation.
+
+---
+
+## Project Summary
+
+**sebcat-vj** is a modular VJ application built with:
+
+- **Tauri v2** (Rust backend + WebView frontend)
+- **Dual-window architecture**: Renderer (high-performance 3D visuals) + Controls (UI dashboard)
+- **React + Three.js/r3f** for rendering
+- **Multiple input systems**: MIDI, OSC, Audio FFT, HID (macropads)
+- **Video output**: Syphon (macOS), NDI (cross-platform)
+
+Key concepts:
+- **Sketches**: Self-contained visual programs (shaders, 3D scenes)
+- **Slots**: 8 fixed containers that hold sketches with independent parameters
+- **Parameter Server**: Rust backend managing all parameters with smooth transitions
+- **Crossfade**: Blend between slots with configurable curves
+
+---
+
+## Key Directories
+
+| Path | Purpose |
+|------|---------|
+| `src/sketches/` | Visual programs (each sketch is a self-contained module) |
+| `src/components/` | React UI components |
+| `src/renderer/` | Renderer window (r3f, video output capture) |
+| `src/controls/` | Parameter store hook |
+| `src/inputs/` | MIDI, OSC, Audio, HID hooks |
+| `src-tauri/src/` | Rust backend (parameter server, input handling, video output) |
+| `docs/` | Project documentation |
+| `scripts/` | Build and setup scripts |
+
+---
+
+## Running the App
+
+```bash
+# Install dependencies
+npm install
+
+# Start development (with hot reload)
+npm run tauri dev
+
+# Start without NDI (no SDK required)
+npm run tauri:no-ndi
+```
+
+---
+
+## Documentation Index
+
+| Document | Purpose |
+|----------|---------|
+| `docs/ARCHITECTURE.md` | System design, window architecture, core systems, code style |
+| `docs/CHANGELOG.md` | Feature status, recent changes, decisions |
+| `docs/BACKLOG.md` | Prioritized work items with context |
+| `docs/PACKAGING.md` | Build, sign, and distribute instructions |
+| `docs/CONTROLLERS.md` | Hardware controller layouts and mappings |
+| `docs/working/` | Task-specific documentation for active work |
+
+---
+
+## Getting Up to Speed
+
+### For a quick overview
+1. Read this file
+2. Skim `docs/ARCHITECTURE.md` (especially Overview, Windows, Slot System)
+3. Check `docs/CHANGELOG.md` section 1 (High-Level Status)
+
+### For understanding a specific system
+1. Find the relevant section in `docs/ARCHITECTURE.md`
+2. Look at the corresponding Rust module in `src-tauri/src/`
+3. Check the TypeScript hooks in `src/inputs/` or `src/controls/`
+
+### For contributing
+1. Read the Code Style section in `docs/ARCHITECTURE.md`
+2. Check `docs/BACKLOG.md` for available work items
+3. Look for any active task docs in `docs/working/`
+
+---
+
+## Current Focus
+
+Check `docs/CHANGELOG.md` for the latest completed work and `docs/BACKLOG.md` for what's next. If there are files in `docs/working/`, those represent active task documentation with detailed plans and progress.
+
+---
+
+## Questions to Ask
+
+When starting a new task, consider:
+
+1. **What's the current state?** Check CHANGELOG for related features.
+2. **What's the plan?** Look in `docs/working/` for task-specific docs.
+3. **What are the constraints?** Review ARCHITECTURE for system design decisions.
+4. **Are there related pieces?** Check BACKLOG for connected work items.
