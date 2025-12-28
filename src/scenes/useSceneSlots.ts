@@ -116,7 +116,7 @@ export interface SlotsState {
 
 const DEFAULT_CONFIG: SlotsConfig = {
   minSlots: 1,
-  maxSlots: 6,
+  maxSlots: 8,
 };
 
 /**

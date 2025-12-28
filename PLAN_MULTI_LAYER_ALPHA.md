@@ -323,25 +323,207 @@ Rework the renderer to support true multi-layer mixing where each slot's alpha c
 - [x] LED startup animation flashes correctly (on then off)
 - [x] LEDs indicate slot existence (slot count)
 
+### Phase 7: Slot System Rework ⏳ TODO
+
+**Goal:** Make all slots visible and accessible from the start, with empty slots showing "Add Sketch" CTA.
+
+**Current behavior:**
+
+- Slots are created dynamically via "Add Slot" button
+- Empty state is hidden
+- User must explicitly add slots before choosing sketches
+
+**Proposed behavior:**
+
+- All slots (4 or 8, see Phase 9) are always visible in the UI
+- Empty slots show a prominent "Add Sketch" CTA / SketchBrowser trigger
+- User clicks on any empty slot to open SketchBrowser for that slot
+- Removing a sketch returns the slot to empty state (not deleted)
+
+**Implementation:**
+
+1. **`src/scenes/useSceneSlots.ts`**
+   - Initialize with fixed number of slots (all with `sketchId: null`)
+   - Change `addSlot` to `setSketch(slotIndex, sketchId)`
+   - Change `removeSlot` to `clearSlot(slotIndex)` (sets sketchId to null)
+
+2. **`src/components/SceneColumn/SceneColumn.tsx`**
+   - Handle `sketchId: null` state
+   - Show "Add Sketch" button/overlay when empty
+   - Click triggers SketchBrowser positioned for that slot
+
+3. **`src/components/ScenesArea/ScenesArea.tsx`**
+   - Remove dynamic "Add Slot" panel at the end
+   - Render fixed number of SceneColumns
+   - Pass slot index to SketchBrowser for correct assignment
+
+4. **`src/components/SketchBrowser/`**
+   - Accept `targetSlotIndex` prop
+   - On sketch selection, call `setSketch(targetSlotIndex, sketchId)`
+
+5. **Backend sync:**
+   - `set_all_slots` should handle null sketchIds gracefully
+   - Renderer skips slots with null sketchId (same as alpha = 0)
+
+**UI considerations:**
+
+- Empty slots should be visually distinct but not distracting
+- Preserve slot order and numbering (Slot 1-8 always exist)
+- "Copy from Slot" option should still work
+
+**Testing checklist:**
+
+- [ ] All slots visible on app start
+- [ ] Empty slots show "Add Sketch" CTA
+- [ ] Clicking CTA opens SketchBrowser for that slot
+- [ ] Sketch loads into correct slot
+- [ ] Clearing a sketch returns to empty state
+- [ ] Midimix column correspondence is clear (slot N = column N)
+
+---
+
+### Phase 8: Midimix Column Harmonization ✅ COMPLETE
+
+**Goal:** Align slot count with Midimix's 8-column layout.
+
+**Previous mismatch:**
+
+- Midimix has 8 columns (fader + 3 knobs + mute/solo/rec arm each)
+- App previously supported 6 slots
+- Columns 7-8 were underutilized
+
+**Implemented: Option A (8 slots, 1 column per slot)**
+
+**Options:**
+
+#### Option A: 8 Slots (1 column per slot)
+
+```
+Col 1    Col 2    Col 3    Col 4    Col 5    Col 6    Col 7    Col 8    Master
+┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐
+│Knob1│  │Knob1│  │Knob1│  │Knob1│  │Knob1│  │Knob1│  │Knob1│  │Knob1│  │     │
+│Knob2│  │Knob2│  │Knob2│  │Knob2│  │Knob2│  │Knob2│  │Knob2│  │Knob2│  │     │
+│Knob3│  │Knob3│  │Knob3│  │Knob3│  │Knob3│  │Knob3│  │Knob3│  │Knob3│  │     │
+│Mute │  │Mute │  │Mute │  │Mute │  │Mute │  │Mute │  │Mute │  │Mute │  │     │
+│Solo │  │Solo │  │Solo │  │Solo │  │Solo │  │Solo │  │Solo │  │Solo │  │     │
+│Rec  │  │Rec  │  │Rec  │  │Rec  │  │Rec  │  │Rec  │  │Rec  │  │Rec  │  │     │
+│Fader│  │Fader│  │Fader│  │Fader│  │Fader│  │Fader│  │Fader│  │Fader│  │Fader│
+└─────┘  └─────┘  └─────┘  └─────┘  └─────┘  └─────┘  └─────┘  └─────┘  └─────┘
+Slot 1   Slot 2   Slot 3   Slot 4   Slot 5   Slot 6   Slot 7   Slot 8   All
+
+Per slot: Fader=Alpha, Knobs=Params 1-3, Mute=Toggle, Solo=Solo, Rec=???
+```
+
+**Pros:**
+
+- 1:1 mapping, intuitive
+- More visual layers available
+- Simple mental model
+
+**Cons:**
+
+- Only 3 controllable parameters per slot
+- May be too many slots for typical use
+
+#### Option B: 4 Slots (2 columns per slot)
+
+```
+Col 1-2 (Slot 1)    Col 3-4 (Slot 2)    Col 5-6 (Slot 3)    Col 7-8 (Slot 4)    Master
+┌─────┬─────┐       ┌─────┬─────┐       ┌─────┬─────┐       ┌─────┬─────┐       ┌─────┐
+│Knob1│Knob4│       │Knob1│Knob4│       │Knob1│Knob4│       │Knob1│Knob4│       │     │
+│Knob2│Knob5│       │Knob2│Knob5│       │Knob2│Knob5│       │Knob2│Knob5│       │     │
+│Knob3│Knob6│       │Knob3│Knob6│       │Knob3│Knob6│       │Knob3│Knob6│       │     │
+│Mute │CtlA │       │Mute │CtlA │       │Mute │CtlA │       │Mute │CtlA │       │     │
+│Solo │CtlB │       │Solo │CtlB │       │Solo │CtlB │       │Solo │CtlB │       │     │
+│Rec  │CtlC │       │Rec  │CtlC │       │Rec  │CtlC │       │Rec  │CtlC │       │     │
+│Alpha│React│       │Alpha│React│       │Alpha│React│       │Alpha│React│       │Fader│
+└─────┴─────┘       └─────┴─────┘       └─────┴─────┘       └─────┴─────┘       └─────┘
+  Slot 1              Slot 2              Slot 3              Slot 4              All
+
+Per slot:
+- Fader 1: Alpha
+- Fader 2: Audio Reactivity (Phase 7)
+- Knobs 1-6: Params 1-6
+- Mute: Toggle visibility
+- Solo: Solo mode
+- Rec: ???
+- CtlA/B/C: Additional controls (crossfade target, preset, etc.)
+```
+
+**Pros:**
+
+- 6 controllable parameters per slot
+- Dedicated Audio Reactivity fader
+- More control per layer
+- Extra buttons for advanced features
+
+**Cons:**
+
+- Only 4 simultaneous layers
+- Slightly more complex mental model
+
+**Recommendation:** Option A (8 slots) chosen for simplicity. The 1:1 mapping is more intuitive for live performance. If 3 parameters feels limiting, bank switching can be added later (Knobs 1-3 = params 1-3, hold button → params 4-6).
+
+**Implementation completed:**
+
+1. **`src/scenes/useSceneSlots.ts`** ✅
+   - Changed `DEFAULT_MAX_SLOTS` from 6 to 8
+
+2. **`src/App.tsx`** ✅
+   - Updated `maxSlots: 8` in useSceneSlots config
+
+3. **`src/scenes/sceneTypes.ts`** ✅
+   - Updated `maxSlots` in `getAllParameterIds` from 6 to 8
+
+4. **`src/inputs/hid.ts`** ✅
+   - Updated `maxSlots` default from 4 to 8 in MacropadConfig
+
+5. **`src-tauri/src/midi.rs`** ✅
+   - Updated `setup_midimix_default_mappings` to map all 8 faders to slot alphas
+   - Updated `update_midimix_knob_mappings` slot limit from 6 to 8
+   - Updated LED startup animation to cover all 8 columns
+   - Updated LED shutdown animation to cover all 8 columns
+   - Updated `update_midimix_leds` to update all 8 columns
+
+6. **Renderer**
+   - Already supports arbitrary slot count (no changes needed)
+
+**Testing checklist:**
+
+- [x] 8 slots can be created in UI
+- [x] All 8 Midimix faders map to slot alphas (CC 19, 23, 27, 31, 49, 53, 57, 61)
+- [x] All 8 Midimix knob columns map to sketch parameters
+- [x] LED startup animation covers all 8 columns
+- [x] LED shutdown animation covers all 8 columns
+- [x] `update_midimix_leds` reflects 8-slot state
+- [ ] Performance acceptable with 8 active sketches (to verify)
+- [ ] UI scrolls/scales appropriately for 8 slots (to verify)
+
+---
+
 ## Future Enhancements
 
 Potential additions for future phases:
 
-1. **Button Controls**
+1. **Audio Reactivity Master**
+   - Per-slot `audio_reactivity` parameter (0.0–1.0) as a multiplier for all audio mappings
+   - Smoothly fade audio effects in/out during performance via knob or fader
+
+2. **Button Controls**
    - Mute buttons to toggle slot visibility (alpha 0/1)
    - Solo button to solo a single slot (set others to 0)
-   - Bank buttons to switch between slot groups (1-6, 7-12)
+   - Bank buttons to switch between parameter pages (params 1-3, 4-6, etc.)
 
-2. **Advanced Feedback**
+3. **Advanced Feedback**
    - Map Solo LEDs to crossfade target indicator
    - Pulse LEDs on audio reactivity
    - Color-coded LED states
 
-3. **Preset System**
+4. **Preset System**
    - Save/load slot configurations via buttons
    - Scene snapshots with smooth transitions
 
-4. **Additional Controller Profiles**
+5. **Additional Controller Profiles**
    - Launchpad auto-setup
    - APC Mini support
    - Generic template for custom controllers

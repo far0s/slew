@@ -19,7 +19,7 @@ For detailed design, see `ARCHITECTURE.md`.
 | ------------------ | ------ | ------------------------------------------------------------- |
 | Tauri + React app  | ✅     | Dual-window (Renderer + Controls)                             |
 | Parameter Server   | ✅     | Rust backend with ~60Hz transitions                           |
-| Sketch/Slot System | ✅     | Slot-based (1-6), multi-instance, auto-generated controls     |
+| Sketch/Slot System | ✅     | Slot-based (1-8), multi-instance, auto-generated controls     |
 | Sketch Browser UI  | ✅     | Scrollable list with descriptions, parameters, click-to-add   |
 | Crossfade          | ✅     | Smooth blending with correct scene pairing                    |
 | MIDI Input         | ✅     | Hot-plug detection, auto-reconnect, Learn workflow            |

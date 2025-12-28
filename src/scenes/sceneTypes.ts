@@ -316,9 +316,9 @@ export function getAllParameterIds(): ParameterId[] {
   // Add global crossfade parameter
   ids.push("crossfade");
 
-  // Generate parameters for all possible slots (0-5) and all sketch types
+  // Generate parameters for all possible slots (0-7) and all sketch types
   // This ensures the dropdowns always show available parameters
-  const maxSlots = 6;
+  const maxSlots = 8;
   for (let slotIndex = 0; slotIndex < maxSlots; slotIndex++) {
     for (const sketch of SKETCH_REGISTRY) {
       for (const template of sketch.parameters) {

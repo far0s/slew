@@ -24,7 +24,7 @@ function App() {
   // Scene slots state
   const sceneSlots = useSceneSlots({
     minSlots: 1,
-    maxSlots: 6,
+    maxSlots: 8,
     initialSketches: ["blueCube"],
   });
 

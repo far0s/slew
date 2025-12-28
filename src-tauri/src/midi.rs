@@ -939,34 +939,34 @@ fn send_midimix_startup_animation(output_device_id: &str) {
             let hold_time = Duration::from_millis(80);
 
             // Wave 1: Mute row left to right
-            for i in 0..6 {
+            for i in 0..8 {
                 let _ = send_note_on(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 127);
                 std::thread::sleep(stagger_delay);
             }
             std::thread::sleep(hold_time);
-            for i in 0..6 {
+            for i in 0..8 {
                 let _ = send_note_off(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
                 std::thread::sleep(stagger_delay);
             }
 
             // Wave 2: Solo row left to right
-            for i in 0..6 {
+            for i in 0..8 {
                 let _ = send_note_on(Some(&device_id), 0, MIDIMIX_SOLO_NOTES[i], 127);
                 std::thread::sleep(stagger_delay);
             }
             std::thread::sleep(hold_time);
-            for i in 0..6 {
+            for i in 0..8 {
                 let _ = send_note_off(Some(&device_id), 0, MIDIMIX_SOLO_NOTES[i], 0);
                 std::thread::sleep(stagger_delay);
             }
 
             // Wave 3: Rec Arm row left to right
-            for i in 0..6 {
+            for i in 0..8 {
                 let _ = send_note_on(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 127);
                 std::thread::sleep(stagger_delay);
             }
             std::thread::sleep(hold_time);
-            for i in 0..6 {
+            for i in 0..8 {
                 let _ = send_note_off(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 0);
                 std::thread::sleep(stagger_delay);
             }
@@ -978,7 +978,7 @@ fn send_midimix_startup_animation(output_device_id: &str) {
             // The frontend will call set_all_slots shortly after, which will update LEDs
             let active_slots = with_midi_engine(|state| state.active_slots.clone());
 
-            for i in 0..6 {
+            for i in 0..8 {
                 // Only light up if the slot exists (is in the slots array)
                 let slot_exists = active_slots
                     .iter()
@@ -1010,28 +1010,21 @@ fn send_midimix_shutdown_animation_sync(device_id: &str) {
 
     // Turn off LEDs in reverse order: Rec Arm, Solo, Mute (right to left)
     // Wave 1: Rec Arm row right to left
-    for i in (0..6).rev() {
+    for i in (0..8).rev() {
         let _ = send_note_off(Some(device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 0);
         std::thread::sleep(stagger_delay);
     }
 
     // Wave 2: Solo row right to left
-    for i in (0..6).rev() {
+    for i in (0..8).rev() {
         let _ = send_note_off(Some(device_id), 0, MIDIMIX_SOLO_NOTES[i], 0);
         std::thread::sleep(stagger_delay);
     }
 
     // Wave 3: Mute row right to left
-    for i in (0..6).rev() {
+    for i in (0..8).rev() {
         let _ = send_note_off(Some(device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
         std::thread::sleep(stagger_delay);
-    }
-
-    // Also turn off columns 7-8 just in case
-    for i in 6..8 {
-        let _ = send_note_off(Some(device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
-        let _ = send_note_off(Some(device_id), 0, MIDIMIX_SOLO_NOTES[i], 0);
-        let _ = send_note_off(Some(device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 0);
     }
 
     std::thread::sleep(Duration::from_millis(50));
@@ -1058,8 +1051,8 @@ pub fn update_midimix_leds() {
     }
 
     for device_id in output_device_ids {
-        // Update Mute + Rec Arm LEDs for first 6 columns (indicates slot existence)
-        for i in 0..6 {
+        // Update Mute + Rec Arm LEDs for all 8 columns (indicates slot existence)
+        for i in 0..8 {
             let slot_exists = active_slots
                 .iter()
                 .find(|s| s.index == i)
@@ -1131,7 +1124,7 @@ fn update_midimix_knob_mappings() {
     let existing_mappings = with_midi_engine(|state| state.mappings.clone());
 
     for slot_state in &active_slots {
-        if slot_state.index >= 6 || !slot_state.exists || slot_state.sketch_id.is_empty() {
+        if slot_state.index >= 8 || !slot_state.exists || slot_state.sketch_id.is_empty() {
             continue;
         }
 
@@ -1244,14 +1237,14 @@ fn get_sketch_param_range(sketch_id: &str, param_id: &str) -> (f64, f64) {
     }
 }
 
-/// Setup default Midimix mappings (faders 1-6 to slot 0-5 alpha)
+/// Setup default Midimix mappings (faders 1-8 to slot 0-7 alpha)
 fn setup_midimix_default_mappings() {
     log::debug!("[MIDI] Setting up Midimix default mappings for slot alphas");
 
     // Check if we already have mappings for these parameters (don't override user mappings)
     let existing_mappings = with_midi_engine(|state| state.mappings.clone());
 
-    for slot in 0..6 {
+    for slot in 0..8 {
         let param_id = format!("slot_{}_alpha", slot);
 
         // Skip if there's already a mapping for this parameter
