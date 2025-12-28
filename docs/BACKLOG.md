@@ -37,6 +37,23 @@ Leverage existing Midimix integration for quick slot control.
 
 ---
 
+### 🔴 Global codebase cleanup and refactoring `chore`
+
+Do a round of cleanup and refactoring to improve maintainability and performance.
+
+**Context**: The codebase has grown organically over time, leading to a mix of styles and patterns. This task aims to standardize and optimize the codebase for better readability, maintainability, and performance.
+
+**Subtasks**: (non-exhaustive list)
+
+- [ ] Decide if it's worth keeping JSDoc (on top of TypeScript)
+- [ ] Standardize coding style and conventions.
+- [ ] Refactor complex functions into smaller, more manageable pieces.
+- [ ] Implement unit tests for critical components (vitest for React frontend, Rust ship with its own test suite `#[cfg(test)]`, and there's also some Tauri-specific helpers `tauri::test`).
+- [ ] Optimize memory usage and reduce unnecessary allocations.
+- [ ] Rust: files have grown particularly large and complex, analyze if anything can be extracted into reusable modules or libraries, or even removed if unused.
+
+---
+
 ### 🔴 Video Output Optimization `feature`
 
 Improve 1080p@60fps performance for professional use.
@@ -49,6 +66,20 @@ Improve 1080p@60fps performance for professional use.
 - [ ] Binary IPC instead of base64 encoding
 - [ ] PBOs for async GPU readback
 - [ ] Spout implementation for Windows
+
+---
+
+### 🔴 Prepare repo for first public release `chore`
+
+Have the repo ready for first public release (that includes download links and documentation).
+
+**Context**: Some collaborators (some technical and some non-technical) have asked to play with the app.
+
+**Subtasks**: (non-exhaustive list)
+
+- [ ] Figure out a proper name + icon and logo -> update throughout the app
+- [ ] Set up automated release process (GitHub Actions) -> every time a new tag is pushed to the main branch, create a release with the tag name as the version number and upload the built binaries
+- [ ] Update README.md with download links and documentation
 
 ---
 
@@ -70,37 +101,6 @@ Save/load parameter configurations per sketch.
 
 ---
 
-### 🟡 More Shader Sketches `feature`
-
-Expand the visual library with new procedural sketches.
-
-**Context**: Currently have basic geometry sketches and two shader sketches (TslText3D, TslNoiseBlob). More variety would improve creative options.
-
-**Subtasks**:
-
-- [ ] **Feedback/Tunnel**: Infinite zoom with color cycling
-- [ ] **Particles**: GPU-driven particle system with audio reactivity
-- [ ] **Kaleidoscope**: Mirror/reflection patterns
-- [ ] **Waveform**: Audio-reactive visualization
-- [ ] **Plasma**: Classic demoscene effect with modern twist
-
----
-
-### 🟡 Presets & Projects (Full Session Management) `feature`
-
-Save/load complete project state.
-
-**Context**: For live performance, users need to save entire setups including all slots, parameters, and mappings.
-
-**Subtasks**:
-
-- [ ] Save/load complete project state (slots, parameters, mappings)
-- [ ] Quick snapshot for A/B comparison
-- [ ] Export/import for sharing
-- [ ] Auto-save / recovery
-
----
-
 ### 🟡 Performance Testing `chore`
 
 Validate performance characteristics with full workload.
@@ -116,6 +116,37 @@ Validate performance characteristics with full workload.
 ---
 
 ## Low Priority / Future
+
+### 🟢 More Shader Sketches `feature`
+
+Expand the visual library with new procedural sketches.
+
+**Context**: Currently have basic geometry sketches and two shader sketches (TslText3D, TslNoiseBlob). More variety would improve creative options.
+
+**Subtasks**:
+
+- [ ] **Feedback/Tunnel**: Infinite zoom with color cycling
+- [ ] **Particles**: GPU-driven particle system with audio reactivity
+- [ ] **Kaleidoscope**: Mirror/reflection patterns
+- [ ] **Waveform**: Audio-reactive visualization
+- [ ] **Plasma**: Classic demoscene effect with modern twist
+
+---
+
+### 🟢 Presets & Projects (Full Session Management) `feature`
+
+Save/load complete project state.
+
+**Context**: For live performance, users need to save entire setups including all slots, parameters, and mappings.
+
+**Subtasks**:
+
+- [ ] Save/load complete project state (slots, parameters, mappings)
+- [ ] Quick snapshot for A/B comparison
+- [ ] Export/import for sharing
+- [ ] Auto-save / recovery
+
+---
 
 ### 🟢 Multi-Display Support `feature`
 
