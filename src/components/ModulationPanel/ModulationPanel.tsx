@@ -572,11 +572,13 @@ function TargetForm({
   const [depth, setDepth] = useState(editingTarget?.depth ?? 0.5);
   const [bipolar, setBipolar] = useState(editingTarget?.bipolar ?? true);
 
-  // Get parameter IDs only for active slots
+  // Get parameter IDs only for active slots (filter out empty slots)
   const allParameterIds = useMemo(
     () =>
       getAllSlotParameterIds(
-        slots.map((s) => ({ index: s.index, sceneId: s.sketchId })),
+        slots
+          .filter((s) => s.sketchId !== null)
+          .map((s) => ({ index: s.index, sceneId: s.sketchId as string })),
       ),
     [slots],
   );

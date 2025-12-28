@@ -19,7 +19,6 @@ export {
 } from "./SceneParameterControls";
 export { SceneColumn, type SceneColumnProps } from "./SceneColumn";
 export { ScenesArea, type ScenesAreaProps } from "./ScenesArea";
-export { SketchBrowser, type SketchBrowserProps } from "./SketchBrowser";
 
 // Preview Components
 export { RendererPreview, type RendererPreviewProps } from "./RendererPreview";

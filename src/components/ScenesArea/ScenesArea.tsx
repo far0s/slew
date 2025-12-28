@@ -8,7 +8,6 @@ import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import type { MidiMapping } from "../../inputs/midi";
 import { makeSlotParameterId } from "../../scenes/sceneTypes";
 import { SceneColumn } from "../SceneColumn";
-import { SketchBrowser } from "../SketchBrowser";
 import styles from "./ScenesArea.module.css";
 
 /**
@@ -20,8 +19,6 @@ import styles from "./ScenesArea.module.css";
  * @property crossfadeValue - Current crossfade value (0-1)
  * @property isCrossfading - Whether crossfade is in progress
  * @property macropadSelectedIndex - Index of slot selected via macropad, or null
- * @property canAddSlot - Whether we can add more slots
- * @property canRemoveSlot - Whether we can remove slots
  * @property getValue - Get parameter value for a given parameter ID
  * @property setValue - Set parameter value
  * @property getSlotSketchParams - Get sketch params object for a slot (target values for sliders)
@@ -32,9 +29,9 @@ import styles from "./ScenesArea.module.css";
  * @property midiMappings - Optional MIDI mappings to disable direct input for mapped controls
  * @property onSlotSketchChange - Callback to change sketch in a slot
  * @property onCrossfade - Callback to start crossfade to a slot
- * @property onRemoveSlot - Callback to remove a slot
- * @property onAddSlot - Callback to add a new slot with defaults
- * @property onCopySlot - Callback to add a new slot by copying an existing slot
+ * @property onClearSlot - Callback to clear a slot (remove sketch)
+ * @property onSetSketch - Callback to set a sketch in a specific slot
+ * @property onCopyToSlot - Callback to copy parameters from one slot to another
  */
 export interface ScenesAreaProps {
   slots: Slot[];
@@ -43,8 +40,6 @@ export interface ScenesAreaProps {
   crossfadeValue: number;
   isCrossfading: boolean;
   macropadSelectedIndex?: number | null;
-  canAddSlot: boolean;
-  canRemoveSlot: boolean;
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
   getSlotSketchParams: (
@@ -61,9 +56,9 @@ export interface ScenesAreaProps {
   midiMappings?: MidiMapping[];
   onSlotSketchChange: (slotIndex: number, sketchId: SketchId) => void;
   onCrossfade: (slotIndex: number) => void;
-  onRemoveSlot: (slotIndex: number) => void;
-  onAddSlot: (sketchId?: SketchId) => void;
-  onCopySlot: (sourceSlotIndex: number) => void;
+  onClearSlot: (slotIndex: number) => void;
+  onSetSketch: (slotIndex: number, sketchId: SketchId) => void;
+  onCopyToSlot: (sourceSlotIndex: number, targetSlotIndex: number) => void;
 }
 
 /**
@@ -73,8 +68,8 @@ export interface ScenesAreaProps {
  * Designed to show ~3.5 columns at once with the 4th peeking in.
  *
  * Features:
- * - Horizontal scroll for 4+ slots
- * - Add slot panel with "New Slot" and "Copy Slot" options
+ * - Horizontal scroll for 8 fixed slots
+ * - Empty slots show inline sketch browser directly (no extra click needed)
  * - Multi-instance support: same sketch type can exist in multiple slots
  * - Renders SceneColumn for each slot with slot-prefixed parameters
  * - AnimatePresence for enter/exit animations
@@ -86,8 +81,6 @@ export function ScenesArea({
   crossfadeValue,
   isCrossfading,
   macropadSelectedIndex,
-  canAddSlot,
-  canRemoveSlot,
   getValue,
   setValue,
   getSlotSketchParams,
@@ -98,10 +91,15 @@ export function ScenesArea({
   midiMappings,
   onSlotSketchChange,
   onCrossfade,
-  onRemoveSlot,
-  onAddSlot,
-  onCopySlot,
+  onClearSlot,
+  onSetSketch,
+  onCopyToSlot,
 }: ScenesAreaProps) {
+  // Get filled slots for "copy from" feature in inline browsers
+  const filledSlots = slots.filter(
+    (s): s is Slot & { sketchId: SketchId } => s.sketchId !== null,
+  );
+
   // Calculate crossfade progress for a slot
   const getCrossfadeProgress = useCallback(
     (slotIndex: number): number => {
@@ -164,9 +162,9 @@ export function ScenesArea({
           <div className={styles.columnsWrapper}>
             <AnimatePresence mode="popLayout">
               {slots.map((slot) => {
-                // Get alpha (master opacity) for this slot
+                // Get alpha (master opacity) for this slot (only if has sketch)
                 const alphaParamId = makeSlotParameterId(slot.index, "alpha");
-                const alpha = getValue(alphaParamId) ?? 1;
+                const alpha = slot.sketchId ? (getValue(alphaParamId) ?? 1) : 1;
 
                 return (
                   <SceneColumn
@@ -179,12 +177,22 @@ export function ScenesArea({
                     isCrossfading={isCrossfading}
                     isMacropadSelected={slot.index === macropadSelectedIndex}
                     excludeSketchIds={[]}
-                    canRemove={canRemoveSlot && slot.index !== activeIndex}
-                    params={getSlotSketchParams(slot.index, slot.sketchId)}
-                    previewParams={getSlotSketchParamsInterpolated?.(
-                      slot.index,
-                      slot.sketchId,
-                    )}
+                    canRemove={
+                      slot.sketchId !== null && slot.index !== activeIndex
+                    }
+                    params={
+                      slot.sketchId
+                        ? getSlotSketchParams(slot.index, slot.sketchId)
+                        : undefined
+                    }
+                    previewParams={
+                      slot.sketchId
+                        ? getSlotSketchParamsInterpolated?.(
+                            slot.index,
+                            slot.sketchId,
+                          )
+                        : undefined
+                    }
                     alpha={alpha}
                     getValue={getValue}
                     setValue={setValue}
@@ -192,24 +200,23 @@ export function ScenesArea({
                     modulationTargets={modulationTargets}
                     lfos={lfos}
                     midiMappings={midiMappings}
-                    onSketchChange={(sketchId) =>
-                      onSlotSketchChange(slot.index, sketchId)
-                    }
+                    filledSlots={filledSlots}
+                    onSketchChange={(sketchId) => {
+                      // For empty slots, this is called when user picks a sketch
+                      if (slot.sketchId === null) {
+                        onSetSketch(slot.index, sketchId);
+                      } else {
+                        onSlotSketchChange(slot.index, sketchId);
+                      }
+                    }}
                     onCrossfade={() => onCrossfade(slot.index)}
-                    onRemove={() => onRemoveSlot(slot.index)}
+                    onRemove={() => onClearSlot(slot.index)}
+                    onCopyToSlot={(sourceSlotIndex) =>
+                      onCopyToSlot(sourceSlotIndex, slot.index)
+                    }
                   />
                 );
               })}
-
-              {/* Sketch Browser panel */}
-              {canAddSlot && (
-                <SketchBrowser
-                  key="sketch-browser"
-                  slots={slots}
-                  onSelectSketch={onAddSlot}
-                  onCopySlot={onCopySlot}
-                />
-              )}
             </AnimatePresence>
           </div>
         </div>

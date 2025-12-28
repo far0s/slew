@@ -1,14 +1,21 @@
-import { Suspense } from "react";
+import { Suspense, useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as Select from "@radix-ui/react-select";
-import { ChevronDownIcon, Cross2Icon } from "@radix-ui/react-icons";
+import {
+  ChevronDownIcon,
+  Cross2Icon,
+  PlusIcon,
+  CopyIcon,
+} from "@radix-ui/react-icons";
 import { motion } from "motion/react";
 import type { SketchId, SketchProps } from "../../sketches";
 import {
   SKETCH_REGISTRY,
   ALL_SKETCH_IDS,
   SKETCH_COMPONENT_REGISTRY,
+  getSketchDescriptor,
 } from "../../sketches";
+import type { Slot } from "../../scenes/useSceneSlots";
 import { SceneParameterControls } from "../SceneParameterControls";
 import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
@@ -19,7 +26,7 @@ import styles from "./SceneColumn.module.css";
  * Props for the SceneColumn component.
  *
  * @property slotIndex - Slot index (0-based)
- * @property sketchId - Sketch ID loaded in this slot
+ * @property sketchId - Sketch ID loaded in this slot, or null if empty
  * @property isActive - Whether this slot is the active (output) slot
  * @property isCrossfadeTarget - Whether this slot is the crossfade target
  * @property crossfadeProgress - Current crossfade progress (0-100) for this slot
@@ -38,11 +45,13 @@ import styles from "./SceneColumn.module.css";
  * @property midiMappings - Optional MIDI mappings to disable direct input for mapped controls
  * @property onSketchChange - Callback when sketch selection changes
  * @property onCrossfade - Callback when crossfade button is clicked
- * @property onRemove - Callback when remove button is clicked
+ * @property onRemove - Callback when remove button is clicked (clears the slot)
+ * @property filledSlots - All slots with sketches (for copy-from feature)
+ * @property onCopyToSlot - Callback to copy from another slot
  */
 export interface SceneColumnProps {
   slotIndex: number;
-  sketchId: SketchId;
+  sketchId: SketchId | null;
   isActive: boolean;
   isCrossfadeTarget: boolean;
   crossfadeProgress: number;
@@ -59,9 +68,11 @@ export interface SceneColumnProps {
   modulationTargets?: ModulationTarget[];
   lfos?: LfoSource[];
   midiMappings?: MidiMapping[];
+  filledSlots?: Array<Slot & { sketchId: SketchId }>;
   onSketchChange: (sketchId: SketchId) => void;
   onCrossfade: () => void;
   onRemove: () => void;
+  onCopyToSlot?: (sourceSlotIndex: number) => void;
 }
 
 /**
@@ -73,6 +84,99 @@ function getSketchLabel(sketchId: SketchId): string {
 }
 
 /**
+ * InlineSketchBrowser
+ *
+ * Displayed directly in empty slots - shows all available sketches
+ * and copy-from options without requiring an extra click.
+ */
+function InlineSketchBrowser({
+  slotIndex,
+  filledSlots,
+  onSelectSketch,
+  onCopySlot,
+}: {
+  slotIndex: number;
+  filledSlots: Array<Slot & { sketchId: SketchId }>;
+  onSelectSketch: (sketchId: SketchId) => void;
+  onCopySlot?: (sourceSlotIndex: number) => void;
+}) {
+  const displayNumber = slotIndex + 1;
+
+  const handleSelectSketch = useCallback(
+    (sketchId: SketchId) => {
+      onSelectSketch(sketchId);
+    },
+    [onSelectSketch],
+  );
+
+  return (
+    <motion.article
+      className={styles.emptyColumn}
+      aria-label={`Slot ${displayNumber} - choose a sketch`}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      layout
+    >
+      {/* Header with slot number */}
+      <div className={styles.inlineBrowserHeader}>
+        <div className={styles.inlineSlotBadge}>{displayNumber}</div>
+        <span className={styles.inlineBrowserTitle}>Choose a sketch</span>
+      </div>
+
+      {/* Sketch list */}
+      <div className={styles.inlineSketchList}>
+        {SKETCH_REGISTRY.map((descriptor) => (
+          <button
+            key={descriptor.id}
+            type="button"
+            className={styles.inlineSketchItem}
+            onClick={() => handleSelectSketch(descriptor.id as SketchId)}
+            aria-label={`Add ${descriptor.label} to slot ${displayNumber}`}
+          >
+            <PlusIcon className={styles.inlineSketchItemIcon} />
+            <span className={styles.inlineSketchItemLabel}>
+              {descriptor.shortLabel}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Copy from slot section */}
+      {filledSlots.length > 0 && onCopySlot && (
+        <div className={styles.inlineCopySection}>
+          <span className={styles.inlineCopySectionLabel}>Or copy from</span>
+          <div className={styles.inlineCopyOptions}>
+            {filledSlots.map((slot) => {
+              const sketchLabel =
+                getSketchDescriptor(slot.sketchId)?.shortLabel ?? slot.sketchId;
+              return (
+                <button
+                  key={`copy-${slot.index}`}
+                  type="button"
+                  className={styles.inlineCopyButton}
+                  onClick={() => onCopySlot(slot.index)}
+                  aria-label={`Copy from slot ${slot.index + 1}`}
+                >
+                  <CopyIcon className={styles.inlineCopyIcon} />
+                  <span className={styles.inlineCopySlotNumber}>
+                    {slot.index + 1}
+                  </span>
+                  <span className={styles.inlineCopySketchName}>
+                    {sketchLabel}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </motion.article>
+  );
+}
+
+/**
  * SceneColumn
  *
  * A single column in the scene management UI containing:
@@ -81,6 +185,8 @@ function getSketchLabel(sketchId: SketchId): string {
  * - Crossfade/Active button (bottom-right of preview)
  * - Remove button (bottom-right of preview, next to crossfade)
  * - Auto-generated parameter controls below
+ *
+ * If sketchId is null, renders InlineSketchBrowser instead.
  */
 export function SceneColumn({
   slotIndex,
@@ -104,7 +210,21 @@ export function SceneColumn({
   onSketchChange,
   onCrossfade,
   onRemove,
+  filledSlots = [],
+  onCopyToSlot,
 }: SceneColumnProps) {
+  // If no sketch loaded, render inline browser
+  if (sketchId === null) {
+    return (
+      <InlineSketchBrowser
+        slotIndex={slotIndex}
+        filledSlots={filledSlots}
+        onSelectSketch={onSketchChange}
+        onCopySlot={onCopyToSlot}
+      />
+    );
+  }
+
   const SketchComponent = SKETCH_COMPONENT_REGISTRY[sketchId];
   const displayLabel = getSketchLabel(sketchId);
   const displayNumber = slotIndex + 1;

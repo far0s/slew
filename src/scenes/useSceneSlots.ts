@@ -22,11 +22,11 @@ interface BackendSlotState {
  * Represents a single slot in the UI.
  *
  * @property index - Slot index (0-based, displayed as 1-based in UI)
- * @property sketchId - Which sketch type is loaded in this slot
+ * @property sketchId - Which sketch type is loaded in this slot, or null if empty
  */
 export interface Slot {
   index: number;
-  sketchId: SketchId;
+  sketchId: SketchId | null;
 }
 
 /**
@@ -61,9 +61,12 @@ export interface SlotInitParams {
  * @property isCrossfading - Whether we're currently mid-crossfade
  * @property canAddSlot - Whether we can add more slots
  * @property canRemoveSlot - Whether we can remove slots (must have > minSlots)
- * @property addSlot - Add a new slot with default parameters
- * @property addSlotWithCopy - Add a new slot by copying an existing slot's parameters
- * @property removeSlot - Remove a slot by index (cannot remove active slot)
+ * @property setSketch - Set the sketch in a specific slot (creates parameters if needed)
+ * @property clearSlot - Clear a slot (set sketchId to null)
+ * @property copyToSlot - Copy parameters from one slot to another
+ * @property addSlot - Add a new slot with default parameters (legacy, for dynamic slot creation)
+ * @property addSlotWithCopy - Add a new slot by copying an existing slot's parameters (legacy)
+ * @property removeSlot - Remove a slot by index (cannot remove active slot) (legacy)
  * @property setSlotSketch - Change the sketch in a slot (resets to defaults or copies)
  * @property startCrossfade - Start crossfading to a target slot
  * @property setCrossfadeValue - Update the crossfade value (called during transition)
@@ -74,6 +77,7 @@ export interface SlotInitParams {
  * @property isCrossfadeTarget - Check if a slot is the crossfade target
  * @property findSlotsWithSketch - Find all slot indices that have a given sketch type
  * @property getSlotParameterIds - Get all parameter IDs for a slot
+ * @property getFilledSlots - Get only slots that have a sketch loaded
  * @property isHydrated - Whether the slot state has been hydrated from backend
  * @property hydrateFromBackend - Manually trigger hydration from backend state
  * @property setSlots - Directly set slots array (for hydration)
@@ -87,6 +91,13 @@ export interface SlotsState {
   isCrossfading: boolean;
   canAddSlot: boolean;
   canRemoveSlot: boolean;
+  setSketch: (slotIndex: number, sketchId: SketchId) => SlotInitParams | null;
+  clearSlot: (slotIndex: number) => boolean;
+  copyToSlot: (
+    sourceSlotIndex: number,
+    targetSlotIndex: number,
+    getParameterValue: (id: string) => number | undefined,
+  ) => SlotInitParams | null;
   addSlot: (sketchId?: SketchId) => SlotInitParams | null;
   addSlotWithCopy: (
     sourceSlotIndex: number,
@@ -103,11 +114,12 @@ export interface SlotsState {
   setCrossfadeValue: (value: number) => void;
   completeCrossfade: () => void;
   cancelCrossfade: () => void;
-  getSketchId: (index: number) => SketchId | undefined;
+  getSketchId: (index: number) => SketchId | null | undefined;
   isActiveSlot: (index: number) => boolean;
   isCrossfadeTarget: (index: number) => boolean;
   findSlotsWithSketch: (sketchId: SketchId) => number[];
   getSlotParameterIds: (slotIndex: number) => SlotParameterId[];
+  getFilledSlots: () => Slot[];
   isHydrated: boolean;
   hydrateFromBackend: () => Promise<boolean>;
   setSlots: (slots: Slot[]) => void;
@@ -115,9 +127,12 @@ export interface SlotsState {
 }
 
 const DEFAULT_CONFIG: SlotsConfig = {
-  minSlots: 1,
+  minSlots: 8,
   maxSlots: 8,
 };
+
+/** Number of fixed slots (always visible) */
+const FIXED_SLOT_COUNT = 8;
 
 /**
  * Hook for managing numbered slots with multi-instance support.
@@ -130,17 +145,19 @@ const DEFAULT_CONFIG: SlotsConfig = {
  * - New slots can copy parameters from existing slots of the same sketch type
  */
 export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
-  const { minSlots, maxSlots } = {
+  const { ...mergedConfig } = {
     ...DEFAULT_CONFIG,
     ...config,
   };
+  // Use mergedConfig to avoid unused variable warnings
+  void mergedConfig;
 
-  // Initialize with default sketches
+  // Initialize with fixed number of slots (first with default sketch, rest empty)
   const getInitialSlots = (): Slot[] => {
     const sketches = config.initialSketches ?? [ALL_SKETCH_IDS[0]];
-    return sketches.slice(0, maxSlots).map((sketchId, index) => ({
+    return Array.from({ length: FIXED_SLOT_COUNT }, (_, index) => ({
       index,
-      sketchId,
+      sketchId: index < sketches.length ? sketches[index] : null,
     }));
   };
 
@@ -159,10 +176,21 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
 
       // If backend has valid slot state, use it
       if (backendState.slots && backendState.slots.length > 0) {
-        const hydratedSlots: Slot[] = backendState.slots.map((s) => ({
-          index: s.index,
-          sketchId: s.sketch_id as SketchId,
-        }));
+        // Ensure we always have FIXED_SLOT_COUNT slots
+        const hydratedSlots: Slot[] = Array.from(
+          { length: FIXED_SLOT_COUNT },
+          (_, index) => {
+            const backendSlot = backendState.slots.find(
+              (s) => s.index === index,
+            );
+            return {
+              index,
+              sketchId: backendSlot?.sketch_id
+                ? (backendSlot.sketch_id as SketchId)
+                : null,
+            };
+          },
+        );
 
         setSlots(hydratedSlots);
         setActiveIndex(backendState.active_slot_index);
@@ -195,8 +223,16 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
     crossfadeTargetIndex !== null &&
     crossfadeValue > 0.01 &&
     crossfadeValue < 0.99;
-  const canAddSlot = slots.length < maxSlots;
-  const canRemoveSlot = slots.length > minSlots;
+  // With fixed slots, these are always false (no dynamic add/remove)
+  const canAddSlot = false;
+  const canRemoveSlot = false;
+
+  // Get only slots that have a sketch loaded
+  const getFilledSlots = useCallback((): Slot[] => {
+    return slots.filter(
+      (slot): slot is Slot & { sketchId: SketchId } => slot.sketchId !== null,
+    );
+  }, [slots]);
 
   // Find all slots with a given sketch type
   const findSlotsWithSketch = useCallback(
@@ -208,107 +244,135 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
     [slots],
   );
 
+  // Set a sketch in a specific slot
+  const setSketch = useCallback(
+    (slotIndex: number, sketchId: SketchId): SlotInitParams | null => {
+      if (slotIndex < 0 || slotIndex >= FIXED_SLOT_COUNT) return null;
+
+      setSlots((prev) =>
+        prev.map((slot) =>
+          slot.index === slotIndex ? { ...slot, sketchId } : slot,
+        ),
+      );
+
+      // Return default parameters for the new sketch
+      const parameters = buildSlotDefaultParameters(slotIndex, sketchId);
+      return {
+        slotIndex,
+        sketchId,
+        parameters,
+      };
+    },
+    [],
+  );
+
+  // Clear a slot (set sketchId to null)
+  const clearSlot = useCallback(
+    (slotIndex: number): boolean => {
+      if (slotIndex < 0 || slotIndex >= FIXED_SLOT_COUNT) return false;
+      if (slotIndex === activeIndex) return false; // Cannot clear active slot
+
+      setSlots((prev) =>
+        prev.map((slot) =>
+          slot.index === slotIndex ? { ...slot, sketchId: null } : slot,
+        ),
+      );
+
+      // Clear crossfade target if it was the cleared slot
+      if (crossfadeTargetIndex === slotIndex) {
+        setCrossfadeTargetIndex(null);
+        setCrossfadeValue(0);
+      }
+
+      return true;
+    },
+    [activeIndex, crossfadeTargetIndex],
+  );
+
+  // Copy parameters from one slot to another
+  const copyToSlot = useCallback(
+    (
+      sourceSlotIndex: number,
+      targetSlotIndex: number,
+      getParameterValue: (id: string) => number | undefined,
+    ): SlotInitParams | null => {
+      if (sourceSlotIndex < 0 || sourceSlotIndex >= FIXED_SLOT_COUNT)
+        return null;
+      if (targetSlotIndex < 0 || targetSlotIndex >= FIXED_SLOT_COUNT)
+        return null;
+
+      const sourceSlot = slots.find((s) => s.index === sourceSlotIndex);
+      if (!sourceSlot || !sourceSlot.sketchId) return null;
+
+      const sketchId = sourceSlot.sketchId;
+
+      setSlots((prev) =>
+        prev.map((slot) =>
+          slot.index === targetSlotIndex ? { ...slot, sketchId } : slot,
+        ),
+      );
+
+      // Copy parameters from source slot
+      const parameters = copySlotParameters(
+        sourceSlotIndex,
+        targetSlotIndex,
+        sketchId,
+        getParameterValue,
+      );
+      return {
+        slotIndex: targetSlotIndex,
+        sketchId,
+        parameters,
+      };
+    },
+    [slots],
+  );
+
   // Get parameter IDs for a slot
   const getSlotParameterIds = useCallback(
     (slotIndex: number): SlotParameterId[] => {
       const slot = slots.find((s) => s.index === slotIndex);
-      if (!slot) return [];
+      if (!slot || !slot.sketchId) return [];
       const templateIds = getSketchParameterTemplateIds(slot.sketchId);
       return templateIds.map((tid) => makeSlotParameterId(slotIndex, tid));
     },
     [slots],
   );
 
-  // Add a new slot with default parameters
+  // Add a new slot with default parameters (legacy - finds first empty slot)
   const addSlot = useCallback(
     (sketchId?: SketchId): SlotInitParams | null => {
-      if (!canAddSlot) return null;
+      // Find first empty slot
+      const emptySlot = slots.find((s) => s.sketchId === null);
+      if (!emptySlot) return null;
 
       const newSketchId = sketchId ?? ALL_SKETCH_IDS[0];
-      const newIndex = slots.length;
-
-      setSlots((prev) => [...prev, { index: newIndex, sketchId: newSketchId }]);
-
-      // Return the slot info and default parameters
-      const parameters = buildSlotDefaultParameters(newIndex, newSketchId);
-      return {
-        slotIndex: newIndex,
-        sketchId: newSketchId,
-        parameters,
-      };
+      return setSketch(emptySlot.index, newSketchId);
     },
-    [canAddSlot, slots.length],
+    [slots, setSketch],
   );
 
-  // Add a new slot by copying an existing slot's parameters
+  // Add a new slot by copying an existing slot's parameters (legacy - finds first empty slot)
   const addSlotWithCopy = useCallback(
     (
       sourceSlotIndex: number,
       getParameterValue: (id: string) => number | undefined,
     ): SlotInitParams | null => {
-      if (!canAddSlot) return null;
+      // Find first empty slot
+      const emptySlot = slots.find((s) => s.sketchId === null);
+      if (!emptySlot) return null;
 
-      const sourceSlot = slots.find((s) => s.index === sourceSlotIndex);
-      if (!sourceSlot) return null;
-
-      const newIndex = slots.length;
-
-      setSlots((prev) => [
-        ...prev,
-        {
-          index: newIndex,
-          sketchId: sourceSlot.sketchId,
-        },
-      ]);
-
-      // Copy parameters from source slot
-      const parameters = copySlotParameters(
-        sourceSlotIndex,
-        newIndex,
-        sourceSlot.sketchId,
-        getParameterValue,
-      );
-      return {
-        slotIndex: newIndex,
-        sketchId: sourceSlot.sketchId,
-        parameters,
-      };
+      return copyToSlot(sourceSlotIndex, emptySlot.index, getParameterValue);
     },
-    [canAddSlot, slots],
+    [slots, copyToSlot],
   );
 
-  // Remove a slot by index
+  // Remove a slot by index (legacy - now just clears the slot)
   const removeSlot = useCallback(
     (index: number): boolean => {
-      if (!canRemoveSlot) return false;
-      if (index === activeIndex) return false; // Cannot remove active slot
-      if (index < 0 || index >= slots.length) return false;
-
-      setSlots((prev) => {
-        const newSlots = prev
-          .filter((_, i) => i !== index)
-          .map((slot, i) => ({ ...slot, index: i }));
-        return newSlots;
-      });
-
-      // Adjust active index if needed
-      if (index < activeIndex) {
-        setActiveIndex((prev) => prev - 1);
-      }
-
-      // Clear crossfade target if it was removed
-      if (crossfadeTargetIndex !== null) {
-        if (index === crossfadeTargetIndex) {
-          setCrossfadeTargetIndex(null);
-          setCrossfadeValue(0);
-        } else if (index < crossfadeTargetIndex) {
-          setCrossfadeTargetIndex((prev) => (prev !== null ? prev - 1 : null));
-        }
-      }
-
-      return true;
+      return clearSlot(index);
     },
-    [canRemoveSlot, activeIndex, slots.length, crossfadeTargetIndex],
+    [clearSlot],
   );
 
   // Change sketch in a slot (returns new parameters to initialize)
@@ -319,15 +383,7 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
       copyFromSlotIndex?: number,
       getParameterValue?: (id: string) => number | undefined,
     ): SlotInitParams | null => {
-      const currentSlot = slots.find((s) => s.index === index);
-      if (!currentSlot) return null;
-
-      // Update the slot's sketch ID
-      setSlots((prev) =>
-        prev.map((slot) =>
-          slot.index === index ? { ...slot, sketchId } : slot,
-        ),
-      );
+      if (index < 0 || index >= FIXED_SLOT_COUNT) return null;
 
       // If copying from another slot and it has the same sketch type
       if (
@@ -335,41 +391,29 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
         getParameterValue &&
         slots[copyFromSlotIndex]?.sketchId === sketchId
       ) {
-        const parameters = copySlotParameters(
-          copyFromSlotIndex,
-          index,
-          sketchId,
-          getParameterValue,
-        );
-        return {
-          slotIndex: index,
-          sketchId,
-          parameters,
-        };
+        return copyToSlot(copyFromSlotIndex, index, getParameterValue);
       }
 
-      // Otherwise return default parameters
-      const parameters = buildSlotDefaultParameters(index, sketchId);
-      return {
-        slotIndex: index,
-        sketchId,
-        parameters,
-      };
+      // Otherwise use setSketch for default parameters
+      return setSketch(index, sketchId);
     },
-    [slots],
+    [slots, setSketch, copyToSlot],
   );
 
   // Start crossfading to a target slot
   const startCrossfade = useCallback(
     (targetIndex: number) => {
       if (targetIndex === activeIndex) return;
-      if (targetIndex < 0 || targetIndex >= slots.length) return;
+      if (targetIndex < 0 || targetIndex >= FIXED_SLOT_COUNT) return;
+      // Target slot must have a sketch loaded
+      const targetSlot = slots.find((s) => s.index === targetIndex);
+      if (!targetSlot || !targetSlot.sketchId) return;
       if (isCrossfading) return; // Already crossfading
 
       setCrossfadeTargetIndex(targetIndex);
       // Don't set crossfadeValue here - let the backend drive it
     },
-    [activeIndex, slots.length, isCrossfading],
+    [activeIndex, slots, isCrossfading],
   );
 
   // Complete crossfade (swap active to target)
@@ -389,7 +433,7 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
 
   // Get sketch ID for a slot
   const getSketchId = useCallback(
-    (index: number): SketchId | undefined => {
+    (index: number): SketchId | null | undefined => {
       return slots.find((s) => s.index === index)?.sketchId;
     },
     [slots],
@@ -419,6 +463,9 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
     isCrossfading,
     canAddSlot,
     canRemoveSlot,
+    setSketch,
+    clearSlot,
+    copyToSlot,
     addSlot,
     addSlotWithCopy,
     removeSlot,
@@ -432,6 +479,7 @@ export function useSceneSlots(config: Partial<SlotsConfig> = {}): SlotsState {
     isCrossfadeTarget,
     findSlotsWithSketch,
     getSlotParameterIds,
+    getFilledSlots,
     isHydrated,
     hydrateFromBackend,
     setSlots,

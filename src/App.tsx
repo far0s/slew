@@ -271,15 +271,14 @@ function App() {
     }
   }
 
-  // Handle add slot with defaults
-  async function handleAddSlot(sketchId?: SketchId) {
-    const initParams = sceneSlots.addSlot(sketchId);
+  // Handle setting a sketch in a specific slot
+  async function handleSetSketch(slotIndex: number, sketchId: SketchId) {
+    const initParams = sceneSlots.setSketch(slotIndex, sketchId);
     if (!initParams) return;
 
-    // Use the returned slotIndex (state hasn't updated yet)
-    const { slotIndex, sketchId: newSketchId, parameters } = initParams;
+    const { parameters } = initParams;
 
-    // Override alpha to 0 for newly added slots (start hidden)
+    // Override alpha to 0 for newly filled slots (start hidden)
     const alphaParamId = makeSlotParameterId(slotIndex, "alpha");
     parameters.set(alphaParamId, 0);
 
@@ -290,7 +289,7 @@ function App() {
     try {
       await invoke("initialize_slot_parameters", {
         slotIndex,
-        sceneId: newSketchId,
+        sceneId: sketchId,
       });
       // Set alpha to 0 in backend (override the default of 1)
       await invoke("set_parameter", {
@@ -303,14 +302,18 @@ function App() {
     }
   }
 
-  // Handle copy slot (add new slot with copied parameters)
-  async function handleCopySlot(sourceSlotIndex: number) {
-    const initParams = sceneSlots.addSlotWithCopy(sourceSlotIndex, (id) =>
-      paramStore.get(id),
+  // Handle copying parameters from one slot to another
+  async function handleCopyToSlot(
+    sourceSlotIndex: number,
+    targetSlotIndex: number,
+  ) {
+    const initParams = sceneSlots.copyToSlot(
+      sourceSlotIndex,
+      targetSlotIndex,
+      (id) => paramStore.get(id),
     );
     if (!initParams) return;
 
-    // Use the returned slotIndex (state hasn't updated yet)
     const { slotIndex, parameters } = initParams;
 
     // Initialize parameters in the store with copied values
@@ -333,9 +336,9 @@ function App() {
     }
   }
 
-  // Handle remove slot
-  function handleRemoveSlot(slotIndex: number) {
-    sceneSlots.removeSlot(slotIndex);
+  // Handle clearing a slot (remove sketch, keep slot)
+  function handleClearSlot(slotIndex: number) {
+    sceneSlots.clearSlot(slotIndex);
     // Note: We don't remove parameters from the backend (per user requirement)
     // but we do remove them from the local store for cleanliness
     paramStore.removeSlotParameters(slotIndex);
@@ -349,11 +352,13 @@ function App() {
       // Get all backend parameters
       const response = (await invoke("get_parameters")) as BackendParameter[];
 
-      // Build slot config from current slots
-      const slotConfig: SlotConfig[] = sceneSlots.slots.map((slot) => ({
-        index: slot.index,
-        sketchId: slot.sketchId,
-      }));
+      // Build slot config from current slots (only filled slots)
+      const slotConfig: SlotConfig[] = sceneSlots.slots
+        .filter((slot) => slot.sketchId !== null)
+        .map((slot) => ({
+          index: slot.index,
+          sketchId: slot.sketchId as SketchId,
+        }));
 
       // Update parameter store's slot configuration
       paramStore.setCurrentSlots(slotConfig);
@@ -362,9 +367,11 @@ function App() {
       paramStore.setBackendSnapshot(response);
       paramStore.applyBackendParams(response);
 
-      // Initialize any missing slot parameters
+      // Initialize any missing slot parameters (only for filled slots)
       for (const slot of sceneSlots.slots) {
-        paramStore.initializeSlot(slot.index, slot.sketchId);
+        if (slot.sketchId !== null) {
+          paramStore.initializeSlot(slot.index, slot.sketchId);
+        }
       }
     } catch (error) {
       paramStore.setError("Failed to load parameters from backend");
@@ -467,10 +474,13 @@ function App() {
     if (!isInitialized) return;
     if (!sceneSlots.isHydrated) return; // Don't sync until hydrated from backend
 
-    const slots = sceneSlots.slots.map((slot) => ({
-      index: slot.index,
-      sketch_id: slot.sketchId,
-    }));
+    // Only send slots that have a sketch loaded (non-null sketchId)
+    const slots = sceneSlots.slots
+      .filter((slot) => slot.sketchId !== null)
+      .map((slot) => ({
+        index: slot.index,
+        sketch_id: slot.sketchId as SketchId,
+      }));
 
     void invoke("set_all_slots", {
       slots,
@@ -538,10 +548,12 @@ function App() {
 
   // Update slot configuration when slots change
   useEffect(() => {
-    const slotConfig: SlotConfig[] = sceneSlots.slots.map((slot) => ({
-      index: slot.index,
-      sketchId: slot.sketchId,
-    }));
+    const slotConfig: SlotConfig[] = sceneSlots.slots
+      .filter((slot) => slot.sketchId !== null)
+      .map((slot) => ({
+        index: slot.index,
+        sketchId: slot.sketchId as SketchId,
+      }));
     paramStore.setCurrentSlots(slotConfig);
   }, [sceneSlots.slots, paramStore.setCurrentSlots]);
 
@@ -589,8 +601,6 @@ function App() {
             crossfadeValue={sceneSlots.crossfadeValue}
             isCrossfading={sceneSlots.isCrossfading}
             macropadSelectedIndex={macropadSelectedIndex}
-            canAddSlot={sceneSlots.canAddSlot}
-            canRemoveSlot={sceneSlots.canRemoveSlot}
             getValue={getValue}
             setValue={setValue}
             getSlotSketchParams={getSlotSketchParams}
@@ -601,19 +611,21 @@ function App() {
             midiMappings={isMidiDeviceConnected ? midiMappings : undefined}
             onSlotSketchChange={handleSlotSketchChange}
             onCrossfade={handleCrossfade}
-            onRemoveSlot={handleRemoveSlot}
-            onAddSlot={handleAddSlot}
-            onCopySlot={handleCopySlot}
+            onClearSlot={handleClearSlot}
+            onSetSketch={handleSetSketch}
+            onCopyToSlot={handleCopyToSlot}
           />
         </div>
 
         {/* Sidebar (1/5 width) */}
         <aside className={styles.sidebar} aria-label="Preview and debug">
           <RendererPreview
-            allSlots={sceneSlots.slots.map((slot) => ({
-              index: slot.index,
-              sketchId: slot.sketchId,
-            }))}
+            allSlots={sceneSlots.slots
+              .filter((slot) => slot.sketchId !== null)
+              .map((slot) => ({
+                index: slot.index,
+                sketchId: slot.sketchId as SketchId,
+              }))}
             activeSlotIndex={activeSlotIndex}
             crossfadeTargetIndex={sceneSlots.crossfadeTargetIndex}
             getParam={(id) => paramStore.getInterpolated(id)}

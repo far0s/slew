@@ -20,7 +20,7 @@ For detailed design, see `ARCHITECTURE.md`.
 | Tauri + React app  | ✅     | Dual-window (Renderer + Controls)                             |
 | Parameter Server   | ✅     | Rust backend with ~60Hz transitions                           |
 | Sketch/Slot System | ✅     | Slot-based (1-8), multi-instance, auto-generated controls     |
-| Sketch Browser UI  | ✅     | Scrollable list with descriptions, parameters, click-to-add   |
+| Sketch Browser UI  | ✅     | Inline browser in empty slots, no extra click needed          |
 | Crossfade          | ✅     | Smooth blending with correct scene pairing                    |
 | MIDI Input         | ✅     | Hot-plug detection, auto-reconnect, Learn workflow            |
 | OSC Input          | ✅     | UDP server (port 9000), default mappings                      |
@@ -84,13 +84,16 @@ Both windows share the same frontend bundle; `src/main.tsx` dispatches based on 
   - Shader-based: `TslText3D` (3D text with hue/glow), `TslNoiseBlob` (procedural noise)
   - Each exports `descriptor: SketchDescriptor` + React component
   - Registry in `/src/sketches/index.ts`
-- **Slots**: 1-6 numbered containers, add/remove dynamically
+- **Slots**: 8 fixed slots (always visible in UI)
+  - Empty slots show inline sketch browser directly (no extra click)
+  - Removing a sketch clears the slot (returns to empty state)
+  - 1:1 mapping with Midimix columns
 - **Multi-instance support**: Same sketch type can exist in multiple slots with independent parameters
 - **Slot-prefixed parameters**: IDs use format `slot_{index}_{templateId}` (e.g., `slot_0_brightness`)
 - **Auto-generated controls**: `SceneParameterControls` reads from sketch descriptors
 - **Parameter store**: `useParameterStore` hook with dynamic slot-based state
-- **Sketch Browser**: Scrollable list of sketches with descriptions, parameter lists, and copy-from-slot
-- **Renderer slot awareness**: Renders by slot index, listens for `slot_pairing_changed` events
+- **Inline Sketch Browser**: Displayed directly in empty slots with sketch list and copy-from-slot option
+- **Renderer slot awareness**: Renders all slots with alpha > 0, listens for `all_slots_changed` events
 
 ### Input Layer
 
@@ -228,24 +231,24 @@ All input systems now support automatic device detection:
 
 ## 6. Key Files
 
-| File                                  | Purpose                                             |
-| ------------------------------------- | --------------------------------------------------- |
-| `src-tauri/src/lib.rs`                | Parameter Server, tick loop, command registration   |
-| `src-tauri/src/window_manager.rs`     | Window lifecycle, heartbeat monitoring, native menu |
-| `src-tauri/src/audio.rs`              | Audio capture, FFT, beat detection, audio mappings  |
-| `src-tauri/src/modulation.rs`         | LFO engine, modulation matrix                       |
-| `src-tauri/src/midi.rs`               | MIDI device management and mappings                 |
-| `src-tauri/src/osc.rs`                | OSC server and mappings                             |
-| `src-tauri/src/hid.rs`                | HID device management (macropads)                   |
-| `src-tauri/src/video_out.rs`          | Video output backends (Syphon, Spout, NDI)          |
-| `src-tauri/src/syphon.rs`             | Native Syphon bindings (macOS only)                 |
-| `src/hooks/useWindowManager.ts`       | Window manager hook (heartbeat, restart, status)    |
-| `src/sketches/`                       | Self-contained sketch modules (BlueCube, etc.)      |
-| `src/scenes/sceneTypes.ts`            | Parameter utilities, slot ID generation             |
-| `src/scenes/useSceneSlots.ts`         | Slot management hook with multi-instance support    |
-| `src/controls/useParameterStore.ts`   | Map-based parameter state                           |
-| `src/renderer/VideoOutputCapture.tsx` | Frame capture component (inside r3f Canvas)         |
-| `src/components/SketchBrowser/`       | Sketch picker with descriptions and parameter lists |
+| File                                  | Purpose                                                |
+| ------------------------------------- | ------------------------------------------------------ |
+| `src-tauri/src/lib.rs`                | Parameter Server, tick loop, command registration      |
+| `src-tauri/src/window_manager.rs`     | Window lifecycle, heartbeat monitoring, native menu    |
+| `src-tauri/src/audio.rs`              | Audio capture, FFT, beat detection, audio mappings     |
+| `src-tauri/src/modulation.rs`         | LFO engine, modulation matrix                          |
+| `src-tauri/src/midi.rs`               | MIDI device management and mappings                    |
+| `src-tauri/src/osc.rs`                | OSC server and mappings                                |
+| `src-tauri/src/hid.rs`                | HID device management (macropads)                      |
+| `src-tauri/src/video_out.rs`          | Video output backends (Syphon, Spout, NDI)             |
+| `src-tauri/src/syphon.rs`             | Native Syphon bindings (macOS only)                    |
+| `src/hooks/useWindowManager.ts`       | Window manager hook (heartbeat, restart, status)       |
+| `src/sketches/`                       | Self-contained sketch modules (BlueCube, etc.)         |
+| `src/scenes/sceneTypes.ts`            | Parameter utilities, slot ID generation                |
+| `src/scenes/useSceneSlots.ts`         | Slot management hook with multi-instance support       |
+| `src/controls/useParameterStore.ts`   | Map-based parameter state                              |
+| `src/renderer/VideoOutputCapture.tsx` | Frame capture component (inside r3f Canvas)            |
+| `src/components/SceneColumn/`         | Slot column with inline sketch browser for empty slots |
 
 ---
 
@@ -266,9 +269,23 @@ All input systems now support automatic device detection:
 
 ## 8. Next Actions
 
+### Recently Completed
+
+- ✅ **8-Slot Harmonization**: Slot count increased from 6 to 8 to match Midimix columns
+- ✅ **Slot System Rework**: Fixed slots always visible, empty slots show inline sketch browser
+
 ### Suggested Next Steps
 
-#### 1. Sketch Presets
+#### 1. Button Controls (Mute/Solo via Midimix)
+
+Leverage existing Midimix integration:
+
+- Mute buttons → toggle slot visibility (alpha 0 ↔ 1)
+- Solo button → solo a single slot (set others to 0)
+- LED feedback for mute/solo state
+- Bank buttons for parameter page switching (params 1-3 → 4-6)
+
+#### 2. Sketch Presets
 
 Save/load parameter values per sketch:
 
@@ -277,7 +294,7 @@ Save/load parameter values per sketch:
 - Persist to JSON files (`presets/{sketchId}/{presetName}.json`)
 - Default preset per sketch type
 
-#### 2. More Shader Sketches
+#### 3. More Shader Sketches
 
 Expand the visual library with new procedural sketches:
 
@@ -285,14 +302,6 @@ Expand the visual library with new procedural sketches:
 - **Particles**: GPU-driven particle system with audio reactivity
 - **Kaleidoscope**: Mirror/reflection patterns
 - **Waveform**: Audio-reactive visualization
-
-#### 3. MIDI/OSC "Follow Active Slot" Mode
-
-Simplify live control:
-
-- Toggle to make all MIDI/OSC mappings control active slot's parameters
-- Auto-remap when slot changes
-- Visual indicator in UI when mode is active
 
 #### 4. Video Output Optimization
 

@@ -365,11 +365,13 @@ function MappingForm({
   const [maxOutput, setMaxOutput] = useState(editingMapping?.max_output ?? 1);
   const [smoothing, setSmoothing] = useState(editingMapping?.smoothing ?? 0.3);
 
-  // Get parameter IDs only for active slots
+  // Get parameter IDs only for active slots (filter out empty slots)
   const allParameterIds = useMemo(
     () =>
       getAllSlotParameterIds(
-        slots.map((s) => ({ index: s.index, sceneId: s.sketchId })),
+        slots
+          .filter((s) => s.sketchId !== null)
+          .map((s) => ({ index: s.index, sceneId: s.sketchId as string })),
       ),
     [slots],
   );

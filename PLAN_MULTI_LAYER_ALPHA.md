@@ -323,62 +323,79 @@ Rework the renderer to support true multi-layer mixing where each slot's alpha c
 - [x] LED startup animation flashes correctly (on then off)
 - [x] LEDs indicate slot existence (slot count)
 
-### Phase 7: Slot System Rework ⏳ TODO
+### Phase 7: Slot System Rework ✅ COMPLETE
 
-**Goal:** Make all slots visible and accessible from the start, with empty slots showing "Add Sketch" CTA.
+**Goal:** Make all slots visible and accessible from the start, with empty slots showing inline sketch browser directly.
 
-**Current behavior:**
+**Previous behavior:**
 
-- Slots are created dynamically via "Add Slot" button
-- Empty state is hidden
-- User must explicitly add slots before choosing sketches
+- Slots were created dynamically via "Add Slot" button
+- Empty state was hidden
+- User had to explicitly add slots before choosing sketches
 
-**Proposed behavior:**
+**New behavior:**
 
-- All slots (4 or 8, see Phase 9) are always visible in the UI
-- Empty slots show a prominent "Add Sketch" CTA / SketchBrowser trigger
-- User clicks on any empty slot to open SketchBrowser for that slot
+- All 8 slots are always visible in the UI
+- Empty slots show inline SketchBrowser directly (no extra click needed)
+- User sees all available sketches + "copy from slot" options immediately
 - Removing a sketch returns the slot to empty state (not deleted)
 
-**Implementation:**
+**Implementation completed:**
 
-1. **`src/scenes/useSceneSlots.ts`**
-   - Initialize with fixed number of slots (all with `sketchId: null`)
-   - Change `addSlot` to `setSketch(slotIndex, sketchId)`
-   - Change `removeSlot` to `clearSlot(slotIndex)` (sets sketchId to null)
+1. **`src/scenes/useSceneSlots.ts`** ✅
+   - `Slot.sketchId` now allows `SketchId | null`
+   - Initialize with 8 fixed slots (first with default sketch, rest `sketchId: null`)
+   - Added `setSketch(slotIndex, sketchId)` method
+   - Added `clearSlot(slotIndex)` method (sets sketchId to null)
+   - Added `copyToSlot(sourceIndex, targetIndex, getParam)` method
+   - Added `getFilledSlots()` helper
+   - Legacy `addSlot`/`removeSlot` now find first empty slot / clear slot
+   - `canAddSlot` and `canRemoveSlot` always false (fixed slot system)
 
-2. **`src/components/SceneColumn/SceneColumn.tsx`**
-   - Handle `sketchId: null` state
-   - Show "Add Sketch" button/overlay when empty
-   - Click triggers SketchBrowser positioned for that slot
+2. **`src/components/SceneColumn/SceneColumn.tsx`** ✅
+   - `sketchId` prop now accepts `SketchId | null`
+   - Added `InlineSketchBrowser` component for null sketchId state
+   - Empty slots display sketch list + copy options directly (no CTA click)
+   - Added `filledSlots` and `onCopyToSlot` props for copy feature
 
-3. **`src/components/ScenesArea/ScenesArea.tsx`**
-   - Remove dynamic "Add Slot" panel at the end
-   - Render fixed number of SceneColumns
-   - Pass slot index to SketchBrowser for correct assignment
+3. **`src/components/SceneColumn/SceneColumn.module.css`** ✅
+   - Added `.emptyColumn` base styles with dashed border
+   - Added `.inlineBrowserHeader`, `.inlineSlotBadge`, `.inlineBrowserTitle` for header
+   - Added `.inlineSketchList`, `.inlineSketchItem` for sketch buttons (flex-wrap layout)
+   - Added `.inlineCopySection`, `.inlineCopyOptions`, `.inlineCopyButton` for copy feature
+   - Hover effects with indigo accent color
 
-4. **`src/components/SketchBrowser/`**
-   - Accept `targetSlotIndex` prop
-   - On sketch selection, call `setSketch(targetSlotIndex, sketchId)`
+4. **`src/components/ScenesArea/ScenesArea.tsx`** ✅
+   - Removed `canAddSlot`/`canRemoveSlot` props
+   - Changed props: `onRemoveSlot` → `onClearSlot`, `onAddSlot` → `onSetSketch`, `onCopySlot` → `onCopyToSlot`
+   - Passes `filledSlots` to each SceneColumn for copy feature
+   - Removed separate SketchBrowser panel (inline browser now in each slot)
+   - `onSketchChange` routes to `onSetSketch` for empty slots
 
-5. **Backend sync:**
-   - `set_all_slots` should handle null sketchIds gracefully
-   - Renderer skips slots with null sketchId (same as alpha = 0)
+5. **`src/components/SketchBrowser/`** ✅ (removed)
+   - Standalone SketchBrowser component deleted (no longer needed)
+   - Inline browser logic lives in SceneColumn's `InlineSketchBrowser`
 
-**UI considerations:**
+6. **`src/App.tsx`** ✅
+   - Updated handlers: `handleSetSketch`, `handleCopyToSlot`, `handleClearSlot`
+   - Filter slots to only send filled ones to backend/renderer
+   - Updated `ScenesArea` and `RendererPreview` props
 
-- Empty slots should be visually distinct but not distracting
-- Preserve slot order and numbering (Slot 1-8 always exist)
-- "Copy from Slot" option should still work
+7. **Backend sync** ✅
+   - `set_all_slots` receives only filled slots (empty slots filtered out)
+   - Renderer skips slots with no sketch (alpha = 0 or missing from list)
 
 **Testing checklist:**
 
-- [ ] All slots visible on app start
-- [ ] Empty slots show "Add Sketch" CTA
-- [ ] Clicking CTA opens SketchBrowser for that slot
-- [ ] Sketch loads into correct slot
-- [ ] Clearing a sketch returns to empty state
-- [ ] Midimix column correspondence is clear (slot N = column N)
+- [x] All 8 slots visible on app start
+- [x] Empty slots show inline sketch browser directly (no extra click)
+- [x] Available sketches displayed as compact buttons
+- [x] "Copy from" section shows filled slots with sketch names
+- [x] Sketch loads into correct slot when clicked
+- [x] Clearing a sketch returns to empty state with browser
+- [x] Midimix column correspondence is clear (slot N = column N)
+- [x] TypeScript compiles without errors
+- [x] Rust compiles without errors
 
 ---
 
