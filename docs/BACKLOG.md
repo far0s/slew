@@ -27,10 +27,12 @@ Leverage existing Midimix integration for quick slot control.
 **Context**: Midimix has Mute, Solo, and Rec Arm buttons per column that aren't fully utilized yet. Adding quick toggle controls would improve live performance workflow.
 
 **Subtasks**:
+
 - [ ] Mute buttons → toggle slot visibility (alpha 0 ↔ 1)
 - [ ] Solo button → solo a single slot (set all others to 0)
 - [ ] LED feedback for mute/solo state
 - [ ] Bank buttons for parameter page switching (params 1-3 → 4-6)
+- [ ] Audio reactivity master → per-slot `audio_reactivity` parameter (0–1) as multiplier for all audio mappings, controlled via a Midimix knob or master column
 - [ ] Look up Midimix master column button note numbers (SEND ALL, BANK LEFT/RIGHT, SOLO)
 
 ---
@@ -42,6 +44,7 @@ Improve 1080p@60fps performance for professional use.
 **Context**: Current implementation uses base64-encoded frames which adds overhead. Zero-copy approaches would significantly improve performance.
 
 **Subtasks**:
+
 - [ ] Zero-copy IOSurface sharing for Syphon (macOS)
 - [ ] Binary IPC instead of base64 encoding
 - [ ] PBOs for async GPU readback
@@ -58,6 +61,7 @@ Save/load parameter configurations per sketch.
 **Context**: Users often find good parameter combinations they want to recall. Per-sketch presets would enable quick switching between looks.
 
 **Subtasks**:
+
 - [ ] "Save Preset" button in slot controls
 - [ ] Preset dropdown to load saved configurations
 - [ ] Persist to JSON files (`presets/{sketchId}/{presetName}.json`)
@@ -73,6 +77,7 @@ Expand the visual library with new procedural sketches.
 **Context**: Currently have basic geometry sketches and two shader sketches (TslText3D, TslNoiseBlob). More variety would improve creative options.
 
 **Subtasks**:
+
 - [ ] **Feedback/Tunnel**: Infinite zoom with color cycling
 - [ ] **Particles**: GPU-driven particle system with audio reactivity
 - [ ] **Kaleidoscope**: Mirror/reflection patterns
@@ -88,6 +93,7 @@ Save/load complete project state.
 **Context**: For live performance, users need to save entire setups including all slots, parameters, and mappings.
 
 **Subtasks**:
+
 - [ ] Save/load complete project state (slots, parameters, mappings)
 - [ ] Quick snapshot for A/B comparison
 - [ ] Export/import for sharing
@@ -102,6 +108,7 @@ Validate performance characteristics with full workload.
 **Context**: Need to confirm the system handles demanding scenarios smoothly.
 
 **Subtasks**:
+
 - [ ] Test with 8 active sketches at 1080p@60
 - [ ] Profile CPU/GPU usage with all inputs active
 - [ ] Verify UI scrolls/scales appropriately for 8 slots on smaller screens
@@ -117,6 +124,7 @@ Multiple renderer windows for different outputs.
 **Context**: Some VJ setups use multiple projectors or preview monitors.
 
 **Subtasks**:
+
 - [ ] Spawn additional renderer windows
 - [ ] Per-window slot assignment
 - [ ] Independent resolution/output settings
@@ -130,6 +138,7 @@ GPU-based capture or frame export.
 **Context**: Users may want to record performances for later use or sharing.
 
 **Subtasks**:
+
 - [ ] Define recording format (MP4, image sequence)
 - [ ] Implement GPU-based capture
 - [ ] Recording controls (start/stop/pause)
@@ -144,6 +153,7 @@ Add bloom, feedback, color grading effects.
 **Context**: Post-processing can add polish and visual interest to any sketch.
 
 **Subtasks**:
+
 - [ ] Bloom effect
 - [ ] Feedback/delay buffer
 - [ ] Color grading (LUT support)
@@ -158,6 +168,7 @@ Switch to WebGPU renderer when r3f support matures.
 **Context**: WebGPU offers better performance and modern GPU features. Currently blocked by r3f ecosystem readiness.
 
 **Subtasks**:
+
 - [ ] Monitor r3f WebGPU support progress
 - [ ] Test WebGPU renderer when available
 - [ ] Migrate shaders to WGSL if needed
@@ -172,6 +183,7 @@ Support more hardware controllers.
 **Context**: Different VJs use different gear. Supporting more controllers expands the user base.
 
 **Subtasks**:
+
 - [ ] Launchpad support
 - [ ] APC Mini support
 - [ ] Generic MIDI template system
@@ -186,6 +198,7 @@ OSC → DMX integration for lighting.
 **Context**: Some VJs control lighting alongside visuals. Parameter → DMX output would enable synchronized light shows.
 
 **Subtasks**:
+
 - [ ] Research DMX interfaces/protocols
 - [ ] OSC → DMX plugin design
 - [ ] Fixture mapping system
@@ -199,6 +212,7 @@ Complete Windows distribution pipeline.
 **Context**: macOS packaging is mostly done; Windows needs testing.
 
 **Subtasks**:
+
 - [ ] Test NSIS/MSI installers
 - [ ] Windows code signing setup
 - [ ] Spout implementation (for Windows video output)

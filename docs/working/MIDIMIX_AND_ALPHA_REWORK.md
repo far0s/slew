@@ -58,33 +58,31 @@ Render all slots simultaneously based on their alpha values, with 1:1 Midimix in
 
 ## Remaining Tasks
 
+### Midimix Documentation
+
 - [ ] Look up Midimix master column button note numbers (SEND ALL, BANK LEFT/RIGHT, SOLO)
+
+### Performance & UI Validation
+
 - [ ] Performance test with 8 active sketches at 1080p@60
 - [ ] Verify UI scrolls/scales appropriately for 8 slots on smaller screens
 
----
+### State Persistence
 
-## Future Enhancements
+The Midimix should be the source of truth for parameter values when connected. State must persist across:
 
-### Button Controls (Priority)
+- **Hot reload** — Dev workflow shouldn't lose current configuration
+- **App restart** — Starting the app should restore previous session
+- **Midimix reconnect** — Physical fader positions should sync with app state
 
-- Mute buttons → toggle slot visibility (alpha 0 ↔ 1)
-- Solo button → solo a single slot
-- Bank switching for additional parameters (params 4-6, etc.)
+**Conflict resolution**: Hardware wins. When Midimix connects, read fader positions and update app state.
 
-### Presets
+**Subtasks**:
 
-- Save/load per-sketch parameter configurations
-- Scene snapshots with smooth transitions
-
-### Audio Reactivity Master
-
-- Per-slot `audio_reactivity` parameter (0–1) as multiplier for all audio mappings
-- Control via Midimix knob or fader
-
-### Additional Controllers
-
-- Launchpad, APC Mini, generic templates
+- [ ] Persist slot configuration to disk (which sketch in which slot, parameter values)
+- [ ] Restore state on app startup / window reload
+- [ ] On Midimix connect: read hardware fader positions and sync app state to match
+- [ ] Push current slot states to LEDs on connect
 
 ---
 
