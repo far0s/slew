@@ -249,6 +249,7 @@ All input systems now support automatic device detection:
 | `src/controls/useParameterStore.ts`   | Map-based parameter state                              |
 | `src/renderer/VideoOutputCapture.tsx` | Frame capture component (inside r3f Canvas)            |
 | `src/components/SceneColumn/`         | Slot column with inline sketch browser for empty slots |
+| `CONTROLLERS.md`                      | Controller layouts and MIDI/HID reference              |
 
 ---
 

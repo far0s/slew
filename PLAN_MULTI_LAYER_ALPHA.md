@@ -50,10 +50,11 @@ Render all slots simultaneously based on their alpha values, with 1:1 Midimix in
 
 ---
 
-## To Verify
+## To Do
 
-- [ ] Performance acceptable with 8 active sketches at 1080p@60
-- [ ] UI scrolls/scales appropriately for 8 slots on smaller screens
+- [ ] Look up Midimix master column button note numbers (SEND ALL, BANK LEFT/RIGHT, SOLO)
+- [ ] Performance test with 8 active sketches at 1080p@60
+- [ ] Verify UI scrolls/scales appropriately for 8 slots on smaller screens
 
 ---
 
@@ -83,12 +84,14 @@ Render all slots simultaneously based on their alpha values, with 1:1 Midimix in
 
 ## Key Files
 
-| File                            | Purpose                                 |
-| ------------------------------- | --------------------------------------- |
-| `src-tauri/src/midi.rs`         | MIDI I/O, Midimix mappings, LED control |
-| `src/renderer/RendererRoot.tsx` | Multi-slot rendering loop               |
-| `src/scenes/useSceneSlots.ts`   | 8-slot state management                 |
-| `src/components/SceneColumn/`   | Slot UI with inline sketch browser      |
+| File                            | Purpose                                   |
+| ------------------------------- | ----------------------------------------- |
+| `src-tauri/src/midi.rs`         | MIDI I/O, Midimix mappings, LED control   |
+| `src-tauri/src/hid.rs`          | HID device support (Megalodon)            |
+| `src/renderer/RendererRoot.tsx` | Multi-slot rendering loop                 |
+| `src/scenes/useSceneSlots.ts`   | 8-slot state management                   |
+| `src/components/SceneColumn/`   | Slot UI with inline sketch browser        |
+| `CONTROLLERS.md`                | Controller layouts and MIDI/HID reference |
 
 ---
 
