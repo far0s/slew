@@ -613,6 +613,7 @@ export function useParameterStore(): ParameterStoreState {
 const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
   // Slot-level parameters
   alpha: "alpha",
+  audio_reactivity: "audioReactivity",
   // Common parameters
   brightness: "brightness",
   rotation_speed: "rotationSpeed",

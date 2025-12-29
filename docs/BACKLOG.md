@@ -20,23 +20,6 @@ Prioritized list of potential work items for sebcat-vj.
 
 ## Active / High Priority
 
-### 🔴 Button Controls (Mute/Solo via Midimix) `feature`
-
-Leverage existing Midimix integration for quick slot control.
-
-**Context**: Midimix has Mute, Solo, and Rec Arm buttons per column that aren't fully utilized yet. Adding quick toggle controls would improve live performance workflow.
-
-**Subtasks**:
-
-- [ ] Mute buttons → toggle slot visibility (alpha 0 ↔ 1)
-- [ ] Solo button → solo a single slot (set all others to 0)
-- [ ] LED feedback for mute/solo state
-- [ ] Bank buttons for parameter page switching (params 1-3 → 4-6)
-- [ ] Audio reactivity master → per-slot `audio_reactivity` parameter (0–1) as multiplier for all audio mappings, controlled via a Midimix knob or master column
-- [ ] Look up Midimix master column button note numbers (SEND ALL, BANK LEFT/RIGHT, SOLO)
-
----
-
 ### 🔴 Global codebase cleanup and refactoring `chore`
 
 Do a round of cleanup and refactoring to improve maintainability and performance.
@@ -238,7 +221,7 @@ Complete Windows distribution pipeline.
 
 ## Completed Items
 
-Items that have been finished are tracked in `CHANGELOG.md` rather than here.
+Completed items are tracked in `CHANGELOG.md`.
 
 ---
 

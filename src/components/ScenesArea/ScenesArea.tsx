@@ -166,6 +166,15 @@ export function ScenesArea({
                 const alphaParamId = makeSlotParameterId(slot.index, "alpha");
                 const alpha = slot.sketchId ? (getValue(alphaParamId) ?? 1) : 1;
 
+                // Get audio reactivity for this slot (1 = active, 0 = muted)
+                const audioReactivityParamId = makeSlotParameterId(
+                  slot.index,
+                  "audio_reactivity",
+                );
+                const audioReactivity = slot.sketchId
+                  ? (getValue(audioReactivityParamId) ?? 1)
+                  : 1;
+
                 return (
                   <SceneColumn
                     key={slot.index}
@@ -194,6 +203,7 @@ export function ScenesArea({
                         : undefined
                     }
                     alpha={alpha}
+                    audioReactivity={audioReactivity}
                     getValue={getValue}
                     setValue={setValue}
                     audioMappings={audioMappings}

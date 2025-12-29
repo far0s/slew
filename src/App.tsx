@@ -634,6 +634,8 @@ function App() {
           <DebugPanel
             macropadSelectedIndex={macropadSelectedIndex}
             slots={sceneSlots.slots}
+            getValue={getValue}
+            setValue={setValue}
           />
         </aside>
       </main>

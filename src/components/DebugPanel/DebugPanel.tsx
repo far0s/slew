@@ -1,11 +1,13 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
+import { invoke } from "@tauri-apps/api/core";
 import { MidiPanel } from "../MidiPanel";
 import { OscPanel } from "../OscPanel";
 import { AudioPanel } from "../AudioPanel";
 import { HidPanel } from "../HidPanel";
 import { ModulationPanel } from "../ModulationPanel";
 import { VideoOutputPanel } from "../VideoOutputPanel";
+import { ParameterSlider } from "../ParameterSlider";
 import type { Slot } from "../../scenes/useSceneSlots";
 import { useWindowManager } from "../../hooks";
 import styles from "./DebugPanel.module.css";
@@ -20,6 +22,79 @@ export interface DebugPanelProps {
   macropadSelectedIndex?: number | null;
   // Active slots for parameter filtering
   slots?: Slot[];
+  // Parameter store access for settings
+  getValue?: (id: string) => number;
+  setValue?: (id: string, value: number) => void;
+}
+
+/**
+ * SettingsSliders
+ *
+ * Extracted component for settings sliders that syncs values to both
+ * local state and the backend via invoke.
+ */
+function SettingsSliders({
+  getValue,
+  setValue,
+}: {
+  getValue: (id: string) => number;
+  setValue: (id: string, value: number) => void;
+}) {
+  // Handler that updates both local state and backend
+  const handleChange = useCallback(
+    (id: string, value: number) => {
+      // Update local state for immediate UI feedback
+      setValue(id, value);
+
+      // Sync to backend so MIDI handlers can read the new value
+      void invoke("set_parameter", {
+        id,
+        value,
+        app: undefined,
+      }).catch((error) => {
+        console.error(`[Settings] Failed to set ${id}:`, error);
+      });
+    },
+    [setValue],
+  );
+
+  // Memoize handlers to avoid recreating on every render
+  const handleMuteFadeChange = useMemo(
+    () => (v: number) => handleChange("global_mute_fade_time", v),
+    [handleChange],
+  );
+
+  const handleSoloFadeChange = useMemo(
+    () => (v: number) => handleChange("global_solo_fade_time", v),
+    [handleChange],
+  );
+
+  return (
+    <div className={styles.settingsControls}>
+      <ParameterSlider
+        id="global_mute_fade_time"
+        label="Mute Fade"
+        value={getValue("global_mute_fade_time") ?? 0.25}
+        onChange={handleMuteFadeChange}
+        min={0}
+        max={2}
+        step={0.05}
+        color="cyan"
+        description="Fade time when toggling audio mute (seconds)"
+      />
+      <ParameterSlider
+        id="global_solo_fade_time"
+        label="Solo Fade"
+        value={getValue("global_solo_fade_time") ?? 0.3}
+        onChange={handleSoloFadeChange}
+        min={0}
+        max={2}
+        step={0.05}
+        color="amber"
+        description="Fade time when isolating a slot via solo (seconds)"
+      />
+    </div>
+  );
 }
 
 /**
@@ -35,6 +110,8 @@ export interface DebugPanelProps {
 export function DebugPanel({
   macropadSelectedIndex,
   slots = [],
+  getValue,
+  setValue,
 }: DebugPanelProps) {
   // Window manager for restart functionality
   const { isRestarting, restartControls, restartRenderer } = useWindowManager({
@@ -84,6 +161,9 @@ export function DebugPanel({
         <Tabs.Trigger value="video" className={styles.tabTrigger}>
           Video
         </Tabs.Trigger>
+        <Tabs.Trigger value="settings" className={styles.tabTrigger}>
+          Settings
+        </Tabs.Trigger>
       </Tabs.List>
 
       <div className={styles.tabBody}>
@@ -109,6 +189,22 @@ export function DebugPanel({
 
         <Tabs.Content value="video" className={styles.tabContent}>
           <VideoOutputPanel />
+        </Tabs.Content>
+
+        <Tabs.Content value="settings" className={styles.tabContent}>
+          <div className={styles.settingsPanel}>
+            <h4 className={styles.settingsHeader}>Transition Times</h4>
+            <p className={styles.settingsDescription}>
+              Control how quickly mute and solo actions fade in/out.
+            </p>
+            {getValue && setValue ? (
+              <SettingsSliders getValue={getValue} setValue={setValue} />
+            ) : (
+              <p className={styles.settingsNote}>
+                Settings unavailable - parameter store not connected.
+              </p>
+            )}
+          </div>
         </Tabs.Content>
       </div>
 

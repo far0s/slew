@@ -29,6 +29,7 @@ export type SliderColor =
 export type ParameterTemplateId =
   // Slot-level parameters (independent of sketch)
   | "alpha"
+  | "audio_reactivity"
   // Common parameters (used across sketches)
   | "brightness"
   | "rotation_speed"

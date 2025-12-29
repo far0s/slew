@@ -78,6 +78,7 @@ interface SlotInfo {
 const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
   // Slot-level parameters
   alpha: "alpha", // Note: alpha is handled separately, not passed to sketch
+  audio_reactivity: "audioReactivity", // Note: audio_reactivity is slot-level, not passed to sketch
   // Common parameters
   brightness: "brightness",
   rotation_speed: "rotationSpeed",
