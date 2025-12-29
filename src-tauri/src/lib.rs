@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager, RunEvent};
 
 pub mod audio;
 pub mod hid;
@@ -814,8 +814,15 @@ pub fn run() {
             video_out::shutdown_video_backend,
             video_out::publish_video_frame,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app_handle, event| {
+            if let RunEvent::Exit = event {
+                log::info!("[App] Exit event received, cleaning up...");
+                midi::cleanup_midi();
+                log::info!("[App] Cleanup complete, exiting");
+            }
+        });
 }
 
 /// Place Controls on primary monitor, Renderer on largest secondary (or primary if none).

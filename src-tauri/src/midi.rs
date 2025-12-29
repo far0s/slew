@@ -1625,6 +1625,15 @@ pub fn close_all_output_devices() {
     }
 }
 
+/// Cleanup function called on app exit.
+/// Turns off all Midimix LEDs and closes all connections.
+pub fn cleanup_midi() {
+    log::info!("[MIDI] Cleaning up MIDI on app exit");
+    close_all_output_devices();
+    close_all_devices();
+    log::info!("[MIDI] MIDI cleanup complete");
+}
+
 // ============================================================================
 // MIDI Output Functions
 // ============================================================================
