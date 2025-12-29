@@ -586,6 +586,9 @@ fn start_analysis_loop() {
 
             if should_analyze {
                 if let Some(levels) = analyze_audio(&engine) {
+                    // Pulse beat LED on Midimix Send All button
+                    crate::midi::pulse_beat_led(levels.beat);
+
                     // Apply mappings to parameters
                     apply_audio_mappings(&engine, &levels);
 

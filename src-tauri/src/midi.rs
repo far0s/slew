@@ -51,12 +51,16 @@ const MIDIMIX_SOLO_NOTES: [u8; 8] = [2, 5, 8, 11, 14, 17, 20, 23];
 const MIDIMIX_REC_ARM_NOTES: [u8; 8] = [3, 6, 9, 12, 15, 18, 21, 24];
 
 /// Midimix master column button note numbers (channel 0)
+/// Note: Button input note numbers differ from LED output note numbers
 #[allow(dead_code)]
 const MIDIMIX_SEND_ALL_NOTE: u8 = 25;
 #[allow(dead_code)]
 const MIDIMIX_BANK_LEFT_NOTE: u8 = 26;
 #[allow(dead_code)]
 const MIDIMIX_BANK_RIGHT_NOTE: u8 = 27;
+/// Bank LEDs appear to use notes offset by 1 from button input notes
+const MIDIMIX_BANK_LEFT_LED_NOTE: u8 = 25;
+const MIDIMIX_BANK_RIGHT_LED_NOTE: u8 = 26;
 /// Master SOLO button (right column) - used as modifier key
 const MIDIMIX_MASTER_SOLO_NOTE: u8 = 28;
 
@@ -1220,10 +1224,9 @@ fn toggle_slot_mute(slot_index: usize, app_handle: Option<&AppHandle>) {
     update_mute_led(slot_index, !new_muted);
 
     log::info!(
-        "[MIDI] Slot {} audio: {} (fade_time: {:.2}s)",
+        "[MIDI] Slot {} audio: {}",
         slot_index,
-        if new_muted { "MUTED" } else { "ACTIVE" },
-        fade_time
+        if new_muted { "MUTED" } else { "ACTIVE" }
     );
 }
 
@@ -1266,11 +1269,7 @@ fn handle_solo_slot(solo_slot: usize, app_handle: Option<&AppHandle>) {
         }
     }
 
-    log::info!(
-        "[MIDI] Solo: slot {} isolated (fade_time: {:.2}s)",
-        solo_slot,
-        fade_time
-    );
+    log::info!("[MIDI] Solo: slot {} isolated", solo_slot);
 }
 
 /// Handle master SOLO button press/release (currently unused, but could be modifier)
@@ -1290,6 +1289,19 @@ fn handle_master_solo_button_press(_engine: &Arc<Mutex<MidiEngineState>>, presse
         "[MIDI] Master Solo button: {}",
         if pressed { "HELD" } else { "RELEASED" }
     );
+}
+
+/// Pulse the Bank Left and Bank Right LEDs to indicate beat detection.
+/// Called from audio engine when beat state changes.
+/// Note: Send All and Solo buttons don't have physical LEDs, so we use Bank buttons instead.
+pub fn pulse_beat_led(beat_detected: bool) {
+    if beat_detected {
+        let _ = send_note_on(None, 0, MIDIMIX_BANK_LEFT_LED_NOTE, 127);
+        let _ = send_note_on(None, 0, MIDIMIX_BANK_RIGHT_LED_NOTE, 127);
+    } else {
+        let _ = send_note_off(None, 0, MIDIMIX_BANK_LEFT_LED_NOTE, 0);
+        let _ = send_note_off(None, 0, MIDIMIX_BANK_RIGHT_LED_NOTE, 0);
+    }
 }
 
 /// Update the mute LED for a single slot
