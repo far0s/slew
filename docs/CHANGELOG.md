@@ -117,7 +117,7 @@ Slot count increased from 6 to 8 to match Midimix columns for 1:1 hardware mappi
 
 ## Version History
 
-### v0.2.0 (Current Development)
+### v0.3.0 (Midimix integration / multi-slot / window manager)
 
 - 8-slot system with fixed layout
 - Full Midimix integration

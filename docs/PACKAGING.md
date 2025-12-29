@@ -54,6 +54,7 @@ npm run package:no-ndi
 ### Linux
 
 - **System libraries**:
+
   ```bash
   # Ubuntu/Debian
   sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
@@ -63,6 +64,7 @@ npm run package:no-ndi
   sudo dnf install webkit2gtk4.1-devel gtk3-devel libappindicator-gtk3-devel \
                    librsvg2-devel alsa-lib-devel hidapi-devel
   ```
+
 - **NDI SDK** (optional): See `./scripts/install-ndi.sh`
 
 ---
@@ -190,6 +192,7 @@ chmod +x sebcat-vj_*.AppImage
 ### macOS Code Signing
 
 Code signing is required for:
+
 - Distributing outside the Mac App Store
 - Avoiding Gatekeeper warnings
 - Accessing certain macOS features
@@ -309,8 +312,8 @@ xcrun stapler staple sebcat-vj.app
 
 ### GitHub Releases
 
-1. Tag your release: `git tag v0.2.0`
-2. Push the tag: `git push origin v0.2.0`
+1. Tag your release: `git tag v0.3.0`
+2. Push the tag: `git push origin v0.3.0`
 3. Create a release on GitHub
 4. Upload the built artifacts
 
@@ -333,6 +336,7 @@ Error: Syphon.framework not found
 ```
 
 **Solution**: Run the installation script:
+
 ```bash
 ./scripts/install-syphon.sh
 ```
@@ -346,6 +350,7 @@ Error: failed to run custom build command for `grafton-ndi`
 ```
 
 **Solution**: Either install the NDI SDK or build without NDI:
+
 ```bash
 npm run package:no-ndi
 ```
@@ -355,6 +360,7 @@ npm run package:no-ndi
 This happens when the app isn't properly signed or notarized.
 
 **For development**:
+
 ```bash
 xattr -cr /Applications/sebcat-vj.app
 ```
@@ -364,6 +370,7 @@ xattr -cr /Applications/sebcat-vj.app
 ### macOS: Syphon Not Working
 
 Ensure Syphon.framework is properly bundled:
+
 ```bash
 ls -la sebcat-vj.app/Contents/Frameworks/
 ```
@@ -373,12 +380,14 @@ Should show `Syphon.framework`.
 ### Windows: WebView2 Missing
 
 The app requires WebView2. If it's not installed:
+
 1. Download from [Microsoft](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)
 2. Or use the Evergreen Bootstrapper in your installer
 
 ### Linux: Missing Libraries
 
 Install required dependencies:
+
 ```bash
 # Ubuntu/Debian
 sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0 libasound2 libhidapi-libusb0
@@ -404,15 +413,15 @@ Rust compilation can use significant memory. If builds are killed:
 
 The `entitlements.plist` file grants the app specific permissions:
 
-| Entitlement | Purpose |
-|-------------|---------|
-| `com.apple.security.device.audio-input` | Audio capture for FFT analysis |
-| `com.apple.security.device.usb` | HID device access (MIDI, macropads) |
-| `com.apple.security.network.client` | OSC input, NDI discovery |
-| `com.apple.security.network.server` | OSC server |
-| `com.apple.security.cs.allow-jit` | WebView JavaScript JIT |
-| `com.apple.security.cs.disable-library-validation` | Load Syphon.framework |
-| `com.apple.security.cs.allow-dyld-environment-variables` | NDI SDK library path |
+| Entitlement                                              | Purpose                             |
+| -------------------------------------------------------- | ----------------------------------- |
+| `com.apple.security.device.audio-input`                  | Audio capture for FFT analysis      |
+| `com.apple.security.device.usb`                          | HID device access (MIDI, macropads) |
+| `com.apple.security.network.client`                      | OSC input, NDI discovery            |
+| `com.apple.security.network.server`                      | OSC server                          |
+| `com.apple.security.cs.allow-jit`                        | WebView JavaScript JIT              |
+| `com.apple.security.cs.disable-library-validation`       | Load Syphon.framework               |
+| `com.apple.security.cs.allow-dyld-environment-variables` | NDI SDK library path                |
 
 ---
 
