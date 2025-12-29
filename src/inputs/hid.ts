@@ -543,7 +543,7 @@ export function useHidRawReports() {
 /**
  * Configuration for useMacropad hook.
  *
- * @property maxSlots - Maximum number of scene slots (defaults to 4)
+ * @property maxSlots - Maximum number of scene slots (defaults to 8)
  * @property actionKey - Key name that triggers crossfade (defaults to auto-detect)
  * @property encoderSensitivity - Sensitivity for encoder parameter changes
  */
@@ -601,7 +601,7 @@ export function useMacropad(
   config: MacropadConfig = {},
 ): MacropadState {
   const {
-    maxSlots = 4,
+    maxSlots = 8,
     actionKey,
     encoderSensitivity = DEFAULT_SENSITIVITY,
   } = config;

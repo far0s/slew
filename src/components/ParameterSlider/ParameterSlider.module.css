@@ -224,3 +224,22 @@
     transform: scale(1.1);
   }
 }
+
+/* Disabled state for MIDI-controlled sliders */
+.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.disabled .sliderRoot {
+  pointer-events: none;
+}
+
+.disabled .sliderThumb {
+  background: rgb(148 163 184);
+  cursor: not-allowed;
+}
+
+.disabled .label {
+  color: rgb(255 255 255 / 0.5);
+}

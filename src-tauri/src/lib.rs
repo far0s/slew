@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager};
 
 pub mod audio;
 pub mod hid;
@@ -16,6 +16,7 @@ pub mod osc;
 #[cfg(target_os = "macos")]
 pub mod syphon;
 pub mod video_out;
+pub mod window_manager;
 
 // =============================================================================
 // Parameter Server
@@ -162,12 +163,42 @@ where
 }
 
 // =============================================================================
+// Slot State Storage
+// =============================================================================
+
+/// Persisted slot state - survives window restarts.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SlotState {
+    pub slots: Vec<SlotInfo>,
+    pub active_slot_index: usize,
+    pub crossfade_target_index: Option<usize>,
+}
+
+static SLOT_STATE: Lazy<Arc<Mutex<SlotState>>> =
+    Lazy::new(|| Arc::new(Mutex::new(SlotState::default())));
+
+pub(crate) fn with_slot_state<F, R>(f: F) -> R
+where
+    F: FnOnce(&mut SlotState) -> R,
+{
+    let mut guard = SLOT_STATE.lock().expect("slot state mutex poisoned");
+    f(&mut guard)
+}
+
+// =============================================================================
 // Persistence
 // =============================================================================
 
 fn parameters_path(app: &AppHandle) -> Option<PathBuf> {
     app.path().app_config_dir().ok().map(|mut dir| {
         dir.push("parameters.json");
+        dir
+    })
+}
+
+fn slots_path(app: &AppHandle) -> Option<PathBuf> {
+    app.path().app_config_dir().ok().map(|mut dir| {
+        dir.push("slots.json");
         dir
     })
 }
@@ -193,6 +224,28 @@ fn load_parameters_from_disk(app: &tauri::App) {
     }
 }
 
+fn load_slots_from_disk(app: &tauri::App) {
+    let path = match app.path().app_config_dir().ok() {
+        Some(mut dir) => {
+            dir.push("slots.json");
+            dir
+        }
+        None => return,
+    };
+
+    if let Ok(bytes) = fs::read(&path) {
+        if let Ok(state) = serde_json::from_slice::<SlotState>(&bytes) {
+            with_slot_state(|s| {
+                *s = state;
+            });
+            log::info!(
+                "[SlotState] Loaded {} slots from disk",
+                with_slot_state(|s| s.slots.len())
+            );
+        }
+    }
+}
+
 fn save_parameters_to_disk(app: &AppHandle) {
     let snapshot = with_parameter_store(|store| store.get_all());
     if let Some(path) = parameters_path(app) {
@@ -200,6 +253,18 @@ fn save_parameters_to_disk(app: &AppHandle) {
             let _ = fs::create_dir_all(parent);
         }
         if let Ok(json) = serde_json::to_vec_pretty(&snapshot) {
+            let _ = fs::write(path, json);
+        }
+    }
+}
+
+fn save_slots_to_disk(app: &AppHandle) {
+    let state = with_slot_state(|s| s.clone());
+    if let Some(path) = slots_path(app) {
+        if let Some(parent) = path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        if let Ok(json) = serde_json::to_vec_pretty(&state) {
             let _ = fs::write(path, json);
         }
     }
@@ -266,6 +331,7 @@ fn get_parameter(id: String) -> Option<Parameter> {
 
 /// Set a parameter's target. Emits immediate feedback for most parameters,
 /// but lets crossfade animate smoothly via the tick loop.
+/// Also sends MIDI feedback to connected controllers.
 #[tauri::command]
 fn set_parameter(app: AppHandle, id: String, value: f64) -> Parameter {
     let updated = with_parameter_store(|store| store.set_target(id.clone(), value));
@@ -283,6 +349,10 @@ fn set_parameter(app: AppHandle, id: String, value: f64) -> Parameter {
     };
 
     let _ = app.emit("parameter_changed", &immediate);
+
+    // Send MIDI feedback for this parameter (if it has a mapping)
+    midi::send_parameter_feedback(&id, value);
+
     updated
 }
 
@@ -332,6 +402,59 @@ fn set_slot_pairing(
         }),
     )
     .map_err(|e| format!("Failed to emit slot_pairing_changed: {e}"))
+}
+
+/// Slot info for multi-layer rendering.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SlotInfo {
+    pub index: usize,
+    pub sketch_id: String,
+}
+
+/// Notify Renderer of ALL slots for multi-layer alpha rendering.
+/// This allows the renderer to render all slots based on their alpha values.
+/// Also persists slot state so it survives Controls window restarts.
+#[tauri::command]
+fn set_all_slots(
+    app: AppHandle,
+    slots: Vec<SlotInfo>,
+    active_slot_index: usize,
+    crossfade_target_index: Option<usize>,
+) -> Result<(), String> {
+    // Persist slot state to backend storage
+    with_slot_state(|state| {
+        state.slots = slots.clone();
+        state.active_slot_index = active_slot_index;
+        state.crossfade_target_index = crossfade_target_index;
+    });
+
+    // Save to disk for persistence across app restarts
+    save_slots_to_disk(&app);
+
+    // Update MIDI engine with slot states for LED feedback and knob mappings
+    // A slot "exists" if it's in the slots array (LEDs indicate slot count)
+    let slot_states: Vec<(usize, bool, String)> = slots
+        .iter()
+        .map(|s| (s.index, true, s.sketch_id.clone()))
+        .collect();
+    midi::set_active_slots(slot_states);
+
+    app.emit(
+        "all_slots_changed",
+        serde_json::json!({
+            "slots": slots,
+            "active_slot_index": active_slot_index,
+            "crossfade_target_index": crossfade_target_index,
+        }),
+    )
+    .map_err(|e| format!("Failed to emit all_slots_changed: {e}"))
+}
+
+/// Get the current slot state from backend storage.
+/// Used by Controls window on startup/restart to hydrate from persisted state.
+#[tauri::command]
+fn get_slot_state() -> SlotState {
+    with_slot_state(|state| state.clone())
 }
 
 /// Initialize parameters for a new slot with default values.
@@ -414,61 +537,6 @@ fn get_sketch_defaults(sketch_id: &str) -> Vec<(&'static str, f64)> {
     }
 }
 
-/// Restart the Controls window (for crash recovery).
-/// This closes the existing Controls window and creates a new one.
-#[tauri::command]
-async fn restart_controls_window(app: AppHandle) -> Result<(), String> {
-    // Log the restart attempt
-    let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
-    if let Some(log_path) = app.path().app_log_dir().ok() {
-        let _ = std::fs::create_dir_all(&log_path);
-        let crash_log = log_path.join("controls_restarts.log");
-        let entry = format!("[{}] Controls window restart requested\n", timestamp);
-        let _ = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&crash_log)
-            .and_then(|mut f| std::io::Write::write_all(&mut f, entry.as_bytes()));
-    }
-
-    // Close existing Controls window if it exists
-    if let Some(window) = app.get_webview_window("controls") {
-        window
-            .close()
-            .map_err(|e| format!("Failed to close Controls window: {e}"))?;
-    }
-
-    // Wait a moment for cleanup
-    tokio::time::sleep(Duration::from_millis(100)).await;
-
-    // Create new Controls window
-    let new_window = WebviewWindowBuilder::new(&app, "controls", WebviewUrl::App("/".into()))
-        .title("sebcat-vj — Controls")
-        .inner_size(1440.0, 1080.0)
-        .resizable(true)
-        .visible(true)
-        .build()
-        .map_err(|e| format!("Failed to create Controls window: {e}"))?;
-
-    // Position the window (similar to initial setup)
-    if let Ok(Some(primary_monitor)) = app.primary_monitor() {
-        let _ = new_window.set_position(*primary_monitor.position());
-        let _ = new_window.set_size(*primary_monitor.size());
-    }
-
-    Ok(())
-}
-
-/// Get the path to the crash/restart log file.
-#[tauri::command]
-fn get_crash_log_path(app: AppHandle) -> Option<String> {
-    app.path().app_log_dir().ok().map(|p| {
-        p.join("controls_restarts.log")
-            .to_string_lossy()
-            .to_string()
-    })
-}
-
 // =============================================================================
 // App Entry Point
 // =============================================================================
@@ -484,8 +552,25 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_window_state::Builder::new().build())
         .setup(|app| {
             load_parameters_from_disk(app);
+            load_slots_from_disk(app);
+
+            // Initialize window manager (health monitoring, etc.)
+            window_manager::init_window_manager(app.handle());
+
+            // Build and set the application menu
+            match window_manager::build_app_menu(app.handle()) {
+                Ok(menu) => {
+                    if let Err(e) = app.set_menu(menu) {
+                        log::error!("[App] Failed to set menu: {}", e);
+                    }
+                }
+                Err(e) => {
+                    log::error!("[App] Failed to build menu: {}", e);
+                }
+            }
 
             // Initialize all engines (they log internally at debug level)
             midi::init_midi_engine(app.handle().clone());
@@ -498,7 +583,7 @@ pub fn run() {
             // Log startup summary
             let video_backends = video_out::get_available_backends();
             log::info!(
-                "[App] Initialized: MIDI, OSC, Audio, HID, Modulation, Video ({})",
+                "[App] Initialized: MIDI, OSC, Audio, HID, Modulation, Video, WindowManager ({})",
                 if video_backends.is_empty() {
                     "no backends".to_string()
                 } else {
@@ -518,6 +603,10 @@ pub fn run() {
 
             Ok(())
         })
+        // Handle menu events
+        .on_menu_event(|app, event| {
+            window_manager::handle_menu_event(app, event.id().as_ref());
+        })
         .invoke_handler(tauri::generate_handler![
             greet,
             forward_controls_event,
@@ -527,10 +616,18 @@ pub fn run() {
             clear_parameters,
             set_scene_pairing,
             set_slot_pairing,
+            set_all_slots,
+            get_slot_state,
             initialize_slot_parameters,
-            restart_controls_window,
-            get_crash_log_path,
-            // MIDI
+            // Window Manager
+            window_manager::restart_controls_window,
+            window_manager::restart_renderer_window,
+            window_manager::toggle_window_visibility,
+            window_manager::focus_window,
+            window_manager::get_window_status,
+            window_manager::window_heartbeat,
+            window_manager::get_window_restart_log_path,
+            // MIDI Input
             midi::list_midi_devices,
             midi::open_midi_device,
             midi::close_midi_device,
@@ -544,6 +641,16 @@ pub fn run() {
             midi::set_midi_auto_reconnect,
             midi::get_midi_auto_reconnect,
             midi::clear_midi_auto_reconnect_devices,
+            // MIDI Output
+            midi::list_midi_output_devices,
+            midi::open_midi_output_device,
+            midi::close_midi_output_device,
+            midi::send_midi_cc,
+            midi::send_midi_note_on,
+            midi::send_midi_note_off,
+            midi::set_midi_output_config,
+            midi::get_midi_output_config,
+            midi::trigger_midi_feedback,
             // OSC
             osc::start_osc_server,
             osc::stop_osc_server,

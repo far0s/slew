@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import type { SketchId, ParameterTemplateId } from "../sketches";
 import { getSketchDescriptor } from "../sketches";
 import type { ParameterId, SlotParameterId } from "../scenes/sceneTypes";
@@ -107,6 +107,8 @@ export interface ParameterStoreState {
   setError: (error: string | null) => void;
   currentSlots: SlotConfig[];
   setCurrentSlots: (slots: SlotConfig[]) => void;
+  hasPendingUserInput: (id: ParameterId) => boolean;
+  setFromBackend: (id: ParameterId, value: number) => void;
 }
 
 /**
@@ -203,6 +205,22 @@ export function useParameterStore(): ParameterStoreState {
     () => new Map([["crossfade", 0]]),
   );
 
+  // Refs for stable get/set - always point to current state
+  const parametersRef = useRef<Map<ParameterId, number>>(parameters);
+  const currentSlotsRef = useRef<SlotConfig[]>(currentSlots);
+
+  // Track pending user input to prevent backend events from overwriting during drag
+  const pendingUserInputRef = useRef<Map<ParameterId, number>>(new Map());
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    parametersRef.current = parameters;
+  }, [parameters]);
+
+  useEffect(() => {
+    currentSlotsRef.current = currentSlots;
+  }, [currentSlots]);
+
   // Interpolated values for smooth preview rendering
   const interpolatedRef = useRef<Map<ParameterId, number>>(
     new Map([["crossfade", 0]]),
@@ -218,77 +236,61 @@ export function useParameterStore(): ParameterStoreState {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Get a parameter target value
-  const get = useCallback(
-    (id: ParameterId): number => {
-      const value = parameters.get(id);
-      if (value !== undefined) return value;
-      return getParameterDefault(id, currentSlots) ?? 0;
-    },
-    [parameters, currentSlots],
-  );
+  // Get a parameter value
+  const get = useCallback((id: ParameterId): number => {
+    const value = parametersRef.current.get(id);
+    if (value !== undefined) return value;
+    return getParameterDefault(id, currentSlotsRef.current) ?? 0;
+  }, []);
 
-  // Get interpolated value (for smooth preview rendering)
-  const getInterpolated = useCallback(
-    (id: ParameterId): number => {
-      const value = interpolatedValues.get(id);
-      if (value !== undefined) return value;
-      return getParameterDefault(id, currentSlots) ?? 0;
-    },
-    [interpolatedValues, currentSlots],
-  );
+  // Get interpolated value for smooth preview rendering
+  const getInterpolated = useCallback((id: ParameterId): number => {
+    const value = interpolatedRef.current.get(id);
+    if (value !== undefined) return value;
+    return getParameterDefault(id, currentSlotsRef.current) ?? 0;
+  }, []);
 
-  // Set a single parameter
-  const set = useCallback(
-    (id: ParameterId, value: number) => {
-      const range = getParameterRange(id, currentSlots);
-      const clampedValue = range ? clamp(value, range.min, range.max) : value;
+  // Set a parameter (from user input) - marks as pending to block backend overwrites
+  const set = useCallback((id: ParameterId, value: number) => {
+    const range = getParameterRange(id, currentSlotsRef.current);
+    const clampedValue = range ? clamp(value, range.min, range.max) : value;
 
-      setParameters((prev) => {
-        const next = new Map(prev);
+    pendingUserInputRef.current.set(id, Date.now());
+
+    const next = new Map(parametersRef.current);
+    next.set(id, clampedValue);
+    parametersRef.current = next;
+    setParameters(next);
+  }, []);
+
+  // Set multiple parameters at once
+  const setMany = useCallback((updates: Array<[ParameterId, number]>) => {
+    setParameters((prev) => {
+      const next = new Map(prev);
+      for (const [id, value] of updates) {
+        const range = getParameterRange(id, currentSlotsRef.current);
+        const clampedValue = range ? clamp(value, range.min, range.max) : value;
         next.set(id, clampedValue);
-        return next;
-      });
-    },
-    [currentSlots],
-  );
+      }
+      return next;
+    });
+  }, []);
 
-  // Set multiple parameters
-  const setMany = useCallback(
-    (updates: Array<[ParameterId, number]>) => {
-      setParameters((prev) => {
-        const next = new Map(prev);
-        for (const [id, value] of updates) {
-          const range = getParameterRange(id, currentSlots);
-          const clampedValue = range
-            ? clamp(value, range.min, range.max)
-            : value;
-          next.set(id, clampedValue);
-        }
-        return next;
-      });
-    },
-    [currentSlots],
-  );
+  // Set an interpolated value from backend tick loop
+  const setInterpolated = useCallback((id: ParameterId, value: number) => {
+    const range = getParameterRange(id, currentSlotsRef.current);
+    const clampedValue = range ? clamp(value, range.min, range.max) : value;
 
-  // Set an interpolated value (from backend tick loop)
-  const setInterpolated = useCallback(
-    (id: ParameterId, value: number) => {
-      const range = getParameterRange(id, currentSlots);
-      const clampedValue = range ? clamp(value, range.min, range.max) : value;
+    interpolatedRef.current.set(id, clampedValue);
 
-      interpolatedRef.current.set(id, clampedValue);
+    setInterpolatedValues((prev) => {
+      const next = new Map(prev);
+      next.set(id, clampedValue);
+      return next;
+    });
+  }, []);
 
-      setInterpolatedValues((prev) => {
-        const next = new Map(prev);
-        next.set(id, clampedValue);
-        return next;
-      });
-    },
-    [currentSlots],
-  );
-
-  // Initialize parameters for a new slot with defaults
+  // Initialize slot parameters with defaults (only for missing parameters)
   const initializeSlot = useCallback(
     (slotIndex: number, sketchId: SketchId) => {
       const defaults = buildSlotDefaultParameters(slotIndex, sketchId);
@@ -296,19 +298,22 @@ export function useParameterStore(): ParameterStoreState {
       setParameters((prev) => {
         const next = new Map(prev);
         for (const [id, value] of defaults) {
-          next.set(id, value);
+          // Only set if parameter doesn't already exist
+          if (!next.has(id)) {
+            next.set(id, value);
+          }
         }
         return next;
       });
 
-      // Also update interpolated values
-      for (const [id, value] of defaults) {
-        interpolatedRef.current.set(id, value);
-      }
+      // Also update interpolated values (only for missing ones)
       setInterpolatedValues((prev) => {
         const next = new Map(prev);
         for (const [id, value] of defaults) {
-          next.set(id, value);
+          if (!interpolatedRef.current.has(id)) {
+            interpolatedRef.current.set(id, value);
+            next.set(id, value);
+          }
         }
         return next;
       });
@@ -316,7 +321,7 @@ export function useParameterStore(): ParameterStoreState {
     [],
   );
 
-  // Initialize slot with specific values (from copy operation)
+  // Initialize slot with specific values
   const initializeSlotWithValues = useCallback(
     (_slotIndex: number, values: Map<SlotParameterId, number>) => {
       setParameters((prev) => {
@@ -441,93 +446,174 @@ export function useParameterStore(): ParameterStoreState {
     setInterpolatedValues(new Map(defaults));
   }, []);
 
-  // Apply backend parameters to local state
-  const applyBackendParams = useCallback(
-    (params: BackendParameter[]) => {
-      setParameters((prev) => {
-        const next = new Map(prev);
+  // Apply backend parameters (initial hydration only)
+  const applyBackendParams = useCallback((params: BackendParameter[]) => {
+    setParameters((prev) => {
+      const next = new Map(prev);
 
-        for (const param of params) {
-          const id = param.id as ParameterId;
-          const range = getParameterRange(id, currentSlots);
-          const targetValue = param.target;
-          const clampedValue = range
-            ? clamp(targetValue, range.min, range.max)
-            : targetValue;
-          next.set(id, clampedValue);
-        }
+      for (const param of params) {
+        const id = param.id as ParameterId;
+        const range = getParameterRange(id, currentSlotsRef.current);
+        const targetValue = param.target;
+        const clampedValue = range
+          ? clamp(targetValue, range.min, range.max)
+          : targetValue;
+        next.set(id, clampedValue);
+      }
 
-        return next;
-      });
+      // Update ref synchronously
+      parametersRef.current = next;
+      return next;
+    });
+  }, []);
+
+  // Check if parameter has pending user input (within 300ms timeout)
+  const hasPendingUserInput = useCallback((id: ParameterId): boolean => {
+    const PENDING_TIMEOUT_MS = 300;
+    const timestamp = pendingUserInputRef.current.get(id);
+    if (timestamp === undefined) return false;
+
+    if (Date.now() - timestamp >= PENDING_TIMEOUT_MS) {
+      pendingUserInputRef.current.delete(id);
+      return false;
+    }
+    return true;
+  }, []);
+
+  // Set a parameter from backend (respects pending user input)
+  const setFromBackend = useCallback(
+    (id: ParameterId, value: number) => {
+      if (hasPendingUserInput(id)) return;
+
+      const range = getParameterRange(id, currentSlotsRef.current);
+      const clampedValue = range ? clamp(value, range.min, range.max) : value;
+
+      const currentValue = parametersRef.current.get(id);
+      if (
+        currentValue !== undefined &&
+        Math.abs(currentValue - clampedValue) < 0.001
+      ) {
+        return;
+      }
+
+      const next = new Map(parametersRef.current);
+      next.set(id, clampedValue);
+      parametersRef.current = next;
+      setParameters(next);
     },
-    [currentSlots],
+    [hasPendingUserInput],
   );
 
   // Get slot parameter value
   const getSlotParameter = useCallback(
     (slotIndex: number, templateId: ParameterTemplateId): number => {
       const id = makeSlotParameterId(slotIndex, templateId);
-      return get(id);
+      const value = parametersRef.current.get(id);
+      if (value !== undefined) return value;
+      return getParameterDefault(id, currentSlotsRef.current) ?? 0;
     },
-    [get],
+    [],
   );
 
   // Set slot parameter value
   const setSlotParameter = useCallback(
     (slotIndex: number, templateId: ParameterTemplateId, value: number) => {
       const id = makeSlotParameterId(slotIndex, templateId);
-      set(id, value);
+      const range = getParameterRange(id, currentSlotsRef.current);
+      const clampedValue = range ? clamp(value, range.min, range.max) : value;
+      setParameters((prev) => {
+        const next = new Map(prev);
+        next.set(id, clampedValue);
+        return next;
+      });
     },
-    [set],
+    [],
   );
 
   // Check if parameter exists
-  const has = useCallback(
-    (id: ParameterId): boolean => {
-      return parameters.has(id);
-    },
-    [parameters],
-  );
+  const has = useCallback((id: ParameterId): boolean => {
+    return parametersRef.current.has(id);
+  }, []);
 
   // Get all entries
   const entries = useCallback((): Array<[ParameterId, number]> => {
-    return Array.from(parameters.entries());
-  }, [parameters]);
+    return Array.from(parametersRef.current.entries());
+  }, []);
 
-  return {
-    parameters,
-    interpolatedValues,
-    get,
-    getInterpolated,
-    set,
-    setMany,
-    setInterpolated,
-    initializeSlot,
-    initializeSlotWithValues,
-    removeSlotParameters,
-    copySlotParametersTo,
-    resetSlotToDefaults,
-    resetAllToDefaults,
-    applyBackendParams,
-    getSlotParameter,
-    setSlotParameter,
-    has,
-    entries,
-    backendSnapshot,
-    setBackendSnapshot,
-    isLoading,
-    setIsLoading,
-    error,
-    setError,
-    currentSlots,
-    setCurrentSlots,
-  };
+  // Memoized return object to prevent unnecessary re-renders
+  const storeState = useMemo(
+    () => ({
+      parameters,
+      interpolatedValues,
+      get,
+      getInterpolated,
+      set,
+      setMany,
+      setInterpolated,
+      initializeSlot,
+      initializeSlotWithValues,
+      removeSlotParameters,
+      copySlotParametersTo,
+      resetSlotToDefaults,
+      resetAllToDefaults,
+      applyBackendParams,
+      getSlotParameter,
+      setSlotParameter,
+      has,
+      entries,
+      backendSnapshot,
+      setBackendSnapshot,
+      isLoading,
+      setIsLoading,
+      error,
+      setError,
+      currentSlots,
+      setCurrentSlots,
+      hasPendingUserInput,
+      setFromBackend,
+    }),
+    [
+      parameters,
+      interpolatedValues,
+      get,
+      getInterpolated,
+      set,
+      setMany,
+      setInterpolated,
+      initializeSlot,
+      initializeSlotWithValues,
+      removeSlotParameters,
+      copySlotParametersTo,
+      resetSlotToDefaults,
+      resetAllToDefaults,
+      applyBackendParams,
+      getSlotParameter,
+      setSlotParameter,
+      has,
+      entries,
+      backendSnapshot,
+      setBackendSnapshot,
+      isLoading,
+      setIsLoading,
+      error,
+      setError,
+      currentSlots,
+      setCurrentSlots,
+      hasPendingUserInput,
+      setFromBackend,
+    ],
+  );
+
+  return storeState;
 }
 
 /**
  * Map from template ID (snake_case) to props key (camelCase).
  */
 const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
+  // Slot-level parameters
+  alpha: "alpha",
+  // Common parameters
   brightness: "brightness",
   rotation_speed: "rotationSpeed",
   tint: "tint",

@@ -53,6 +53,7 @@ export interface ModulationIndicator {
  * @property midiParameterId - Parameter ID for MIDI Learn; if provided, shows a Learn button
  * @property audioMapping - Audio mapping indicator info; if provided, shows mapping badge
  * @property modulationIndicator - Modulation indicator info; if provided, shows modulation badge
+ * @property isMidiControlled - If true, disables direct user input (controlled via MIDI only)
  */
 export interface ParameterSliderProps {
   id: string;
@@ -70,6 +71,7 @@ export interface ParameterSliderProps {
   midiParameterId?: string;
   audioMapping?: AudioMappingIndicator | null;
   modulationIndicator?: ModulationIndicator | null;
+  isMidiControlled?: boolean;
 }
 
 /**
@@ -94,9 +96,11 @@ export function ParameterSlider({
   midiParameterId,
   audioMapping,
   modulationIndicator,
+  isMidiControlled = false,
 }: ParameterSliderProps) {
   const rangeClass = styles[`range${capitalize(color)}`] ?? styles.rangeEmerald;
   const thumbClass = styles[`thumb${capitalize(color)}`] ?? styles.thumbEmerald;
+  const disabledClass = isMidiControlled ? styles.disabled : "";
 
   const handleValueChange = ([next]: number[]) => {
     const newValue = Number.isFinite(next) ? next : value;
@@ -105,7 +109,12 @@ export function ParameterSlider({
 
   return (
     <div
-      className={`${styles.container} ${showSpacing ? styles.containerSpaced : ""}`}
+      className={`${styles.container} ${showSpacing ? styles.containerSpaced : ""} ${disabledClass}`}
+      title={
+        isMidiControlled
+          ? "Controlled via MIDI - adjust using your MIDI controller"
+          : undefined
+      }
     >
       <div className={styles.labelRow}>
         <label htmlFor={id} className={styles.labelText}>
@@ -146,7 +155,12 @@ export function ParameterSlider({
           <span className={styles.value}>{formatValue(value)}</span>
         </label>
         {midiParameterId && (
-          <MidiLearnButton parameterId={midiParameterId} compact />
+          <MidiLearnButton
+            parameterId={midiParameterId}
+            min={min}
+            max={max}
+            compact
+          />
         )}
       </div>
 
@@ -159,6 +173,7 @@ export function ParameterSlider({
         onValueChange={handleValueChange}
         className={styles.sliderRoot}
         aria-label={ariaLabel ?? label}
+        disabled={isMidiControlled}
       >
         <Slider.Track className={styles.sliderTrack}>
           <Slider.Range className={`${styles.sliderRange} ${rangeClass}`} />

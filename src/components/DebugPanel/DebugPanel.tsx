@@ -1,5 +1,4 @@
-import { useCallback, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { useCallback } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { MidiPanel } from "../MidiPanel";
 import { OscPanel } from "../OscPanel";
@@ -8,6 +7,7 @@ import { HidPanel } from "../HidPanel";
 import { ModulationPanel } from "../ModulationPanel";
 import { VideoOutputPanel } from "../VideoOutputPanel";
 import type { Slot } from "../../scenes/useSceneSlots";
+import { useWindowManager } from "../../hooks";
 import styles from "./DebugPanel.module.css";
 
 /**
@@ -36,7 +36,12 @@ export function DebugPanel({
   macropadSelectedIndex,
   slots = [],
 }: DebugPanelProps) {
-  const [isRestarting, setIsRestarting] = useState(false);
+  // Window manager for restart functionality
+  const { isRestarting, restartControls, restartRenderer } = useWindowManager({
+    windowLabel: "controls",
+    enableHeartbeat: false, // Heartbeat is handled in App.tsx
+    enableStatusPolling: false,
+  });
 
   const handleRestartControls = useCallback(async () => {
     if (isRestarting) return;
@@ -44,18 +49,22 @@ export function DebugPanel({
       !window.confirm("Restart the Controls window? This will reload the UI.")
     )
       return;
+    await restartControls();
+  }, [isRestarting, restartControls]);
 
-    setIsRestarting(true);
-    try {
-      await invoke("restart_controls_window");
-    } catch (e) {
-      console.error("[Controls] Failed to restart:", e);
-      setIsRestarting(false);
-    }
-  }, [isRestarting]);
+  const handleRestartRenderer = useCallback(async () => {
+    if (isRestarting) return;
+    if (
+      !window.confirm(
+        "Restart the Renderer window? Visuals will briefly reset.",
+      )
+    )
+      return;
+    await restartRenderer();
+  }, [isRestarting, restartRenderer]);
 
   return (
-    <Tabs.Root defaultValue="hid" className={styles.container}>
+    <Tabs.Root defaultValue="midi" className={styles.container}>
       <Tabs.List className={styles.tabList} aria-label="Debug panel tabs">
         <Tabs.Trigger value="midi" className={styles.tabTrigger}>
           MIDI
@@ -108,16 +117,33 @@ export function DebugPanel({
           <span className={styles.shortcut}>
             <kbd>D</kbd> Toggle stats
           </span>
+          <span className={styles.shortcut}>
+            <kbd>⌘⇧C</kbd> Restart Controls
+          </span>
+          <span className={styles.shortcut}>
+            <kbd>⌘⇧R</kbd> Restart Renderer
+          </span>
         </div>
-        <button
-          type="button"
-          onClick={handleRestartControls}
-          disabled={isRestarting}
-          className={styles.restartButton}
-          title="Restart Controls window (crash recovery)"
-        >
-          {isRestarting ? "Restarting…" : "Restart Controls"}
-        </button>
+        <div className={styles.restartButtons}>
+          <button
+            type="button"
+            onClick={handleRestartRenderer}
+            disabled={isRestarting}
+            className={styles.restartButton}
+            title="Restart Renderer window (⌘⇧R)"
+          >
+            {isRestarting ? "…" : "Restart Renderer"}
+          </button>
+          <button
+            type="button"
+            onClick={handleRestartControls}
+            disabled={isRestarting}
+            className={styles.restartButton}
+            title="Restart Controls window (⌘⇧C)"
+          >
+            {isRestarting ? "…" : "Restart Controls"}
+          </button>
+        </div>
       </footer>
     </Tabs.Root>
   );
