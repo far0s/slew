@@ -13,6 +13,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { useMessageActivityWithHistory, useMessageHistory } from "./shared";
 
 // ============================================================================
 // Types (matching Rust structs)
@@ -425,40 +426,18 @@ const MAX_RAW_REPORTS = 20;
  * Hook for monitoring encoder events.
  */
 export function useHidEncoderEvents() {
-  const [events, setEvents] = useState<HidEncoderEvent[]>([]);
-  const [lastEvent, setLastEvent] = useState<HidEncoderEvent | null>(null);
-  const [eventCount, setEventCount] = useState(0);
-
-  useEffect(() => {
-    let unlisten: UnlistenFn | undefined;
-
-    void (async () => {
-      unlisten = await listen<HidEncoderEvent>("hid_encoder", (event) => {
-        setLastEvent(event.payload);
-        setEventCount((prev) => prev + 1);
-        setEvents((prev) => {
-          const next = [event.payload, ...prev];
-          return next.slice(0, MAX_RECENT_EVENTS);
-        });
-      });
-    })();
-
-    return () => {
-      if (unlisten) unlisten();
-    };
-  }, []);
-
-  const clear = useCallback(() => {
-    setEvents([]);
-    setEventCount(0);
-    setLastEvent(null);
-  }, []);
+  const result = useMessageActivityWithHistory<HidEncoderEvent>("hid_encoder", {
+    maxHistory: MAX_RECENT_EVENTS,
+  });
 
   return {
-    events,
-    lastEvent,
-    eventCount,
-    clear,
+    events: result.messages,
+    lastEvent: result.lastMessage,
+    eventCount: result.messageCount,
+    clear: () => {
+      result.clear();
+      result.resetCount();
+    },
   };
 }
 
@@ -466,40 +445,18 @@ export function useHidEncoderEvents() {
  * Hook for monitoring key events.
  */
 export function useHidKeyEvents() {
-  const [events, setEvents] = useState<HidKeyEvent[]>([]);
-  const [lastEvent, setLastEvent] = useState<HidKeyEvent | null>(null);
-  const [eventCount, setEventCount] = useState(0);
-
-  useEffect(() => {
-    let unlisten: UnlistenFn | undefined;
-
-    void (async () => {
-      unlisten = await listen<HidKeyEvent>("hid_key", (event) => {
-        setLastEvent(event.payload);
-        setEventCount((prev) => prev + 1);
-        setEvents((prev) => {
-          const next = [event.payload, ...prev];
-          return next.slice(0, MAX_RECENT_EVENTS);
-        });
-      });
-    })();
-
-    return () => {
-      if (unlisten) unlisten();
-    };
-  }, []);
-
-  const clear = useCallback(() => {
-    setEvents([]);
-    setEventCount(0);
-    setLastEvent(null);
-  }, []);
+  const result = useMessageActivityWithHistory<HidKeyEvent>("hid_key", {
+    maxHistory: MAX_RECENT_EVENTS,
+  });
 
   return {
-    events,
-    lastEvent,
-    eventCount,
-    clear,
+    events: result.messages,
+    lastEvent: result.lastMessage,
+    eventCount: result.messageCount,
+    clear: () => {
+      result.clear();
+      result.resetCount();
+    },
   };
 }
 
@@ -507,28 +464,10 @@ export function useHidKeyEvents() {
  * Hook for monitoring raw HID reports (for debugging).
  */
 export function useHidRawReports() {
-  const [reports, setReports] = useState<HidRawReport[]>([]);
-
-  useEffect(() => {
-    let unlisten: UnlistenFn | undefined;
-
-    void (async () => {
-      unlisten = await listen<HidRawReport>("hid_raw_report", (event) => {
-        setReports((prev) => {
-          const next = [event.payload, ...prev];
-          return next.slice(0, MAX_RAW_REPORTS);
-        });
-      });
-    })();
-
-    return () => {
-      if (unlisten) unlisten();
-    };
-  }, []);
-
-  const clear = useCallback(() => {
-    setReports([]);
-  }, []);
+  const { messages: reports, clear } = useMessageHistory<HidRawReport>(
+    "hid_raw_report",
+    { maxHistory: MAX_RAW_REPORTS },
+  );
 
   return {
     reports,

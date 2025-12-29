@@ -12,13 +12,13 @@ export {
   type AudioMappingIndicator,
 } from "./ParameterSlider";
 
-// Scene Components
+// Slot Components
 export {
-  SceneParameterControls,
-  type SceneParameterControlsProps,
-} from "./SceneParameterControls";
-export { SceneColumn, type SceneColumnProps } from "./SceneColumn";
-export { ScenesArea, type ScenesAreaProps } from "./ScenesArea";
+  SlotParameterControls,
+  type SlotParameterControlsProps,
+} from "./SlotParameterControls";
+export { SlotColumn, type SlotColumnProps } from "./SlotColumn";
+export { SlotsArea, type SlotsAreaProps } from "./SlotsArea";
 
 // Preview Components
 export { RendererPreview, type RendererPreviewProps } from "./RendererPreview";

@@ -1,14 +1,14 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import type { SketchId, ParameterTemplateId } from "../sketches";
 import { getSketchDescriptor } from "../sketches";
-import type { ParameterId, SlotParameterId } from "../scenes/sceneTypes";
+import type { ParameterId, SlotParameterId } from "../slots/slotTypes";
 import {
   buildSlotDefaultParameters,
   buildAllSlotsDefaultParameters,
   copySlotParameters,
   makeSlotParameterId,
   parseSlotParameterId,
-} from "../scenes/sceneTypes";
+} from "../slots/slotTypes";
 
 /**
  * Backend parameter shape (from Rust Parameter Server).
@@ -437,7 +437,7 @@ export function useParameterStore(): ParameterStoreState {
   // Reset all to defaults
   const resetAllToDefaults = useCallback((slots: SlotConfig[]) => {
     const defaults = buildAllSlotsDefaultParameters(
-      slots.map((s) => ({ index: s.index, sceneId: s.sketchId })),
+      slots.map((s) => ({ index: s.index, sketchId: s.sketchId })),
     );
 
     setParameters(new Map(defaults));

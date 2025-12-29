@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { useSceneSlots } from "./scenes/useSceneSlots";
+import { useSlots } from "./slots/useSlots";
 import {
   useParameterStore,
   buildSlotSceneParams,
@@ -11,8 +11,8 @@ import {
 } from "./controls/useParameterStore";
 import type { SketchId } from "./sketches";
 import { getSketchDescriptor } from "./sketches";
-import { makeSlotParameterId } from "./scenes/sceneTypes";
-import { ScenesArea, RendererPreview, DebugPanel } from "./components";
+import { makeSlotParameterId } from "./slots/slotTypes";
+import { SlotsArea, RendererPreview, DebugPanel } from "./components";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings } from "./inputs/audio";
 import { useLfos, useModulationTargets } from "./inputs/modulation";
@@ -21,8 +21,8 @@ import { useStatsToggle, useWindowManager } from "./hooks";
 import styles from "./App.module.css";
 
 function App() {
-  // Scene slots state
-  const sceneSlots = useSceneSlots({
+  // Slot state
+  const slotState = useSlots({
     minSlots: 1,
     maxSlots: 8,
     initialSketches: ["blueCube"],
@@ -72,20 +72,20 @@ function App() {
   // Handle crossfade to a slot
   const handleCrossfade = useCallback(
     async (targetSlotIndex: number) => {
-      if (targetSlotIndex === sceneSlots.activeIndex) return;
-      if (sceneSlots.isCrossfading) return;
+      if (targetSlotIndex === slotState.activeIndex) return;
+      if (slotState.isCrossfading) return;
 
       // Start crossfade in slot state
-      sceneSlots.startCrossfade(targetSlotIndex);
+      slotState.startCrossfade(targetSlotIndex);
 
       try {
         // CRITICAL: Set slot pairing BEFORE changing crossfade value
         // This ensures the Renderer knows which slots to show before the fade starts
-        const targetSketchId = sceneSlots.getSketchId(targetSlotIndex);
-        const activeSketchId = sceneSlots.getSketchId(sceneSlots.activeIndex);
+        const targetSketchId = slotState.getSketchId(targetSlotIndex);
+        const activeSketchId = slotState.getSketchId(slotState.activeIndex);
         if (targetSketchId && activeSketchId) {
           await invoke("set_slot_pairing", {
-            activeSlotIndex: sceneSlots.activeIndex,
+            activeSlotIndex: slotState.activeIndex,
             activeSceneId: activeSketchId,
             nextSlotIndex: targetSlotIndex,
             nextSceneId: targetSketchId,
@@ -113,18 +113,18 @@ function App() {
         });
       } catch (error) {
         console.error("[Controls] Failed to start crossfade", error);
-        sceneSlots.cancelCrossfade();
+        slotState.cancelCrossfade();
       }
     },
-    [sceneSlots, paramStore],
+    [slotState, paramStore],
   );
 
   // Get parameters for the target scene (macropad-selected or active slot)
   // Sorted by orderHint for encoder mapping
   const getTargetSceneParameters = useCallback(() => {
     // Use macropad selection if available, otherwise use active slot
-    const targetIndex = macropadSelectedIndex ?? sceneSlots.activeIndex;
-    const sketchId = sceneSlots.getSketchId(targetIndex);
+    const targetIndex = macropadSelectedIndex ?? slotState.activeIndex;
+    const sketchId = slotState.getSketchId(targetIndex);
     if (!sketchId) return [];
     const descriptor = getSketchDescriptor(sketchId);
     if (!descriptor) return [];
@@ -136,24 +136,24 @@ function App() {
         slotIndex: targetIndex,
         parameterId: makeSlotParameterId(targetIndex, template.templateId),
       }));
-  }, [macropadSelectedIndex, sceneSlots]);
+  }, [macropadSelectedIndex, slotState]);
 
   // Handle macropad slot selection
   const handleMacropadSlotSelect = useCallback(
     (slotIndex: number) => {
       // Only select if the slot exists
-      if (slotIndex < sceneSlots.slots.length) {
+      if (slotIndex < slotState.slots.length) {
         setMacropadSelectedIndex(slotIndex);
       }
     },
-    [sceneSlots.slots.length],
+    [slotState.slots.length],
   );
 
   // Handle macropad crossfade trigger
   const handleMacropadCrossfade = useCallback(() => {
     if (macropadSelectedIndex === null) return;
-    if (macropadSelectedIndex === sceneSlots.activeIndex) return;
-    if (sceneSlots.isCrossfading) return;
+    if (macropadSelectedIndex === slotState.activeIndex) return;
+    if (slotState.isCrossfading) return;
 
     // Trigger crossfade to the selected slot
     void handleCrossfade(macropadSelectedIndex);
@@ -162,8 +162,8 @@ function App() {
     setMacropadSelectedIndex(null);
   }, [
     macropadSelectedIndex,
-    sceneSlots.activeIndex,
-    sceneSlots.isCrossfading,
+    slotState.activeIndex,
+    slotState.isCrossfading,
     handleCrossfade,
   ]);
 
@@ -221,14 +221,14 @@ function App() {
       onEncoderChange: handleMacropadEncoder,
     },
     {
-      maxSlots: sceneSlots.slots.length,
+      maxSlots: slotState.slots.length,
     },
   );
 
   // Handle slot sketch change
   async function handleSlotSketchChange(slotIndex: number, sketchId: SketchId) {
     // This will return parameters to initialize
-    const initParams = sceneSlots.setSlotSketch(slotIndex, sketchId);
+    const initParams = slotState.setSlotSketch(slotIndex, sketchId);
 
     if (initParams) {
       // Initialize the new parameters in the store
@@ -247,22 +247,22 @@ function App() {
 
     // Update backend slot pairing if this affects the active/target pair
     try {
-      const activeSketchId = sceneSlots.isActiveSlot(slotIndex)
+      const activeSketchId = slotState.isActiveSlot(slotIndex)
         ? sketchId
-        : sceneSlots.getSketchId(sceneSlots.activeIndex);
+        : slotState.getSketchId(slotState.activeIndex);
 
-      const targetSketchId = sceneSlots.isCrossfadeTarget(slotIndex)
+      const targetSketchId = slotState.isCrossfadeTarget(slotIndex)
         ? sketchId
-        : sceneSlots.crossfadeTargetIndex !== null
-          ? sceneSlots.getSketchId(sceneSlots.crossfadeTargetIndex)
+        : slotState.crossfadeTargetIndex !== null
+          ? slotState.getSketchId(slotState.crossfadeTargetIndex)
           : null;
 
       if (activeSketchId) {
         await invoke("set_slot_pairing", {
-          activeSlotIndex: sceneSlots.activeIndex,
+          activeSlotIndex: slotState.activeIndex,
           activeSceneId: activeSketchId,
           nextSlotIndex:
-            sceneSlots.crossfadeTargetIndex ?? sceneSlots.activeIndex,
+            slotState.crossfadeTargetIndex ?? slotState.activeIndex,
           nextSceneId: targetSketchId ?? activeSketchId,
         });
       }
@@ -273,7 +273,7 @@ function App() {
 
   // Handle setting a sketch in a specific slot
   async function handleSetSketch(slotIndex: number, sketchId: SketchId) {
-    const initParams = sceneSlots.setSketch(slotIndex, sketchId);
+    const initParams = slotState.setSketch(slotIndex, sketchId);
     if (!initParams) return;
 
     const { parameters } = initParams;
@@ -307,7 +307,7 @@ function App() {
     sourceSlotIndex: number,
     targetSlotIndex: number,
   ) {
-    const initParams = sceneSlots.copyToSlot(
+    const initParams = slotState.copyToSlot(
       sourceSlotIndex,
       targetSlotIndex,
       (id) => paramStore.get(id),
@@ -338,7 +338,7 @@ function App() {
 
   // Handle clearing a slot (remove sketch, keep slot)
   function handleClearSlot(slotIndex: number) {
-    sceneSlots.clearSlot(slotIndex);
+    slotState.clearSlot(slotIndex);
     // Note: We don't remove parameters from the backend (per user requirement)
     // but we do remove them from the local store for cleanliness
     paramStore.removeSlotParameters(slotIndex);
@@ -353,7 +353,7 @@ function App() {
       const response = (await invoke("get_parameters")) as BackendParameter[];
 
       // Build slot config from current slots (only filled slots)
-      const slotConfig: SlotConfig[] = sceneSlots.slots
+      const slotConfig: SlotConfig[] = slotState.slots
         .filter((slot) => slot.sketchId !== null)
         .map((slot) => ({
           index: slot.index,
@@ -368,7 +368,7 @@ function App() {
       paramStore.applyBackendParams(response);
 
       // Initialize any missing slot parameters (only for filled slots)
-      for (const slot of sceneSlots.slots) {
+      for (const slot of slotState.slots) {
         if (slot.sketchId !== null) {
           paramStore.initializeSlot(slot.index, slot.sketchId);
         }
@@ -380,24 +380,24 @@ function App() {
       paramStore.setIsLoading(false);
       setIsInitialized(true);
     }
-  }, [sceneSlots.slots, paramStore]);
+  }, [slotState.slots, paramStore]);
 
   // Handle crossfade completion when value reaches endpoint
   useEffect(() => {
     const crossfade = paramStore.get("crossfade");
 
-    if (sceneSlots.crossfadeTargetIndex !== null) {
-      sceneSlots.setCrossfadeValue(crossfade);
+    if (slotState.crossfadeTargetIndex !== null) {
+      slotState.setCrossfadeValue(crossfade);
 
       // Complete crossfade when we reach the target
       if (crossfade >= 0.99) {
         // Capture slot info BEFORE completing
-        const oldActiveSlotIndex = sceneSlots.activeIndex;
-        const newActiveSlotIndex = sceneSlots.crossfadeTargetIndex;
-        const newActiveSketchId = sceneSlots.getSketchId(newActiveSlotIndex);
+        const oldActiveSlotIndex = slotState.activeIndex;
+        const newActiveSlotIndex = slotState.crossfadeTargetIndex;
+        const newActiveSketchId = slotState.getSketchId(newActiveSlotIndex);
 
         // Complete the crossfade in local state
-        sceneSlots.completeCrossfade();
+        slotState.completeCrossfade();
 
         // Update Renderer and reset crossfade
         void (async () => {
@@ -444,8 +444,8 @@ function App() {
     }
   }, [
     paramStore.get("crossfade"),
-    sceneSlots.crossfadeTargetIndex,
-    sceneSlots.activeIndex,
+    slotState.crossfadeTargetIndex,
+    slotState.activeIndex,
     paramStore,
   ]);
 
@@ -453,29 +453,29 @@ function App() {
   // Wait for hydration to complete before syncing
   useEffect(() => {
     if (!isInitialized) return;
-    if (!sceneSlots.isHydrated) return; // Don't sync until hydrated from backend
+    if (!slotState.isHydrated) return; // Don't sync until hydrated from backend
 
-    const activeSketchId = sceneSlots.getSketchId(sceneSlots.activeIndex);
+    const activeSketchId = slotState.getSketchId(slotState.activeIndex);
     if (activeSketchId) {
       void invoke("set_slot_pairing", {
-        activeSlotIndex: sceneSlots.activeIndex,
+        activeSlotIndex: slotState.activeIndex,
         activeSceneId: activeSketchId,
-        nextSlotIndex: sceneSlots.activeIndex,
+        nextSlotIndex: slotState.activeIndex,
         nextSceneId: activeSketchId,
       }).catch((error) => {
         console.error("[Controls] Failed to sync initial slot pairing", error);
       });
     }
-  }, [isInitialized, sceneSlots.isHydrated]);
+  }, [isInitialized, slotState.isHydrated]);
 
   // Sync all slots to Renderer for multi-layer alpha rendering
   // Wait for both initialization AND hydration to complete before syncing
   useEffect(() => {
     if (!isInitialized) return;
-    if (!sceneSlots.isHydrated) return; // Don't sync until hydrated from backend
+    if (!slotState.isHydrated) return; // Don't sync until hydrated from backend
 
     // Only send slots that have a sketch loaded (non-null sketchId)
-    const slots = sceneSlots.slots
+    const slots = slotState.slots
       .filter((slot) => slot.sketchId !== null)
       .map((slot) => ({
         index: slot.index,
@@ -484,26 +484,26 @@ function App() {
 
     void invoke("set_all_slots", {
       slots,
-      activeSlotIndex: sceneSlots.activeIndex,
-      crossfadeTargetIndex: sceneSlots.crossfadeTargetIndex,
+      activeSlotIndex: slotState.activeIndex,
+      crossfadeTargetIndex: slotState.crossfadeTargetIndex,
     }).catch((error) => {
       console.error("[Controls] Failed to sync all slots to renderer", error);
     });
   }, [
     isInitialized,
-    sceneSlots.isHydrated,
-    sceneSlots.slots,
-    sceneSlots.activeIndex,
-    sceneSlots.crossfadeTargetIndex,
+    slotState.isHydrated,
+    slotState.slots,
+    slotState.activeIndex,
+    slotState.crossfadeTargetIndex,
   ]);
 
   // Initial parameter load (run once after slot hydration)
   useEffect(() => {
-    if (!sceneSlots.isHydrated) return;
+    if (!slotState.isHydrated) return;
     if (hasHydratedRef.current) return;
     hasHydratedRef.current = true;
     void refreshBackendParameters();
-  }, [sceneSlots.isHydrated, refreshBackendParameters]);
+  }, [slotState.isHydrated, refreshBackendParameters]);
 
   // Subscribe to parameter changes
   useEffect(() => {
@@ -548,14 +548,14 @@ function App() {
 
   // Update slot configuration when slots change
   useEffect(() => {
-    const slotConfig: SlotConfig[] = sceneSlots.slots
+    const slotConfig: SlotConfig[] = slotState.slots
       .filter((slot) => slot.sketchId !== null)
       .map((slot) => ({
         index: slot.index,
         sketchId: slot.sketchId as SketchId,
       }));
     paramStore.setCurrentSlots(slotConfig);
-  }, [sceneSlots.slots, paramStore.setCurrentSlots]);
+  }, [slotState.slots, paramStore.setCurrentSlots]);
 
   // Get scene params for a slot (target values for sliders)
   // paramStore functions are now stable (use refs internally)
@@ -587,19 +587,19 @@ function App() {
   );
 
   // Get active slot info for preview
-  const activeSlotIndex = sceneSlots.activeIndex;
+  const activeSlotIndex = slotState.activeIndex;
 
   return (
     <div className={styles.root}>
       <main className={styles.main}>
         {/* Scenes Area (4/5 width) */}
         <div className={styles.scenesArea}>
-          <ScenesArea
-            slots={sceneSlots.slots}
-            activeIndex={sceneSlots.activeIndex}
-            crossfadeTargetIndex={sceneSlots.crossfadeTargetIndex}
-            crossfadeValue={sceneSlots.crossfadeValue}
-            isCrossfading={sceneSlots.isCrossfading}
+          <SlotsArea
+            slots={slotState.slots}
+            activeIndex={slotState.activeIndex}
+            crossfadeTargetIndex={slotState.crossfadeTargetIndex}
+            crossfadeValue={slotState.crossfadeValue}
+            isCrossfading={slotState.isCrossfading}
             macropadSelectedIndex={macropadSelectedIndex}
             getValue={getValue}
             setValue={setValue}
@@ -620,20 +620,20 @@ function App() {
         {/* Sidebar (1/5 width) */}
         <aside className={styles.sidebar} aria-label="Preview and debug">
           <RendererPreview
-            allSlots={sceneSlots.slots
+            allSlots={slotState.slots
               .filter((slot) => slot.sketchId !== null)
               .map((slot) => ({
                 index: slot.index,
                 sketchId: slot.sketchId as SketchId,
               }))}
             activeSlotIndex={activeSlotIndex}
-            crossfadeTargetIndex={sceneSlots.crossfadeTargetIndex}
+            crossfadeTargetIndex={slotState.crossfadeTargetIndex}
             getParam={(id) => paramStore.getInterpolated(id)}
             showStats={showStats}
           />
           <DebugPanel
             macropadSelectedIndex={macropadSelectedIndex}
-            slots={sceneSlots.slots}
+            slots={slotState.slots}
             getValue={getValue}
             setValue={setValue}
           />

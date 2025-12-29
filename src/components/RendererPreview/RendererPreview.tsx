@@ -20,7 +20,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Perf } from "r3f-perf";
 import type { SketchId, SketchProps } from "../../sketches";
 import { SKETCH_COMPONENT_REGISTRY, getSketchDescriptor } from "../../sketches";
-import { makeSlotParameterId } from "../../scenes/sceneTypes";
+import { makeSlotParameterId } from "../../slots/slotTypes";
 import styles from "./RendererPreview.module.css";
 
 // =============================================================================

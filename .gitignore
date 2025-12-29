@@ -25,3 +25,6 @@ dist-ssr
 
 # Native frameworks (installed via scripts/install-syphon.sh)
 src-tauri/frameworks/Syphon.framework/
+
+# Test coverage reports
+coverage/

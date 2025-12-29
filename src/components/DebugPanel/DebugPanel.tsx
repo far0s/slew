@@ -8,7 +8,7 @@ import { HidPanel } from "../HidPanel";
 import { ModulationPanel } from "../ModulationPanel";
 import { VideoOutputPanel } from "../VideoOutputPanel";
 import { ParameterSlider } from "../ParameterSlider";
-import type { Slot } from "../../scenes/useSceneSlots";
+import type { Slot } from "../../slots/useSlots";
 import { useWindowManager } from "../../hooks";
 import styles from "./DebugPanel.module.css";
 

@@ -5,9 +5,14 @@
  * React hooks for managing the OSC server, mappings, and activity.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import {
+  useEventListener,
+  useFetchOnMount,
+  useMessageActivity,
+  useMessageHistory,
+} from "./shared";
 
 // ============================================================================
 // Types (matching Rust structs)
@@ -212,54 +217,20 @@ export function useOscServer() {
     port: null,
     error: null,
   });
-  const [isLoading, setIsLoading] = useState(true);
 
   // Fetch initial status
-  useEffect(() => {
-    let isMounted = true;
+  const { isLoading, setData: _setData } = useFetchOnMount(getOscStatus, {
+    initialValue: status,
+    onSuccess: setStatus,
+  });
 
-    async function fetchStatus() {
-      try {
-        const result = await getOscStatus();
-        if (isMounted) {
-          setStatus(result);
-        }
-      } catch (e) {
-        console.error("[OSC] Failed to get status:", e);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void fetchStatus();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const [isOperating, setIsOperating] = useState(false);
 
   // Subscribe to status changes
-  useEffect(() => {
-    let unlisten: UnlistenFn | undefined;
-
-    void (async () => {
-      unlisten = await listen<OscServerStatus>(
-        "osc_status_changed",
-        (event) => {
-          setStatus(event.payload);
-        },
-      );
-    })();
-
-    return () => {
-      if (unlisten) unlisten();
-    };
-  }, []);
+  useEventListener<OscServerStatus>("osc_status_changed", setStatus);
 
   const start = useCallback(async (port: number = DEFAULT_OSC_PORT) => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
       await startOscServer(port);
       const newStatus = await getOscStatus();
@@ -273,12 +244,12 @@ export function useOscServer() {
       }));
       throw e;
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
   }, []);
 
   const stop = useCallback(async () => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
       await stopOscServer();
       const newStatus = await getOscStatus();
@@ -287,7 +258,7 @@ export function useOscServer() {
       console.error("[OSC] Failed to stop server:", e);
       throw e;
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
   }, []);
 
@@ -295,7 +266,7 @@ export function useOscServer() {
     isRunning: status.is_running,
     port: status.port,
     error: status.error,
-    isLoading,
+    isLoading: isLoading || isOperating,
     start,
     stop,
   };
@@ -303,33 +274,51 @@ export function useOscServer() {
 
 /** Hook for OSC mappings. */
 export function useOscMappings() {
-  const [mappings, setMappings] = useState<OscMapping[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Fetch initial mappings
+  const {
+    data: mappings,
+    isLoading: isFetching,
+    setData: setMappings,
+    refetch,
+  } = useFetchOnMount(getOscMappings, { initialValue: [] as OscMapping[] });
 
-  // Fetch mappings on mount
-  useEffect(() => {
-    void getOscMappings().then((result) => {
-      setMappings(result);
-      setIsLoading(false);
-    });
-  }, []);
+  const [isOperating, setIsOperating] = useState(false);
 
-  const addMapping = useCallback(async (mapping: OscMapping) => {
-    await addOscMapping(mapping);
-    const result = await getOscMappings();
-    setMappings(result);
-  }, []);
+  const addMapping = useCallback(
+    async (mapping: OscMapping) => {
+      setIsOperating(true);
+      try {
+        await addOscMapping(mapping);
+        await refetch();
+      } finally {
+        setIsOperating(false);
+      }
+    },
+    [refetch],
+  );
 
-  const removeMapping = useCallback(async (address: string) => {
-    await removeOscMapping(address);
-    const result = await getOscMappings();
-    setMappings(result);
-  }, []);
+  const removeMapping = useCallback(
+    async (address: string) => {
+      setIsOperating(true);
+      try {
+        await removeOscMapping(address);
+        await refetch();
+      } finally {
+        setIsOperating(false);
+      }
+    },
+    [refetch],
+  );
 
   const clearAll = useCallback(async () => {
-    await clearOscMappings();
-    setMappings([]);
-  }, []);
+    setIsOperating(true);
+    try {
+      await clearOscMappings();
+      setMappings([]);
+    } finally {
+      setIsOperating(false);
+    }
+  }, [setMappings]);
 
   const getMappingForAddress = useCallback(
     (address: string): OscMapping | undefined => {
@@ -347,7 +336,7 @@ export function useOscMappings() {
 
   return {
     mappings,
-    isLoading,
+    isLoading: isFetching || isOperating,
     addMapping,
     removeMapping,
     clearAll,
@@ -358,33 +347,7 @@ export function useOscMappings() {
 
 /** Hook for OSC activity monitoring. */
 export function useOscActivity() {
-  const [lastMessage, setLastMessage] = useState<OscMessageInfo | null>(null);
-  const [messageCount, setMessageCount] = useState(0);
-
-  useEffect(() => {
-    let unlisten: UnlistenFn | undefined;
-
-    void (async () => {
-      unlisten = await listen<OscMessageInfo>("osc_message", (event) => {
-        setLastMessage(event.payload);
-        setMessageCount((prev) => prev + 1);
-      });
-    })();
-
-    return () => {
-      if (unlisten) unlisten();
-    };
-  }, []);
-
-  const resetCount = useCallback(() => {
-    setMessageCount(0);
-  }, []);
-
-  return {
-    lastMessage,
-    messageCount,
-    resetCount,
-  };
+  return useMessageActivity<OscMessageInfo>("osc_message");
 }
 
 /** Maximum number of recent messages to keep */
@@ -392,32 +355,7 @@ const MAX_RECENT_MESSAGES = 20;
 
 /** Hook for tracking recent OSC messages (for debugging UI). */
 export function useOscRecentMessages() {
-  const [messages, setMessages] = useState<OscMessageInfo[]>([]);
-
-  useEffect(() => {
-    let unlisten: UnlistenFn | undefined;
-
-    void (async () => {
-      unlisten = await listen<OscMessageInfo>("osc_message", (event) => {
-        setMessages((prev) => {
-          const next = [event.payload, ...prev];
-          // Keep only the most recent messages
-          return next.slice(0, MAX_RECENT_MESSAGES);
-        });
-      });
-    })();
-
-    return () => {
-      if (unlisten) unlisten();
-    };
-  }, []);
-
-  const clear = useCallback(() => {
-    setMessages([]);
-  }, []);
-
-  return {
-    messages,
-    clear,
-  };
+  return useMessageHistory<OscMessageInfo>("osc_message", {
+    maxHistory: MAX_RECENT_MESSAGES,
+  });
 }

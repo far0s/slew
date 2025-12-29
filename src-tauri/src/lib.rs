@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, RunEvent};
 
 pub mod audio;
+pub mod common;
 pub mod hid;
 pub mod midi;
 pub mod modulation;
@@ -88,6 +89,7 @@ impl ParameterStore {
 
     /// Set parameter target with a specific transition speed (in seconds).
     /// Creates the parameter if it doesn't exist.
+    #[allow(dead_code)]
     fn set_target_with_transition(
         &mut self,
         id: ParameterId,
@@ -109,12 +111,17 @@ impl ParameterStore {
     }
 
     /// Advance parameters toward targets. Returns parameters that changed.
+    ///
+    /// Pre-allocates capacity based on parameter count to avoid reallocations
+    /// in the hot path (this runs ~60 times per second).
     fn tick(&mut self, dt: f64) -> Vec<Parameter> {
         if self.parameters.is_empty() {
             return Vec::new();
         }
 
-        let mut changed: Vec<Parameter> = Vec::new();
+        // Pre-allocate with estimated capacity (typically a fraction of parameters change per tick)
+        // Using 1/4 of total as a reasonable estimate to avoid most reallocations
+        let mut changed: Vec<Parameter> = Vec::with_capacity(self.parameters.len() / 4 + 1);
 
         for p in self.parameters.values_mut() {
             // Already at target
@@ -388,24 +395,6 @@ fn clear_parameters(app: AppHandle) {
     let _ = app.emit("parameters_cleared", ());
 }
 
-/// Notify Renderer which scenes are active/next for crossfade.
-/// Legacy command for backwards compatibility.
-#[tauri::command]
-fn set_scene_pairing(
-    app: AppHandle,
-    active_scene_id: String,
-    next_scene_id: String,
-) -> Result<(), String> {
-    app.emit(
-        "scene_pairing_changed",
-        serde_json::json!({
-            "active_scene_id": active_scene_id,
-            "next_scene_id": next_scene_id,
-        }),
-    )
-    .map_err(|e| format!("Failed to emit scene_pairing_changed: {e}"))
-}
-
 /// Notify Renderer which slots are active/next for crossfade (multi-instance support).
 #[tauri::command]
 fn set_slot_pairing(
@@ -608,26 +597,6 @@ fn get_sketch_defaults(sketch_id: &str) -> Vec<(&'static str, f64)> {
             ("rotation_speed", 0.4),
             ("tint", 0.5),
         ],
-        // Legacy scene IDs (backwards compatibility)
-        "sceneA" => vec![
-            ("brightness", 1.0),
-            ("rotation_speed", 0.6),
-            ("wobble", 0.0),
-            ("tint_lfo_depth", 0.2),
-            ("tint", 0.0),
-        ],
-        "sceneB" => vec![
-            ("brightness", 1.0),
-            ("rotation_speed", 0.4),
-            ("tint", 0.5),
-            ("scale", 1.0),
-        ],
-        "sceneC" => vec![
-            ("brightness", 1.0),
-            ("pulse_speed", 1.5),
-            ("rotation_speed", 0.4),
-            ("tint", 0.5),
-        ],
         _ => vec![],
     }
 }
@@ -718,7 +687,6 @@ pub fn run() {
             get_parameter,
             set_parameter,
             clear_parameters,
-            set_scene_pairing,
             set_slot_pairing,
             set_all_slots,
             get_slot_state,
@@ -732,29 +700,29 @@ pub fn run() {
             window_manager::window_heartbeat,
             window_manager::get_window_restart_log_path,
             // MIDI Input
-            midi::list_midi_devices,
-            midi::open_midi_device,
-            midi::close_midi_device,
-            midi::start_midi_learn,
-            midi::cancel_midi_learn,
-            midi::get_midi_learn_state,
-            midi::get_midi_mappings,
-            midi::set_midi_mapping,
-            midi::remove_midi_mapping,
-            midi::clear_midi_mappings,
-            midi::set_midi_auto_reconnect,
-            midi::get_midi_auto_reconnect,
-            midi::clear_midi_auto_reconnect_devices,
+            midi::commands::list_midi_devices,
+            midi::commands::open_midi_device,
+            midi::commands::close_midi_device,
+            midi::commands::start_midi_learn,
+            midi::commands::cancel_midi_learn,
+            midi::commands::get_midi_learn_state,
+            midi::commands::get_midi_mappings,
+            midi::commands::set_midi_mapping,
+            midi::commands::remove_midi_mapping,
+            midi::commands::clear_midi_mappings,
+            midi::commands::set_midi_auto_reconnect,
+            midi::commands::get_midi_auto_reconnect,
+            midi::commands::clear_midi_auto_reconnect_devices,
             // MIDI Output
-            midi::list_midi_output_devices,
-            midi::open_midi_output_device,
-            midi::close_midi_output_device,
-            midi::send_midi_cc,
-            midi::send_midi_note_on,
-            midi::send_midi_note_off,
-            midi::set_midi_output_config,
-            midi::get_midi_output_config,
-            midi::trigger_midi_feedback,
+            midi::commands::list_midi_output_devices,
+            midi::commands::open_midi_output_device,
+            midi::commands::close_midi_output_device,
+            midi::commands::send_midi_cc,
+            midi::commands::send_midi_note_on,
+            midi::commands::send_midi_note_off,
+            midi::commands::set_midi_output_config,
+            midi::commands::get_midi_output_config,
+            midi::commands::trigger_midi_feedback,
             // OSC
             osc::start_osc_server,
             osc::stop_osc_server,
@@ -764,31 +732,31 @@ pub fn run() {
             osc::remove_osc_mapping,
             osc::clear_osc_mappings,
             // Audio
-            audio::list_audio_devices,
-            audio::start_audio_capture,
-            audio::stop_audio_capture,
-            audio::get_audio_status,
-            audio::get_audio_mappings,
-            audio::add_audio_mapping,
-            audio::remove_audio_mapping,
-            audio::clear_audio_mappings,
-            audio::set_audio_mapping_enabled,
-            audio::set_audio_auto_reconnect,
-            audio::get_audio_auto_reconnect,
+            audio::commands::list_audio_devices,
+            audio::commands::start_audio_capture,
+            audio::commands::stop_audio_capture,
+            audio::commands::get_audio_status,
+            audio::commands::get_audio_mappings,
+            audio::commands::add_audio_mapping,
+            audio::commands::remove_audio_mapping,
+            audio::commands::clear_audio_mappings,
+            audio::commands::set_audio_mapping_enabled,
+            audio::commands::set_audio_auto_reconnect,
+            audio::commands::get_audio_auto_reconnect,
             // HID
-            hid::list_hid_devices,
-            hid::list_supported_hid_devices,
-            hid::connect_hid_device,
-            hid::connect_hid_megalodon,
-            hid::disconnect_hid_device,
-            hid::get_hid_status,
-            hid::get_hid_mappings,
-            hid::add_hid_mapping,
-            hid::remove_hid_mapping,
-            hid::clear_hid_mappings,
-            hid::setup_default_hid_mappings,
-            hid::set_hid_auto_connect,
-            hid::get_hid_auto_connect,
+            hid::commands::list_hid_devices,
+            hid::commands::list_supported_hid_devices,
+            hid::commands::connect_hid_device,
+            hid::commands::connect_hid_megalodon,
+            hid::commands::disconnect_hid_device,
+            hid::commands::get_hid_status,
+            hid::commands::get_hid_mappings,
+            hid::commands::add_hid_mapping,
+            hid::commands::remove_hid_mapping,
+            hid::commands::clear_hid_mappings,
+            hid::commands::setup_default_hid_mappings,
+            hid::commands::set_hid_auto_connect,
+            hid::commands::get_hid_auto_connect,
             // Modulation
             modulation::get_modulation_lfos,
             modulation::get_modulation_lfo,

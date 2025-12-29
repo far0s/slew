@@ -100,12 +100,12 @@ All inputs follow the same pattern:
 3. TypeScript hooks
 4. UI panel in Controls sidebar
 
-| System | Module     | Key Features                                                       |
-| ------ | ---------- | ------------------------------------------------------------------ |
-| MIDI   | `midi.rs`  | Learn mode, mappings persisted, Midimix integration, soft takeover |
-| OSC    | `osc.rs`   | UDP server (port 9000), address → parameter mappings               |
-| Audio  | `audio.rs` | FFT, beat detection, audio → parameter mappings                    |
-| HID    | `hid.rs`   | Macropad support (DOIO Megalodon)                                  |
+| System | Module   | Key Features                                                       |
+| ------ | -------- | ------------------------------------------------------------------ |
+| MIDI   | `midi/`  | Learn mode, mappings persisted, Midimix integration, soft takeover |
+| OSC    | `osc.rs` | UDP server (port 9000), address → parameter mappings               |
+| Audio  | `audio/` | FFT, beat detection, audio → parameter mappings                    |
+| HID    | `hid/`   | Macropad support (DOIO Megalodon)                                  |
 
 ### Modulation Engine
 
@@ -137,26 +137,36 @@ Frame capture from WebGL sent to Rust backends (`video_out.rs`):
       index.ts              # SKETCH_REGISTRY
       types.ts              # SketchDescriptor, SketchProps
     /components/            # React UI components
-      /SceneColumn/         # Slot column with inline browser
+      /SlotColumn/          # Slot column with inline browser
     /controls/              # useParameterStore hook
     /inputs/                # MIDI, OSC, Audio, HID hooks
+      /shared/              # Reusable hook infrastructure
     /renderer/              # Renderer window (RendererRoot, VideoOutputCapture)
-    /scenes/                # Slot system utilities
-      sceneTypes.ts         # Parameter ID utilities
-      useSceneSlots.ts      # Slot state management
+    /slots/                 # Slot system utilities
+      slotTypes.ts          # Parameter ID utilities
+      useSlots.ts           # Slot state management
     /hooks/                 # Shared React hooks
   /src-tauri/               # Rust backend
     /src/
       lib.rs                # Parameter server, tick loop, commands
       window_manager.rs     # Window lifecycle, heartbeat, native menu
-      midi.rs               # MIDI device management
+      /common/              # Shared utilities
+        persistence.rs      # JSON I/O helpers
+        events.rs           # Event emission helpers
+      /midi/                # MIDI device management (13 modules)
+        mod.rs, engine.rs, devices.rs, connections.rs,
+        mappings.rs, learn.rs, midimix.rs, message_handler.rs, ...
+      /audio/               # Audio capture, FFT, beat detection (11 modules)
+        mod.rs, engine.rs, capture.rs, analysis.rs, mappings.rs, ...
+      /hid/                 # HID/macropad support (11 modules)
+        mod.rs, engine.rs, connections.rs, parsing.rs, mappings.rs, ...
       osc.rs                # OSC server
-      audio.rs              # Audio capture, FFT, beat detection
-      hid.rs                # HID/macropad support
       modulation.rs         # LFO engine, modulation matrix
       video_out.rs          # Video output backends
       syphon.rs             # Native Syphon bindings (macOS)
   /docs/                    # Documentation
+    /finished/              # Archived task documents
+    /working/               # Active task documents
   /scripts/                 # Build and setup scripts
 ```
 
@@ -164,61 +174,43 @@ Frame capture from WebGL sent to Rust backends (`video_out.rs`):
 
 ## Code Style
 
-### TypeScript JSDoc Conventions
+### TypeScript Conventions
 
-Use a **consolidated JSDoc block** before interfaces:
+**No JSDoc** - rely on TypeScript types for documentation. Types are self-documenting.
 
 ```ts
-/**
- * Brief description of the interface.
- *
- * @property propertyA - Description of property A
- * @property propertyB - Description of property B
- */
-export interface MyComponentProps {
-  propertyA: string;
-  propertyB: number;
+// ✅ Good - types speak for themselves
+export interface SlotInfo {
+  index: number;
+  sketchId: SketchId | null;
+  label: string;
+}
+
+// ❌ Avoid - redundant JSDoc
+/** Slot information */
+export interface SlotInfo {
+  /** The slot index */ index: number;
+  ...
 }
 ```
 
-**Avoid** inline comments on each property:
+### Rust Module Organization
 
-```ts
-// ❌ Don't do this
-export interface MyComponentProps {
-  /** Description of property A */
-  propertyA: string;
-}
+Large modules are split into focused submodules:
+
+```
+/midi/
+  mod.rs          # Public API, re-exports
+  types.rs        # Type definitions
+  engine.rs       # State, initialization
+  devices.rs      # Device enumeration
+  connections.rs  # Connect/disconnect
+  mappings.rs     # CRUD + persistence
+  commands.rs     # Tauri command wrappers
+  ...
 ```
 
-### Component Documentation
-
-```ts
-/**
- * ScenesArea
- *
- * Horizontally scrollable container for slot columns.
- *
- * Features:
- * - Horizontal scroll for 8 slots
- * - AnimatePresence for enter/exit animations
- */
-export function ScenesArea({ ... }: ScenesAreaProps) {
-```
-
-### Hook Documentation
-
-```ts
-/**
- * Hook for managing numbered slots with multi-instance support.
- *
- * Key concepts:
- * - Each slot has an index (0-7) and a sketchId
- * - Same sketch type can exist in multiple slots
- * - Each slot has independent parameters (slot-prefixed IDs)
- */
-export function useSceneSlots(): SlotsState {
-```
+Pattern: Each submodule is <200 lines, single responsibility.
 
 ---
 
@@ -228,15 +220,18 @@ export function useSceneSlots(): SlotsState {
 | ----------------------------------- | --------------------------------------------------- |
 | `src-tauri/src/lib.rs`              | Parameter Server, tick loop, command registration   |
 | `src-tauri/src/window_manager.rs`   | Window lifecycle, heartbeat monitoring, native menu |
-| `src-tauri/src/midi.rs`             | MIDI device management, Midimix integration         |
-| `src-tauri/src/audio.rs`            | Audio capture, FFT, beat detection                  |
+| `src-tauri/src/common/`             | Shared utilities (persistence, events)              |
+| `src-tauri/src/midi/`               | MIDI device management, Midimix integration         |
+| `src-tauri/src/audio/`              | Audio capture, FFT, beat detection                  |
+| `src-tauri/src/hid/`                | HID/macropad support                                |
 | `src-tauri/src/modulation.rs`       | LFO engine, modulation matrix                       |
 | `src-tauri/src/video_out.rs`        | Video output backends                               |
 | `src/sketches/`                     | Self-contained sketch modules                       |
-| `src/scenes/useSceneSlots.ts`       | Slot management hook                                |
+| `src/slots/useSlots.ts`             | Slot management hook                                |
+| `src/inputs/shared/`                | Reusable hook infrastructure                        |
 | `src/controls/useParameterStore.ts` | Parameter state                                     |
 | `src/renderer/RendererRoot.tsx`     | Multi-slot rendering loop                           |
-| `src/components/SceneColumn/`       | Slot UI with inline sketch browser                  |
+| `src/components/SlotColumn/`        | Slot UI with inline sketch browser                  |
 
 ---
 

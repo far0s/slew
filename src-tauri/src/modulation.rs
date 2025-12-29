@@ -409,97 +409,117 @@ fn start_modulation_loop() {
     });
 }
 
-/// Advance all LFOs and apply modulation to parameters
+/// Advance all LFOs and apply modulation to parameters.
+///
+/// Optimized to minimize lock contention and avoid cloning in the hot path:
+/// - Single lock acquisition for reading state and ticking LFOs
+/// - Collects modulation results without repeated lock/unlock cycles
+/// - Only clones what's needed for parameter updates
 fn tick_modulation(engine: &Arc<Mutex<ModulationEngineState>>) {
     let now = Instant::now();
 
-    let (dt, bpm, targets, audio_mods, last_audio, app_handle) = {
+    // Collect all data and perform LFO updates in a single lock
+    // This avoids the previous pattern of lock/unlock/lock/unlock for each operation
+    let (modulations_to_apply, app_handle) = {
         let mut state = engine.lock().unwrap();
         let dt = now.duration_since(state.last_tick).as_secs_f64().min(0.25);
         state.last_tick = now;
-        (
-            dt,
-            state.current_bpm,
-            state.targets.clone(),
-            state.audio_modulations.clone(),
-            state.last_audio_levels.clone(),
-            state.app_handle.clone(),
-        )
-    };
+        let bpm = state.current_bpm;
 
-    // Apply audio modulations to LFO properties
-    if let Some(levels) = &last_audio {
-        for audio_mod in &audio_mods {
-            if !audio_mod.enabled {
-                continue;
-            }
+        // Collect audio modulation updates first (read phase)
+        // We collect (lfo_id, property, scaled_value) tuples to apply after
+        let audio_mod_updates: Vec<(String, LfoProperty, f64)> =
+            if let Some(ref levels) = state.last_audio_levels {
+                state
+                    .audio_modulations
+                    .iter()
+                    .filter(|am| am.enabled)
+                    .map(|audio_mod| {
+                        let audio_value = audio_mod.source.get_value(levels);
+                        let scaled = audio_mod.min_output
+                            + audio_value
+                                * (audio_mod.max_output - audio_mod.min_output)
+                                * audio_mod.amount;
+                        (audio_mod.lfo_id.clone(), audio_mod.property, scaled)
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
 
-            let audio_value = audio_mod.source.get_value(levels);
-            let scaled = audio_mod.min_output
-                + audio_value * (audio_mod.max_output - audio_mod.min_output) * audio_mod.amount;
-
-            let mut state = engine.lock().unwrap();
-            if let Some(lfo) = state.lfos.get_mut(&audio_mod.lfo_id) {
-                match audio_mod.property {
+        // Apply audio modulation updates to LFOs (write phase)
+        for (lfo_id, property, scaled) in audio_mod_updates {
+            if let Some(lfo) = state.lfos.get_mut(&lfo_id) {
+                match property {
                     LfoProperty::Rate => lfo.rate = scaled.clamp(0.01, 20.0),
                     LfoProperty::Depth => lfo.depth = scaled.clamp(0.0, 1.0),
                     LfoProperty::Phase => lfo.phase = scaled.clamp(0.0, 1.0),
                 }
             }
         }
-    }
 
-    // Tick all LFOs
-    {
-        let mut state = engine.lock().unwrap();
+        // Tick all LFOs (in same lock)
         for lfo in state.lfos.values_mut() {
             lfo.tick(dt, bpm);
         }
-    }
 
-    // Apply modulation targets
-    for target in &targets {
-        if !target.enabled {
-            continue;
-        }
+        // Collect target info for modulation calculation
+        // We need: (parameter_id, source_id, bipolar, depth)
+        let target_info: Vec<(String, String, bool, f64)> = state
+            .targets
+            .iter()
+            .filter(|t| t.enabled)
+            .map(|t| {
+                (
+                    t.parameter_id.clone(),
+                    t.source_id.clone(),
+                    t.bipolar,
+                    t.depth,
+                )
+            })
+            .collect();
 
-        let lfo_value = {
-            let state = engine.lock().unwrap();
-            state.lfos.get(&target.source_id).map(|lfo| {
-                if target.bipolar {
+        // Collect modulation results
+        let mut modulations: Vec<(String, f64)> = Vec::with_capacity(target_info.len());
+
+        for (parameter_id, source_id, bipolar, depth) in target_info {
+            let lfo_value = state.lfos.get(&source_id).map(|lfo| {
+                if bipolar {
                     lfo.get_value()
                 } else {
                     lfo.get_unipolar_value()
                 }
-            })
-        };
+            });
 
-        if let Some(lfo_value) = lfo_value {
-            // Get or cache the base parameter value
-            let base_value = {
-                let mut state = engine.lock().unwrap();
-                if let Some(base) = state.base_values.get(&target.parameter_id) {
+            if let Some(lfo_value) = lfo_value {
+                // Get or cache the base parameter value
+                let base_value = if let Some(base) = state.base_values.get(&parameter_id) {
                     *base
                 } else {
                     // Fetch from parameter store
                     let current = crate::with_parameter_store(|store| {
-                        store.get(&target.parameter_id).map(|p| p.target)
+                        store.get(&parameter_id).map(|p| p.target)
                     })
                     .unwrap_or(0.0);
-                    state
-                        .base_values
-                        .insert(target.parameter_id.clone(), current);
+                    state.base_values.insert(parameter_id.clone(), current);
                     current
-                }
-            };
+                };
 
-            // Calculate modulated value
-            let modulation = lfo_value * target.depth;
-            let modulated = base_value + modulation;
+                // Calculate modulated value
+                let modulation = lfo_value * depth;
+                let modulated = base_value + modulation;
 
-            // Apply to parameter (clamped to 0-1 range for now)
-            apply_modulation_to_parameter(&target.parameter_id, modulated, app_handle.as_ref());
+                modulations.push((parameter_id, modulated));
+            }
         }
+
+        (modulations, state.app_handle.clone())
+    };
+
+    // Apply modulations outside of the modulation engine lock
+    // This prevents lock contention with the parameter store
+    for (parameter_id, modulated_value) in modulations_to_apply {
+        apply_modulation_to_parameter(&parameter_id, modulated_value, app_handle.as_ref());
     }
 }
 
@@ -992,4 +1012,393 @@ pub fn get_full_modulation_state() -> ModulationState {
 #[tauri::command]
 pub fn is_parameter_modulated_cmd(parameter_id: String) -> bool {
     is_parameter_modulated(&parameter_id)
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =========================================================================
+    // LfoSource::tick tests
+    // =========================================================================
+
+    #[test]
+    fn test_lfo_sine_basic() {
+        let mut lfo = LfoSource {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            shape: LfoShape::Sine,
+            rate: 1.0,
+            phase: 0.0,
+            depth: 1.0,
+            offset: 0.0,
+            enabled: true,
+            ..Default::default()
+        };
+
+        // At phase 0, sine should be 0
+        lfo.current_phase = 0.0;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_value() - 0.0).abs() < 0.01);
+
+        // At phase 0.25 (quarter cycle), sine should be 1
+        lfo.current_phase = 0.25;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_value() - 1.0).abs() < 0.01);
+
+        // At phase 0.5 (half cycle), sine should be 0
+        lfo.current_phase = 0.5;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_value() - 0.0).abs() < 0.01);
+
+        // At phase 0.75, sine should be -1
+        lfo.current_phase = 0.75;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_value() - (-1.0)).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_lfo_triangle_basic() {
+        let mut lfo = LfoSource {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            shape: LfoShape::Triangle,
+            rate: 1.0,
+            phase: 0.0,
+            depth: 1.0,
+            offset: 0.0,
+            enabled: true,
+            ..Default::default()
+        };
+
+        // At phase 0, triangle should be 0
+        lfo.current_phase = 0.0;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_value() - 0.0).abs() < 0.01);
+
+        // At phase 0.25, triangle should be 1
+        lfo.current_phase = 0.25;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_value() - 1.0).abs() < 0.01);
+
+        // At phase 0.5, triangle should be 0
+        lfo.current_phase = 0.5;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_value() - 0.0).abs() < 0.01);
+
+        // At phase 0.75, triangle should be -1
+        lfo.current_phase = 0.75;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_value() - (-1.0)).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_lfo_saw_basic() {
+        let mut lfo = LfoSource {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            shape: LfoShape::Saw,
+            rate: 1.0,
+            phase: 0.0,
+            depth: 1.0,
+            offset: 0.0,
+            enabled: true,
+            ..Default::default()
+        };
+
+        // At phase 0, saw should be -1
+        lfo.current_phase = 0.0;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_value() - (-1.0)).abs() < 0.01);
+
+        // At phase 0.5, saw should be 0
+        lfo.current_phase = 0.5;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_value() - 0.0).abs() < 0.01);
+
+        // At phase ~1.0 (just before wrap), saw should be close to 1
+        lfo.current_phase = 0.99;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_value() - 0.98).abs() < 0.05);
+    }
+
+    #[test]
+    fn test_lfo_square_basic() {
+        let mut lfo = LfoSource {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            shape: LfoShape::Square,
+            rate: 1.0,
+            phase: 0.0,
+            depth: 1.0,
+            offset: 0.0,
+            enabled: true,
+            ..Default::default()
+        };
+
+        // At phase 0.25 (first half), square should be 1
+        lfo.current_phase = 0.25;
+        lfo.tick(0.0, None);
+        assert_eq!(lfo.get_value(), 1.0);
+
+        // At phase 0.75 (second half), square should be -1
+        lfo.current_phase = 0.75;
+        lfo.tick(0.0, None);
+        assert_eq!(lfo.get_value(), -1.0);
+    }
+
+    #[test]
+    fn test_lfo_disabled() {
+        let mut lfo = LfoSource {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            shape: LfoShape::Sine,
+            rate: 1.0,
+            enabled: false,
+            ..Default::default()
+        };
+
+        let initial_phase = lfo.current_phase;
+        lfo.tick(1.0, None);
+
+        // Phase should not advance when disabled
+        assert_eq!(lfo.current_phase, initial_phase);
+    }
+
+    #[test]
+    fn test_lfo_phase_advance() {
+        let mut lfo = LfoSource {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            shape: LfoShape::Sine,
+            rate: 1.0, // 1 Hz
+            enabled: true,
+            ..Default::default()
+        };
+
+        // Advance by 0.5 seconds at 1 Hz should advance phase by 0.5
+        lfo.tick(0.5, None);
+        assert!((lfo.current_phase - 0.5).abs() < 0.001);
+
+        // Advance by another 0.5 seconds should wrap back to 0
+        lfo.tick(0.5, None);
+        assert!((lfo.current_phase - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_lfo_phase_wraps() {
+        let mut lfo = LfoSource {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            shape: LfoShape::Sine,
+            rate: 2.0, // 2 Hz
+            enabled: true,
+            ..Default::default()
+        };
+
+        // Advance by 1.0 second at 2 Hz = 2 full cycles, phase should wrap
+        lfo.tick(1.0, None);
+        assert!(lfo.current_phase >= 0.0 && lfo.current_phase < 1.0);
+    }
+
+    #[test]
+    fn test_lfo_depth() {
+        let mut lfo = LfoSource {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            shape: LfoShape::Square,
+            rate: 1.0,
+            depth: 0.5,
+            offset: 0.0,
+            enabled: true,
+            ..Default::default()
+        };
+
+        // Square at first half with depth 0.5 should output 0.5
+        lfo.current_phase = 0.25;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_value() - 0.5).abs() < 0.01);
+
+        // Square at second half with depth 0.5 should output -0.5
+        lfo.current_phase = 0.75;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_value() - (-0.5)).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_lfo_offset() {
+        let mut lfo = LfoSource {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            shape: LfoShape::Square,
+            rate: 1.0,
+            depth: 0.5,
+            offset: 0.5,
+            enabled: true,
+            ..Default::default()
+        };
+
+        // Square at first half: raw=1, output = 0.5 + 1*0.5 = 1.0
+        lfo.current_phase = 0.25;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_value() - 1.0).abs() < 0.01);
+
+        // Square at second half: raw=-1, output = 0.5 + (-1)*0.5 = 0.0
+        lfo.current_phase = 0.75;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_value() - 0.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_lfo_phase_offset() {
+        let mut lfo = LfoSource {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            shape: LfoShape::Square,
+            rate: 1.0,
+            phase: 0.5, // 180 degree phase offset
+            depth: 1.0,
+            offset: 0.0,
+            enabled: true,
+            ..Default::default()
+        };
+
+        // At current_phase 0.0 + phase offset 0.5 = 0.5, which is second half
+        lfo.current_phase = 0.0;
+        lfo.tick(0.0, None);
+        assert_eq!(lfo.get_value(), -1.0);
+    }
+
+    #[test]
+    fn test_lfo_get_unipolar_value() {
+        let mut lfo = LfoSource {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            shape: LfoShape::Square,
+            rate: 1.0,
+            depth: 1.0,
+            offset: 0.0,
+            enabled: true,
+            ..Default::default()
+        };
+
+        // Square at first half = 1.0, unipolar = (1 + 1) / 2 = 1.0
+        lfo.current_phase = 0.25;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_unipolar_value() - 1.0).abs() < 0.01);
+
+        // Square at second half = -1.0, unipolar = (-1 + 1) / 2 = 0.0
+        lfo.current_phase = 0.75;
+        lfo.tick(0.0, None);
+        assert!((lfo.get_unipolar_value() - 0.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_lfo_bpm_sync() {
+        let mut lfo = LfoSource {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            shape: LfoShape::Sine,
+            rate: 1.0, // This should be overridden by BPM sync
+            sync_to_bpm: true,
+            bpm_division: 1.0, // 1 beat per cycle
+            enabled: true,
+            ..Default::default()
+        };
+
+        // At 120 BPM, 1 beat = 0.5 seconds
+        // So rate should be 2 Hz (2 beats per second = 1 cycle per beat)
+        // In 0.25 seconds at 120 BPM with division 1, we should advance 0.5 phase
+        lfo.tick(0.25, Some(120.0));
+        assert!((lfo.current_phase - 0.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_lfo_bpm_sync_with_division() {
+        let mut lfo = LfoSource {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            shape: LfoShape::Sine,
+            rate: 1.0,
+            sync_to_bpm: true,
+            bpm_division: 4.0, // 4 beats per cycle (one bar at 4/4)
+            enabled: true,
+            ..Default::default()
+        };
+
+        // At 120 BPM, base rate = 2 Hz, divided by 4 = 0.5 Hz
+        // In 1 second, phase should advance by 0.5
+        lfo.tick(1.0, Some(120.0));
+        assert!((lfo.current_phase - 0.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_lfo_value_clamping() {
+        let mut lfo = LfoSource {
+            id: "test".to_string(),
+            name: "Test".to_string(),
+            shape: LfoShape::Square,
+            rate: 1.0,
+            depth: 2.0, // Depth > 1 could cause values outside -1 to 1
+            offset: 0.5,
+            enabled: true,
+            ..Default::default()
+        };
+
+        // Square at first half: raw=1, unclamped = 0.5 + 1*2 = 2.5
+        lfo.current_phase = 0.25;
+        lfo.tick(0.0, None);
+        // get_value should clamp to 1.0
+        assert_eq!(lfo.get_value(), 1.0);
+
+        // Square at second half: raw=-1, unclamped = 0.5 + (-1)*2 = -1.5
+        lfo.current_phase = 0.75;
+        lfo.tick(0.0, None);
+        // get_value should clamp to -1.0
+        assert_eq!(lfo.get_value(), -1.0);
+    }
+
+    // =========================================================================
+    // ModulationTarget tests
+    // =========================================================================
+
+    #[test]
+    fn test_modulation_target_default() {
+        let target = ModulationTarget::default();
+        assert!(target.enabled);
+        assert_eq!(target.depth, 0.5);
+        assert!(target.bipolar);
+    }
+
+    // =========================================================================
+    // LfoShape tests
+    // =========================================================================
+
+    #[test]
+    fn test_lfo_shape_default() {
+        assert_eq!(LfoShape::default(), LfoShape::Sine);
+    }
+
+    #[test]
+    fn test_lfo_source_default() {
+        let lfo = LfoSource::default();
+        assert_eq!(lfo.shape, LfoShape::Sine);
+        assert_eq!(lfo.rate, 1.0);
+        assert_eq!(lfo.depth, 1.0);
+        assert_eq!(lfo.offset, 0.0);
+        assert!(lfo.enabled);
+        assert!(!lfo.sync_to_bpm);
+    }
+
+    #[test]
+    fn test_lfo_new() {
+        let lfo = LfoSource::new("test_id".to_string(), "Test LFO".to_string());
+        assert_eq!(lfo.id, "test_id");
+        assert_eq!(lfo.name, "Test LFO");
+        assert_eq!(lfo.shape, LfoShape::Sine); // Default shape
+    }
 }

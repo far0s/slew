@@ -57,6 +57,48 @@ Status overview and key decisions for sebcat-vj.
   - First CC after reconnect is ignored (handles controller state dump)
   - Master fader uses direction-based logic after pickup
 
+### Codebase Cleanup & Refactoring ✅ Complete
+
+Major cleanup effort completed across 5 phases. See `docs/finished/CLEANUP.md` for full details.
+
+**Phase 1: Terminology & JSDoc**
+
+- Removed JSDoc from TypeScript (rely on types)
+- Migrated scene→slot/sketch terminology throughout
+- Removed legacy `LEGACY_SKETCH_ID_MAP` and `resolveSketchId`
+
+**Phase 2: TypeScript Refactoring**
+
+- Created shared hook infrastructure (`src/inputs/shared/`)
+- Extracted reusable patterns: `useEventListener`, `useFetchOnMount`, `useMappings`
+- Refactored MIDI, OSC, Audio, HID hooks to use shared infrastructure
+
+**Phase 3: Rust Module Refactoring**
+
+- Split large files into focused submodules:
+  - `midi.rs` (2,733 lines) → `midi/` (13 modules)
+  - `audio.rs` (1,254 lines) → `audio/` (11 modules)
+  - `hid.rs` (1,258 lines) → `hid/` (11 modules)
+- Created `common/` for shared utilities (persistence, events)
+- Removed ~900 lines of redundant documentation
+
+**Phase 4: Testing Infrastructure**
+
+- Added 52 Rust tests (LFO, MIDI parsing, video output)
+- Added 33 frontend tests (slotTypes utilities)
+- Set up vitest configuration for React components
+
+**Phase 5: Performance Optimizations**
+
+- **Audio Analysis**: Pre-allocated scratch buffers eliminate ~720KB/s of allocations
+  - Reusable buffers for FFT windowing, complex numbers, and magnitudes
+  - Combined Hann windowing + RMS/peak calculation into single pass
+- **Modulation Engine**: Reduced lock contention from 6+ to 1 per tick
+  - Two-phase approach: collect data in single lock, apply changes outside
+  - Avoids cloning targets/audio_modulations vectors each tick
+- **Parameter Store**: Pre-allocated changed vector with estimated capacity
+  - Reduces reallocation overhead in 60Hz tick loop
+
 ### 8-Slot Harmonization
 
 Slot count increased from 6 to 8 to match Midimix columns for 1:1 hardware mapping.

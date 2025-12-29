@@ -20,23 +20,6 @@ Prioritized list of potential work items for sebcat-vj.
 
 ## Active / High Priority
 
-### 🔴 Global codebase cleanup and refactoring `chore`
-
-Do a round of cleanup and refactoring to improve maintainability and performance.
-
-**Context**: The codebase has grown organically over time, leading to a mix of styles and patterns. This task aims to standardize and optimize the codebase for better readability, maintainability, and performance.
-
-**Subtasks**: (non-exhaustive list)
-
-- [ ] Decide if it's worth keeping JSDoc (on top of TypeScript)
-- [ ] Standardize coding style and conventions.
-- [ ] Refactor complex functions into smaller, more manageable pieces.
-- [ ] Implement unit tests for critical components (vitest for React frontend, Rust ship with its own test suite `#[cfg(test)]`, and there's also some Tauri-specific helpers `tauri::test`).
-- [ ] Optimize memory usage and reduce unnecessary allocations.
-- [ ] Rust: files have grown particularly large and complex, analyze if anything can be extracted into reusable modules or libraries, or even removed if unused.
-
----
-
 ### 🔴 Video Output Optimization `feature`
 
 Improve 1080p@60fps performance for professional use.
@@ -85,6 +68,29 @@ Save/load parameter configurations per sketch.
 ---
 
 ## Low Priority / Future
+
+### 🟢 Expand Test Coverage `chore`
+
+Add more tests for remaining untested areas.
+
+**Context**: Codebase cleanup (Phase 4) established testing infrastructure with 52 Rust tests and 33 frontend tests. Core utilities are tested but some areas remain.
+
+**Current coverage**:
+
+- `modulation.rs` - 18 tests for LFO waveforms, phase, depth, offset, BPM sync
+- `midi/message_handler.rs` - 26 tests for MIDI parsing, CC normalization, range mapping
+- `video_out.rs` - 6 tests for pixel formats, frame validation, base64 decoding
+- `slotTypes.ts` - 33 tests for parameter ID utilities
+
+**Subtasks**:
+
+- [ ] Add tests for beat detection (`audio/buffer.rs`) - extract pure functions first
+- [ ] Add tests for mapping persistence (JSON load/save)
+- [ ] Add tests for `useParameterStore` hook
+- [ ] Add tests for `useSlots` hook
+- [ ] Add component tests for key UI components
+
+---
 
 ### 🟢 More Shader Sketches `feature`
 
@@ -221,7 +227,7 @@ Complete Windows distribution pipeline.
 
 ## Completed Items
 
-Completed items are tracked in `CHANGELOG.md`.
+Completed items are tracked in `CHANGELOG.md`. Task documents are archived in `docs/finished/`.
 
 ---
 

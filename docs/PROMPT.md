@@ -24,6 +24,7 @@ Welcome! This document is your starting point for understanding the **sebcat-vj*
 - **Video output**: Syphon (macOS), NDI (cross-platform)
 
 Key concepts:
+
 - **Sketches**: Self-contained visual programs (shaders, 3D scenes)
 - **Slots**: 8 fixed containers that hold sketches with independent parameters
 - **Parameter Server**: Rust backend managing all parameters with smooth transitions
@@ -33,16 +34,19 @@ Key concepts:
 
 ## Key Directories
 
-| Path | Purpose |
-|------|---------|
-| `src/sketches/` | Visual programs (each sketch is a self-contained module) |
-| `src/components/` | React UI components |
-| `src/renderer/` | Renderer window (r3f, video output capture) |
-| `src/controls/` | Parameter store hook |
-| `src/inputs/` | MIDI, OSC, Audio, HID hooks |
-| `src-tauri/src/` | Rust backend (parameter server, input handling, video output) |
-| `docs/` | Project documentation |
-| `scripts/` | Build and setup scripts |
+| Path              | Purpose                                                      |
+| ----------------- | ------------------------------------------------------------ |
+| `src/sketches/`   | Visual programs (each sketch is a self-contained module)     |
+| `src/components/` | React UI components                                          |
+| `src/renderer/`   | Renderer window (r3f, video output capture)                  |
+| `src/controls/`   | Parameter store hook                                         |
+| `src/inputs/`     | MIDI, OSC, Audio, HID hooks (with `shared/` infrastructure)  |
+| `src/slots/`      | Slot system utilities (slotTypes, useSlots)                  |
+| `src-tauri/src/`  | Rust backend (modular: `midi/`, `audio/`, `hid/`, `common/`) |
+| `docs/`           | Project documentation                                        |
+| `docs/working/`   | Active task documents                                        |
+| `docs/finished/`  | Archived completed task documents                            |
+| `scripts/`        | Build and setup scripts                                      |
 
 ---
 
@@ -63,30 +67,34 @@ npm run tauri:no-ndi
 
 ## Documentation Index
 
-| Document | Purpose |
-|----------|---------|
+| Document               | Purpose                                                      |
+| ---------------------- | ------------------------------------------------------------ |
 | `docs/ARCHITECTURE.md` | System design, window architecture, core systems, code style |
-| `docs/CHANGELOG.md` | Feature status, recent changes, decisions |
-| `docs/BACKLOG.md` | Prioritized work items with context |
-| `docs/PACKAGING.md` | Build, sign, and distribute instructions |
-| `docs/CONTROLLERS.md` | Hardware controller layouts and mappings |
-| `docs/working/` | Task-specific documentation for active work |
+| `docs/CHANGELOG.md`    | Feature status, recent changes, decisions                    |
+| `docs/BACKLOG.md`      | Prioritized work items with context                          |
+| `docs/PACKAGING.md`    | Build, sign, and distribute instructions                     |
+| `docs/CONTROLLERS.md`  | Hardware controller layouts and mappings                     |
+| `docs/working/`        | Task-specific documentation for active work                  |
+| `docs/finished/`       | Archived completed task documentation                        |
 
 ---
 
 ## Getting Up to Speed
 
 ### For a quick overview
+
 1. Read this file
 2. Skim `docs/ARCHITECTURE.md` (especially Overview, Windows, Slot System)
 3. Check `docs/CHANGELOG.md` section 1 (High-Level Status)
 
 ### For understanding a specific system
+
 1. Find the relevant section in `docs/ARCHITECTURE.md`
 2. Look at the corresponding Rust module in `src-tauri/src/`
 3. Check the TypeScript hooks in `src/inputs/` or `src/controls/`
 
 ### For contributing
+
 1. Read the Code Style section in `docs/ARCHITECTURE.md`
 2. Check `docs/BACKLOG.md` for available work items
 3. Look for any active task docs in `docs/working/`
