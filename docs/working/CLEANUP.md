@@ -601,9 +601,28 @@ After cleanup, the codebase should:
 
 ### Phase 3: Rust Module Refactoring
 
-- [ ] Common utilities
-- [ ] midi.rs split
-- [ ] Other module cleanup
+- [x] Common utilities (`src-tauri/src/common/`)
+  - [x] Created `common/mod.rs` - module declaration
+  - [x] Created `common/persistence.rs` - JSON I/O helpers
+  - [x] Created `common/events.rs` - Event emission helpers
+- [x] midi.rs split into `src-tauri/src/midi/` submodules:
+  - [x] `midi/mod.rs` - Public API, re-exports
+  - [x] `midi/constants.rs` - MIDI/MIDImix constants
+  - [x] `midi/types.rs` - All type definitions
+  - [x] `midi/engine.rs` - Engine state, initialization, device watcher
+  - [x] `midi/devices.rs` - Device enumeration
+  - [x] `midi/connections.rs` - Input/output connection management
+  - [x] `midi/events.rs` - Event emission helpers
+  - [x] `midi/learn.rs` - MIDI Learn functionality
+  - [x] `midi/mappings.rs` - Mapping CRUD and persistence
+  - [x] `midi/output.rs` - MIDI output functions
+  - [x] `midi/midimix.rs` - AKAI MIDImix specific code (~900 lines)
+  - [x] `midi/message_handler.rs` - Message parsing and routing
+  - [x] `midi/commands.rs` - Tauri command wrappers
+- [x] Deleted old `midi.rs` (2,733 lines → 13 focused modules)
+- [x] Updated `lib.rs` to use `midi::commands::` for Tauri commands
+- [x] All tests pass, code compiles cleanly
+- [ ] Other module cleanup (audio.rs, hid.rs) - deferred, lower priority
 
 ### Phase 4: Testing
 

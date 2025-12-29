@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, RunEvent};
 
 pub mod audio;
+pub mod common;
 pub mod hid;
 pub mod midi;
 pub mod modulation;
@@ -88,6 +89,7 @@ impl ParameterStore {
 
     /// Set parameter target with a specific transition speed (in seconds).
     /// Creates the parameter if it doesn't exist.
+    #[allow(dead_code)]
     fn set_target_with_transition(
         &mut self,
         id: ParameterId,
@@ -693,29 +695,29 @@ pub fn run() {
             window_manager::window_heartbeat,
             window_manager::get_window_restart_log_path,
             // MIDI Input
-            midi::list_midi_devices,
-            midi::open_midi_device,
-            midi::close_midi_device,
-            midi::start_midi_learn,
-            midi::cancel_midi_learn,
-            midi::get_midi_learn_state,
-            midi::get_midi_mappings,
-            midi::set_midi_mapping,
-            midi::remove_midi_mapping,
-            midi::clear_midi_mappings,
-            midi::set_midi_auto_reconnect,
-            midi::get_midi_auto_reconnect,
-            midi::clear_midi_auto_reconnect_devices,
+            midi::commands::list_midi_devices,
+            midi::commands::open_midi_device,
+            midi::commands::close_midi_device,
+            midi::commands::start_midi_learn,
+            midi::commands::cancel_midi_learn,
+            midi::commands::get_midi_learn_state,
+            midi::commands::get_midi_mappings,
+            midi::commands::set_midi_mapping,
+            midi::commands::remove_midi_mapping,
+            midi::commands::clear_midi_mappings,
+            midi::commands::set_midi_auto_reconnect,
+            midi::commands::get_midi_auto_reconnect,
+            midi::commands::clear_midi_auto_reconnect_devices,
             // MIDI Output
-            midi::list_midi_output_devices,
-            midi::open_midi_output_device,
-            midi::close_midi_output_device,
-            midi::send_midi_cc,
-            midi::send_midi_note_on,
-            midi::send_midi_note_off,
-            midi::set_midi_output_config,
-            midi::get_midi_output_config,
-            midi::trigger_midi_feedback,
+            midi::commands::list_midi_output_devices,
+            midi::commands::open_midi_output_device,
+            midi::commands::close_midi_output_device,
+            midi::commands::send_midi_cc,
+            midi::commands::send_midi_note_on,
+            midi::commands::send_midi_note_off,
+            midi::commands::set_midi_output_config,
+            midi::commands::get_midi_output_config,
+            midi::commands::trigger_midi_feedback,
             // OSC
             osc::start_osc_server,
             osc::stop_osc_server,
