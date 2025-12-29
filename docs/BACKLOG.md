@@ -28,12 +28,11 @@ Leverage existing Midimix integration for quick slot control.
 
 **Subtasks**:
 
-- [ ] Mute buttons → toggle slot visibility (alpha 0 ↔ 1)
-- [ ] Solo button → solo a single slot (set all others to 0)
-- [ ] LED feedback for mute/solo state
-- [ ] Bank buttons for parameter page switching (params 1-3 → 4-6)
-- [ ] Audio reactivity master → per-slot `audio_reactivity` parameter (0–1) as multiplier for all audio mappings, controlled via a Midimix knob or master column
 - [ ] Look up Midimix master column button note numbers (SEND ALL, BANK LEFT/RIGHT, SOLO)
+- [ ] Mute buttons → toggle slot audio reactivity parameter (0.0 ↔ 1.0)
+- [ ] Solo button → click + click on mute button to set that slot to alpha 1.0 and all others to 0.0 (smoothly)
+- [ ] LED feedback for mute/solo state
+- [ ] Bank buttons -> figure out what to do with those
 
 ---
 
