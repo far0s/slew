@@ -9,7 +9,8 @@ Implementation plan for leveraging Midimix button rows for quick slot control du
 - ✅ LED feedback reflects mute/solo state
 - ✅ State persists across app restart
 - ✅ Adjustable fade times via Settings tab
-- ✅ Mute indicator in UI (🔇 emoji in preview)
+- ✅ Mute indicator in UI (SVG SpeakerOffIcon in preview)
+- ✅ Bank Left/Right LEDs pulse as beat indicator
 
 ---
 

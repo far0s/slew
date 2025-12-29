@@ -28,6 +28,24 @@ Status overview and key decisions for sebcat-vj.
 
 ## Recent Changes
 
+### Button Controls (Mute/Solo/Beat Indicator)
+
+- **Mute buttons** (top row): Toggle audio reactivity per slot
+  - Muted slots ignore audio mappings
+  - LED indicates state (ON = audio active, OFF = muted)
+  - Configurable fade time via Settings panel
+- **Solo buttons** (middle row): Isolate a single slot
+  - Sets target slot alpha to 1.0, all others to 0.0
+  - Smooth transition with configurable fade time
+- **Bank Left/Right LEDs**: Beat indicator
+  - Both LEDs pulse together on detected audio beats
+  - Provides visual tempo feedback on the controller
+- **Settings panel**: New "Settings" tab in DebugPanel
+  - Mute Fade slider (0-2 seconds)
+  - Solo Fade slider (0-2 seconds)
+- **UI improvements**:
+  - Mute indicator in scene preview uses SVG icon (SpeakerOffIcon)
+
 ### State Persistence & Soft Takeover
 
 - Slot configuration persisted to `slots.json`
