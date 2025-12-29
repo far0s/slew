@@ -622,7 +622,60 @@ After cleanup, the codebase should:
 - [x] Deleted old `midi.rs` (2,733 lines → 13 focused modules)
 - [x] Updated `lib.rs` to use `midi::commands::` for Tauri commands
 - [x] All tests pass, code compiles cleanly
-- [ ] Other module cleanup (audio.rs, hid.rs) - deferred, lower priority
+- [x] audio.rs split into `src-tauri/src/audio/` submodules:
+  - [x] `audio/mod.rs` - Public API, re-exports
+  - [x] `audio/constants.rs` - FFT and analysis constants
+  - [x] `audio/types.rs` - All type definitions
+  - [x] `audio/buffer.rs` - AudioBuffer and BeatDetector
+  - [x] `audio/engine.rs` - Engine state, initialization, device watcher
+  - [x] `audio/devices.rs` - Device enumeration
+  - [x] `audio/capture.rs` - Start/stop capture
+  - [x] `audio/analysis.rs` - FFT analysis and band energy
+  - [x] `audio/mappings.rs` - Mapping CRUD, application, persistence
+  - [x] `audio/events.rs` - Event emission helpers
+  - [x] `audio/commands.rs` - Tauri command wrappers
+- [x] Deleted old `audio.rs` (1,254 lines → 11 focused modules)
+- [x] hid.rs split into `src-tauri/src/hid/` submodules:
+  - [x] `hid/mod.rs` - Public API, re-exports
+  - [x] `hid/constants.rs` - Device IDs, polling, HID usage identifiers
+  - [x] `hid/types.rs` - All type definitions
+  - [x] `hid/engine.rs` - Engine state, initialization, auto-connect
+  - [x] `hid/devices.rs` - Device enumeration
+  - [x] `hid/connections.rs` - Connect/disconnect logic
+  - [x] `hid/reading.rs` - Background reading thread
+  - [x] `hid/parsing.rs` - Encoder and key event parsing
+  - [x] `hid/mappings.rs` - Mapping CRUD and persistence
+  - [x] `hid/events.rs` - Event emission helpers
+  - [x] `hid/commands.rs` - Tauri command wrappers
+- [x] Deleted old `hid.rs` (1,258 lines → 11 focused modules)
+- [x] Updated `lib.rs` to use `audio::commands::` and `hid::commands::` for Tauri commands
+- [x] Consolidated with common utilities:
+  - [x] Audio and HID mappings now use `common::persistence` for load/save
+  - [x] Removed duplicate functions in `audio/devices.rs` (were also in `capture.rs`)
+  - [x] Removed unused MIDI constants (MIDIMIX_SEND_ALL_NOTE, BANK_LEFT/RIGHT_NOTE)
+- [x] All tests pass, code compiles cleanly with no warnings
+
+**Final line counts after Phase 3 (including documentation trimming):**
+
+- Audio module: 1,157 lines (11 focused modules)
+- HID module: 1,069 lines (11 focused modules)
+- MIDI module: 2,756 lines (13 focused modules)
+- Total: 4,982 lines across 35 focused modules
+
+**Documentation trimming results (Phase 3.5):**
+
+- Removed verbose/repetitive module docstrings (module structure lists that duplicate visible file structure)
+- Removed redundant function doc comments where name is self-explanatory
+- Removed redundant struct field comments that just repeat the field name
+- Removed section separators (`// ====...`) throughout
+- Removed inline comments that just narrate what the code does
+- **Savings: -899 lines (-15% from pre-trimmed 5,881 lines)**
+
+Original files before refactor:
+
+- audio.rs: 1,254 lines → 1,157 lines (modular + trimmed)
+- hid.rs: 1,258 lines → 1,069 lines (modular + trimmed)
+- midi.rs: 2,733 lines → 2,756 lines (modular, slightly larger due to structure)
 
 ### Phase 4: Testing
 

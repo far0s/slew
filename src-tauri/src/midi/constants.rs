@@ -34,18 +34,7 @@ pub const MIDIMIX_SOLO_NOTES: [u8; 8] = [2, 5, 8, 11, 14, 17, 20, 23];
 /// Midimix LED note numbers for Rec Arm row (channel 0) - bottom button row
 pub const MIDIMIX_REC_ARM_NOTES: [u8; 8] = [3, 6, 9, 12, 15, 18, 21, 24];
 
-/// Midimix master column button note numbers (channel 0)
-/// Note: Button input note numbers differ from LED output note numbers
-#[allow(dead_code)]
-pub const MIDIMIX_SEND_ALL_NOTE: u8 = 25;
-
-#[allow(dead_code)]
-pub const MIDIMIX_BANK_LEFT_NOTE: u8 = 26;
-
-#[allow(dead_code)]
-pub const MIDIMIX_BANK_RIGHT_NOTE: u8 = 27;
-
-/// Bank LEDs appear to use notes offset by 1 from button input notes
+/// Bank LED note numbers (channel 0)
 pub const MIDIMIX_BANK_LEFT_LED_NOTE: u8 = 25;
 pub const MIDIMIX_BANK_RIGHT_LED_NOTE: u8 = 26;
 

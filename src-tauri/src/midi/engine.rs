@@ -10,61 +10,42 @@ use super::constants::*;
 use super::devices::{list_devices, list_devices_internal, list_output_devices_internal};
 use super::types::*;
 
-// ============================================================================
-// Global State
-// ============================================================================
-
 pub(crate) static MIDI_ENGINE: Lazy<Arc<Mutex<MidiEngineState>>> =
     Lazy::new(|| Arc::new(Mutex::new(MidiEngineState::default())));
 
-/// Helper to access the MIDI engine state.
 pub(crate) fn with_midi_engine<T, F: FnOnce(&mut MidiEngineState) -> T>(f: F) -> T {
     let mut state = MIDI_ENGINE.lock().unwrap();
     f(&mut state)
 }
 
-// ============================================================================
-// Initialization
-// ============================================================================
-
-/// Initialize the MIDI engine with an app handle for event emission.
-/// Call this during Tauri setup.
 pub fn init_midi_engine(app_handle: AppHandle) {
     with_midi_engine(|state| {
         state.app_handle = Some(app_handle);
     });
 
-    // Load mappings from disk
     super::mappings::load_mappings_from_disk();
 
-    // Initialize known devices list and auto-connect Midimix if present
     let mut midimix_input: Option<MidiDeviceInfo> = None;
     if let Ok(devices) = list_devices() {
         with_midi_engine(|state| {
             state.known_device_names = devices.iter().map(|d| d.name.clone()).collect();
         });
-
-        // Check for Midimix
         midimix_input = devices.into_iter().find(|d| is_midimix_device(&d.name));
     }
 
-    // Initialize known output devices list
     if let Ok(devices) = super::devices::list_output_devices() {
         with_midi_engine(|state| {
             state.known_output_device_names = devices.iter().map(|d| d.name.clone()).collect();
         });
     }
 
-    // Start device watcher thread
     start_device_watcher_thread();
 
-    // Auto-connect Midimix if found at startup
     if let Some(midimix) = midimix_input {
         log::info!(
             "[MIDI] Midimix found at startup, auto-connecting: {}",
             midimix.name
         );
-        // Delay slightly to let the engine fully initialize
         let device_id = midimix.id;
         std::thread::spawn(move || {
             std::thread::sleep(Duration::from_millis(500));
@@ -77,7 +58,6 @@ pub fn init_midi_engine(app_handle: AppHandle) {
     log::debug!("[MIDI] Engine initialized with hot-plug detection and output support");
 }
 
-/// Clean up MIDI connections on app exit.
 pub fn cleanup_midi() {
     log::info!("[MIDI] Cleaning up MIDI on app exit");
     super::connections::close_all_output_devices();
@@ -85,11 +65,6 @@ pub fn cleanup_midi() {
     log::info!("[MIDI] MIDI cleanup complete");
 }
 
-// ============================================================================
-// Device Watcher
-// ============================================================================
-
-/// Start the background thread that polls for device changes.
 fn start_device_watcher_thread() {
     let engine = MIDI_ENGINE.clone();
 
@@ -99,7 +74,6 @@ fn start_device_watcher_thread() {
         loop {
             thread::sleep(Duration::from_millis(DEVICE_POLL_INTERVAL_MS));
 
-            // Get current input device list
             let current_devices = match list_devices_internal() {
                 Ok(devices) => devices,
                 Err(e) => {
@@ -108,7 +82,6 @@ fn start_device_watcher_thread() {
                 }
             };
 
-            // Get current output device list
             let current_output_devices = match list_output_devices_internal() {
                 Ok(devices) => devices,
                 Err(e) => {
@@ -124,7 +97,6 @@ fn start_device_watcher_thread() {
                 .map(|d| d.name.clone())
                 .collect();
 
-            // Get previous state
             let (
                 previous_names,
                 previous_output_names,
@@ -158,11 +130,9 @@ fn start_device_watcher_thread() {
                 )
             };
 
-            // Detect input changes
             let added: Vec<String> = current_names.difference(&previous_names).cloned().collect();
             let removed: Vec<String> = previous_names.difference(&current_names).cloned().collect();
 
-            // Detect output changes
             let output_added: Vec<String> = current_output_names
                 .difference(&previous_output_names)
                 .cloned()
@@ -177,7 +147,6 @@ fn start_device_watcher_thread() {
                 || !output_added.is_empty()
                 || !output_removed.is_empty();
 
-            // Log changes
             for name in &added {
                 log::debug!("[MIDI] Input device connected: {}", name);
             }
@@ -191,7 +160,6 @@ fn start_device_watcher_thread() {
                 log::debug!("[MIDI] Output device disconnected: {}", name);
             }
 
-            // Handle disconnected input devices that were open
             let mut disconnected_open_devices = Vec::new();
             for name in &removed {
                 if connected_device_names.contains(name) {
@@ -199,7 +167,6 @@ fn start_device_watcher_thread() {
                 }
             }
 
-            // Handle disconnected output devices that were open
             let mut disconnected_open_output_devices = Vec::new();
             for name in &output_removed {
                 if connected_output_device_names.contains(name) {
@@ -207,7 +174,6 @@ fn start_device_watcher_thread() {
                 }
             }
 
-            // Close connections to disconnected input devices
             if !disconnected_open_devices.is_empty() {
                 let mut state = engine.lock().unwrap();
                 let device_ids_to_remove: Vec<String> = state
@@ -220,7 +186,6 @@ fn start_device_watcher_thread() {
                 for device_id in device_ids_to_remove {
                     if let Some(mut conn) = state.connections.remove(&device_id) {
                         if let Some(c) = conn.connection.take() {
-                            // Close the connection (ignore errors, device is already gone)
                             let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                                 c.close();
                             }));
@@ -233,7 +198,6 @@ fn start_device_watcher_thread() {
                 }
             }
 
-            // Close connections to disconnected output devices
             if !disconnected_open_output_devices.is_empty() {
                 let mut state = engine.lock().unwrap();
                 let device_ids_to_remove: Vec<String> = state
@@ -248,12 +212,10 @@ fn start_device_watcher_thread() {
                 for device_id in device_ids_to_remove {
                     if let Some(mut conn) = state.output_connections.remove(&device_id) {
                         if let Some(c) = conn.connection.take() {
-                            // Close the connection (ignore errors, device is already gone)
                             let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                                 drop(c);
                             }));
                         }
-                        // Clear cached CC values for this device
                         state.last_sent_cc.remove(&device_id);
                         log::debug!(
                             "[MIDI] Closed output connection to disconnected device: {}",
@@ -263,18 +225,15 @@ fn start_device_watcher_thread() {
                 }
             }
 
-            // Update known devices
             {
                 let mut state = engine.lock().unwrap();
                 state.known_device_names = current_names.clone();
                 state.known_output_device_names = current_output_names.clone();
             }
 
-            // Emit event if devices changed
             if has_changes {
                 if let Some(handle) = &app_handle {
                     use tauri::Emitter;
-                    // Re-fetch with connection status
                     if let Ok(devices) = list_devices() {
                         let _ = handle.emit("midi_devices_changed", &devices);
                     }
@@ -284,15 +243,12 @@ fn start_device_watcher_thread() {
                 }
             }
 
-            // Auto-reconnect logic for input devices
             if auto_reconnect_enabled && !added.is_empty() {
                 for name in &added {
-                    // Auto-reconnect known devices OR Midimix (always auto-connect Midimix)
                     let should_connect =
                         auto_reconnect_devices.contains(name) || is_midimix_device(name);
 
                     if should_connect {
-                        // Find the device ID for this name
                         if let Ok(devices) = list_devices() {
                             if let Some(device) = devices.iter().find(|d| &d.name == name) {
                                 log::debug!("[MIDI] Auto-reconnecting input: {}", name);
@@ -303,23 +259,19 @@ fn start_device_watcher_thread() {
                                         e
                                     );
                                 }
-                                // Note: open_device handles paired output connection for Midimix
                             }
                         }
                     }
                 }
             }
 
-            // Auto-reconnect logic for output devices (only for non-Midimix, since Midimix is handled by input)
             if auto_reconnect_enabled && !output_added.is_empty() {
                 for name in &output_added {
-                    // Skip Midimix outputs - they're handled when input connects
                     if is_midimix_device(name) {
                         continue;
                     }
 
                     if auto_reconnect_output_devices.contains(name) {
-                        // Find the device ID for this name
                         if let Ok(devices) = super::devices::list_output_devices() {
                             if let Some(device) = devices.iter().find(|d| &d.name == name) {
                                 log::debug!("[MIDI] Auto-reconnecting output: {}", name);
@@ -341,11 +293,6 @@ fn start_device_watcher_thread() {
     });
 }
 
-// ============================================================================
-// Utility Functions
-// ============================================================================
-
-/// Check if a device name matches the Midimix pattern
 pub fn is_midimix_device(name: &str) -> bool {
     name.contains(MIDIMIX_NAME_PATTERN)
 }
