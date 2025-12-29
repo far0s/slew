@@ -393,25 +393,24 @@ export const LEGACY_SKETCH_ID_MAP: Record<string, SketchId> = {
 - [ ] Evaluate `hid.rs` for splitting
 - [ ] Apply common utilities where helpful
 
-### Phase 4: Testing Infrastructure (Medium Risk)
+### Phase 4: Testing Infrastructure (Medium Risk) ✅ COMPLETE
 
 **Estimated effort**: 6-8 hours
 
 #### 4.1 Rust tests
 
-- [ ] Add tests for LFO calculations (`modulation.rs`)
-- [ ] Add tests for beat detection (`audio.rs`)
-- [ ] Add tests for MIDI message parsing (`midi.rs`)
-- [ ] Add tests for parameter interpolation (`lib.rs`)
-- [ ] Add tests for mapping persistence
+- [x] Add tests for LFO calculations (`modulation.rs`) - 18 tests
+- [x] Add tests for MIDI message parsing (`midi/message_handler.rs`) - 26 tests
+- [x] Add tests for parameter interpolation (`lib.rs`) - already had 2 tests
 
 #### 4.2 Frontend tests
 
-- [ ] Set up vitest configuration
-- [ ] Add tests for `useParameterStore`
-- [ ] Add tests for `useSlots` (renamed from useSceneSlots)
-- [ ] Add tests for utility functions in `slotTypes.ts`
-- [ ] Add component tests for key UI components
+- [x] Set up vitest configuration
+- [x] Add tests for utility functions in `slotTypes.ts` - 33 tests
+
+**Remaining items moved to backlog** (see `BACKLOG.md` → "Expand Test Coverage"):
+
+- Tests for beat detection, mapping persistence, hooks, and component tests
 
 ### Phase 5: Performance & Memory (Lower Priority)
 
@@ -677,11 +676,47 @@ Original files before refactor:
 - hid.rs: 1,258 lines → 1,069 lines (modular + trimmed)
 - midi.rs: 2,733 lines → 2,756 lines (modular, slightly larger due to structure)
 
-### Phase 4: Testing
+### Phase 4: Testing ✅ COMPLETE
 
-- [ ] Rust unit tests
-- [ ] Frontend tests
-- [ ] Test infrastructure
+- [x] Rust unit tests (52 tests total)
+  - [x] LFO calculations (`modulation.rs`) - 18 tests
+  - [x] MIDI message parsing (`midi/message_handler.rs`) - 26 tests
+  - [x] Existing tests in `lib.rs`, `syphon.rs`, `video_out.rs`
+- [x] Frontend tests
+  - [x] Set up vitest configuration (`vitest.config.ts`)
+  - [x] Created test setup with Tauri mocks (`src/test/setup.ts`)
+  - [x] Utility function tests (`slotTypes.test.ts`) - 33 tests
+- [x] Test infrastructure
+  - [x] Added vitest, @testing-library/react, jsdom, happy-dom
+  - [x] Added npm scripts: `test`, `test:run`, `test:coverage`
+- [x] Remaining items moved to backlog (see `BACKLOG.md` → "Expand Test Coverage")
+
+**Added files:**
+
+- `vitest.config.ts` - Vitest configuration with v8 coverage
+- `src/test/setup.ts` - Test setup with Tauri API mocks
+- `src/slots/slotTypes.test.ts` - 33 tests for slot utilities
+
+**Dependencies added:**
+
+- `vitest@^3.2.4` - Test runner
+- `@vitest/coverage-v8@^3.2.4` - Coverage provider (must match vitest version)
+- `@testing-library/react@^16.3.0` - React testing utilities
+- `@testing-library/dom@^10.4.0` - DOM testing utilities
+- `jsdom@^26.1.0` - DOM environment for tests
+- `happy-dom@^18.0.1` - Alternative DOM environment
+
+**Rust tests added:**
+
+- `modulation.rs` - 18 tests for LFO waveforms, phase, depth, offset, BPM sync
+- `midi/message_handler.rs` - 26 tests for MIDI parsing, CC normalization, range mapping
+  - Also extracted pure functions: `parse_midi_bytes`, `normalize_cc_value`, `map_to_range`
+
+**Test commands:**
+
+- `npm run test` - Run vitest in watch mode
+- `npm run test:run` - Run all tests once
+- `cd src-tauri && cargo test --no-default-features` - Run all Rust tests
 
 ### Phase 5: Performance
 

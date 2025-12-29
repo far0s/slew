@@ -17,25 +17,35 @@ use super::output::send_parameter_feedback;
 use super::types::{MidiEngineState, MidiLearnComplete, MidiMapping, MidiMessage};
 
 // ============================================================================
-// Message Handling
+// MIDI Parsing (Pure Functions)
 // ============================================================================
 
-/// Handle an incoming MIDI message.
-pub(crate) fn handle_midi_message(
-    engine: &Arc<Mutex<MidiEngineState>>,
-    device_id: &str,
-    timestamp: u64,
-    message: &[u8],
-) {
+/// Parsed MIDI message data extracted from raw bytes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParsedMidiMessage {
+    /// MIDI channel (0-15)
+    pub channel: u8,
+    /// Message type as string: "cc", "note_on", "note_off", "pitch_bend", "other"
+    pub message_type: &'static str,
+    /// Control number (CC number or note number)
+    pub control: u8,
+    /// Value (0-127 for CC/notes, 0-16383 for pitch bend)
+    pub value: u16,
+}
+
+/// Parse raw MIDI bytes into a structured message.
+///
+/// Returns None if the message is empty.
+pub fn parse_midi_bytes(message: &[u8]) -> Option<ParsedMidiMessage> {
     if message.is_empty() {
-        return;
+        return None;
     }
 
     let status = message[0];
     let channel = status & 0x0F;
     let message_type = status & 0xF0;
 
-    let (type_str, control, value): (&str, u8, u16) = match message_type {
+    let (type_str, control, value): (&'static str, u8, u16) = match message_type {
         0xB0 => {
             // Control Change
             let cc = message.get(1).copied().unwrap_or(0);
@@ -63,6 +73,52 @@ pub(crate) fn handle_midi_message(
         }
         _ => ("other", 0, 0),
     };
+
+    Some(ParsedMidiMessage {
+        channel,
+        message_type: type_str,
+        control,
+        value,
+    })
+}
+
+/// Calculate pitch bend value from 14-bit MIDI data.
+/// Returns a value from 0 to 16383, with 8192 being center.
+pub fn calculate_pitch_bend(lsb: u8, msb: u8) -> u16 {
+    ((msb as u16) << 7) | (lsb as u16)
+}
+
+/// Normalize a 7-bit MIDI CC value (0-127) to a 0.0-1.0 range.
+pub fn normalize_cc_value(value: u8) -> f64 {
+    (value as f64) / 127.0
+}
+
+/// Map a normalized value (0.0-1.0) to a parameter range.
+pub fn map_to_range(normalized: f64, min: f64, max: f64) -> f64 {
+    min + normalized * (max - min)
+}
+
+// ============================================================================
+// Message Handling
+// ============================================================================
+
+/// Handle an incoming MIDI message.
+pub(crate) fn handle_midi_message(
+    engine: &Arc<Mutex<MidiEngineState>>,
+    device_id: &str,
+    timestamp: u64,
+    message: &[u8],
+) {
+    // Parse the raw MIDI bytes
+    let parsed = match parse_midi_bytes(message) {
+        Some(p) => p,
+        None => return,
+    };
+
+    let channel = parsed.channel;
+    let type_str = parsed.message_type;
+    let control = parsed.control;
+    let value = parsed.value;
 
     let midi_msg = MidiMessage {
         device_id: device_id.to_string(),
@@ -225,5 +281,246 @@ fn apply_midi_to_parameter(
 
     if !skip_feedback {
         send_parameter_feedback(parameter_id, value);
+    }
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =========================================================================
+    // parse_midi_bytes tests
+    // =========================================================================
+
+    #[test]
+    fn test_parse_empty_message() {
+        assert_eq!(parse_midi_bytes(&[]), None);
+    }
+
+    #[test]
+    fn test_parse_cc_message() {
+        // CC on channel 0, CC #7 (volume), value 100
+        let message = [0xB0, 7, 100];
+        let parsed = parse_midi_bytes(&message).unwrap();
+
+        assert_eq!(parsed.channel, 0);
+        assert_eq!(parsed.message_type, "cc");
+        assert_eq!(parsed.control, 7);
+        assert_eq!(parsed.value, 100);
+    }
+
+    #[test]
+    fn test_parse_cc_channel_15() {
+        // CC on channel 15, CC #1 (mod wheel), value 64
+        let message = [0xBF, 1, 64];
+        let parsed = parse_midi_bytes(&message).unwrap();
+
+        assert_eq!(parsed.channel, 15);
+        assert_eq!(parsed.message_type, "cc");
+        assert_eq!(parsed.control, 1);
+        assert_eq!(parsed.value, 64);
+    }
+
+    #[test]
+    fn test_parse_note_on() {
+        // Note On channel 0, note 60 (middle C), velocity 127
+        let message = [0x90, 60, 127];
+        let parsed = parse_midi_bytes(&message).unwrap();
+
+        assert_eq!(parsed.channel, 0);
+        assert_eq!(parsed.message_type, "note_on");
+        assert_eq!(parsed.control, 60);
+        assert_eq!(parsed.value, 127);
+    }
+
+    #[test]
+    fn test_parse_note_on_zero_velocity() {
+        // Note On with velocity 0 is often used as Note Off
+        let message = [0x90, 60, 0];
+        let parsed = parse_midi_bytes(&message).unwrap();
+
+        assert_eq!(parsed.message_type, "note_on");
+        assert_eq!(parsed.value, 0);
+    }
+
+    #[test]
+    fn test_parse_note_off() {
+        // Note Off channel 0, note 60, velocity 64
+        let message = [0x80, 60, 64];
+        let parsed = parse_midi_bytes(&message).unwrap();
+
+        assert_eq!(parsed.channel, 0);
+        assert_eq!(parsed.message_type, "note_off");
+        assert_eq!(parsed.control, 60);
+        assert_eq!(parsed.value, 64);
+    }
+
+    #[test]
+    fn test_parse_pitch_bend_center() {
+        // Pitch bend at center position (8192)
+        // LSB = 0, MSB = 64 -> (64 << 7) | 0 = 8192
+        let message = [0xE0, 0, 64];
+        let parsed = parse_midi_bytes(&message).unwrap();
+
+        assert_eq!(parsed.channel, 0);
+        assert_eq!(parsed.message_type, "pitch_bend");
+        assert_eq!(parsed.control, 0);
+        assert_eq!(parsed.value, 8192);
+    }
+
+    #[test]
+    fn test_parse_pitch_bend_max() {
+        // Pitch bend at max position (16383)
+        // LSB = 127, MSB = 127 -> (127 << 7) | 127 = 16383
+        let message = [0xE0, 127, 127];
+        let parsed = parse_midi_bytes(&message).unwrap();
+
+        assert_eq!(parsed.value, 16383);
+    }
+
+    #[test]
+    fn test_parse_pitch_bend_min() {
+        // Pitch bend at min position (0)
+        let message = [0xE0, 0, 0];
+        let parsed = parse_midi_bytes(&message).unwrap();
+
+        assert_eq!(parsed.value, 0);
+    }
+
+    #[test]
+    fn test_parse_unknown_message_type() {
+        // System exclusive or other message types
+        let message = [0xF0, 0x7E, 0x00];
+        let parsed = parse_midi_bytes(&message).unwrap();
+
+        assert_eq!(parsed.message_type, "other");
+        assert_eq!(parsed.control, 0);
+        assert_eq!(parsed.value, 0);
+    }
+
+    #[test]
+    fn test_parse_short_cc_message() {
+        // CC message with missing data bytes (should use 0 defaults)
+        let message = [0xB0];
+        let parsed = parse_midi_bytes(&message).unwrap();
+
+        assert_eq!(parsed.message_type, "cc");
+        assert_eq!(parsed.control, 0);
+        assert_eq!(parsed.value, 0);
+    }
+
+    #[test]
+    fn test_parse_partial_cc_message() {
+        // CC message with only one data byte
+        let message = [0xB0, 7];
+        let parsed = parse_midi_bytes(&message).unwrap();
+
+        assert_eq!(parsed.message_type, "cc");
+        assert_eq!(parsed.control, 7);
+        assert_eq!(parsed.value, 0);
+    }
+
+    // =========================================================================
+    // calculate_pitch_bend tests
+    // =========================================================================
+
+    #[test]
+    fn test_pitch_bend_center() {
+        assert_eq!(calculate_pitch_bend(0, 64), 8192);
+    }
+
+    #[test]
+    fn test_pitch_bend_max() {
+        assert_eq!(calculate_pitch_bend(127, 127), 16383);
+    }
+
+    #[test]
+    fn test_pitch_bend_min() {
+        assert_eq!(calculate_pitch_bend(0, 0), 0);
+    }
+
+    #[test]
+    fn test_pitch_bend_arbitrary() {
+        // LSB = 50, MSB = 100 -> (100 << 7) | 50 = 12850
+        assert_eq!(calculate_pitch_bend(50, 100), 12850);
+    }
+
+    // =========================================================================
+    // normalize_cc_value tests
+    // =========================================================================
+
+    #[test]
+    fn test_normalize_cc_zero() {
+        assert!((normalize_cc_value(0) - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_normalize_cc_max() {
+        assert!((normalize_cc_value(127) - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_normalize_cc_mid() {
+        // 64 / 127 ≈ 0.504
+        let normalized = normalize_cc_value(64);
+        assert!(normalized > 0.5 && normalized < 0.51);
+    }
+
+    // =========================================================================
+    // map_to_range tests
+    // =========================================================================
+
+    #[test]
+    fn test_map_to_range_zero() {
+        assert!((map_to_range(0.0, 0.0, 100.0) - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_map_to_range_one() {
+        assert!((map_to_range(1.0, 0.0, 100.0) - 100.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_map_to_range_mid() {
+        assert!((map_to_range(0.5, 0.0, 100.0) - 50.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_map_to_range_custom() {
+        // Map 0.5 to range 10-20 should give 15
+        assert!((map_to_range(0.5, 10.0, 20.0) - 15.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_map_to_range_negative() {
+        // Map 0.5 to range -1 to 1 should give 0
+        assert!((map_to_range(0.5, -1.0, 1.0) - 0.0).abs() < 0.001);
+    }
+
+    // =========================================================================
+    // Integration: CC to parameter mapping
+    // =========================================================================
+
+    #[test]
+    fn test_cc_to_parameter_full_range() {
+        // CC value 127 mapped to 0.0-1.0 range
+        let cc_value = 127u8;
+        let normalized = normalize_cc_value(cc_value);
+        let mapped = map_to_range(normalized, 0.0, 1.0);
+        assert!((mapped - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_cc_to_parameter_custom_range() {
+        // CC value 64 (mid) mapped to 0.5-1.5 range should give ~1.0
+        let cc_value = 64u8;
+        let normalized = normalize_cc_value(cc_value);
+        let mapped = map_to_range(normalized, 0.5, 1.5);
+        // 64/127 ≈ 0.504, so 0.5 + 0.504 * 1.0 ≈ 1.004
+        assert!(mapped > 0.99 && mapped < 1.01);
     }
 }

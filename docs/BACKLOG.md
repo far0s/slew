@@ -86,6 +86,22 @@ Save/load parameter configurations per sketch.
 
 ## Low Priority / Future
 
+### 🟢 Expand Test Coverage `chore`
+
+Add more tests for remaining untested areas.
+
+**Context**: Phase 4 of codebase cleanup established testing infrastructure (vitest + Rust tests). Core utilities are tested but some areas remain.
+
+**Subtasks**:
+
+- [ ] Add tests for beat detection (`audio.rs`) - extract pure functions first
+- [ ] Add tests for mapping persistence (JSON load/save)
+- [ ] Add tests for `useParameterStore` hook
+- [ ] Add tests for `useSlots` hook
+- [ ] Add component tests for key UI components
+
+---
+
 ### 🟢 More Shader Sketches `feature`
 
 Expand the visual library with new procedural sketches.
