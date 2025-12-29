@@ -17,14 +17,14 @@ The Rust backend handles input processing (OSC, MIDI, Audio, HID), state managem
 
 ## Technology Stack
 
-| Layer | Technology |
-|-------|------------|
-| Application Shell | Tauri v2 (Rust + WebView) |
-| Frontend | React + TypeScript + Vite |
-| 3D Rendering | Three.js via react-three-fiber |
-| Shaders | Custom GLSL (TSL-style patterns) |
-| Video Output | Syphon (macOS), NDI (cross-platform) |
-| Input | MIDI (midir), OSC (rosc), Audio (cpal + rustfft), HID (hidapi) |
+| Layer             | Technology                                                     |
+| ----------------- | -------------------------------------------------------------- |
+| Application Shell | Tauri v2 (Rust + WebView)                                      |
+| Frontend          | React + TypeScript + Vite                                      |
+| 3D Rendering      | Three.js via react-three-fiber                                 |
+| Shaders           | Custom GLSL (TSL-style patterns)                               |
+| Video Output      | Syphon (macOS), NDI (cross-platform)                           |
+| Input             | MIDI (midir), OSC (rosc), Audio (cpal + rustfft), HID (hidapi) |
 
 ---
 
@@ -41,6 +41,7 @@ The Rust backend handles input processing (OSC, MIDI, Audio, HID), state managem
 - Exposes frames via Syphon/NDI for VJ software integration
 
 **Constraints**:
+
 - No React DevTools or inspector
 - No blocking async operations
 - Isolated from UI to prevent frame drops
@@ -77,10 +78,12 @@ Parameter flow: **Controls UI → Backend → Renderer**
 ### Slot System
 
 **Terminology**:
+
 - **Slot**: Numbered container (0-7) that holds a sketch
 - **Sketch**: Visual program (e.g., `BlueCube`, `TslNoiseBlob`)
 
 Key characteristics:
+
 - 8 fixed slots always visible in UI
 - Empty slots show inline sketch browser
 - Same sketch can exist in multiple slots with independent parameters
@@ -91,17 +94,18 @@ Key characteristics:
 ### Input Systems
 
 All inputs follow the same pattern:
+
 1. Rust module with device management
 2. Tauri commands for CRUD
 3. TypeScript hooks
 4. UI panel in Controls sidebar
 
-| System | Module | Key Features |
-|--------|--------|--------------|
-| MIDI | `midi.rs` | Learn mode, mappings persisted, Midimix integration |
-| OSC | `osc.rs` | UDP server (port 9000), address → parameter mappings |
-| Audio | `audio.rs` | FFT, beat detection, audio → parameter mappings |
-| HID | `hid.rs` | Macropad support (DOIO Megalodon) |
+| System | Module     | Key Features                                                       |
+| ------ | ---------- | ------------------------------------------------------------------ |
+| MIDI   | `midi.rs`  | Learn mode, mappings persisted, Midimix integration, soft takeover |
+| OSC    | `osc.rs`   | UDP server (port 9000), address → parameter mappings               |
+| Audio  | `audio.rs` | FFT, beat detection, audio → parameter mappings                    |
+| HID    | `hid.rs`   | Macropad support (DOIO Megalodon)                                  |
 
 ### Modulation Engine
 
@@ -220,19 +224,19 @@ export function useSceneSlots(): SlotsState {
 
 ## Key Files Reference
 
-| File | Purpose |
-|------|---------|
-| `src-tauri/src/lib.rs` | Parameter Server, tick loop, command registration |
-| `src-tauri/src/window_manager.rs` | Window lifecycle, heartbeat monitoring, native menu |
-| `src-tauri/src/midi.rs` | MIDI device management, Midimix integration |
-| `src-tauri/src/audio.rs` | Audio capture, FFT, beat detection |
-| `src-tauri/src/modulation.rs` | LFO engine, modulation matrix |
-| `src-tauri/src/video_out.rs` | Video output backends |
-| `src/sketches/` | Self-contained sketch modules |
-| `src/scenes/useSceneSlots.ts` | Slot management hook |
-| `src/controls/useParameterStore.ts` | Parameter state |
-| `src/renderer/RendererRoot.tsx` | Multi-slot rendering loop |
-| `src/components/SceneColumn/` | Slot UI with inline sketch browser |
+| File                                | Purpose                                             |
+| ----------------------------------- | --------------------------------------------------- |
+| `src-tauri/src/lib.rs`              | Parameter Server, tick loop, command registration   |
+| `src-tauri/src/window_manager.rs`   | Window lifecycle, heartbeat monitoring, native menu |
+| `src-tauri/src/midi.rs`             | MIDI device management, Midimix integration         |
+| `src-tauri/src/audio.rs`            | Audio capture, FFT, beat detection                  |
+| `src-tauri/src/modulation.rs`       | LFO engine, modulation matrix                       |
+| `src-tauri/src/video_out.rs`        | Video output backends                               |
+| `src/sketches/`                     | Self-contained sketch modules                       |
+| `src/scenes/useSceneSlots.ts`       | Slot management hook                                |
+| `src/controls/useParameterStore.ts` | Parameter state                                     |
+| `src/renderer/RendererRoot.tsx`     | Multi-slot rendering loop                           |
+| `src/components/SceneColumn/`       | Slot UI with inline sketch browser                  |
 
 ---
 

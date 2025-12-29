@@ -45,10 +45,18 @@ const MIDIMIX_MASTER_FADER_CC: u8 = 62;
 
 /// Midimix LED note numbers for Mute row (channel 0)
 const MIDIMIX_MUTE_NOTES: [u8; 8] = [1, 4, 7, 10, 13, 16, 19, 22];
-/// Midimix LED note numbers for Solo row (channel 0)
-const MIDIMIX_SOLO_NOTES: [u8; 8] = [2, 5, 8, 11, 14, 17, 20, 23];
 /// Midimix LED note numbers for Rec Arm row (channel 0)
 const MIDIMIX_REC_ARM_NOTES: [u8; 8] = [3, 6, 9, 12, 15, 18, 21, 24];
+
+/// Midimix master column button note numbers (channel 0)
+#[allow(dead_code)]
+const MIDIMIX_SEND_ALL_NOTE: u8 = 25;
+#[allow(dead_code)]
+const MIDIMIX_BANK_LEFT_NOTE: u8 = 26;
+#[allow(dead_code)]
+const MIDIMIX_BANK_RIGHT_NOTE: u8 = 27;
+#[allow(dead_code)]
+const MIDIMIX_SOLO_NOTE: u8 = 28;
 
 // ============================================================================
 // Types
@@ -171,16 +179,27 @@ struct ActiveOutputConnection {
     connection: Option<MidiOutputConnection>,
 }
 
-/// Global MIDI engine state.
 /// Information about an active slot (for LED feedback and knob mappings)
 #[derive(Debug, Clone)]
 struct SlotState {
-    /// Slot index (0-5)
+    /// Slot index (0-7)
     index: usize,
     /// Whether this slot exists (is in the slots array)
     exists: bool,
     /// The sketch ID loaded in this slot (empty string if none)
     sketch_id: String,
+}
+
+/// Pickup state for soft takeover.
+/// Tracks whether a CC control has "picked up" the current parameter value.
+#[derive(Debug, Clone, Default)]
+struct PickupState {
+    /// Whether this control has picked up the parameter value
+    picked_up: bool,
+    /// Last raw CC value received (0-127)
+    last_cc: Option<u8>,
+    /// Whether to ignore the next CC (for reconnect handling)
+    ignore_next: bool,
 }
 
 struct MidiEngineState {
@@ -212,6 +231,8 @@ struct MidiEngineState {
     active_slots: Vec<SlotState>,
     /// Last known master fader value (for direction detection)
     last_master_value: Option<u8>,
+    /// Pickup state for soft takeover, keyed by (channel, cc_number)
+    pickup_state: HashMap<(u8, u8), PickupState>,
 }
 
 impl Default for MidiEngineState {
@@ -236,6 +257,7 @@ impl Default for MidiEngineState {
             last_sent_cc: HashMap::new(),
             active_slots: Vec::new(),
             last_master_value: None,
+            pickup_state: HashMap::new(),
         }
     }
 }
@@ -773,8 +795,11 @@ pub fn open_device(device_id: String) -> Result<(), String> {
             }
         }
 
-        // Setup default alpha mappings for slots 0-5
+        // Setup default alpha mappings for slots 0-7
         setup_midimix_default_mappings();
+
+        // Reset all pickup state on connect (ignore first CC from each control)
+        reset_all_pickup(&MIDI_ENGINE);
     }
 
     Ok(())
@@ -927,9 +952,10 @@ fn send_midimix_startup_animation(output_device_id: &str) {
             // First, turn off all LEDs
             for i in 0..8 {
                 let _ = send_note_off(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
-                let _ = send_note_off(Some(&device_id), 0, MIDIMIX_SOLO_NOTES[i], 0);
                 let _ = send_note_off(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 0);
             }
+            // Also turn off master column buttons
+            let _ = send_note_off(Some(&device_id), 0, MIDIMIX_SOLO_NOTE, 0);
 
             std::thread::sleep(Duration::from_millis(100));
 
@@ -950,15 +976,12 @@ fn send_midimix_startup_animation(output_device_id: &str) {
             }
 
             // Wave 2: Solo row left to right
-            for i in 0..8 {
-                let _ = send_note_on(Some(&device_id), 0, MIDIMIX_SOLO_NOTES[i], 127);
-                std::thread::sleep(stagger_delay);
-            }
+            // Flash the master SOLO button
+            let _ = send_note_on(Some(&device_id), 0, MIDIMIX_SOLO_NOTE, 127);
+            std::thread::sleep(stagger_delay);
             std::thread::sleep(hold_time);
-            for i in 0..8 {
-                let _ = send_note_off(Some(&device_id), 0, MIDIMIX_SOLO_NOTES[i], 0);
-                std::thread::sleep(stagger_delay);
-            }
+            let _ = send_note_off(Some(&device_id), 0, MIDIMIX_SOLO_NOTE, 0);
+            std::thread::sleep(stagger_delay);
 
             // Wave 3: Rec Arm row left to right
             for i in 0..8 {
@@ -1016,10 +1039,9 @@ fn send_midimix_shutdown_animation_sync(device_id: &str) {
     }
 
     // Wave 2: Solo row right to left
-    for i in (0..8).rev() {
-        let _ = send_note_off(Some(device_id), 0, MIDIMIX_SOLO_NOTES[i], 0);
-        std::thread::sleep(stagger_delay);
-    }
+    // Turn off master SOLO button
+    let _ = send_note_off(Some(device_id), 0, MIDIMIX_SOLO_NOTE, 0);
+    std::thread::sleep(stagger_delay);
 
     // Wave 3: Mute row right to left
     for i in (0..8).rev() {
@@ -1066,9 +1088,10 @@ pub fn update_midimix_leds() {
                 let _ = send_note_off(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
                 let _ = send_note_off(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 0);
             }
-            // Solo row stays off (could be used for other feedback later)
-            let _ = send_note_off(Some(&device_id), 0, MIDIMIX_SOLO_NOTES[i], 0);
         }
+
+        // Master SOLO button stays off (could be used for other feedback later)
+        let _ = send_note_off(Some(&device_id), 0, MIDIMIX_SOLO_NOTE, 0);
     }
 
     log::debug!(
@@ -1080,16 +1103,78 @@ pub fn update_midimix_leds() {
 /// Update the active slots state (called from lib.rs when slots change)
 /// Accepts (index, exists, sketch_id) tuples for LED and knob mapping support.
 pub fn set_active_slots(slots: Vec<(usize, bool, String)>) {
-    with_midi_engine(|state| {
-        state.active_slots = slots
-            .into_iter()
-            .map(|(index, exists, sketch_id)| SlotState {
-                index,
-                exists,
-                sketch_id,
-            })
-            .collect();
-    });
+    // Get old slot states to detect sketch changes
+    let old_slots = with_midi_engine(|state| state.active_slots.clone());
+
+    // Build new slot states
+    let new_slots: Vec<SlotState> = slots
+        .into_iter()
+        .map(|(index, exists, sketch_id)| SlotState {
+            index,
+            exists,
+            sketch_id,
+        })
+        .collect();
+
+    // Detect which slots had sketch changes
+    let mut changed_slots: Vec<usize> = Vec::new();
+    for new_slot in &new_slots {
+        let old_sketch = old_slots
+            .iter()
+            .find(|s| s.index == new_slot.index)
+            .map(|s| s.sketch_id.as_str())
+            .unwrap_or("");
+
+        // If sketch changed (including load into empty or unload), mark for pickup reset
+        if old_sketch != new_slot.sketch_id {
+            log::debug!(
+                "[MIDI] Slot {} sketch changed: '{}' -> '{}'",
+                new_slot.index,
+                old_sketch,
+                new_slot.sketch_id
+            );
+            changed_slots.push(new_slot.index);
+        }
+    }
+
+    // Update state and reset pickup for changed slots (single lock acquisition)
+    {
+        let engine = MIDI_ENGINE.clone();
+        let mut state = engine.lock().unwrap();
+
+        // Update active slots
+        state.active_slots = new_slots;
+
+        // Reset pickup for changed slots
+        for slot_index in changed_slots {
+            if slot_index >= 8 {
+                continue;
+            }
+
+            // Reset fader for this slot
+            let fader_cc = MIDIMIX_FADER_CCS[slot_index];
+            if let Some(pickup) = state.pickup_state.get_mut(&(0, fader_cc)) {
+                pickup.picked_up = false;
+                // Keep last_cc so crossing detection still works
+            }
+
+            // Reset knobs for this slot (3 knobs per column)
+            for knob_idx in 0..3 {
+                let knob_cc = MIDIMIX_KNOB_CCS[slot_index][knob_idx];
+                if let Some(pickup) = state.pickup_state.get_mut(&(0, knob_cc)) {
+                    pickup.picked_up = false;
+                    // Keep last_cc so crossing detection still works
+                }
+            }
+
+            log::debug!(
+                "[MIDI] Pickup: reset for slot {} (fader CC {}, knob CCs {:?})",
+                slot_index,
+                fader_cc,
+                MIDIMIX_KNOB_CCS[slot_index]
+            );
+        }
+    }
 
     // Update LEDs to reflect new state
     update_midimix_leds();
@@ -1695,7 +1780,10 @@ fn handle_midi_message(
 
     // Handle Midimix master fader (CC 62) for global fade control
     if type_str == "cc" && control == MIDIMIX_MASTER_FADER_CC && channel == 0 {
-        handle_master_fader(engine, value as u8, app_handle.as_ref());
+        // Check pickup for master fader
+        if check_master_fader_pickup(engine, value as u8) {
+            handle_master_fader(engine, value as u8, app_handle.as_ref());
+        }
         // Don't return - still process regular mappings if any exist for CC 62
     }
 
@@ -1708,6 +1796,12 @@ fn handle_midi_message(
             let device_match = mapping.device_id.as_ref().map_or(true, |d| d == device_id);
 
             if channel_match && cc_match && device_match {
+                // Check soft takeover (pickup) before applying
+                if !check_and_update_pickup(engine, channel, control, value as u8, mapping) {
+                    // CC hasn't picked up yet, skip applying
+                    continue;
+                }
+
                 // Normalize CC value (0-127) to mapping range
                 let normalized = (value as f64) / 127.0;
                 let mapped_value =
@@ -1825,6 +1919,176 @@ fn apply_midi_to_parameter(
     if !skip_feedback {
         send_parameter_feedback(parameter_id, value);
     }
+}
+
+// ============================================================================
+// Soft Takeover (Pickup)
+// ============================================================================
+
+/// Check if a CC value has "picked up" the current parameter value.
+/// Returns true if the CC should be applied, false if it should be ignored.
+/// Updates the pickup state as a side effect.
+fn check_and_update_pickup(
+    engine: &Arc<Mutex<MidiEngineState>>,
+    channel: u8,
+    cc_number: u8,
+    cc_value: u8,
+    mapping: &MidiMapping,
+) -> bool {
+    let key = (channel, cc_number);
+
+    // Get current parameter value
+    let current_param_value =
+        crate::with_parameter_store(|store| store.get(&mapping.parameter_id).map(|p| p.value));
+
+    let Some(param_value) = current_param_value else {
+        // Parameter doesn't exist, allow the CC through (it will create it)
+        return true;
+    };
+
+    // Convert parameter value to CC scale (0-127)
+    let range = mapping.max_value - mapping.min_value;
+    let param_cc = if range.abs() < f64::EPSILON {
+        64 // Default to middle if range is zero
+    } else {
+        let normalized = (param_value - mapping.min_value) / range;
+        (normalized.clamp(0.0, 1.0) * 127.0).round() as u8
+    };
+
+    let mut state = engine.lock().unwrap();
+    let pickup = state.pickup_state.entry(key).or_default();
+
+    // Check if we should ignore this CC (first CC after reconnect)
+    if pickup.ignore_next {
+        pickup.ignore_next = false;
+        pickup.last_cc = Some(cc_value);
+        pickup.picked_up = false;
+        log::debug!(
+            "[MIDI] Pickup: ignoring first CC after reconnect (ch={}, cc={}, val={})",
+            channel,
+            cc_number,
+            cc_value
+        );
+        return false;
+    }
+
+    // If already picked up, allow the CC through
+    if pickup.picked_up {
+        pickup.last_cc = Some(cc_value);
+        return true;
+    }
+
+    // Check for crossing
+    let crossed = match pickup.last_cc {
+        None => {
+            // First CC we've seen, can't determine crossing yet
+            // But check if we're already at the target (within tolerance)
+            let diff = (cc_value as i16 - param_cc as i16).abs();
+            diff <= 2
+        }
+        Some(last) => {
+            // Check if we crossed the parameter value
+            let last_i = last as i16;
+            let current_i = cc_value as i16;
+            let param_i = param_cc as i16;
+
+            // Crossed from below to at-or-above, or from above to at-or-below
+            let crossed_up = last_i < param_i && current_i >= param_i;
+            let crossed_down = last_i > param_i && current_i <= param_i;
+            // Or we're within tolerance
+            let within_tolerance = (current_i - param_i).abs() <= 2;
+
+            crossed_up || crossed_down || within_tolerance
+        }
+    };
+
+    pickup.last_cc = Some(cc_value);
+
+    if crossed {
+        pickup.picked_up = true;
+        log::debug!(
+            "[MIDI] Pickup: CC picked up (ch={}, cc={}, val={}, param_cc={})",
+            channel,
+            cc_number,
+            cc_value,
+            param_cc
+        );
+        true
+    } else {
+        log::trace!(
+            "[MIDI] Pickup: waiting for crossing (ch={}, cc={}, val={}, param_cc={}, last={:?})",
+            channel,
+            cc_number,
+            cc_value,
+            param_cc,
+            pickup.last_cc
+        );
+        false
+    }
+}
+
+/// Check pickup for the master fader.
+/// The master fader is special: it doesn't map to a single parameter, so we can't
+/// do crossing detection. Instead, we just check if we should ignore the first CC
+/// after reconnect, then allow through (the direction logic handles the rest).
+fn check_master_fader_pickup(engine: &Arc<Mutex<MidiEngineState>>, cc_value: u8) -> bool {
+    let key = (0u8, MIDIMIX_MASTER_FADER_CC);
+
+    let mut state = engine.lock().unwrap();
+    let pickup = state.pickup_state.entry(key).or_default();
+
+    // Check if we should ignore this CC (first CC after reconnect)
+    if pickup.ignore_next {
+        pickup.ignore_next = false;
+        pickup.last_cc = Some(cc_value);
+        pickup.picked_up = true; // Master fader picks up immediately after first ignore
+        log::debug!(
+            "[MIDI] Pickup: ignoring first master fader CC after reconnect (val={})",
+            cc_value
+        );
+        return false;
+    }
+
+    pickup.last_cc = Some(cc_value);
+    true
+}
+
+/// Reset all pickup state (called on MIDI reconnect).
+fn reset_all_pickup(engine: &Arc<Mutex<MidiEngineState>>) {
+    let mut state = engine.lock().unwrap();
+
+    for pickup in state.pickup_state.values_mut() {
+        pickup.picked_up = false;
+        pickup.last_cc = None;
+        pickup.ignore_next = true;
+    }
+
+    // Also pre-populate pickup state for all known Midimix controls
+    // so they get the ignore_next treatment even if we haven't seen them yet
+    for &fader_cc in &MIDIMIX_FADER_CCS {
+        state
+            .pickup_state
+            .entry((0, fader_cc))
+            .or_default()
+            .ignore_next = true;
+    }
+    for column in &MIDIMIX_KNOB_CCS {
+        for &knob_cc in column {
+            state
+                .pickup_state
+                .entry((0, knob_cc))
+                .or_default()
+                .ignore_next = true;
+        }
+    }
+    // Master fader
+    state
+        .pickup_state
+        .entry((0, MIDIMIX_MASTER_FADER_CC))
+        .or_default()
+        .ignore_next = true;
+
+    log::debug!("[MIDI] Pickup: reset all pickup state (reconnect)");
 }
 
 // ============================================================================

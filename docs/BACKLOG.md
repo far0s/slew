@@ -101,20 +101,6 @@ Save/load parameter configurations per sketch.
 
 ---
 
-### 🟡 Performance Testing `chore`
-
-Validate performance characteristics with full workload.
-
-**Context**: Need to confirm the system handles demanding scenarios smoothly.
-
-**Subtasks**:
-
-- [ ] Test with 8 active sketches at 1080p@60
-- [ ] Profile CPU/GPU usage with all inputs active
-- [ ] Verify UI scrolls/scales appropriately for 8 slots on smaller screens
-
----
-
 ## Low Priority / Future
 
 ### 🟢 More Shader Sketches `feature`

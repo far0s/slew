@@ -28,6 +28,17 @@ Status overview and key decisions for sebcat-vj.
 
 ## Recent Changes
 
+### State Persistence & Soft Takeover
+
+- Slot configuration persisted to `slots.json`
+- Parameter values persisted to `parameters.json`
+- State restored on app startup / window reload
+- LED states pushed on Midimix connect
+- **Soft takeover (pickup)**: Faders/knobs must "cross" the current parameter value before taking effect
+  - Prevents parameter jumps on sketch change, app restart, or MIDI reconnect
+  - First CC after reconnect is ignored (handles controller state dump)
+  - Master fader uses direction-based logic after pickup
+
 ### 8-Slot Harmonization
 
 Slot count increased from 6 to 8 to match Midimix columns for 1:1 hardware mapping.
