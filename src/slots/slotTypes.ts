@@ -1,15 +1,13 @@
-/**
- * Slot System Types
- *
- * This file provides slot-related types and utilities for managing visual slots.
- * It imports sketch definitions from /src/sketches and provides parameter utilities.
- *
- * Key concepts:
- * - Slots are numbered containers (1-6) that hold a visual and its parameters
- * - Sketches are the visual programs that can be loaded into slots
- * - Parameter templates define the shape (label, min, max, etc.)
- * - Slot parameter IDs are generated as `slot_{slotIndex}_{templateId}`
- */
+// Slot System Types
+//
+// This file provides slot-related types and utilities for managing visual slots.
+// It imports sketch definitions from /src/sketches and provides parameter utilities.
+//
+// Key concepts:
+// - Slots are numbered containers (0-7) that hold a visual and its parameters
+// - Sketches are the visual programs that can be loaded into slots
+// - Parameter templates define the shape (label, min, max, etc.)
+// - Slot parameter IDs are generated as `slot_{slotIndex}_{templateId}`
 
 // Re-export sketch types and utilities
 export type {
@@ -28,8 +26,6 @@ export {
   getSketchDescriptor,
   getSketchParameterTemplateIds,
   getSketchParameterTemplate,
-  LEGACY_SKETCH_ID_MAP,
-  resolveSketchId,
 } from "../sketches";
 
 import {
@@ -47,16 +43,14 @@ import {
 // Slot-Level Parameter Templates
 // ============================================================================
 
-/**
- * Alpha (master opacity) parameter template for slots.
- * This is a slot-level parameter independent of the loaded sketch.
- * It controls the overall opacity of the slot's output, multiplied with crossfade.
- */
+// Alpha (master opacity) parameter template for slots.
+// This is a slot-level parameter independent of the loaded sketch.
+// It controls the overall opacity of the slot's output, multiplied with crossfade.
 export const SLOT_ALPHA_TEMPLATE: ParameterTemplate = {
   templateId: "alpha",
   label: "Alpha",
   group: "sketch",
-  orderHint: 0, // Show first, before sketch parameters
+  orderHint: 0,
   min: 0,
   max: 1,
   step: 0.01,
@@ -65,9 +59,7 @@ export const SLOT_ALPHA_TEMPLATE: ParameterTemplate = {
   description: "Master opacity for this slot (independent of crossfade)",
 };
 
-/**
- * All slot-level parameter templates (parameters that exist on every slot).
- */
+// All slot-level parameter templates (parameters that exist on every slot).
 export const SLOT_PARAMETER_TEMPLATES: ParameterTemplate[] = [
   SLOT_ALPHA_TEMPLATE,
 ];
@@ -76,29 +68,18 @@ export const SLOT_PARAMETER_TEMPLATES: ParameterTemplate[] = [
 // Global Parameter Types
 // ============================================================================
 
-/**
- * Global parameter IDs (not slot-scoped).
- */
 export type GlobalParameterId = "crossfade";
 
-/**
- * A slot-scoped parameter ID in the format `slot_{index}_{templateId}`.
- * This is a branded string type for type safety.
- */
+// A slot-scoped parameter ID in the format `slot_{index}_{templateId}`.
 export type SlotParameterId = `slot_${number}_${ParameterTemplateId}`;
 
-/**
- * Union of all valid parameter IDs (global + slot-scoped).
- */
+// Union of all valid parameter IDs (global + slot-scoped).
 export type ParameterId = GlobalParameterId | SlotParameterId | string;
 
 // ============================================================================
 // Slot Parameter ID Utilities
 // ============================================================================
 
-/**
- * Generate a slot-scoped parameter ID from slot index and template ID.
- */
 export function makeSlotParameterId(
   slotIndex: number,
   templateId: ParameterTemplateId,
@@ -106,10 +87,6 @@ export function makeSlotParameterId(
   return `slot_${slotIndex}_${templateId}` as SlotParameterId;
 }
 
-/**
- * Parse a slot parameter ID into its components.
- * Returns null if the ID is not a valid slot parameter ID.
- */
 export function parseSlotParameterId(
   id: string,
 ): { slotIndex: number; templateId: ParameterTemplateId } | null {
@@ -121,16 +98,10 @@ export function parseSlotParameterId(
   };
 }
 
-/**
- * Check if a parameter ID is a slot-scoped parameter.
- */
 export function isSlotParameterId(id: string): id is SlotParameterId {
   return /^slot_\d+_.+$/.test(id);
 }
 
-/**
- * Check if a parameter ID is a global parameter.
- */
 export function isGlobalParameterId(id: string): id is GlobalParameterId {
   return id === "crossfade";
 }
@@ -139,9 +110,6 @@ export function isGlobalParameterId(id: string): id is GlobalParameterId {
 // Parameter Template Utilities
 // ============================================================================
 
-/**
- * Get the default value for a parameter template from any sketch.
- */
 export function getParameterTemplateDefault(
   templateId: ParameterTemplateId,
 ): number | undefined {
@@ -154,9 +122,6 @@ export function getParameterTemplateDefault(
   return undefined;
 }
 
-/**
- * Get the parameter template from a sketch descriptor.
- */
 export function getParameterTemplate(
   sketchId: SketchId,
   templateId: ParameterTemplateId,
@@ -164,9 +129,6 @@ export function getParameterTemplate(
   return getSketchParameterTemplate(sketchId, templateId);
 }
 
-/**
- * Get min/max range for a slot parameter.
- */
 export function getSlotParameterRange(
   _slotIndex: number,
   templateId: ParameterTemplateId,
@@ -181,10 +143,6 @@ export function getSlotParameterRange(
 // Slot Default Parameter Builders
 // ============================================================================
 
-/**
- * Build a map of slot parameter IDs → default values for a slot.
- * Includes both slot-level parameters (like alpha) and sketch-specific parameters.
- */
 export function buildSlotDefaultParameters(
   slotIndex: number,
   sketchId: SketchId,
@@ -209,11 +167,8 @@ export function buildSlotDefaultParameters(
   return map;
 }
 
-/**
- * Build default parameters for all slots.
- */
 export function buildAllSlotsDefaultParameters(
-  slots: Array<{ index: number; sceneId: SketchId }>,
+  slots: Array<{ index: number; sketchId: SketchId }>,
 ): Map<ParameterId, number> {
   const map = new Map<ParameterId, number>();
 
@@ -222,7 +177,7 @@ export function buildAllSlotsDefaultParameters(
 
   // Add slot parameters
   for (const slot of slots) {
-    const slotDefaults = buildSlotDefaultParameters(slot.index, slot.sceneId);
+    const slotDefaults = buildSlotDefaultParameters(slot.index, slot.sketchId);
     for (const [id, value] of slotDefaults) {
       map.set(id, value);
     }
@@ -231,10 +186,6 @@ export function buildAllSlotsDefaultParameters(
   return map;
 }
 
-/**
- * Copy parameters from one slot to another.
- * Returns a map of new parameter IDs → values.
- */
 export function copySlotParameters(
   sourceSlotIndex: number,
   targetSlotIndex: number,
@@ -258,10 +209,6 @@ export function copySlotParameters(
 // Slot Parameter ID Getters
 // ============================================================================
 
-/**
- * Get all slot parameter IDs for a slot.
- * Includes both slot-level parameters (like alpha) and sketch-specific parameters.
- */
 export function getSlotParameterIds(
   slotIndex: number,
   sketchId: SketchId,
@@ -282,12 +229,8 @@ export function getSlotParameterIds(
   return ids;
 }
 
-/**
- * Get all parameter IDs across all slots.
- * Used by AudioPanel and ModulationPanel for parameter selection dropdowns.
- */
 export function getAllSlotParameterIds(
-  slots: Array<{ index: number; sceneId: SketchId }>,
+  slots: Array<{ index: number; sketchId: SketchId }>,
 ): ParameterId[] {
   const ids: ParameterId[] = [];
 
@@ -296,20 +239,13 @@ export function getAllSlotParameterIds(
 
   // Add all slot parameters
   for (const slot of slots) {
-    const slotIds = getSlotParameterIds(slot.index, slot.sceneId);
+    const slotIds = getSlotParameterIds(slot.index, slot.sketchId);
     ids.push(...slotIds);
   }
 
   return ids;
 }
 
-/**
- * Legacy compatibility: Get all parameter IDs for all possible slots.
- * This generates parameter IDs for slots 0-5 (max 6 slots) for all sketch types.
- * Used by AudioPanel and ModulationPanel for parameter selection dropdowns.
- *
- * @deprecated Use getAllSlotParameterIds(slots) for accurate slot-based parameters
- */
 export function getAllParameterIds(): ParameterId[] {
   const ids: ParameterId[] = [];
 
@@ -317,13 +253,11 @@ export function getAllParameterIds(): ParameterId[] {
   ids.push("crossfade");
 
   // Generate parameters for all possible slots (0-7) and all sketch types
-  // This ensures the dropdowns always show available parameters
   const maxSlots = 8;
   for (let slotIndex = 0; slotIndex < maxSlots; slotIndex++) {
     for (const sketch of SKETCH_REGISTRY) {
       for (const template of sketch.parameters) {
         const paramId = makeSlotParameterId(slotIndex, template.templateId);
-        // Avoid duplicates (same template across different sketches)
         if (!ids.includes(paramId)) {
           ids.push(paramId);
         }
@@ -338,13 +272,7 @@ export function getAllParameterIds(): ParameterId[] {
 // Parameter Descriptors (for UI)
 // ============================================================================
 
-/**
- * SceneParameterDescriptor - for backwards compatibility with existing code.
- * This is a "realized" parameter descriptor with a full parameter ID.
- *
- * @deprecated Use ParameterTemplate and slot-based functions instead.
- */
-export interface SceneParameterDescriptor {
+export interface SlotParameterDescriptor {
   id: ParameterId;
   label: string;
   group?: "sketch" | "scene" | "transition" | "global";
@@ -357,16 +285,11 @@ export interface SceneParameterDescriptor {
   description?: string;
 }
 
-/**
- * Build realized parameter descriptors for a slot.
- * This bridges the gap between templates and the existing UI code.
- * Includes both slot-level parameters (like alpha) and sketch-specific parameters.
- */
 export function buildSlotParameterDescriptors(
   slotIndex: number,
   sketchId: SketchId,
-): SceneParameterDescriptor[] {
-  const descriptors: SceneParameterDescriptor[] = [];
+): SlotParameterDescriptor[] {
+  const descriptors: SlotParameterDescriptor[] = [];
 
   // Add slot-level parameters (alpha, etc.)
   for (const template of SLOT_PARAMETER_TEMPLATES) {
@@ -406,19 +329,14 @@ export function buildSlotParameterDescriptors(
   return descriptors;
 }
 
-/**
- * Get the default value for any parameter (global or slot-scoped).
- */
 export function getParameterDefault(
   parameterId: ParameterId,
   sketchIdForSlot?: SketchId,
 ): number | undefined {
-  // Handle global parameters
   if (parameterId === "crossfade") {
     return 0;
   }
 
-  // Handle slot parameters
   const parsed = parseSlotParameterId(parameterId);
   if (parsed && sketchIdForSlot) {
     const template = getParameterTemplate(sketchIdForSlot, parsed.templateId);
@@ -428,15 +346,10 @@ export function getParameterDefault(
   return undefined;
 }
 
-/**
- * Get the parameter descriptor for any parameter.
- * For slot parameters, can optionally provide sketchIdForSlot for accuracy.
- * If not provided, will search all sketches for the template.
- */
 export function getParameterDescriptor(
   parameterId: ParameterId,
   sketchIdForSlot?: SketchId,
-): SceneParameterDescriptor | undefined {
+): SlotParameterDescriptor | undefined {
   // Handle global parameters
   if (parameterId === "crossfade") {
     return {
@@ -516,23 +429,14 @@ export function getParameterDescriptor(
   return undefined;
 }
 
-/**
- * Get a simplified label for parameter dropdowns.
- * Returns format: "1 - Brightness" instead of "[Slot 1] Slot 1: Brightness"
- *
- * @param parameterId - The parameter ID
- * @param sketchIdForSlot - Optional sketch ID if known
- */
 export function getParameterDropdownLabel(
   parameterId: ParameterId,
   sketchIdForSlot?: SketchId,
 ): string {
-  // Handle global parameters
   if (parameterId === "crossfade") {
     return "Crossfade";
   }
 
-  // Handle slot parameters
   const parsed = parseSlotParameterId(parameterId);
   if (parsed) {
     const slotNum = parsed.slotIndex + 1;
@@ -563,10 +467,8 @@ export function getParameterDropdownLabel(
       }
     }
 
-    // Fallback to raw template ID
     return `${slotNum} - ${parsed.templateId}`;
   }
 
-  // Fallback to the parameter ID itself
   return parameterId;
 }

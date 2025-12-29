@@ -29,8 +29,8 @@ import {
   getParameterDescriptor,
   getParameterDropdownLabel,
   type ParameterId,
-} from "../../scenes/sceneTypes";
-import type { Slot } from "../../scenes/useSceneSlots";
+} from "../../slots/slotTypes";
+import type { Slot } from "../../slots/useSlots";
 import styles from "./AudioPanel.module.css";
 
 /** Spring config for snappy level bar animations */
@@ -371,7 +371,7 @@ function MappingForm({
       getAllSlotParameterIds(
         slots
           .filter((s) => s.sketchId !== null)
-          .map((s) => ({ index: s.index, sceneId: s.sketchId as string })),
+          .map((s) => ({ index: s.index, sketchId: s.sketchId as string })),
       ),
     [slots],
   );

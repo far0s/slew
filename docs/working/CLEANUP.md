@@ -562,10 +562,19 @@ After cleanup, the codebase should:
 
 ### Phase 1: JSDoc Removal & Terminology Migration
 
-- [ ] Remove JSDoc from TypeScript files
-- [ ] Rename scene → slot/sketch
-- [ ] Remove legacy mappings
-- [ ] Update all imports and references
+- [x] Remove JSDoc from TypeScript files
+- [x] Rename scene → slot/sketch
+- [x] Remove legacy mappings
+- [x] Update all imports and references
+
+**Completed files:**
+
+- Created `src/slots/` directory with `slotTypes.ts`, `useSlots.ts`, `index.ts`
+- Renamed components: `SceneColumn` → `SlotColumn`, `ScenesArea` → `SlotsArea`, `SceneParameterControls` → `SlotParameterControls`
+- Updated all imports in `App.tsx`, `AudioPanel`, `ModulationPanel`, `RendererPreview`, `DebugPanel`, `useParameterStore.ts`, `RendererRoot.tsx`
+- Removed `LEGACY_SKETCH_ID_MAP` and `resolveSketchId` from `sketches/index.ts`
+- Removed `set_scene_pairing` command and legacy `sceneA/B/C` defaults from Rust `lib.rs`
+- Deleted old `src/scenes/` directory and old Scene\* component directories
 
 ### Phase 2: TypeScript Refactoring
 

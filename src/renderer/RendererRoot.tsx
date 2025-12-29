@@ -9,8 +9,8 @@ import {
   type SketchProps,
   type SketchId,
 } from "../sketches";
-import type { ParameterTemplateId } from "../scenes/sceneTypes";
-import { getSketchDescriptor, makeSlotParameterId } from "../scenes/sceneTypes";
+import type { ParameterTemplateId } from "../slots/slotTypes";
+import { getSketchDescriptor, makeSlotParameterId } from "../slots/slotTypes";
 import { useStatsToggle } from "../hooks";
 import styles from "./RendererRoot.module.css";
 

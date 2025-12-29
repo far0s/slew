@@ -4,7 +4,7 @@ import { getSketchDescriptor } from "../../sketches";
 import {
   makeSlotParameterId,
   SLOT_PARAMETER_TEMPLATES,
-} from "../../scenes/sceneTypes";
+} from "../../slots/slotTypes";
 import {
   ParameterSlider,
   type AudioMappingIndicator,
@@ -17,21 +17,9 @@ import {
 } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import type { MidiMapping } from "../../inputs/midi";
-import styles from "./SceneParameterControls.module.css";
+import styles from "./SlotParameterControls.module.css";
 
-/**
- * Props for the SceneParameterControls component.
- *
- * @property slotIndex - Slot index for this sketch instance
- * @property sketchId - Sketch type to render controls for
- * @property getValue - Get current value for a parameter
- * @property setValue - Set value for a parameter
- * @property audioMappings - Optional list of audio mappings to show indicators
- * @property modulationTargets - Optional list of modulation targets to show indicators
- * @property lfos - Optional list of LFO sources (for indicator labels)
- * @property midiMappings - Optional list of MIDI mappings to disable direct input for mapped controls
- */
-export interface SceneParameterControlsProps {
+export interface SlotParameterControlsProps {
   slotIndex: number;
   sketchId: SketchId;
   getValue: (id: string) => number;
@@ -42,16 +30,10 @@ export interface SceneParameterControlsProps {
   midiMappings?: MidiMapping[];
 }
 
-/**
- * Send parameter update to backend.
- */
 async function setParameter(id: string, value: number): Promise<void> {
   await invoke("set_parameter", { id, value, app: undefined });
 }
 
-/**
- * Forward event to renderer for low-latency updates.
- */
 async function forwardControlsEvent(
   event: string,
   value: number,
@@ -62,9 +44,6 @@ async function forwardControlsEvent(
   });
 }
 
-/**
- * Handle parameter change: update local state + backend + forward to renderer.
- */
 function createChangeHandler(
   slotIndex: number,
   template: ParameterTemplate,
@@ -77,7 +56,6 @@ function createChangeHandler(
     void (async () => {
       try {
         await setParameter(paramId, value);
-        // Forward brightness events for low-latency rendering
         if (template.templateId === "brightness") {
           await forwardControlsEvent(paramId, value);
         }
@@ -88,16 +66,12 @@ function createChangeHandler(
   };
 }
 
-/**
- * Get audio mapping indicator for a parameter if one exists.
- */
 function getAudioMappingIndicator(
   parameterId: string,
   audioMappings?: AudioMapping[],
 ): AudioMappingIndicator | null {
   if (!audioMappings) return null;
 
-  // Find enabled mapping for this parameter
   const mapping = audioMappings.find(
     (m) => m.parameter_id === parameterId && m.enabled,
   );
@@ -110,9 +84,6 @@ function getAudioMappingIndicator(
   };
 }
 
-/**
- * Get modulation indicator for a parameter if one exists.
- */
 function getModulationIndicator(
   parameterId: string,
   modulationTargets?: ModulationTarget[],
@@ -120,14 +91,12 @@ function getModulationIndicator(
 ): ModulationIndicator | null {
   if (!modulationTargets || !lfos) return null;
 
-  // Find all enabled targets for this parameter
   const activeTargets = modulationTargets.filter(
     (t) => t.parameter_id === parameterId && t.enabled,
   );
 
   if (activeTargets.length === 0) return null;
 
-  // Get the first LFO name for display
   const firstTarget = activeTargets[0];
   const lfo = lfos.find((l) => l.id === firstTarget.source_id && l.enabled);
 
@@ -139,22 +108,9 @@ function getModulationIndicator(
   };
 }
 
-/**
- * SceneParameterControls
- *
- * Auto-generates parameter sliders for a slot's sketch.
- * Uses slot-prefixed parameter IDs for multi-instance support.
- *
- * Features:
- * - Reads parameter templates from SKETCH_REGISTRY
- * - Generates slot-prefixed parameter IDs (e.g., slot_0_brightness)
- * - Renders ParameterSlider for each parameter
- * - Handles all backend communication
- * - Supports MIDI learn via midiParameterId
- * - Shows audio mapping indicators when a parameter is audio-mapped
- * - Disables direct input for MIDI-controlled parameters (prevents desync)
- */
-export function SceneParameterControls({
+// Auto-generates parameter sliders for a slot's sketch.
+// Uses slot-prefixed parameter IDs for multi-instance support.
+export function SlotParameterControls({
   slotIndex,
   sketchId,
   getValue,
@@ -163,7 +119,7 @@ export function SceneParameterControls({
   modulationTargets,
   lfos,
   midiMappings,
-}: SceneParameterControlsProps) {
+}: SlotParameterControlsProps) {
   const descriptor = getSketchDescriptor(sketchId);
 
   if (!descriptor) {
@@ -175,7 +131,6 @@ export function SceneParameterControls({
   }
 
   // Combine slot-level parameters (alpha, etc.) with sketch-specific parameters
-  // and sort by orderHint
   const allParameters = [...SLOT_PARAMETER_TEMPLATES, ...descriptor.parameters];
   const sortedParameters = allParameters.sort(
     (a, b) => (a.orderHint ?? 0) - (b.orderHint ?? 0),
@@ -186,7 +141,6 @@ export function SceneParameterControls({
       <div className={styles.controls}>
         {sortedParameters.map((template, index) => {
           const paramId = makeSlotParameterId(slotIndex, template.templateId);
-          // Check if this parameter has a MIDI mapping (should disable direct input)
           const hasMidiMapping = midiMappings?.some(
             (m) => m.parameter_id === paramId,
           );
@@ -220,4 +174,4 @@ export function SceneParameterControls({
   );
 }
 
-export default SceneParameterControls;
+export default SlotParameterControls;

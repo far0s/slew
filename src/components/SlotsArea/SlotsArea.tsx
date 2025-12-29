@@ -2,38 +2,15 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import { AnimatePresence } from "motion/react";
 
 import type { SketchId, SketchProps } from "../../sketches";
-import type { Slot } from "../../scenes/useSceneSlots";
+import type { Slot } from "../../slots/useSlots";
 import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import type { MidiMapping } from "../../inputs/midi";
-import { makeSlotParameterId } from "../../scenes/sceneTypes";
-import { SceneColumn } from "../SceneColumn";
-import styles from "./ScenesArea.module.css";
+import { makeSlotParameterId } from "../../slots/slotTypes";
+import { SlotColumn } from "../SlotColumn";
+import styles from "./SlotsArea.module.css";
 
-/**
- * Props for the ScenesArea component.
- *
- * @property slots - Array of slots to render
- * @property activeIndex - Index of the active (output) slot
- * @property crossfadeTargetIndex - Index of crossfade target slot, or null
- * @property crossfadeValue - Current crossfade value (0-1)
- * @property isCrossfading - Whether crossfade is in progress
- * @property macropadSelectedIndex - Index of slot selected via macropad, or null
- * @property getValue - Get parameter value for a given parameter ID
- * @property setValue - Set parameter value
- * @property getSlotSketchParams - Get sketch params object for a slot (target values for sliders)
- * @property getSlotSketchParamsInterpolated - Get sketch params with interpolated values (for smooth previews)
- * @property audioMappings - Optional audio mappings for parameter indicators
- * @property modulationTargets - Optional modulation targets for parameter indicators
- * @property lfos - Optional LFO sources (for modulation indicator labels)
- * @property midiMappings - Optional MIDI mappings to disable direct input for mapped controls
- * @property onSlotSketchChange - Callback to change sketch in a slot
- * @property onCrossfade - Callback to start crossfade to a slot
- * @property onClearSlot - Callback to clear a slot (remove sketch)
- * @property onSetSketch - Callback to set a sketch in a specific slot
- * @property onCopyToSlot - Callback to copy parameters from one slot to another
- */
-export interface ScenesAreaProps {
+export interface SlotsAreaProps {
   slots: Slot[];
   activeIndex: number;
   crossfadeTargetIndex: number | null;
@@ -61,20 +38,9 @@ export interface ScenesAreaProps {
   onCopyToSlot: (sourceSlotIndex: number, targetSlotIndex: number) => void;
 }
 
-/**
- * ScenesArea
- *
- * Horizontally scrollable container for slot columns.
- * Designed to show ~3.5 columns at once with the 4th peeking in.
- *
- * Features:
- * - Horizontal scroll for 8 fixed slots
- * - Empty slots show inline sketch browser directly (no extra click needed)
- * - Multi-instance support: same sketch type can exist in multiple slots
- * - Renders SceneColumn for each slot with slot-prefixed parameters
- * - AnimatePresence for enter/exit animations
- */
-export function ScenesArea({
+// Horizontally scrollable container for slot columns.
+// Designed to show ~3.5 columns at once with the 4th peeking in.
+export function SlotsArea({
   slots,
   activeIndex,
   crossfadeTargetIndex,
@@ -94,21 +60,17 @@ export function ScenesArea({
   onClearSlot,
   onSetSketch,
   onCopyToSlot,
-}: ScenesAreaProps) {
-  // Get filled slots for "copy from" feature in inline browsers
+}: SlotsAreaProps) {
   const filledSlots = slots.filter(
     (s): s is Slot & { sketchId: SketchId } => s.sketchId !== null,
   );
 
-  // Calculate crossfade progress for a slot
   const getCrossfadeProgress = useCallback(
     (slotIndex: number): number => {
       if (slotIndex === activeIndex) {
-        // Active slot: shows inverse of crossfade
         return (1 - crossfadeValue) * 100;
       }
       if (slotIndex === crossfadeTargetIndex) {
-        // Target slot: shows crossfade progress
         return crossfadeValue * 100;
       }
       return 0;
@@ -116,7 +78,6 @@ export function ScenesArea({
     [activeIndex, crossfadeTargetIndex, crossfadeValue],
   );
 
-  // Track scroll position for edge fade gradients
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -126,7 +87,6 @@ export function ScenesArea({
     if (!el) return;
 
     const { scrollLeft, scrollWidth, clientWidth } = el;
-    // Add small threshold to account for sub-pixel rounding
     const threshold = 2;
     setCanScrollLeft(scrollLeft > threshold);
     setCanScrollRight(scrollLeft < scrollWidth - clientWidth - threshold);
@@ -136,13 +96,10 @@ export function ScenesArea({
     const el = scrollRef.current;
     if (!el) return;
 
-    // Initial check
     updateScrollState();
 
-    // Listen to scroll events
     el.addEventListener("scroll", updateScrollState, { passive: true });
 
-    // Also check on resize (content or viewport changes)
     const resizeObserver = new ResizeObserver(updateScrollState);
     resizeObserver.observe(el);
 
@@ -162,11 +119,9 @@ export function ScenesArea({
           <div className={styles.columnsWrapper}>
             <AnimatePresence mode="popLayout">
               {slots.map((slot) => {
-                // Get alpha (master opacity) for this slot (only if has sketch)
                 const alphaParamId = makeSlotParameterId(slot.index, "alpha");
                 const alpha = slot.sketchId ? (getValue(alphaParamId) ?? 1) : 1;
 
-                // Get audio reactivity for this slot (1 = active, 0 = muted)
                 const audioReactivityParamId = makeSlotParameterId(
                   slot.index,
                   "audio_reactivity",
@@ -176,7 +131,7 @@ export function ScenesArea({
                   : 1;
 
                 return (
-                  <SceneColumn
+                  <SlotColumn
                     key={slot.index}
                     slotIndex={slot.index}
                     sketchId={slot.sketchId}
@@ -212,7 +167,6 @@ export function ScenesArea({
                     midiMappings={midiMappings}
                     filledSlots={filledSlots}
                     onSketchChange={(sketchId) => {
-                      // For empty slots, this is called when user picks a sketch
                       if (slot.sketchId === null) {
                         onSetSketch(slot.index, sketchId);
                       } else {
@@ -238,4 +192,4 @@ export function ScenesArea({
   );
 }
 
-export default ScenesArea;
+export default SlotsArea;

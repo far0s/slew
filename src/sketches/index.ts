@@ -65,16 +65,6 @@ export const SKETCH_COMPONENT_REGISTRY: Record<SketchId, SketchComponent> = {
 };
 
 /**
- * Legacy ID mapping for backwards compatibility.
- * Maps old scene IDs to new sketch IDs.
- */
-export const LEGACY_SKETCH_ID_MAP: Record<string, SketchId> = {
-  sceneA: "blueCube",
-  sceneB: "orangeCube",
-  sceneC: "greenPulse",
-};
-
-/**
  * Helper to look up a sketch descriptor by ID.
  */
 export function getSketchDescriptor(
@@ -111,19 +101,6 @@ export function getSketchParameterTemplate(
   const descriptor = getSketchDescriptor(sketchId);
   if (!descriptor) return undefined;
   return descriptor.parameters.find((p) => p.templateId === templateId);
-}
-
-/**
- * Resolve a legacy scene ID to the new sketch ID.
- * Returns the input if it's already a valid sketch ID.
- */
-export function resolveSketchId(idOrLegacy: string): SketchId | undefined {
-  // Check if it's already a valid sketch ID
-  if (ALL_SKETCH_IDS.includes(idOrLegacy as SketchId)) {
-    return idOrLegacy as SketchId;
-  }
-  // Try legacy mapping
-  return LEGACY_SKETCH_ID_MAP[idOrLegacy];
 }
 
 // Re-export types for convenience

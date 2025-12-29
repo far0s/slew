@@ -388,24 +388,6 @@ fn clear_parameters(app: AppHandle) {
     let _ = app.emit("parameters_cleared", ());
 }
 
-/// Notify Renderer which scenes are active/next for crossfade.
-/// Legacy command for backwards compatibility.
-#[tauri::command]
-fn set_scene_pairing(
-    app: AppHandle,
-    active_scene_id: String,
-    next_scene_id: String,
-) -> Result<(), String> {
-    app.emit(
-        "scene_pairing_changed",
-        serde_json::json!({
-            "active_scene_id": active_scene_id,
-            "next_scene_id": next_scene_id,
-        }),
-    )
-    .map_err(|e| format!("Failed to emit scene_pairing_changed: {e}"))
-}
-
 /// Notify Renderer which slots are active/next for crossfade (multi-instance support).
 #[tauri::command]
 fn set_slot_pairing(
@@ -608,26 +590,6 @@ fn get_sketch_defaults(sketch_id: &str) -> Vec<(&'static str, f64)> {
             ("rotation_speed", 0.4),
             ("tint", 0.5),
         ],
-        // Legacy scene IDs (backwards compatibility)
-        "sceneA" => vec![
-            ("brightness", 1.0),
-            ("rotation_speed", 0.6),
-            ("wobble", 0.0),
-            ("tint_lfo_depth", 0.2),
-            ("tint", 0.0),
-        ],
-        "sceneB" => vec![
-            ("brightness", 1.0),
-            ("rotation_speed", 0.4),
-            ("tint", 0.5),
-            ("scale", 1.0),
-        ],
-        "sceneC" => vec![
-            ("brightness", 1.0),
-            ("pulse_speed", 1.5),
-            ("rotation_speed", 0.4),
-            ("tint", 0.5),
-        ],
         _ => vec![],
     }
 }
@@ -718,7 +680,6 @@ pub fn run() {
             get_parameter,
             set_parameter,
             clear_parameters,
-            set_scene_pairing,
             set_slot_pairing,
             set_all_slots,
             get_slot_state,
