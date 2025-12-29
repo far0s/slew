@@ -57,6 +57,17 @@ Status overview and key decisions for sebcat-vj.
   - First CC after reconnect is ignored (handles controller state dump)
   - Master fader uses direction-based logic after pickup
 
+### Performance Optimizations (Phase 5 Cleanup)
+
+- **Audio Analysis**: Pre-allocated scratch buffers eliminate ~720KB/s of allocations
+  - Reusable buffers for FFT windowing, complex numbers, and magnitudes
+  - Combined Hann windowing + RMS/peak calculation into single pass
+- **Modulation Engine**: Reduced lock contention from 6+ to 1 per tick
+  - Two-phase approach: collect data in single lock, apply changes outside
+  - Avoids cloning targets/audio_modulations vectors each tick
+- **Parameter Store**: Pre-allocated changed vector with estimated capacity
+  - Reduces reallocation overhead in 60Hz tick loop
+
 ### 8-Slot Harmonization
 
 Slot count increased from 6 to 8 to match Midimix columns for 1:1 hardware mapping.

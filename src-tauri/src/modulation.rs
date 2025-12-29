@@ -409,97 +409,117 @@ fn start_modulation_loop() {
     });
 }
 
-/// Advance all LFOs and apply modulation to parameters
+/// Advance all LFOs and apply modulation to parameters.
+///
+/// Optimized to minimize lock contention and avoid cloning in the hot path:
+/// - Single lock acquisition for reading state and ticking LFOs
+/// - Collects modulation results without repeated lock/unlock cycles
+/// - Only clones what's needed for parameter updates
 fn tick_modulation(engine: &Arc<Mutex<ModulationEngineState>>) {
     let now = Instant::now();
 
-    let (dt, bpm, targets, audio_mods, last_audio, app_handle) = {
+    // Collect all data and perform LFO updates in a single lock
+    // This avoids the previous pattern of lock/unlock/lock/unlock for each operation
+    let (modulations_to_apply, app_handle) = {
         let mut state = engine.lock().unwrap();
         let dt = now.duration_since(state.last_tick).as_secs_f64().min(0.25);
         state.last_tick = now;
-        (
-            dt,
-            state.current_bpm,
-            state.targets.clone(),
-            state.audio_modulations.clone(),
-            state.last_audio_levels.clone(),
-            state.app_handle.clone(),
-        )
-    };
+        let bpm = state.current_bpm;
 
-    // Apply audio modulations to LFO properties
-    if let Some(levels) = &last_audio {
-        for audio_mod in &audio_mods {
-            if !audio_mod.enabled {
-                continue;
-            }
+        // Collect audio modulation updates first (read phase)
+        // We collect (lfo_id, property, scaled_value) tuples to apply after
+        let audio_mod_updates: Vec<(String, LfoProperty, f64)> =
+            if let Some(ref levels) = state.last_audio_levels {
+                state
+                    .audio_modulations
+                    .iter()
+                    .filter(|am| am.enabled)
+                    .map(|audio_mod| {
+                        let audio_value = audio_mod.source.get_value(levels);
+                        let scaled = audio_mod.min_output
+                            + audio_value
+                                * (audio_mod.max_output - audio_mod.min_output)
+                                * audio_mod.amount;
+                        (audio_mod.lfo_id.clone(), audio_mod.property, scaled)
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
 
-            let audio_value = audio_mod.source.get_value(levels);
-            let scaled = audio_mod.min_output
-                + audio_value * (audio_mod.max_output - audio_mod.min_output) * audio_mod.amount;
-
-            let mut state = engine.lock().unwrap();
-            if let Some(lfo) = state.lfos.get_mut(&audio_mod.lfo_id) {
-                match audio_mod.property {
+        // Apply audio modulation updates to LFOs (write phase)
+        for (lfo_id, property, scaled) in audio_mod_updates {
+            if let Some(lfo) = state.lfos.get_mut(&lfo_id) {
+                match property {
                     LfoProperty::Rate => lfo.rate = scaled.clamp(0.01, 20.0),
                     LfoProperty::Depth => lfo.depth = scaled.clamp(0.0, 1.0),
                     LfoProperty::Phase => lfo.phase = scaled.clamp(0.0, 1.0),
                 }
             }
         }
-    }
 
-    // Tick all LFOs
-    {
-        let mut state = engine.lock().unwrap();
+        // Tick all LFOs (in same lock)
         for lfo in state.lfos.values_mut() {
             lfo.tick(dt, bpm);
         }
-    }
 
-    // Apply modulation targets
-    for target in &targets {
-        if !target.enabled {
-            continue;
-        }
+        // Collect target info for modulation calculation
+        // We need: (parameter_id, source_id, bipolar, depth)
+        let target_info: Vec<(String, String, bool, f64)> = state
+            .targets
+            .iter()
+            .filter(|t| t.enabled)
+            .map(|t| {
+                (
+                    t.parameter_id.clone(),
+                    t.source_id.clone(),
+                    t.bipolar,
+                    t.depth,
+                )
+            })
+            .collect();
 
-        let lfo_value = {
-            let state = engine.lock().unwrap();
-            state.lfos.get(&target.source_id).map(|lfo| {
-                if target.bipolar {
+        // Collect modulation results
+        let mut modulations: Vec<(String, f64)> = Vec::with_capacity(target_info.len());
+
+        for (parameter_id, source_id, bipolar, depth) in target_info {
+            let lfo_value = state.lfos.get(&source_id).map(|lfo| {
+                if bipolar {
                     lfo.get_value()
                 } else {
                     lfo.get_unipolar_value()
                 }
-            })
-        };
+            });
 
-        if let Some(lfo_value) = lfo_value {
-            // Get or cache the base parameter value
-            let base_value = {
-                let mut state = engine.lock().unwrap();
-                if let Some(base) = state.base_values.get(&target.parameter_id) {
+            if let Some(lfo_value) = lfo_value {
+                // Get or cache the base parameter value
+                let base_value = if let Some(base) = state.base_values.get(&parameter_id) {
                     *base
                 } else {
                     // Fetch from parameter store
                     let current = crate::with_parameter_store(|store| {
-                        store.get(&target.parameter_id).map(|p| p.target)
+                        store.get(&parameter_id).map(|p| p.target)
                     })
                     .unwrap_or(0.0);
-                    state
-                        .base_values
-                        .insert(target.parameter_id.clone(), current);
+                    state.base_values.insert(parameter_id.clone(), current);
                     current
-                }
-            };
+                };
 
-            // Calculate modulated value
-            let modulation = lfo_value * target.depth;
-            let modulated = base_value + modulation;
+                // Calculate modulated value
+                let modulation = lfo_value * depth;
+                let modulated = base_value + modulation;
 
-            // Apply to parameter (clamped to 0-1 range for now)
-            apply_modulation_to_parameter(&target.parameter_id, modulated, app_handle.as_ref());
+                modulations.push((parameter_id, modulated));
+            }
         }
+
+        (modulations, state.app_handle.clone())
+    };
+
+    // Apply modulations outside of the modulation engine lock
+    // This prevents lock contention with the parameter store
+    for (parameter_id, modulated_value) in modulations_to_apply {
+        apply_modulation_to_parameter(&parameter_id, modulated_value, app_handle.as_ref());
     }
 }
 

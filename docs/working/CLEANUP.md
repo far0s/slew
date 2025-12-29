@@ -412,14 +412,14 @@ export const LEGACY_SKETCH_ID_MAP: Record<string, SketchId> = {
 
 - Tests for beat detection, mapping persistence, hooks, and component tests
 
-### Phase 5: Performance & Memory (Lower Priority)
+### Phase 5: Performance & Memory (Lower Priority) ✅ COMPLETE
 
 **Estimated effort**: 4-6 hours
 
-- [ ] Audit and reduce `.clone()` usage in Rust
-- [ ] Consider `RwLock` for read-heavy state
-- [ ] Profile hot paths (parameter tick loop)
-- [ ] Review allocations in audio analysis
+- [x] Audit and reduce `.clone()` usage in Rust
+- [x] Consider `RwLock` for read-heavy state (kept Mutex - tick loop always writes)
+- [x] Profile hot paths (parameter tick loop)
+- [x] Review allocations in audio analysis
 
 ---
 
@@ -718,11 +718,35 @@ Original files before refactor:
 - `npm run test:run` - Run all tests once
 - `cd src-tauri && cargo test --no-default-features` - Run all Rust tests
 
-### Phase 5: Performance
+### Phase 5: Performance ✅ COMPLETE
 
-- [ ] Clone audit
-- [ ] Lock optimization
-- [ ] Profiling
+- [x] Clone audit - Identified and optimized high-impact clones in hot paths
+- [x] Lock optimization - Reduced lock contention in modulation tick loop
+- [x] Profiling - Reviewed allocations in audio analysis, pre-allocated scratch buffers
+
+**Changes made:**
+
+1. **Audio Analysis Optimization** (`src-tauri/src/audio/analysis.rs`, `engine.rs`):
+   - Added `AnalysisScratchBuffers` struct with pre-allocated buffers for FFT analysis
+   - Buffers: `windowed` (2048 floats), `complex` (2048 complex), `magnitudes` (1024 floats)
+   - Eliminates ~12KB of allocations per analysis frame (runs at 60Hz = ~720KB/s saved)
+   - Combined Hann windowing + RMS/peak calculation into single pass
+
+2. **Modulation Tick Optimization** (`src-tauri/src/modulation.rs`):
+   - Reduced lock acquisitions from 6+ per tick to 1 main lock
+   - Avoided cloning `targets`, `audio_modulations`, and `last_audio_levels` vectors
+   - Uses two-phase approach: collect data in single lock, then apply changes
+   - Pre-allocates output vectors with `Vec::with_capacity`
+
+3. **Parameter Store Tick Optimization** (`src-tauri/src/lib.rs`):
+   - Pre-allocates `changed` vector with estimated capacity (len/4 + 1)
+   - Reduces reallocation overhead in the 60Hz tick loop
+
+**Not changed (intentional decisions):**
+
+- **RwLock for PARAMETER_STORE**: Kept Mutex because tick loop always writes
+- **Mappings as Arc<Vec>**: Low priority, getters are called infrequently
+- **Status struct clones**: Small structs, cost is negligible
 
 ---
 

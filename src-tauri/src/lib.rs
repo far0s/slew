@@ -111,12 +111,17 @@ impl ParameterStore {
     }
 
     /// Advance parameters toward targets. Returns parameters that changed.
+    ///
+    /// Pre-allocates capacity based on parameter count to avoid reallocations
+    /// in the hot path (this runs ~60 times per second).
     fn tick(&mut self, dt: f64) -> Vec<Parameter> {
         if self.parameters.is_empty() {
             return Vec::new();
         }
 
-        let mut changed: Vec<Parameter> = Vec::new();
+        // Pre-allocate with estimated capacity (typically a fraction of parameters change per tick)
+        // Using 1/4 of total as a reasonable estimate to avoid most reallocations
+        let mut changed: Vec<Parameter> = Vec::with_capacity(self.parameters.len() / 4 + 1);
 
         for p in self.parameters.values_mut() {
             // Already at target

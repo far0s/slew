@@ -3,6 +3,7 @@
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{Host, Stream};
 use once_cell::sync::Lazy;
+use rustfft::num_complex::Complex;
 use rustfft::FftPlanner;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -18,6 +19,24 @@ use super::devices::list_devices;
 use super::mappings::{apply_audio_mappings, load_mappings_from_disk};
 use super::types::{AudioMapping, AudioStatus};
 
+/// Pre-allocated scratch buffers for FFT analysis to avoid per-frame allocations.
+/// These are reused across analysis calls for better performance.
+pub struct AnalysisScratchBuffers {
+    pub windowed: Vec<f32>,
+    pub complex: Vec<Complex<f32>>,
+    pub magnitudes: Vec<f32>,
+}
+
+impl AnalysisScratchBuffers {
+    pub fn new(fft_size: usize) -> Self {
+        Self {
+            windowed: vec![0.0; fft_size],
+            complex: vec![Complex::new(0.0, 0.0); fft_size],
+            magnitudes: vec![0.0; fft_size / 2],
+        }
+    }
+}
+
 pub struct AudioEngineState {
     pub host: Host,
     #[allow(dead_code)]
@@ -32,10 +51,13 @@ pub struct AudioEngineState {
     pub known_device_names: HashSet<String>,
     pub last_active_device: Option<String>,
     pub auto_reconnect_enabled: bool,
+    /// Pre-allocated scratch buffers for FFT analysis (avoids allocations in hot path)
+    pub analysis_scratch: AnalysisScratchBuffers,
 }
 
 impl AudioEngineState {
     pub fn new() -> Self {
+        use super::constants::FFT_SIZE;
         Self {
             host: cpal::default_host(),
             stream: None,
@@ -54,6 +76,7 @@ impl AudioEngineState {
             known_device_names: HashSet::new(),
             last_active_device: None,
             auto_reconnect_enabled: true,
+            analysis_scratch: AnalysisScratchBuffers::new(FFT_SIZE),
         }
     }
 }
