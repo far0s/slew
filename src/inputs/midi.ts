@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { useMessageActivity } from "./shared";
 
 // ============================================================================
 // Types (matching Rust structs)
@@ -534,33 +535,7 @@ export function useMidiMappings() {
 
 /** Hook for MIDI activity monitoring. */
 export function useMidiActivity() {
-  const [lastMessage, setLastMessage] = useState<MidiMessage | null>(null);
-  const [messageCount, setMessageCount] = useState(0);
-
-  useEffect(() => {
-    let unlisten: UnlistenFn | undefined;
-
-    void (async () => {
-      unlisten = await listen<MidiMessage>("midi_message", (event) => {
-        setLastMessage(event.payload);
-        setMessageCount((prev) => prev + 1);
-      });
-    })();
-
-    return () => {
-      if (unlisten) unlisten();
-    };
-  }, []);
-
-  const resetCount = useCallback(() => {
-    setMessageCount(0);
-  }, []);
-
-  return {
-    lastMessage,
-    messageCount,
-    resetCount,
-  };
+  return useMessageActivity<MidiMessage>("midi_message");
 }
 
 // ============================================================================

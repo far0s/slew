@@ -9,6 +9,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { useEventListener, useFetchOnMount } from "./shared";
 
 // ============================================================================
 // Types (matching Rust structs)
@@ -473,78 +474,44 @@ export function useAudioLevels() {
 
 /** Hook for managing audio → parameter mappings. */
 export function useAudioMappings() {
-  const [mappings, setMappings] = useState<AudioMapping[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
   // Fetch initial mappings
-  useEffect(() => {
-    let isMounted = true;
+  const {
+    data: mappings,
+    isLoading: isFetching,
+    setData: setMappings,
+    refetch: doRefetch,
+  } = useFetchOnMount(getAudioMappings, { initialValue: [] as AudioMapping[] });
 
-    async function fetchMappings() {
-      try {
-        const result = await getAudioMappings();
-        if (isMounted) {
-          setMappings(result);
-        }
-      } catch (e) {
-        console.error("[Audio] Failed to fetch mappings:", e);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void fetchMappings();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const [isOperating, setIsOperating] = useState(false);
 
   // Subscribe to mapping changes
-  useEffect(() => {
-    let unlisten: UnlistenFn | undefined;
-
-    void (async () => {
-      unlisten = await listen<AudioMapping[]>(
-        "audio_mappings_changed",
-        (event) => {
-          setMappings(event.payload);
-        },
-      );
-    })();
-
-    return () => {
-      if (unlisten) unlisten();
-    };
-  }, []);
+  useEventListener<AudioMapping[]>("audio_mappings_changed", setMappings);
 
   const add = useCallback(async (mapping: AudioMapping) => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
       const result = await addAudioMapping(mapping);
       return result;
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
       return await removeAudioMapping(id);
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
   }, []);
 
   const clear = useCallback(async () => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
       await clearAudioMappings();
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
   }, []);
 
@@ -553,18 +520,17 @@ export function useAudioMappings() {
   }, []);
 
   const refresh = useCallback(async () => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
-      const result = await getAudioMappings();
-      setMappings(result);
+      await doRefetch();
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
-  }, []);
+  }, [doRefetch]);
 
   return {
     mappings,
-    isLoading,
+    isLoading: isFetching || isOperating,
     add,
     remove,
     clear,

@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { AudioSource } from "./audio";
+import { useEventListener, useFetchOnMount } from "./shared";
 
 // ============================================================================
 // Types (matching Rust structs)
@@ -285,102 +286,67 @@ export async function isParameterModulated(
 
 /** Hook for managing LFO sources */
 export function useLfos() {
-  const [lfos, setLfos] = useState<LfoSource[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
   // Fetch initial data
-  useEffect(() => {
-    let isMounted = true;
+  const {
+    data: lfos,
+    isLoading: isFetching,
+    setData: setLfos,
+    refetch: doRefetch,
+  } = useFetchOnMount(getLfos, { initialValue: [] as LfoSource[] });
 
-    async function fetchLfos() {
-      try {
-        const result = await getLfos();
-        if (isMounted) {
-          setLfos(result);
-        }
-      } catch (e) {
-        console.error("[Modulation] Failed to fetch LFOs:", e);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void fetchLfos();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const [isOperating, setIsOperating] = useState(false);
 
   // Subscribe to LFO changes
-  useEffect(() => {
-    let unlisten: UnlistenFn | undefined;
-
-    void (async () => {
-      unlisten = await listen<LfoSource[]>(
-        "modulation_lfos_changed",
-        (event) => {
-          setLfos(event.payload);
-        },
-      );
-    })();
-
-    return () => {
-      if (unlisten) unlisten();
-    };
-  }, []);
+  useEventListener<LfoSource[]>("modulation_lfos_changed", setLfos);
 
   const add = useCallback(async (lfo: LfoSource) => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
       return await addLfo(lfo);
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
   }, []);
 
   const update = useCallback(async (lfo: LfoSource) => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
       return await updateLfo(lfo);
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
       return await removeLfo(id);
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
   }, []);
 
   const clear = useCallback(async () => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
       await clearLfos();
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
   }, []);
 
   const refresh = useCallback(async () => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
-      const result = await getLfos();
-      setLfos(result);
+      await doRefetch();
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
-  }, []);
+  }, [doRefetch]);
 
   return {
     lfos,
-    isLoading,
+    isLoading: isFetching || isOperating,
     add,
     update,
     remove,
@@ -391,93 +357,61 @@ export function useLfos() {
 
 /** Hook for managing modulation targets */
 export function useModulationTargets() {
-  const [targets, setTargets] = useState<ModulationTarget[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
   // Fetch initial data
-  useEffect(() => {
-    let isMounted = true;
+  const {
+    data: targets,
+    isLoading: isFetching,
+    setData: setTargets,
+    refetch: doRefetch,
+  } = useFetchOnMount(getTargets, { initialValue: [] as ModulationTarget[] });
 
-    async function fetchTargets() {
-      try {
-        const result = await getTargets();
-        if (isMounted) {
-          setTargets(result);
-        }
-      } catch (e) {
-        console.error("[Modulation] Failed to fetch targets:", e);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void fetchTargets();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const [isOperating, setIsOperating] = useState(false);
 
   // Subscribe to target changes
-  useEffect(() => {
-    let unlisten: UnlistenFn | undefined;
-
-    void (async () => {
-      unlisten = await listen<ModulationTarget[]>(
-        "modulation_targets_changed",
-        (event) => {
-          setTargets(event.payload);
-        },
-      );
-    })();
-
-    return () => {
-      if (unlisten) unlisten();
-    };
-  }, []);
+  useEventListener<ModulationTarget[]>(
+    "modulation_targets_changed",
+    setTargets,
+  );
 
   const add = useCallback(async (target: ModulationTarget) => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
       return await addTarget(target);
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
       return await removeTarget(id);
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
   }, []);
 
   const clear = useCallback(async () => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
       await clearTargets();
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
   }, []);
 
   const refresh = useCallback(async () => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
-      const result = await getTargets();
-      setTargets(result);
+      await doRefetch();
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
-  }, []);
+  }, [doRefetch]);
 
   return {
     targets,
-    isLoading,
+    isLoading: isFetching || isOperating,
     add,
     remove,
     clear,
@@ -487,95 +421,63 @@ export function useModulationTargets() {
 
 /** Hook for managing audio modulations */
 export function useAudioModulations() {
-  const [audioModulations, setAudioModulations] = useState<AudioModulation[]>(
-    [],
-  );
-  const [isLoading, setIsLoading] = useState(true);
-
   // Fetch initial data
-  useEffect(() => {
-    let isMounted = true;
+  const {
+    data: audioModulations,
+    isLoading: isFetching,
+    setData: setAudioModulations,
+    refetch: doRefetch,
+  } = useFetchOnMount(getAudioModulations, {
+    initialValue: [] as AudioModulation[],
+  });
 
-    async function fetchAudioModulations() {
-      try {
-        const result = await getAudioModulations();
-        if (isMounted) {
-          setAudioModulations(result);
-        }
-      } catch (e) {
-        console.error("[Modulation] Failed to fetch audio modulations:", e);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void fetchAudioModulations();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const [isOperating, setIsOperating] = useState(false);
 
   // Subscribe to audio modulation changes
-  useEffect(() => {
-    let unlisten: UnlistenFn | undefined;
-
-    void (async () => {
-      unlisten = await listen<AudioModulation[]>(
-        "modulation_audio_changed",
-        (event) => {
-          setAudioModulations(event.payload);
-        },
-      );
-    })();
-
-    return () => {
-      if (unlisten) unlisten();
-    };
-  }, []);
+  useEventListener<AudioModulation[]>(
+    "modulation_audio_changed",
+    setAudioModulations,
+  );
 
   const add = useCallback(async (audioMod: AudioModulation) => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
       return await addAudioModulation(audioMod);
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
       return await removeAudioModulation(id);
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
   }, []);
 
   const clear = useCallback(async () => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
       await clearAudioModulations();
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
   }, []);
 
   const refresh = useCallback(async () => {
-    setIsLoading(true);
+    setIsOperating(true);
     try {
-      const result = await getAudioModulations();
-      setAudioModulations(result);
+      await doRefetch();
     } finally {
-      setIsLoading(false);
+      setIsOperating(false);
     }
-  }, []);
+  }, [doRefetch]);
 
   return {
     audioModulations,
-    isLoading,
+    isLoading: isFetching || isOperating,
     add,
     remove,
     clear,

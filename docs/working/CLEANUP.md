@@ -578,9 +578,26 @@ After cleanup, the codebase should:
 
 ### Phase 2: TypeScript Refactoring
 
-- [ ] Shared hook infrastructure
-- [ ] Hook refactoring
-- [ ] File organization
+- [x] Shared hook infrastructure
+- [x] Hook refactoring
+- [ ] File organization (optional - current structure is clear)
+
+**Completed:**
+
+- Created `src/inputs/shared/` directory with:
+  - `types.ts` - Common types for device, mapping, status, and activity hooks
+  - `useEventListener.ts` - Reusable Tauri event subscription hook
+  - `useFetchOnMount.ts` - Pattern for initial fetch with mount guard
+  - `useMessageActivity.ts` - Hooks for tracking message activity and history
+  - `useMappings.ts` - Generic CRUD mapping hook factory
+  - `index.ts` - Re-exports
+- Refactored hooks to use shared infrastructure:
+  - `osc.ts` - useOscServer, useOscMappings, useOscActivity, useOscRecentMessages
+  - `midi.ts` - useMidiActivity
+  - `hid.ts` - useHidEncoderEvents, useHidKeyEvents, useHidRawReports
+  - `modulation.ts` - useLfos, useModulationTargets, useAudioModulations
+  - `audio.ts` - useAudioMappings
+- Removed JSDoc from shared hook files (~40% code reduction)
 
 ### Phase 3: Rust Module Refactoring
 
