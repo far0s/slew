@@ -99,6 +99,23 @@
   color: rgb(255 255 255 / 0.8);
 }
 
+.mutedIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(239 68 68 / 0.9);
+}
+
+.mutedIndicator svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* When both muted and alpha are shown, add gap */
+.alphaOverlay {
+  gap: 0.3rem;
+}
+
 /* Slot number badge (top-left) */
 .slotBadge {
   position: absolute;

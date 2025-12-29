@@ -6,6 +6,7 @@ import {
   Cross2Icon,
   PlusIcon,
   CopyIcon,
+  SpeakerOffIcon,
 } from "@radix-ui/react-icons";
 import { motion } from "motion/react";
 import type { SketchId, SketchProps } from "../../sketches";
@@ -62,6 +63,7 @@ export interface SceneColumnProps {
   params?: SketchProps["params"];
   previewParams?: SketchProps["params"];
   alpha?: number;
+  audioReactivity?: number;
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
   audioMappings?: AudioMapping[];
@@ -201,6 +203,7 @@ export function SceneColumn({
   params,
   previewParams,
   alpha = 1,
+  audioReactivity = 1,
   getValue,
   setValue,
   audioMappings,
@@ -293,12 +296,19 @@ export function SceneColumn({
               <directionalLight position={[-4, -4, -2]} intensity={0.4} />
               <SketchComponent opacity={1} params={previewParams ?? params} />
             </Canvas>
-            {/* Alpha indicator badge when alpha < 1 */}
-            {alpha < 0.99 && (
+            {/* Alpha and mute indicator overlay (top-right) */}
+            {(alpha < 0.99 || audioReactivity < 0.5) && (
               <div className={styles.alphaOverlay}>
-                <span className={styles.alphaValue}>
-                  {Math.round(alpha * 100)}%
-                </span>
+                {audioReactivity < 0.5 && (
+                  <span className={styles.mutedIndicator} title="Audio muted">
+                    <SpeakerOffIcon />
+                  </span>
+                )}
+                {alpha < 0.99 && (
+                  <span className={styles.alphaValue}>
+                    {Math.round(alpha * 100)}%
+                  </span>
+                )}
               </div>
             )}
           </Suspense>

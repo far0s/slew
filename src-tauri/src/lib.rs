@@ -86,6 +86,23 @@ impl ParameterStore {
         entry.clone()
     }
 
+    /// Set parameter target with a specific transition speed (in seconds).
+    /// Creates the parameter if it doesn't exist.
+    fn set_target_with_transition(
+        &mut self,
+        id: ParameterId,
+        target: f64,
+        transition_speed: f64,
+    ) -> Parameter {
+        let entry = self
+            .parameters
+            .entry(id.clone())
+            .or_insert_with(|| default_parameter_for_id(id, target));
+        entry.target = target;
+        entry.transition_speed = transition_speed;
+        entry.clone()
+    }
+
     fn clear(&mut self) {
         self.parameters.clear();
         self.last_tick = None;
@@ -137,6 +154,12 @@ fn default_parameter_for_id(id: ParameterId, initial_value: f64) -> Parameter {
         "crossfade" => (0.8, ParameterCurve::Linear),
         // Brightness parameters get slightly faster transitions
         s if s.ends_with("_brightness") => (0.3, ParameterCurve::Linear),
+        // Audio reactivity - default value, actual transition read from global_mute_fade_time
+        s if s.ends_with("_audio_reactivity") => (0.25, ParameterCurve::Linear),
+        // Alpha parameters - default value, solo uses global_solo_fade_time
+        s if s.ends_with("_alpha") => (0.3, ParameterCurve::Linear),
+        // Global fade time settings change instantly
+        "global_mute_fade_time" | "global_solo_fade_time" => (0.0, ParameterCurve::Linear),
         _ => (0.4, ParameterCurve::Linear),
     };
 
@@ -457,6 +480,73 @@ fn get_slot_state() -> SlotState {
     with_slot_state(|state| state.clone())
 }
 
+/// Extract slot index from a slot-prefixed parameter ID.
+/// Returns Some(index) for IDs like "slot_0_brightness", None otherwise.
+pub fn extract_slot_index(param_id: &str) -> Option<usize> {
+    if param_id.starts_with("slot_") {
+        let rest = &param_id[5..]; // After "slot_"
+        if let Some(underscore_pos) = rest.find('_') {
+            rest[..underscore_pos].parse().ok()
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+/// Ensure audio_reactivity parameter exists for a slot.
+/// Called when initializing slots to guarantee the parameter is available.
+fn ensure_slot_audio_reactivity(app: &AppHandle, slot_index: usize) -> Option<Parameter> {
+    let param_id = format!("slot_{}_audio_reactivity", slot_index);
+
+    let created = with_parameter_store(|store| {
+        if !store.parameters.contains_key(&param_id) {
+            // Default to 1.0 (fully reactive)
+            let param = default_parameter_for_id(param_id.clone(), 1.0);
+            store.parameters.insert(param_id.clone(), param.clone());
+            Some(param)
+        } else {
+            None
+        }
+    });
+
+    if let Some(ref param) = created {
+        save_parameters_to_disk(app);
+        let _ = app.emit("parameter_changed", param);
+    }
+
+    created
+}
+
+/// Ensure global fade time parameters exist.
+/// These control the transition speed for mute and solo actions.
+fn ensure_global_fade_parameters(app: &AppHandle) {
+    let params_to_create = [
+        ("global_mute_fade_time", 0.25), // seconds for mute/unmute transition
+        ("global_solo_fade_time", 0.3),  // seconds for solo transition
+    ];
+
+    for (param_id, default_value) in params_to_create {
+        let created = with_parameter_store(|store| {
+            if !store.parameters.contains_key(param_id) {
+                // These are instant-apply parameters (no transition on themselves)
+                let mut param = default_parameter_for_id(param_id.to_string(), default_value);
+                param.transition_speed = 0.0; // Fade time settings change instantly
+                store.parameters.insert(param_id.to_string(), param.clone());
+                Some(param)
+            } else {
+                None
+            }
+        });
+
+        if let Some(ref param) = created {
+            save_parameters_to_disk(app);
+            let _ = app.emit("parameter_changed", param);
+        }
+    }
+}
+
 /// Initialize parameters for a new slot with default values.
 #[tauri::command]
 fn initialize_slot_parameters(
@@ -466,6 +556,11 @@ fn initialize_slot_parameters(
 ) -> Vec<Parameter> {
     let defaults = get_sketch_defaults(&scene_id);
     let mut created: Vec<Parameter> = Vec::new();
+
+    // Ensure audio_reactivity parameter exists for this slot
+    if let Some(param) = ensure_slot_audio_reactivity(&app, slot_index) {
+        created.push(param);
+    }
 
     with_parameter_store(|store| {
         for (template_id, default_value) in defaults {
@@ -556,6 +651,15 @@ pub fn run() {
         .setup(|app| {
             load_parameters_from_disk(app);
             load_slots_from_disk(app);
+
+            // Ensure audio_reactivity parameters exist for all 8 slots
+            // These are slot-level parameters that gate audio mappings
+            for slot_index in 0..8 {
+                ensure_slot_audio_reactivity(&app.handle(), slot_index);
+            }
+
+            // Initialize global fade time parameters
+            ensure_global_fade_parameters(&app.handle());
 
             // Initialize window manager (health monitoring, etc.)
             window_manager::init_window_manager(app.handle());
@@ -786,5 +890,31 @@ fn setup_window_placement(app_handle: &AppHandle) {
             let _ = window.set_size(*monitor_size);
             let _ = window.set_fullscreen(true);
         }
+    }
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_slot_index_valid() {
+        assert_eq!(extract_slot_index("slot_0_brightness"), Some(0));
+        assert_eq!(extract_slot_index("slot_1_alpha"), Some(1));
+        assert_eq!(extract_slot_index("slot_7_audio_reactivity"), Some(7));
+        assert_eq!(extract_slot_index("slot_12_something"), Some(12));
+    }
+
+    #[test]
+    fn test_extract_slot_index_invalid() {
+        assert_eq!(extract_slot_index("brightness"), None);
+        assert_eq!(extract_slot_index("global_param"), None);
+        assert_eq!(extract_slot_index("slot_"), None);
+        assert_eq!(extract_slot_index("slot_abc_param"), None);
+        assert_eq!(extract_slot_index(""), None);
     }
 }

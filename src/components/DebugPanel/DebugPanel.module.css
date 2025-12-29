@@ -168,3 +168,41 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ==========================================================================
+   Settings Panel
+   ========================================================================== */
+
+.settingsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.75rem;
+}
+
+.settingsHeader {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgb(241 245 249);
+  margin: 0;
+}
+
+.settingsDescription {
+  font-size: 0.7rem;
+  color: rgb(148 163 184);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.settingsControls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.settingsNote {
+  font-size: 0.7rem;
+  color: rgb(148 163 184 / 0.6);
+  font-style: italic;
+  margin: 0;
+}

@@ -43,9 +43,11 @@ const MIDIMIX_KNOB_CCS: [[u8; 3]; 8] = [
 /// Midimix master fader CC number (channel 0)
 const MIDIMIX_MASTER_FADER_CC: u8 = 62;
 
-/// Midimix LED note numbers for Mute row (channel 0)
+/// Midimix LED note numbers for Mute row (channel 0) - top button row
 const MIDIMIX_MUTE_NOTES: [u8; 8] = [1, 4, 7, 10, 13, 16, 19, 22];
-/// Midimix LED note numbers for Rec Arm row (channel 0)
+/// Midimix LED note numbers for Solo row (channel 0) - middle button row
+const MIDIMIX_SOLO_NOTES: [u8; 8] = [2, 5, 8, 11, 14, 17, 20, 23];
+/// Midimix LED note numbers for Rec Arm row (channel 0) - bottom button row
 const MIDIMIX_REC_ARM_NOTES: [u8; 8] = [3, 6, 9, 12, 15, 18, 21, 24];
 
 /// Midimix master column button note numbers (channel 0)
@@ -55,8 +57,8 @@ const MIDIMIX_SEND_ALL_NOTE: u8 = 25;
 const MIDIMIX_BANK_LEFT_NOTE: u8 = 26;
 #[allow(dead_code)]
 const MIDIMIX_BANK_RIGHT_NOTE: u8 = 27;
-#[allow(dead_code)]
-const MIDIMIX_SOLO_NOTE: u8 = 28;
+/// Master SOLO button (right column) - used as modifier key
+const MIDIMIX_MASTER_SOLO_NOTE: u8 = 28;
 
 // ============================================================================
 // Types
@@ -233,6 +235,10 @@ struct MidiEngineState {
     last_master_value: Option<u8>,
     /// Pickup state for soft takeover, keyed by (channel, cc_number)
     pickup_state: HashMap<(u8, u8), PickupState>,
+    /// Mute state per slot (true = audio muted for that slot)
+    slot_muted: [bool; 8],
+    /// Whether the SOLO button is currently held
+    solo_held: bool,
 }
 
 impl Default for MidiEngineState {
@@ -258,6 +264,8 @@ impl Default for MidiEngineState {
             active_slots: Vec::new(),
             last_master_value: None,
             pickup_state: HashMap::new(),
+            slot_muted: [false; 8],
+            solo_held: false,
         }
     }
 }
@@ -955,7 +963,7 @@ fn send_midimix_startup_animation(output_device_id: &str) {
                 let _ = send_note_off(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 0);
             }
             // Also turn off master column buttons
-            let _ = send_note_off(Some(&device_id), 0, MIDIMIX_SOLO_NOTE, 0);
+            let _ = send_note_off(Some(&device_id), 0, MIDIMIX_MASTER_SOLO_NOTE, 0);
 
             std::thread::sleep(Duration::from_millis(100));
 
@@ -977,10 +985,19 @@ fn send_midimix_startup_animation(output_device_id: &str) {
 
             // Wave 2: Solo row left to right
             // Flash the master SOLO button
-            let _ = send_note_on(Some(&device_id), 0, MIDIMIX_SOLO_NOTE, 127);
-            std::thread::sleep(stagger_delay);
+            // Flash per-column solo buttons
+            for i in 0..8 {
+                let _ = send_note_on(Some(&device_id), 0, MIDIMIX_SOLO_NOTES[i], 127);
+                std::thread::sleep(stagger_delay);
+            }
+            // Also flash master SOLO button
+            let _ = send_note_on(Some(&device_id), 0, MIDIMIX_MASTER_SOLO_NOTE, 127);
             std::thread::sleep(hold_time);
-            let _ = send_note_off(Some(&device_id), 0, MIDIMIX_SOLO_NOTE, 0);
+            for i in 0..8 {
+                let _ = send_note_off(Some(&device_id), 0, MIDIMIX_SOLO_NOTES[i], 0);
+                std::thread::sleep(stagger_delay);
+            }
+            let _ = send_note_off(Some(&device_id), 0, MIDIMIX_MASTER_SOLO_NOTE, 0);
             std::thread::sleep(stagger_delay);
 
             // Wave 3: Rec Arm row left to right
@@ -996,27 +1013,46 @@ fn send_midimix_startup_animation(output_device_id: &str) {
 
             std::thread::sleep(Duration::from_millis(150));
 
-            // Final state: light up Mute + Rec Arm ONLY for slots that exist
-            // At startup, active_slots may be empty - that's fine, no LEDs will light up
-            // The frontend will call set_all_slots shortly after, which will update LEDs
+            // Final state: sync LED state from parameters and slot existence
+            // - Rec Arm LED: slot has sketch loaded
+            // - Mute LED: audio reactive (not muted) AND slot exists
             let active_slots = with_midi_engine(|state| state.active_slots.clone());
 
+            // Sync mute state from audio_reactivity parameters
             for i in 0..8 {
-                // Only light up if the slot exists (is in the slots array)
+                let reactivity_id = format!("slot_{}_audio_reactivity", i);
+                let is_muted = crate::with_parameter_store(|store| {
+                    store
+                        .get(&reactivity_id)
+                        .map(|p| p.value < 0.5)
+                        .unwrap_or(false)
+                });
+
+                // Update engine state to match persisted parameter
+                with_midi_engine(|state| {
+                    state.slot_muted[i] = is_muted;
+                });
+
+                // Check if slot exists
                 let slot_exists = active_slots
                     .iter()
                     .find(|s| s.index == i)
                     .map(|s| s.exists)
-                    .unwrap_or(false); // Default to false (LED off) if no slot info
+                    .unwrap_or(false);
 
+                // Rec Arm LED = slot exists
                 if slot_exists {
-                    let _ = send_note_on(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 127);
                     let _ = send_note_on(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 127);
-                }
-                // Explicitly ensure LEDs are off if slot doesn't exist
-                else {
-                    let _ = send_note_off(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
+                } else {
                     let _ = send_note_off(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 0);
+                }
+
+                // Mute LED = audio active (slot exists AND not muted)
+                let audio_active = slot_exists && !is_muted;
+                if audio_active {
+                    let _ = send_note_on(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 127);
+                } else {
+                    let _ = send_note_off(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
                 }
             }
 
@@ -1040,7 +1076,12 @@ fn send_midimix_shutdown_animation_sync(device_id: &str) {
 
     // Wave 2: Solo row right to left
     // Turn off master SOLO button
-    let _ = send_note_off(Some(device_id), 0, MIDIMIX_SOLO_NOTE, 0);
+    // Turn off per-column solo buttons
+    for i in (0..8).rev() {
+        let _ = send_note_off(Some(device_id), 0, MIDIMIX_SOLO_NOTES[i], 0);
+        std::thread::sleep(stagger_delay);
+    }
+    let _ = send_note_off(Some(device_id), 0, MIDIMIX_MASTER_SOLO_NOTE, 0);
     std::thread::sleep(stagger_delay);
 
     // Wave 3: Mute row right to left
@@ -1056,8 +1097,9 @@ fn send_midimix_shutdown_animation_sync(device_id: &str) {
 
 /// Update Midimix LEDs based on current slot states
 pub fn update_midimix_leds() {
-    let (active_slots, output_device_ids) = with_midi_engine(|state| {
+    let (active_slots, slot_muted, output_device_ids) = with_midi_engine(|state| {
         let slots = state.active_slots.clone();
+        let muted = state.slot_muted;
         // Find all connected Midimix output devices
         let midimix_outputs: Vec<String> = state
             .output_connections
@@ -1065,7 +1107,7 @@ pub fn update_midimix_leds() {
             .filter(|(_, conn)| is_midimix_device(&conn.device_name))
             .map(|(id, _)| id.clone())
             .collect();
-        (slots, midimix_outputs)
+        (slots, muted, midimix_outputs)
     });
 
     if output_device_ids.is_empty() {
@@ -1073,7 +1115,9 @@ pub fn update_midimix_leds() {
     }
 
     for device_id in output_device_ids {
-        // Update Mute + Rec Arm LEDs for all 8 columns (indicates slot existence)
+        // Update LEDs for all 8 columns
+        // - Rec Arm LED: slot has a sketch loaded
+        // - Mute LED: audio reactive (not muted) AND slot exists
         for i in 0..8 {
             let slot_exists = active_slots
                 .iter()
@@ -1081,23 +1125,185 @@ pub fn update_midimix_leds() {
                 .map(|s| s.exists)
                 .unwrap_or(false);
 
+            // Rec Arm = slot exists (has sketch loaded)
             if slot_exists {
-                let _ = send_note_on(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 127);
                 let _ = send_note_on(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 127);
             } else {
-                let _ = send_note_off(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
                 let _ = send_note_off(Some(&device_id), 0, MIDIMIX_REC_ARM_NOTES[i], 0);
+            }
+
+            // Mute LED = audio reactive (ON when NOT muted, OFF when muted)
+            // Only show as active if slot exists AND not muted
+            let audio_active = slot_exists && !slot_muted[i];
+            if audio_active {
+                let _ = send_note_on(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 127);
+            } else {
+                let _ = send_note_off(Some(&device_id), 0, MIDIMIX_MUTE_NOTES[i], 0);
             }
         }
 
-        // Master SOLO button stays off (could be used for other feedback later)
-        let _ = send_note_off(Some(&device_id), 0, MIDIMIX_SOLO_NOTE, 0);
+        // Per-column solo buttons and master SOLO stay off
+        for i in 0..8 {
+            let _ = send_note_off(Some(&device_id), 0, MIDIMIX_SOLO_NOTES[i], 0);
+        }
+        let _ = send_note_off(Some(&device_id), 0, MIDIMIX_MASTER_SOLO_NOTE, 0);
     }
 
     log::debug!(
         "[MIDI] Updated Midimix LEDs for {} slots",
         active_slots.len()
     );
+}
+
+/// Handle mute button press on Midimix.
+/// If SOLO is held, isolates the slot. Otherwise toggles audio reactivity.
+/// Handle mute button press - toggles audio reactivity for the slot
+fn handle_mute_button_press(
+    _engine: &Arc<Mutex<MidiEngineState>>,
+    slot_index: usize,
+    app_handle: Option<&AppHandle>,
+) {
+    log::debug!("[MIDI] handle_mute_button_press: slot={}", slot_index);
+    toggle_slot_mute(slot_index, app_handle);
+}
+
+/// Handle per-column solo button press - isolates the slot (alpha 1.0, others 0.0)
+fn handle_solo_button_press_for_slot(
+    _engine: &Arc<Mutex<MidiEngineState>>,
+    slot_index: usize,
+    app_handle: Option<&AppHandle>,
+) {
+    log::debug!(
+        "[MIDI] handle_solo_button_press_for_slot: slot={}",
+        slot_index
+    );
+    handle_solo_slot(slot_index, app_handle);
+}
+
+/// Toggle the audio mute state for a slot.
+fn toggle_slot_mute(slot_index: usize, app_handle: Option<&AppHandle>) {
+    if slot_index >= 8 {
+        return;
+    }
+
+    // Get current mute state and toggle
+    let new_muted = with_midi_engine(|state| {
+        let current = state.slot_muted[slot_index];
+        state.slot_muted[slot_index] = !current;
+        !current
+    });
+
+    // Get the global mute fade time (use target for immediate effect)
+    let fade_time = crate::with_parameter_store(|store| {
+        store
+            .get("global_mute_fade_time")
+            .map(|p| p.target)
+            .unwrap_or(0.25)
+    });
+
+    // Set audio_reactivity parameter with the configured fade time
+    let reactivity_id = format!("slot_{}_audio_reactivity", slot_index);
+    let new_value = if new_muted { 0.0 } else { 1.0 };
+
+    crate::with_parameter_store(|store| {
+        store.set_target_with_transition(reactivity_id.clone(), new_value, fade_time);
+    });
+
+    // Emit parameter change
+    if let Some(handle) = app_handle {
+        if let Some(param) = crate::with_parameter_store(|store| store.get(&reactivity_id)) {
+            let _ = handle.emit("parameter_changed", &param);
+        }
+    }
+
+    // Update Mute LED (ON = active/not muted, OFF = muted)
+    update_mute_led(slot_index, !new_muted);
+
+    log::info!(
+        "[MIDI] Slot {} audio: {} (fade_time: {:.2}s)",
+        slot_index,
+        if new_muted { "MUTED" } else { "ACTIVE" },
+        fade_time
+    );
+}
+
+/// Handle solo slot - set one slot to alpha 1.0 and all others to 0.0
+fn handle_solo_slot(solo_slot: usize, app_handle: Option<&AppHandle>) {
+    // Get current slot states to know which slots have sketches
+    let active_slots = with_midi_engine(|state| state.active_slots.clone());
+
+    // Get the global solo fade time (use target for immediate effect)
+    let fade_time = crate::with_parameter_store(|store| {
+        store
+            .get("global_solo_fade_time")
+            .map(|p| p.target)
+            .unwrap_or(0.3)
+    });
+
+    // For each slot with a sketch:
+    // - Solo slot: alpha -> 1.0
+    // - Other slots: alpha -> 0.0
+    for slot_state in &active_slots {
+        if !slot_state.exists {
+            continue;
+        }
+
+        let param_id = format!("slot_{}_alpha", slot_state.index);
+        let target_value = if slot_state.index == solo_slot {
+            1.0
+        } else {
+            0.0
+        };
+
+        crate::with_parameter_store(|store| {
+            store.set_target_with_transition(param_id.clone(), target_value, fade_time);
+        });
+
+        if let Some(handle) = app_handle {
+            if let Some(param) = crate::with_parameter_store(|store| store.get(&param_id)) {
+                let _ = handle.emit("parameter_changed", &param);
+            }
+        }
+    }
+
+    log::info!(
+        "[MIDI] Solo: slot {} isolated (fade_time: {:.2}s)",
+        solo_slot,
+        fade_time
+    );
+}
+
+/// Handle master SOLO button press/release (currently unused, but could be modifier)
+fn handle_master_solo_button_press(_engine: &Arc<Mutex<MidiEngineState>>, pressed: bool) {
+    with_midi_engine(|state| {
+        state.solo_held = pressed;
+    });
+
+    // Update master SOLO LED
+    if pressed {
+        let _ = send_note_on(None, 0, MIDIMIX_MASTER_SOLO_NOTE, 127);
+    } else {
+        let _ = send_note_off(None, 0, MIDIMIX_MASTER_SOLO_NOTE, 0);
+    }
+
+    log::debug!(
+        "[MIDI] Master Solo button: {}",
+        if pressed { "HELD" } else { "RELEASED" }
+    );
+}
+
+/// Update the mute LED for a single slot
+fn update_mute_led(slot_index: usize, on: bool) {
+    if slot_index >= 8 {
+        return;
+    }
+
+    let note = MIDIMIX_MUTE_NOTES[slot_index];
+    if on {
+        let _ = send_note_on(None, 0, note, 127);
+    } else {
+        let _ = send_note_off(None, 0, note, 0);
+    }
 }
 
 /// Update the active slots state (called from lib.rs when slots change)
@@ -1738,6 +1944,44 @@ fn handle_midi_message(
     // Emit the raw MIDI message for activity indicators
     if let Some(ref handle) = app_handle {
         let _ = handle.emit("midi_message", &midi_msg);
+    }
+
+    // Handle Midimix button presses (Note On with velocity > 0)
+    if type_str == "note_on" && value > 0 && channel == 0 {
+        log::debug!(
+            "[MIDI] Note On received: note={}, velocity={}, checking for button handlers",
+            control,
+            value
+        );
+
+        // Check if this is a mute button (top row - columns 1-8)
+        if let Some(slot_index) = MIDIMIX_MUTE_NOTES.iter().position(|&n| n == control) {
+            log::debug!("[MIDI] Mute button press detected for slot {}", slot_index);
+            handle_mute_button_press(engine, slot_index, app_handle.as_ref());
+            return;
+        }
+
+        // Check if this is a per-column solo button (middle row - columns 1-8)
+        if let Some(slot_index) = MIDIMIX_SOLO_NOTES.iter().position(|&n| n == control) {
+            log::debug!("[MIDI] Solo button press detected for slot {}", slot_index);
+            handle_solo_button_press_for_slot(engine, slot_index, app_handle.as_ref());
+            return;
+        }
+
+        // Check master solo button (modifier tracking)
+        if control == MIDIMIX_MASTER_SOLO_NOTE {
+            log::debug!("[MIDI] Master Solo button press detected");
+            handle_master_solo_button_press(engine, true);
+            return;
+        }
+    }
+
+    // Handle button release (Note Off or Note On with velocity 0)
+    if (type_str == "note_off" || (type_str == "note_on" && value == 0)) && channel == 0 {
+        if control == MIDIMIX_MASTER_SOLO_NOTE {
+            handle_master_solo_button_press(engine, false);
+            return;
+        }
     }
 
     // Handle MIDI Learn if active and this is a CC message

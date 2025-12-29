@@ -918,6 +918,22 @@ fn apply_audio_mappings(engine: &Arc<Mutex<AudioEngineState>>, levels: &AudioLev
             continue;
         }
 
+        // Check if this is a slot parameter and get its audio reactivity
+        let reactivity = if let Some(slot_index) = crate::extract_slot_index(&mapping.parameter_id)
+        {
+            let reactivity_id = format!("slot_{}_audio_reactivity", slot_index);
+            crate::with_parameter_store(|store| {
+                store.get(&reactivity_id).map(|p| p.value).unwrap_or(1.0)
+            })
+        } else {
+            1.0 // Non-slot parameters always apply fully
+        };
+
+        // Skip if slot is muted (reactivity near zero)
+        if reactivity < 0.001 {
+            continue;
+        }
+
         // Get raw value from audio source
         let raw_value = mapping.source.get_value(levels);
 
@@ -971,8 +987,22 @@ fn apply_audio_mappings(engine: &Arc<Mutex<AudioEngineState>>, levels: &AudioLev
             }
         };
 
+        // Scale by audio reactivity (allows partial reactivity, not just on/off)
+        let scaled_value = if reactivity < 1.0 {
+            // Blend between current parameter value and audio-driven value
+            let current = crate::with_parameter_store(|store| {
+                store
+                    .get(&mapping.parameter_id)
+                    .map(|p| p.target)
+                    .unwrap_or(final_value)
+            });
+            current + (final_value - current) * reactivity
+        } else {
+            final_value
+        };
+
         // Apply to parameter
-        apply_audio_to_parameter(&mapping.parameter_id, final_value, app_handle.as_ref());
+        apply_audio_to_parameter(&mapping.parameter_id, scaled_value, app_handle.as_ref());
     }
 
     // Store updated smoothed values

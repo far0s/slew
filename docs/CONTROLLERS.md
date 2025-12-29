@@ -27,9 +27,13 @@ Hardware controller layouts and mappings for sebcat-vj.
 │  ◯ K3   │  ◯ K3   │  ◯ K3   │  ◯ K3   │  ◯ K3   │  ◯ K3   │  ◯ K3   │  ◯ K3   │ BANK ▶  │
 │  Param3 │  Param3 │  Param3 │  Param3 │  Param3 │  Param3 │  Param3 │  Param3 │  (LED)  │
 ├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
-│  [N1]   │  [N4]   │  [N7]   │ [N10]   │ [N13]   │ [N16]   │ [N19]   │ [N22]   │ [N28]   │
-│  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ SOLO │
+│  [N1]   │  [N4]   │  [N7]   │ [N10]   │ [N13]   │ [N16]   │ [N19]   │ [N22]   │ [N25]   │
+│  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │ SENDALL │
 │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │
+├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│  [N2]   │  [N5]   │  [N8]   │ [N11]   │ [N14]   │ [N17]   │ [N20]   │ [N23]   │ [N28]   │
+│  ▣ SOLO │  ▣ SOLO │  ▣ SOLO │  ▣ SOLO │  ▣ SOLO │  ▣ SOLO │  ▣ SOLO │  ▣ SOLO │  ▣ SOLO │
+│  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │ Master  │
 ├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
 │  [N3]   │  [N6]   │  [N9]   │ [N12]   │ [N15]   │ [N18]   │ [N21]   │ [N24]   │         │
 │  ▣ REC  │  ▣ REC  │  ▣ REC  │  ▣ REC  │  ▣ REC  │  ▣ REC  │  ▣ REC  │  ▣ REC  │         │
@@ -53,25 +57,37 @@ Legend:
 
 ### Mappings
 
-| Control      | Type | CC/Note                 | Function              |
-| ------------ | ---- | ----------------------- | --------------------- |
-| Fader 1-8    | CC   | 19,23,27,31,49,53,57,61 | Slot 1-8 Alpha        |
-| Master Fader | CC   | 62                      | Fade all slots        |
-| Knob Row 1   | CC   | 16,20,24,28,46,50,54,58 | Slot Param 1          |
-| Knob Row 2   | CC   | 17,21,25,29,47,51,55,59 | Slot Param 2          |
-| Knob Row 3   | CC   | 18,22,26,30,48,52,56,60 | Slot Param 3          |
-| Mute 1-8     | Note | 1,4,7,10,13,16,19,22    | Slot exists indicator |
-| Rec Arm 1-8  | Note | 3,6,9,12,15,18,21,24    | Slot exists indicator |
-| SEND ALL     | Note | 25                      | (Not mapped)          |
-| BANK LEFT    | Note | 26                      | (Future: param bank)  |
-| BANK RIGHT   | Note | 27                      | (Future: param bank)  |
-| SOLO         | Note | 28                      | (Future: solo mode)   |
+| Control      | Type | CC/Note                 | Function                       |
+| ------------ | ---- | ----------------------- | ------------------------------ |
+| Fader 1-8    | CC   | 19,23,27,31,49,53,57,61 | Slot 1-8 Alpha                 |
+| Master Fader | CC   | 62                      | Fade all slots                 |
+| Knob Row 1   | CC   | 16,20,24,28,46,50,54,58 | Slot Param 1                   |
+| Knob Row 2   | CC   | 17,21,25,29,47,51,55,59 | Slot Param 2                   |
+| Knob Row 3   | CC   | 18,22,26,30,48,52,56,60 | Slot Param 3                   |
+| Mute 1-8     | Note | 1,4,7,10,13,16,19,22    | Toggle audio reactivity (mute) |
+| Solo 1-8     | Note | 2,5,8,11,14,17,20,23    | Isolate slot (solo)            |
+| Rec Arm 1-8  | Note | 3,6,9,12,15,18,21,24    | Slot exists indicator          |
+| SEND ALL     | Note | 25                      | (Not mapped)                   |
+| BANK LEFT    | Note | 26                      | (Future: param bank)           |
+| BANK RIGHT   | Note | 27                      | (Future: param bank)           |
+| Master SOLO  | Note | 28                      | (Reserved for future modifier) |
 
 ### LED Control
 
 - LEDs respond to Note On (velocity > 0 = on, velocity 0 = off)
-- Mute + Rec Arm LEDs light up for slots that have a sketch loaded
-- Solo row reserved for future use (crossfade target, etc.)
+- **Mute LED**: ON = audio reactive, OFF = audio muted (or no sketch)
+- **Solo LED**: OFF normally (could flash on press in future)
+- **Rec Arm LED**: ON = slot has sketch loaded, OFF = empty slot
+
+### Button Functions
+
+- **Mute buttons** (top row): Toggle audio reactivity for the slot
+  - When muted, audio mappings targeting that slot are ignored
+  - LED indicates current state (ON = audio active, OFF = muted)
+- **Solo buttons** (middle row): Isolate the slot
+  - Sets target slot alpha to 1.0, all other slots to 0.0
+  - Transition uses smooth parameter animation
+- **Rec Arm buttons** (bottom row): Currently indicator only
 
 ### Auto-Setup
 
