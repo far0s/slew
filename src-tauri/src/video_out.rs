@@ -1281,14 +1281,14 @@ mod tests {
     #[test]
     fn test_base64_decode() {
         let encoded = "SGVsbG8gV29ybGQ="; // "Hello World"
-        let decoded = base64_decode(encoded).unwrap();
+        let decoded = base64_decode_into_buffer(encoded, 11).unwrap();
         assert_eq!(decoded, b"Hello World");
     }
 
     #[test]
     fn test_base64_decode_with_data_url() {
         let encoded = "data:image/png;base64,SGVsbG8=";
-        let decoded = base64_decode(encoded).unwrap();
+        let decoded = base64_decode_into_buffer(encoded, 5).unwrap();
         assert_eq!(decoded, b"Hello");
     }
 
