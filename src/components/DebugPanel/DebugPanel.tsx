@@ -1,6 +1,7 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { invoke } from "@tauri-apps/api/core";
+import { SunIcon, MoonIcon } from "@radix-ui/react-icons";
 import { MidiPanel } from "../MidiPanel";
 import { OscPanel } from "../OscPanel";
 import { AudioPanel } from "../AudioPanel";
@@ -11,6 +12,27 @@ import { ParameterSlider } from "../ParameterSlider";
 import type { Slot } from "../../slots/useSlots";
 import { useWindowManager } from "../../hooks";
 import styles from "./DebugPanel.module.css";
+
+type Theme = "dark" | "light";
+
+function useTheme() {
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window === "undefined") return "dark";
+    const stored = localStorage.getItem("sebcat-vj-theme") as Theme | null;
+    return stored ?? "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("sebcat-vj-theme", theme);
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
+  }, []);
+
+  return { theme, toggleTheme };
+}
 
 /**
  * Props for the DebugPanel component.
@@ -33,6 +55,31 @@ export interface DebugPanelProps {
  * Extracted component for settings sliders that syncs values to both
  * local state and the backend via invoke.
  */
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      className={styles.themeToggle}
+      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+    >
+      {theme === "dark" ? (
+        <>
+          <SunIcon className={styles.themeIcon} />
+          <span>Light Mode</span>
+        </>
+      ) : (
+        <>
+          <MoonIcon className={styles.themeIcon} />
+          <span>Dark Mode</span>
+        </>
+      )}
+    </button>
+  );
+}
+
 function SettingsSliders({
   getValue,
   setValue,
@@ -141,8 +188,11 @@ export function DebugPanel({
   }, [isRestarting, restartRenderer]);
 
   return (
-    <Tabs.Root defaultValue="midi" className={styles.container}>
+    <Tabs.Root defaultValue="settings" className={styles.container}>
       <Tabs.List className={styles.tabList} aria-label="Debug panel tabs">
+        <Tabs.Trigger value="settings" className={styles.tabTrigger}>
+          Settings
+        </Tabs.Trigger>
         <Tabs.Trigger value="midi" className={styles.tabTrigger}>
           MIDI
         </Tabs.Trigger>
@@ -161,12 +211,66 @@ export function DebugPanel({
         <Tabs.Trigger value="video" className={styles.tabTrigger}>
           Video
         </Tabs.Trigger>
-        <Tabs.Trigger value="settings" className={styles.tabTrigger}>
-          Settings
-        </Tabs.Trigger>
       </Tabs.List>
 
       <div className={styles.tabBody}>
+        <Tabs.Content value="settings" className={styles.tabContent}>
+          <div className={styles.settingsPanel}>
+            <div className={styles.settingsSection}>
+              <h4 className={styles.settingsHeader}>Appearance</h4>
+              <ThemeToggle />
+            </div>
+
+            <div className={styles.settingsSection}>
+              <h4 className={styles.settingsHeader}>Transition Times</h4>
+              <p className={styles.settingsDescription}>
+                Control how quickly mute and solo actions fade in/out.
+              </p>
+              {getValue && setValue ? (
+                <SettingsSliders getValue={getValue} setValue={setValue} />
+              ) : (
+                <p className={styles.settingsNote}>
+                  Settings unavailable - parameter store not connected.
+                </p>
+              )}
+            </div>
+
+            <div className={styles.settingsSection}>
+              <h4 className={styles.settingsHeader}>Actions</h4>
+              <div className={styles.actionsList}>
+                <div className={styles.actionItem}>
+                  <span className={styles.actionLabel}>
+                    Toggle stats overlay
+                  </span>
+                  <kbd className={styles.actionShortcut}>D</kbd>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRestartRenderer}
+                  disabled={isRestarting}
+                  className={styles.actionButton}
+                >
+                  <span className={styles.actionLabel}>
+                    {isRestarting ? "Restarting…" : "Restart Renderer"}
+                  </span>
+                  <kbd className={styles.actionShortcut}>⌘⇧R</kbd>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRestartControls}
+                  disabled={isRestarting}
+                  className={styles.actionButton}
+                >
+                  <span className={styles.actionLabel}>
+                    {isRestarting ? "Restarting…" : "Restart Controls"}
+                  </span>
+                  <kbd className={styles.actionShortcut}>⌘⇧C</kbd>
+                </button>
+              </div>
+            </div>
+          </div>
+        </Tabs.Content>
+
         <Tabs.Content value="midi" className={styles.tabContent}>
           <MidiPanel />
         </Tabs.Content>
@@ -190,57 +294,7 @@ export function DebugPanel({
         <Tabs.Content value="video" className={styles.tabContent}>
           <VideoOutputPanel />
         </Tabs.Content>
-
-        <Tabs.Content value="settings" className={styles.tabContent}>
-          <div className={styles.settingsPanel}>
-            <h4 className={styles.settingsHeader}>Transition Times</h4>
-            <p className={styles.settingsDescription}>
-              Control how quickly mute and solo actions fade in/out.
-            </p>
-            {getValue && setValue ? (
-              <SettingsSliders getValue={getValue} setValue={setValue} />
-            ) : (
-              <p className={styles.settingsNote}>
-                Settings unavailable - parameter store not connected.
-              </p>
-            )}
-          </div>
-        </Tabs.Content>
       </div>
-
-      <footer className={styles.footer}>
-        <div className={styles.shortcuts}>
-          <span className={styles.shortcut}>
-            <kbd>D</kbd> Toggle stats
-          </span>
-          <span className={styles.shortcut}>
-            <kbd>⌘⇧C</kbd> Restart Controls
-          </span>
-          <span className={styles.shortcut}>
-            <kbd>⌘⇧R</kbd> Restart Renderer
-          </span>
-        </div>
-        <div className={styles.restartButtons}>
-          <button
-            type="button"
-            onClick={handleRestartRenderer}
-            disabled={isRestarting}
-            className={styles.restartButton}
-            title="Restart Renderer window (⌘⇧R)"
-          >
-            {isRestarting ? "…" : "Restart Renderer"}
-          </button>
-          <button
-            type="button"
-            onClick={handleRestartControls}
-            disabled={isRestarting}
-            className={styles.restartButton}
-            title="Restart Controls window (⌘⇧C)"
-          >
-            {isRestarting ? "…" : "Restart Controls"}
-          </button>
-        </div>
-      </footer>
     </Tabs.Root>
   );
 }

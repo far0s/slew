@@ -29,6 +29,33 @@ Status overview and key decisions for sebcat-vj.
 
 ## Recent Changes
 
+### Window Sizing Fixes
+
+- **Renderer window in dev mode**: Fixed small window size when opening on secondary monitor
+  - Now explicitly sets size to 1920×1080 (scaled for monitor DPI) before positioning
+- **Preview canvas sizing**: Fixed canvas not filling container width until resize event
+  - Added CSS rule to force r3f Canvas container to use absolute positioning
+  - PreviewContainer triggers resize event after 1 second delay to ensure proper sizing
+
+### Global UI Cleanup
+
+- **Scroll behavior**: Added `overscroll-behavior: contain` to disable Apple's springy/bouncy scroll effect
+- **Settings tab first**: Moved Settings to first position in sidebar tabs, now shown by default
+- **Footer moved to Settings**: Restart buttons and keyboard shortcuts moved into unified "Actions" section
+- **Theme toggle**: Added dark/light theme toggle with `useTheme` hook and CSS custom properties
+- **Light theme**: Created light theme color palette with CSS variables applied throughout
+- **MIDI panel consistency**: Moved "Clear All Mappings" to section header (matches Audio pattern)
+- **Video panel simplified**: Removed unnecessary Collapsible wrapper, content shows directly
+- **Even tab distribution**: Tabs use CSS grid for even spread (no lonely Video tab on second row)
+- **Condensed parameters**: Reduced vertical spacing in parameter sliders with subtle separators
+- **Info popovers**: Parameter descriptions shown on hover (not click), stay when focused/hovering
+- **MIDI Learn fix**: Fixed layout shift when hovering mapped controls
+- **Custom scrollbars**: Added consistent scrollbar styling across the app
+- **Light mode contrast**: Converted all sidebar panels from hardcoded white rgba to theme-aware CSS variables; all panels now readable in light mode
+- **Tab layout refinement**: Tabs use natural width with centered layout; active tab uses filled background
+- **Border visibility**: Increased light-mode border contrast and slot column border thickness
+- **Documentation**: See `docs/finished/GLOBAL_UI_CLEANUP.md` for full details
+
 ### Grouped Sketch Browser
 
 - **Sketch groups**: Sketches are now organized into collapsible groups in the browser

@@ -21,7 +21,7 @@
   align-items: center;
   justify-content: space-between;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .title {
@@ -29,7 +29,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgb(255 255 255 / 0.9);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -38,14 +38,18 @@
   font-weight: 500;
   padding: 0.2rem 0.4rem;
   border-radius: 0.2rem;
-  background: rgb(100 100 100 / 0.3);
-  color: rgb(255 255 255 / 0.5);
+  background: var(--bg-active);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
 .statusBadge.active {
   background: rgb(99 102 241 / 0.2);
+  color: #4f46e5;
+}
+
+[data-theme="dark"] .statusBadge.active {
   color: rgb(165 180 252);
 }
 
@@ -61,7 +65,7 @@
   padding: 0.4rem 0;
   background: none;
   border: none;
-  color: rgb(255 255 255 / 0.8);
+  color: var(--text-secondary);
   font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.03em;
@@ -71,7 +75,7 @@
 }
 
 .sectionHeader:hover {
-  color: rgb(255 255 255 / 1);
+  color: var(--text-primary);
 }
 
 .sectionHeader:focus-visible {
@@ -105,7 +109,7 @@
   background: rgb(99 102 241 / 0.15);
   border: 1px solid rgb(99 102 241 / 0.3);
   border-radius: 0.2rem;
-  color: rgb(165 180 252);
+  color: #4f46e5;
   font-size: 0.6rem;
   font-weight: 500;
   cursor: pointer;
@@ -113,6 +117,10 @@
     background-color 0.15s ease,
     border-color 0.15s ease;
   flex-shrink: 0;
+}
+
+[data-theme="dark"] .headerAddButton {
+  color: rgb(165 180 252);
 }
 
 .headerAddButton:hover:not(:disabled) {
@@ -132,6 +140,10 @@
   padding: 0.1rem 0.3rem;
   border-radius: 0.75rem;
   background: rgb(99 102 241 / 0.25);
+  color: #4f46e5;
+}
+
+[data-theme="dark"] .sectionBadge {
   color: rgb(165 180 252);
 }
 
@@ -145,7 +157,7 @@
 
 .noItems {
   font-size: 0.68rem;
-  color: rgb(255 255 255 / 0.4);
+  color: var(--text-muted);
   text-align: center;
   padding: 0.75rem 0;
   margin: 0;
@@ -156,12 +168,12 @@
   align-items: center;
   justify-content: space-between;
   padding-top: 0.35rem;
-  border-top: 1px solid rgb(255 255 255 / 0.06);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .itemCount {
   font-size: 0.6rem;
-  color: rgb(255 255 255 / 0.4);
+  color: var(--text-muted);
 }
 
 .clearButton {
@@ -169,12 +181,16 @@
   background: rgb(239 68 68 / 0.1);
   border: 1px solid rgb(239 68 68 / 0.2);
   border-radius: 0.2rem;
-  color: rgb(252 165 165);
+  color: #dc2626;
   font-size: 0.6rem;
   cursor: pointer;
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease;
+}
+
+[data-theme="dark"] .clearButton {
+  color: rgb(252 165 165);
 }
 
 .clearButton:hover:not(:disabled) {
@@ -208,8 +224,8 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.35rem 0.5rem;
-  background: rgb(255 255 255 / 0.03);
-  border: 1px solid rgb(255 255 255 / 0.08);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
   border-radius: 0.25rem;
 }
 
@@ -226,7 +242,7 @@
   padding: 0;
   background: none;
   border: none;
-  color: rgb(255 255 255 / 0.4);
+  color: var(--text-muted);
   font-size: 0.7rem;
   cursor: pointer;
   flex-shrink: 0;
@@ -257,7 +273,7 @@
 }
 
 .lfoInfo:hover {
-  background: rgb(255 255 255 / 0.05);
+  background: var(--bg-active);
 }
 
 .lfoInfo:focus-visible {
@@ -268,14 +284,14 @@
 .lfoName {
   font-weight: 600;
   font-size: 0.7rem;
-  color: rgb(255 255 255 / 0.9);
+  color: var(--text-primary);
   flex-shrink: 0;
 }
 
 .lfoRate {
   font-size: 0.62rem;
   font-variant-numeric: tabular-nums;
-  color: rgb(255 255 255 / 0.5);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -284,8 +300,12 @@
   padding: 0.1rem 0.25rem;
   border-radius: 0.15rem;
   background: rgb(99 102 241 / 0.2);
-  color: rgb(165 180 252);
+  color: #4f46e5;
   flex-shrink: 0;
+}
+
+[data-theme="dark"] .lfoTargetCount {
+  color: rgb(165 180 252);
 }
 
 .lfoDelete {
@@ -297,7 +317,7 @@
   padding: 0;
   background: none;
   border: none;
-  color: rgb(255 255 255 / 0.3);
+  color: var(--text-muted);
   font-size: 0.9rem;
   cursor: pointer;
   flex-shrink: 0;
@@ -305,7 +325,7 @@
 }
 
 .lfoDelete:hover {
-  color: rgb(239 68 68);
+  color: var(--accent-danger);
 }
 
 /* ==========================================================================
@@ -329,8 +349,8 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.35rem 0.5rem;
-  background: rgb(255 255 255 / 0.03);
-  border: 1px solid rgb(255 255 255 / 0.08);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
   border-radius: 0.25rem;
   font-size: 0.68rem;
 }
@@ -348,14 +368,14 @@
   padding: 0;
   background: none;
   border: none;
-  color: rgb(255 255 255 / 0.4);
+  color: var(--text-muted);
   font-size: 0.7rem;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .targetToggle.enabled {
-  color: rgb(34 197 94);
+  color: var(--accent-success);
 }
 
 .targetInfo {
@@ -375,7 +395,7 @@
 }
 
 .targetInfo:hover {
-  background: rgb(255 255 255 / 0.05);
+  background: var(--bg-active);
 }
 
 .targetInfo:focus-visible {
@@ -386,14 +406,18 @@
 .targetLfo {
   font-weight: 600;
   font-size: 0.62rem;
-  color: rgb(165 180 252);
+  color: #4f46e5;
   flex-shrink: 0;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
+[data-theme="dark"] .targetLfo {
+  color: rgb(165 180 252);
+}
+
 .targetArrow {
-  color: rgb(255 255 255 / 0.3);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -402,13 +426,13 @@
   font-weight: 600;
   padding: 0.1rem 0.25rem;
   border-radius: 0.15rem;
-  background: rgb(255 255 255 / 0.1);
-  color: rgb(255 255 255 / 0.6);
+  background: var(--bg-active);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
 .targetParam {
-  color: rgb(255 255 255 / 0.9);
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -417,7 +441,7 @@
 .targetDepth {
   font-size: 0.6rem;
   font-variant-numeric: tabular-nums;
-  color: rgb(255 255 255 / 0.5);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -430,7 +454,7 @@
   padding: 0;
   background: none;
   border: none;
-  color: rgb(255 255 255 / 0.3);
+  color: var(--text-muted);
   font-size: 0.9rem;
   cursor: pointer;
   flex-shrink: 0;
@@ -438,7 +462,7 @@
 }
 
 .targetDelete:hover {
-  color: rgb(239 68 68);
+  color: var(--accent-danger);
 }
 
 /* ==========================================================================
@@ -462,8 +486,8 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.35rem 0.5rem;
-  background: rgb(255 255 255 / 0.03);
-  border: 1px solid rgb(255 255 255 / 0.08);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
   border-radius: 0.25rem;
   font-size: 0.68rem;
 }
@@ -481,14 +505,14 @@
   padding: 0;
   background: none;
   border: none;
-  color: rgb(255 255 255 / 0.4);
+  color: var(--text-muted);
   font-size: 0.7rem;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .audioModToggle.enabled {
-  color: rgb(251 191 36);
+  color: var(--accent-warning);
 }
 
 .audioModInfo {
@@ -508,7 +532,7 @@
 }
 
 .audioModInfo:hover {
-  background: rgb(255 255 255 / 0.05);
+  background: var(--bg-active);
 }
 
 .audioModInfo:focus-visible {
@@ -529,23 +553,27 @@
   flex-shrink: 0;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  color: rgb(255 255 255 / 0.8);
+  color: var(--text-primary);
 }
 
 .audioModArrow {
-  color: rgb(255 255 255 / 0.3);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
 .audioModLfo {
-  color: rgb(165 180 252);
+  color: #4f46e5;
   font-weight: 500;
   flex-shrink: 0;
 }
 
+[data-theme="dark"] .audioModLfo {
+  color: rgb(165 180 252);
+}
+
 .audioModProperty {
   font-size: 0.6rem;
-  color: rgb(255 255 255 / 0.5);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -558,7 +586,7 @@
   padding: 0;
   background: none;
   border: none;
-  color: rgb(255 255 255 / 0.3);
+  color: var(--text-muted);
   font-size: 0.9rem;
   cursor: pointer;
   flex-shrink: 0;
@@ -566,7 +594,7 @@
 }
 
 .audioModDelete:hover {
-  color: rgb(239 68 68);
+  color: var(--accent-danger);
 }
 
 /* ==========================================================================
@@ -580,17 +608,17 @@
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.6rem;
-  background: rgb(255 255 255 / 0.03);
-  border: 1px solid rgb(255 255 255 / 0.1);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
   border-radius: 0.3rem;
 }
 
 .formHeader {
   font-size: 0.7rem;
   font-weight: 600;
-  color: rgb(255 255 255 / 0.8);
+  color: var(--text-primary);
   padding-bottom: 0.3rem;
-  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  border-bottom: 1px solid var(--border-subtle);
   margin-bottom: 0.2rem;
 }
 
@@ -608,17 +636,17 @@
 
 .formLabelText {
   font-size: 0.65rem;
-  color: rgb(255 255 255 / 0.6);
+  color: var(--text-secondary);
 }
 
 .formInput {
   flex: 1;
   min-width: 0;
   padding: 0.35rem 0.5rem;
-  background: rgb(255 255 255 / 0.05);
-  border: 1px solid rgb(255 255 255 / 0.12);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
   border-radius: 0.25rem;
-  color: rgb(255 255 255 / 0.9);
+  color: var(--text-primary);
   font-size: 0.7rem;
 }
 
@@ -631,10 +659,10 @@
   flex: 1;
   min-width: 0;
   padding: 0.35rem 0.5rem;
-  background: rgb(255 255 255 / 0.05);
-  border: 1px solid rgb(255 255 255 / 0.12);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
   border-radius: 0.25rem;
-  color: rgb(255 255 255 / 0.9);
+  color: var(--text-primary);
   font-size: 0.7rem;
 }
 
@@ -648,7 +676,7 @@
   height: 4px;
   -webkit-appearance: none;
   appearance: none;
-  background: rgb(255 255 255 / 0.1);
+  background: var(--bg-active);
   border-radius: 2px;
   cursor: pointer;
 }
@@ -722,7 +750,7 @@
   align-items: center;
   gap: 0.25rem;
   font-size: 0.65rem;
-  color: rgb(255 255 255 / 0.7);
+  color: var(--text-secondary);
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -736,7 +764,7 @@
   align-items: center;
   gap: 0.4rem;
   font-size: 0.65rem;
-  color: rgb(255 255 255 / 0.7);
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
@@ -757,7 +785,7 @@
 }
 
 .rangeSeparator {
-  color: rgb(255 255 255 / 0.4);
+  color: var(--text-muted);
   font-size: 0.7rem;
 }
 
@@ -770,10 +798,10 @@
 
 .cancelButton {
   padding: 0.3rem 0.6rem;
-  background: rgb(255 255 255 / 0.05);
-  border: 1px solid rgb(255 255 255 / 0.12);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
   border-radius: 0.25rem;
-  color: rgb(255 255 255 / 0.7);
+  color: var(--text-secondary);
   font-size: 0.68rem;
   cursor: pointer;
   transition:
@@ -782,8 +810,8 @@
 }
 
 .cancelButton:hover {
-  background: rgb(255 255 255 / 0.08);
-  border-color: rgb(255 255 255 / 0.2);
+  background: var(--bg-active);
+  border-color: var(--border-default);
 }
 
 .submitButton {
@@ -791,13 +819,17 @@
   background: rgb(99 102 241 / 0.2);
   border: 1px solid rgb(99 102 241 / 0.4);
   border-radius: 0.25rem;
-  color: rgb(165 180 252);
+  color: #4f46e5;
   font-size: 0.68rem;
   font-weight: 500;
   cursor: pointer;
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease;
+}
+
+[data-theme="dark"] .submitButton {
+  color: rgb(165 180 252);
 }
 
 .submitButton:hover:not(:disabled) {

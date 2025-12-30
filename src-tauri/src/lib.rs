@@ -835,6 +835,16 @@ fn setup_window_placement(app_handle: &AppHandle) {
         let monitor_scale = target.scale_factor();
 
         if is_dev {
+            // In dev mode, ensure window is at least 1920x1080 (scaled for monitor DPI)
+            let min_width = (1920.0 * monitor_scale) as u32;
+            let min_height = (1080.0 * monitor_scale) as u32;
+
+            // Set size first to ensure proper dimensions
+            let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+                width: min_width,
+                height: min_height,
+            }));
+
             // Two-step positioning: move to target monitor first (so macOS updates the
             // window's scale factor), then center it.
             let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
@@ -842,20 +852,12 @@ fn setup_window_placement(app_handle: &AppHandle) {
                 y: monitor_pos.y,
             }));
 
-            // Let window manager process the move and update scale
+            // Let window manager process the move and size update
             std::thread::sleep(std::time::Duration::from_millis(50));
 
-            // Calculate center using actual window size, or fallback to config size
-            let (window_width, window_height) = window
-                .outer_size()
-                .map(|s| (s.width as i32, s.height as i32))
-                .unwrap_or((
-                    (1920.0 * monitor_scale) as i32,
-                    (1080.0 * monitor_scale) as i32,
-                ));
-
-            let center_x = monitor_pos.x + ((monitor_size.width as i32 - window_width) / 2);
-            let center_y = monitor_pos.y + ((monitor_size.height as i32 - window_height) / 2);
+            // Center the window on the target monitor
+            let center_x = monitor_pos.x + ((monitor_size.width as i32 - min_width as i32) / 2);
+            let center_y = monitor_pos.y + ((monitor_size.height as i32 - min_height as i32) / 2);
 
             let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
                 x: center_x,

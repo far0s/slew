@@ -21,7 +21,7 @@
   align-items: center;
   justify-content: space-between;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .title {
@@ -29,7 +29,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgb(255 255 255 / 0.9);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -45,7 +45,7 @@
   padding: 0.4rem 0;
   background: none;
   border: none;
-  color: rgb(255 255 255 / 0.8);
+  color: var(--text-secondary);
   font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.03em;
@@ -55,11 +55,11 @@
 }
 
 .sectionHeader:hover {
-  color: rgb(255 255 255 / 1);
+  color: var(--text-primary);
 }
 
 .sectionHeader:focus-visible {
-  outline: 2px solid rgb(59 130 246 / 0.8);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
   border-radius: 2px;
 }
@@ -68,6 +68,55 @@
   width: 14px;
   height: 14px;
   opacity: 0.6;
+}
+
+.sectionHeaderWithAction {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sectionHeaderWithAction .sectionHeader {
+  flex: 1;
+}
+
+.mappingsBadge {
+  margin-left: auto;
+  padding: 0.1rem 0.4rem;
+  border-radius: 9999px;
+  background: rgb(59 130 246 / 0.2);
+  font-size: 0.6rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: rgb(147 197 253);
+}
+
+.clearButton {
+  padding: 0.25rem 0.5rem;
+  background: rgb(239 68 68 / 0.08);
+  border: 1px solid rgb(239 68 68 / 0.2);
+  border-radius: 0.25rem;
+  color: rgb(252 165 165 / 0.8);
+  font-size: 0.6rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.clearButton:hover {
+  background: rgb(239 68 68 / 0.15);
+  border-color: rgb(239 68 68 / 0.3);
+  color: rgb(252 165 165);
+}
+
+.clearButton:focus-visible {
+  outline: 2px solid rgb(239 68 68 / 0.6);
+  outline-offset: 1px;
 }
 
 .sectionContent {
@@ -89,9 +138,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 0.6rem;
-  background: rgb(255 255 255 / 0.03);
+  background: var(--bg-hover);
   border-radius: 0.35rem;
-  border: 1px solid rgb(255 255 255 / 0.04);
+  border: 1px solid var(--border-subtle);
 }
 
 .deviceInfo {
@@ -124,7 +173,7 @@
 
 .deviceName {
   font-size: 0.75rem;
-  color: rgb(255 255 255 / 0.85);
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -132,7 +181,7 @@
 
 .deviceStatus {
   font-size: 0.6rem;
-  color: rgb(255 255 255 / 0.45);
+  color: var(--text-muted);
   font-style: italic;
 }
 
@@ -148,13 +197,13 @@
   align-items: center;
   gap: 0.3rem;
   font-size: 0.6rem;
-  color: rgb(255 255 255 / 0.5);
+  color: var(--text-muted);
   cursor: pointer;
   user-select: none;
 }
 
 .feedbackToggle:hover {
-  color: rgb(255 255 255 / 0.7);
+  color: var(--text-secondary);
 }
 
 .feedbackToggle input[type="checkbox"] {
@@ -224,9 +273,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.4rem 0.5rem;
-  background: rgb(255 255 255 / 0.02);
+  background: var(--bg-hover);
   border-radius: 0.3rem;
-  border: 1px solid rgb(255 255 255 / 0.04);
+  border: 1px solid var(--border-subtle);
 }
 
 .mappingInfo {
@@ -239,7 +288,7 @@
 .mappingParameter {
   font-size: 0.72rem;
   font-weight: 500;
-  color: rgb(255 255 255 / 0.85);
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -247,7 +296,7 @@
 
 .mappingDetails {
   font-size: 0.65rem;
-  color: rgb(255 255 255 / 0.5);
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -293,10 +342,10 @@
 .retryButton,
 .clearAllButton {
   padding: 0.4rem 0.75rem;
-  background: rgb(255 255 255 / 0.05);
-  border: 1px solid rgb(255 255 255 / 0.1);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
   border-radius: 0.3rem;
-  color: rgb(255 255 255 / 0.7);
+  color: var(--text-secondary);
   font-size: 0.68rem;
   font-weight: 500;
   cursor: pointer;
@@ -310,15 +359,15 @@
 
 .refreshButton:hover,
 .retryButton:hover {
-  background: rgb(255 255 255 / 0.08);
-  border-color: rgb(255 255 255 / 0.15);
-  color: rgb(255 255 255 / 0.9);
+  background: var(--bg-active);
+  border-color: var(--border-default);
+  color: var(--text-primary);
 }
 
 .refreshButton:focus-visible,
 .retryButton:focus-visible,
 .clearAllButton:focus-visible {
-  outline: 2px solid rgb(59 130 246 / 0.8);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 1px;
 }
 
@@ -341,7 +390,7 @@
 .loadingText,
 .emptyText {
   font-size: 0.72rem;
-  color: rgb(255 255 255 / 0.5);
+  color: var(--text-muted);
   padding: 0.5rem 0;
 }
 
@@ -353,7 +402,7 @@
 
 .emptyHint {
   font-size: 0.65rem;
-  color: rgb(255 255 255 / 0.35);
+  color: var(--text-muted);
   font-style: italic;
 }
 
@@ -368,13 +417,13 @@
   padding: 0.4rem 0;
   margin-top: 0.25rem;
   font-size: 0.68rem;
-  color: rgb(255 255 255 / 0.6);
+  color: var(--text-muted);
   cursor: pointer;
   user-select: none;
 }
 
 .autoReconnectToggle:hover {
-  color: rgb(255 255 255 / 0.8);
+  color: var(--text-secondary);
 }
 
 .autoReconnectToggle input[type="checkbox"] {

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "ck": "pkill -f 'sebcat-vj' && sudo killall -9 coreaudiod",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:no-ndi": "tauri dev --no-default-features",

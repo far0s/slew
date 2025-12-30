@@ -27,16 +27,16 @@
   margin: 0;
   font-size: 0.85rem;
   font-weight: 600;
-  color: rgb(255 255 255 / 0.9);
+  color: var(--text-primary);
 }
 
 .selectedSlot {
   padding: 0.2rem 0.5rem;
   font-size: 0.7rem;
   font-weight: 600;
-  color: rgb(99 102 241);
-  background: rgb(99 102 241 / 0.15);
-  border: 1px solid rgb(99 102 241 / 0.3);
+  color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 30%, transparent);
   border-radius: 0.25rem;
 }
 
@@ -49,9 +49,9 @@
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.625rem;
-  background: rgb(255 255 255 / 0.03);
+  background: var(--bg-hover);
   border-radius: 0.375rem;
-  border: 1px solid rgb(255 255 255 / 0.05);
+  border: 1px solid var(--border-default);
 }
 
 .statusRow {
@@ -68,43 +68,45 @@
 }
 
 .statusIndicator.connected {
-  background: rgb(52 211 153);
-  box-shadow: 0 0 6px rgb(52 211 153 / 0.5);
+  background: var(--accent-success);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent-success) 50%, transparent);
 }
 
 .statusIndicator.searching {
-  background: rgb(251 191 36);
+  background: var(--accent-warning);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
 .statusIndicator.disconnected {
-  background: rgb(255 255 255 / 0.3);
+  background: var(--text-muted);
 }
 
 @keyframes pulse {
   0%,
   100% {
     opacity: 0.4;
-    box-shadow: 0 0 4px rgb(251 191 36 / 0.3);
+    box-shadow: 0 0 4px
+      color-mix(in srgb, var(--accent-warning) 30%, transparent);
   }
   50% {
     opacity: 1;
-    box-shadow: 0 0 8px rgb(251 191 36 / 0.6);
+    box-shadow: 0 0 8px
+      color-mix(in srgb, var(--accent-warning) 60%, transparent);
   }
 }
 
 .statusText {
   font-size: 0.75rem;
   font-weight: 500;
-  color: rgb(255 255 255 / 0.8);
+  color: var(--text-primary);
 }
 
 .errorText {
   margin: 0;
   padding: 0.375rem 0.5rem;
   font-size: 0.7rem;
-  color: rgb(239 68 68);
-  background: rgb(239 68 68 / 0.1);
+  color: var(--accent-danger);
+  background: color-mix(in srgb, var(--accent-danger) 10%, transparent);
   border-radius: 0.25rem;
 }
 
@@ -120,19 +122,19 @@
   align-items: center;
   gap: 0.375rem;
   font-size: 0.7rem;
-  color: rgb(255 255 255 / 0.6);
+  color: var(--text-secondary);
   cursor: pointer;
   user-select: none;
 }
 
 .autoConnectLabel:hover {
-  color: rgb(255 255 255 / 0.8);
+  color: var(--text-primary);
 }
 
 .autoConnectCheckbox {
   width: 12px;
   height: 12px;
-  accent-color: rgb(99 102 241);
+  accent-color: var(--accent-primary);
   cursor: pointer;
 }
 
@@ -140,9 +142,9 @@
   padding: 0.3rem 0.5rem;
   font-size: 0.65rem;
   font-weight: 500;
-  color: rgb(255 255 255 / 0.7);
-  background: rgb(255 255 255 / 0.08);
-  border: 1px solid rgb(255 255 255 / 0.1);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
   border-radius: 0.25rem;
   cursor: pointer;
   transition:
@@ -151,9 +153,9 @@
 }
 
 .disconnectButton:hover {
-  color: rgb(239 68 68);
-  background: rgb(239 68 68 / 0.15);
-  border-color: rgb(239 68 68 / 0.3);
+  color: var(--accent-danger);
+  background: color-mix(in srgb, var(--accent-danger) 15%, transparent);
+  border-color: color-mix(in srgb, var(--accent-danger) 30%, transparent);
 }
 
 /* ==========================================================================
@@ -171,15 +173,15 @@
   flex-direction: column;
   gap: 0.2rem;
   padding: 0.5rem;
-  background: rgb(255 255 255 / 0.03);
+  background: var(--bg-hover);
   border-radius: 0.25rem;
-  border: 1px solid rgb(255 255 255 / 0.05);
+  border: 1px solid var(--border-default);
 }
 
 .activityLabel {
   font-size: 0.6rem;
   font-weight: 500;
-  color: rgb(255 255 255 / 0.4);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -187,7 +189,7 @@
 .activityValue {
   font-size: 0.75rem;
   font-weight: 500;
-  color: rgb(255 255 255 / 0.8);
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -203,9 +205,9 @@
   padding: 0.5rem;
   font-size: 0.7rem;
   font-weight: 500;
-  color: rgb(255 255 255 / 0.5);
+  color: var(--text-secondary);
   background: transparent;
-  border: 1px solid rgb(255 255 255 / 0.05);
+  border: 1px solid var(--border-subtle);
   border-radius: 0.25rem;
   cursor: pointer;
   transition:
@@ -214,8 +216,8 @@
 }
 
 .debugTrigger:hover {
-  color: rgb(255 255 255 / 0.7);
-  border-color: rgb(255 255 255 / 0.1);
+  color: var(--text-primary);
+  border-color: var(--border-default);
 }
 
 .debugTrigger svg {
@@ -228,8 +230,8 @@
   margin-left: auto;
   padding: 0.1rem 0.3rem;
   font-size: 0.6rem;
-  color: rgb(255 255 255 / 0.4);
-  background: rgb(255 255 255 / 0.05);
+  color: var(--text-muted);
+  background: var(--bg-hover);
   border-radius: 0.2rem;
 }
 
@@ -245,9 +247,9 @@
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.5rem;
-  background: rgb(255 255 255 / 0.02);
+  background: var(--bg-hover);
   border-radius: 0.25rem;
-  border: 1px solid rgb(255 255 255 / 0.04);
+  border: 1px solid var(--border-subtle);
 }
 
 .debugGroupHeader {
@@ -257,14 +259,14 @@
   gap: 0.5rem;
   font-size: 0.65rem;
   font-weight: 500;
-  color: rgb(255 255 255 / 0.5);
+  color: var(--text-secondary);
 }
 
 .clearButton {
   padding: 0.15rem 0.35rem;
   font-size: 0.6rem;
-  color: rgb(255 255 255 / 0.4);
-  background: rgb(255 255 255 / 0.05);
+  color: var(--text-muted);
+  background: var(--bg-hover);
   border: none;
   border-radius: 0.2rem;
   cursor: pointer;
@@ -272,7 +274,7 @@
 }
 
 .clearButton:hover {
-  color: rgb(255 255 255 / 0.7);
+  color: var(--text-primary);
 }
 
 .emptyText {
@@ -280,7 +282,7 @@
   padding: 0.25rem 0;
   font-size: 0.65rem;
   font-style: italic;
-  color: rgb(255 255 255 / 0.3);
+  color: var(--text-muted);
 }
 
 .eventList {
@@ -297,13 +299,13 @@
   gap: 0.5rem;
   padding: 0.25rem 0.375rem;
   font-size: 0.65rem;
-  background: rgb(255 255 255 / 0.02);
+  background: var(--bg-hover);
   border-radius: 0.2rem;
 }
 
 .eventKey {
   font-weight: 600;
-  color: rgb(255 255 255 / 0.8);
+  color: var(--text-primary);
   min-width: 2.5rem;
 }
 
@@ -311,30 +313,30 @@
   margin-left: auto;
   font-family: monospace;
   font-size: 0.6rem;
-  color: rgb(255 255 255 / 0.3);
+  color: var(--text-muted);
 }
 
 .eventPressed {
-  color: rgb(52 211 153);
+  color: var(--accent-success);
 }
 
 .eventReleased {
-  color: rgb(251 191 36);
+  color: var(--accent-warning);
 }
 
 .eventEncoder {
   font-weight: 500;
-  color: rgb(255 255 255 / 0.7);
+  color: var(--text-secondary);
   min-width: 4rem;
 }
 
 .eventPositive {
-  color: rgb(52 211 153);
+  color: var(--accent-success);
   font-weight: 600;
 }
 
 .eventNegative {
-  color: rgb(239 68 68);
+  color: var(--accent-danger);
   font-weight: 600;
 }
 
@@ -353,20 +355,20 @@
   gap: 0.375rem;
   padding: 0.2rem 0.375rem;
   font-size: 0.6rem;
-  background: rgb(255 255 255 / 0.02);
+  background: var(--bg-hover);
   border-radius: 0.2rem;
 }
 
 .rawReportSize {
   flex-shrink: 0;
   min-width: 1.5rem;
-  color: rgb(255 255 255 / 0.4);
+  color: var(--text-muted);
 }
 
 .rawReportHex {
   font-family: monospace;
   font-size: 0.55rem;
-  color: rgb(255 255 255 / 0.5);
+  color: var(--text-secondary);
   word-break: break-all;
 }
 
@@ -383,11 +385,11 @@
 
 .eventList::-webkit-scrollbar-thumb,
 .rawReportList::-webkit-scrollbar-thumb {
-  background: rgb(255 255 255 / 0.1);
+  background: var(--bg-active);
   border-radius: 2px;
 }
 
 .eventList::-webkit-scrollbar-thumb:hover,
 .rawReportList::-webkit-scrollbar-thumb:hover {
-  background: rgb(255 255 255 / 0.2);
+  background: var(--border-default);
 }

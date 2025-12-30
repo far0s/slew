@@ -3,11 +3,12 @@
   align-items: center;
   justify-content: center;
   padding: 0.3rem 0.5rem;
-  min-width: 48px;
-  background: rgb(255 255 255 / 0.05);
-  border: 1px solid rgb(255 255 255 / 0.12);
+  min-width: 56px;
+  width: 56px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
   border-radius: 0.25rem;
-  color: rgb(255 255 255 / 0.6);
+  color: var(--text-secondary);
   font-size: 0.65rem;
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -22,9 +23,9 @@
 }
 
 .button:hover:not(:disabled) {
-  background: rgb(255 255 255 / 0.08);
-  border-color: rgb(255 255 255 / 0.18);
-  color: rgb(255 255 255 / 0.85);
+  background: var(--bg-active);
+  border-color: var(--border-default);
+  color: var(--text-primary);
 }
 
 .button:active:not(:disabled) {
@@ -60,6 +61,18 @@
   border-color: rgb(234 179 8 / 0.5);
 }
 
+/* Light mode learning state */
+[data-theme="light"] .learning {
+  background: rgb(202 138 4 / 0.15);
+  border-color: rgb(202 138 4 / 0.5);
+  color: rgb(133 77 14);
+}
+
+[data-theme="light"] .learning:hover:not(:disabled) {
+  background: rgb(202 138 4 / 0.2);
+  border-color: rgb(202 138 4 / 0.6);
+}
+
 .learningIcon {
   display: inline-flex;
   animation: spin 2s linear infinite;
@@ -89,38 +102,61 @@
 
 .mapped {
   background: rgb(34 197 94 / 0.12);
-  border-color: rgb(34 197 94 / 0.3);
+  border-color: rgb(34 197 94 / 0.35);
   color: rgb(134 239 172);
 }
 
 .mapped:hover:not(:disabled) {
   background: rgb(239 68 68 / 0.12);
-  border-color: rgb(239 68 68 / 0.3);
+  border-color: rgb(239 68 68 / 0.35);
   color: rgb(252 165 165);
+}
+
+/* Light mode mapped state - higher contrast */
+[data-theme="light"] .mapped {
+  background: rgb(22 163 74 / 0.12);
+  border-color: rgb(22 163 74 / 0.5);
+  color: rgb(22 101 52);
+  font-weight: 600;
+}
+
+[data-theme="light"] .mapped:hover:not(:disabled) {
+  background: rgb(220 38 38 / 0.12);
+  border-color: rgb(220 38 38 / 0.5);
+  color: rgb(153 27 27);
 }
 
 .mappedContent {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  justify-content: center;
   position: relative;
+  min-width: 100%;
 }
 
 .mappingText {
-  transition: opacity 0.1s ease;
+  transition: opacity 0.15s ease;
 }
 
 .mapped:hover .mappingText {
-  opacity: 0.7;
+  opacity: 0;
 }
 
 .removeIcon {
-  font-size: 0.85rem;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.9rem;
   font-weight: 600;
   line-height: 1;
-  margin-left: 0.1rem;
   color: rgb(252 165 165);
-  animation: fadeIn 0.1s ease;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.mapped:hover .removeIcon {
+  opacity: 1;
 }
 
 @keyframes fadeIn {
@@ -143,6 +179,13 @@
   animation: successFlash 0.6s ease-out;
 }
 
+/* Light mode success state */
+[data-theme="light"] .success {
+  background: rgb(22 163 74 / 0.2);
+  border-color: rgb(22 163 74 / 0.5);
+  color: rgb(22 101 52);
+}
+
 @keyframes successFlash {
   0% {
     background: rgb(34 197 94 / 0.4);
@@ -161,7 +204,8 @@
 /* Compact Mode */
 
 .compact {
-  min-width: 28px;
+  min-width: 56px;
+  width: 56px;
   padding: 0.25rem 0.35rem;
   font-size: 0.6rem;
 }

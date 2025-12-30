@@ -96,3 +96,36 @@ textarea:not([rows]) {
 :target {
   scroll-margin-block: 5ex;
 }
+
+/* Disable springy/bouncy scroll effect on macOS/iOS */
+html,
+body {
+  overscroll-behavior: contain;
+}
+
+/* Apply to all scrollable elements for consistent feel */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Ensure consistent scroll behavior in scrollable containers */
+[style*="overflow"],
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto {
+  overscroll-behavior: contain;
+}

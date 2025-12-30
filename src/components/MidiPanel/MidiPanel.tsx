@@ -218,7 +218,7 @@ function DeviceList() {
  * Mappings list showing all current MIDI→parameter bindings.
  */
 function MappingsList() {
-  const { mappings, isLoading, removeMapping, clearAll } = useMidiMappings();
+  const { mappings, isLoading, removeMapping } = useMidiMappings();
   const [removing, setRemoving] = useState<string | null>(null);
 
   const handleRemove = async (parameterId: string) => {
@@ -267,13 +267,6 @@ function MappingsList() {
           </button>
         </div>
       ))}
-      <button
-        type="button"
-        onClick={() => void clearAll()}
-        className={styles.clearAllButton}
-      >
-        Clear All Mappings
-      </button>
     </div>
   );
 }
@@ -294,6 +287,17 @@ export interface MidiPanelProps {
 export function MidiPanel({ className }: MidiPanelProps) {
   const [devicesOpen, setDevicesOpen] = useState(true);
   const [mappingsOpen, setMappingsOpen] = useState(true);
+  const { mappings, clearAll } = useMidiMappings();
+
+  const handleClearAll = async () => {
+    if (mappings.length === 0) return;
+    if (!window.confirm("Clear all MIDI mappings?")) return;
+    try {
+      await clearAll();
+    } catch (e) {
+      console.error("[MIDI] Failed to clear mappings:", e);
+    }
+  };
 
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
@@ -314,12 +318,30 @@ export function MidiPanel({ className }: MidiPanelProps) {
       </Collapsible.Root>
 
       <Collapsible.Root open={mappingsOpen} onOpenChange={setMappingsOpen}>
-        <Collapsible.Trigger asChild>
-          <button type="button" className={styles.sectionHeader}>
-            {mappingsOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Mappings</span>
-          </button>
-        </Collapsible.Trigger>
+        <div className={styles.sectionHeaderWithAction}>
+          <Collapsible.Trigger asChild>
+            <button type="button" className={styles.sectionHeader}>
+              {mappingsOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
+              <span>Mappings</span>
+              {mappings.length > 0 && (
+                <span className={styles.mappingsBadge}>{mappings.length}</span>
+              )}
+            </button>
+          </Collapsible.Trigger>
+          {mappings.length > 0 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                void handleClearAll();
+              }}
+              className={styles.clearButton}
+              aria-label="Clear all mappings"
+            >
+              Clear All
+            </button>
+          )}
+        </div>
         <Collapsible.Content className={styles.sectionContent}>
           <MappingsList />
         </Collapsible.Content>
