@@ -20,17 +20,33 @@ Prioritized list of potential work items for sebcat-vj.
 
 ## Active / High Priority
 
-### 🔴 Prepare repo for first public release `chore`
+### 🔴 Automated GitHub Releases `chore`
 
-Have the repo ready for first public release (that includes download links and documentation).
+Set up GitHub Actions to automatically build and publish releases when a tag is pushed.
 
-**Context**: Some collaborators (some technical and some non-technical) have asked to play with the app.
+**Context**: Packaging is working locally (unsigned macOS builds). Need automation for consistent, reproducible releases.
 
-**Subtasks**: (non-exhaustive list)
+**Subtasks**:
 
-- [ ] Figure out a proper name + icon and logo -> update throughout the app
-- [ ] Set up automated release process (GitHub Actions) -> every time a new tag is pushed to the main branch, create a release with the tag name as the version number and upload the built binaries
-- [ ] Update README.md with download links and documentation
+- [ ] Create GitHub Actions workflow for release builds
+- [ ] Build macOS (aarch64 + x86_64), Windows, Linux
+- [ ] Upload artifacts to GitHub Releases
+- [ ] Update README with download links and Gatekeeper workaround instructions
+
+---
+
+### 🔴 App Branding `chore`
+
+Figure out proper name, icon, and logo for the app.
+
+**Context**: Current name "sebcat-vj" is a placeholder. Need final branding before public release.
+
+**Subtasks**:
+
+- [ ] Decide on final app name
+- [ ] Design app icon (all required sizes)
+- [ ] Update `tauri.conf.json`, `package.json`, window titles
+- [ ] Update documentation references
 
 ---
 
@@ -201,13 +217,26 @@ OSC → DMX integration for lighting.
 
 Complete Windows distribution pipeline.
 
-**Context**: macOS packaging is mostly done; Windows needs testing.
+**Context**: macOS packaging is done (unsigned); Windows needs testing.
 
 **Subtasks**:
 
 - [ ] Test NSIS/MSI installers
-- [ ] Windows code signing setup
 - [ ] Spout implementation (for Windows video output)
+
+---
+
+### 🟢 Code Signing `chore`
+
+Sign builds for smoother user experience (removes Gatekeeper/SmartScreen warnings).
+
+**Context**: Currently releasing unsigned builds with documented workarounds. Signing is optional but improves UX for non-technical users.
+
+**Subtasks**:
+
+- [ ] macOS: Apple Developer Program ($99/year), code signing + notarization
+- [ ] Windows: EV Code Signing certificate ($200-500/year)
+- [ ] Update GitHub Actions workflow with signing steps
 
 ---
 

@@ -6,24 +6,24 @@ Status overview and key decisions for sebcat-vj.
 
 ## Feature Status
 
-| System             | Status | Notes                                                         |
-| ------------------ | ------ | ------------------------------------------------------------- |
-| Tauri + React app  | ✅     | Dual-window (Renderer + Controls)                             |
-| Parameter Server   | ✅     | Rust backend with ~60Hz transitions                           |
-| Sketch/Slot System | ✅     | Slot-based (1-8), multi-instance, auto-generated controls     |
-| Sketch Browser UI  | ✅     | Inline browser in empty slots, no extra click needed          |
-| Crossfade          | ✅     | Smooth blending with correct scene pairing                    |
-| MIDI Input         | ✅     | Hot-plug detection, auto-reconnect, Learn workflow            |
-| OSC Input          | ✅     | UDP server (port 9000), default mappings                      |
-| Audio Input        | ✅     | Hot-plug detection, auto-reconnect, FFT, beat detection       |
-| Audio → Parameter  | ✅     | Full mapping system with modes (continuous/trigger/add)       |
-| HID Input          | ✅     | DOIO Megalodon macropad with encoders, auto-connect           |
-| Modulation Engine  | ✅     | Backend LFOs, modulation matrix, audio→LFO, slider indicators |
-| Video Output       | ✅     | Syphon + NDI working, WebGPU async readback implemented       |
-| Shader Sketches    | ✅     | TslText3D (3D text), TslNoiseBlob (TSL noise blob)            |
-| WebGPU Renderer    | ✅     | Full WebGPU support, all sketches compatible                  |
-| Window Manager     | ✅     | Native menu, heartbeat monitoring, emergency recovery overlay |
-| Packaging          | 🧪     | macOS bundle config, entitlements, scripts; signing untested  |
+| System             | Status | Notes                                                          |
+| ------------------ | ------ | -------------------------------------------------------------- |
+| Tauri + React app  | ✅     | Dual-window (Renderer + Controls)                              |
+| Parameter Server   | ✅     | Rust backend with ~60Hz transitions                            |
+| Sketch/Slot System | ✅     | Slot-based (1-8), multi-instance, auto-generated controls      |
+| Sketch Browser UI  | ✅     | Inline browser in empty slots, no extra click needed           |
+| Crossfade          | ✅     | Smooth blending with correct scene pairing                     |
+| MIDI Input         | ✅     | Hot-plug detection, auto-reconnect, Learn workflow             |
+| OSC Input          | ✅     | UDP server (port 9000), default mappings                       |
+| Audio Input        | ✅     | Hot-plug detection, auto-reconnect, FFT, beat detection        |
+| Audio → Parameter  | ✅     | Full mapping system with modes (continuous/trigger/add)        |
+| HID Input          | ✅     | DOIO Megalodon macropad with encoders, auto-connect            |
+| Modulation Engine  | ✅     | Backend LFOs, modulation matrix, audio→LFO, slider indicators  |
+| Video Output       | ✅     | Syphon + NDI working, WebGPU async readback implemented        |
+| Shader Sketches    | ✅     | TslText3D (3D text), TslNoiseBlob (TSL noise blob)             |
+| WebGPU Renderer    | ✅     | Full WebGPU support, all sketches compatible                   |
+| Window Manager     | ✅     | Native menu, heartbeat monitoring, emergency recovery overlay  |
+| Packaging          | ✅     | macOS/Windows/Linux builds ready; unsigned for initial release |
 
 ---
 
