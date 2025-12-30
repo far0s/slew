@@ -75,8 +75,8 @@ interface PBOState {
 /** Default target capture rate (captures per second) */
 const DEFAULT_CAPTURE_FPS = 60;
 
-/** How often to log stats (in frames) - reduced for faster feedback during testing */
-const STATS_LOG_INTERVAL = 60;
+/** How often to log stats (in frames) - 300 = ~5s at 60fps */
+const STATS_LOG_INTERVAL = 300;
 
 /** Maximum scale factor (1.0 = full resolution) */
 const MAX_SCALE = 1.0;
@@ -88,14 +88,22 @@ const MIN_SCALE = 0.25;
 const DEFAULT_TARGET_WIDTH = 1920;
 const DEFAULT_TARGET_HEIGHT = 1080;
 
-/** Enable detailed timing logs (set to true for performance analysis) */
+// ============================================================================
+// Debug Flags (for performance profiling - keep disabled in production)
+// ============================================================================
+
+/** Enable detailed per-frame timing logs (verbose, set true for debugging) */
 const ENABLE_TIMING_LOGS = false;
 
-/** Skip IPC call entirely to isolate frontend timing (for benchmarking only) */
+/** [DEBUG] Skip IPC call entirely to isolate frontend timing */
 const DRY_RUN_MODE = false;
 
-/** Skip base64 encoding to isolate encode overhead (for benchmarking only) */
+/** [DEBUG] Skip base64 encoding to measure encode overhead */
 const SKIP_ENCODE = false;
+
+// ============================================================================
+// Protocol Configuration (production settings)
+// ============================================================================
 
 /**
  * Use binary protocol instead of base64+JSON for video frame transfer.

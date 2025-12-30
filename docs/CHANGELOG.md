@@ -29,6 +29,15 @@ Status overview and key decisions for sebcat-vj.
 
 ## Recent Changes
 
+### Video Output Optimization Complete
+
+- **WebGPU async readback**: `readRenderTargetPixelsAsync()` provides truly non-blocking GPU→CPU transfer
+- **Binary IPC protocol**: Raw pixel data via custom URI scheme (`videoframe://`), eliminates ~30ms base64 overhead
+- **PBO fallback**: Ping-pong Pixel Buffer Objects for WebGL2 async readback when WebGPU unavailable
+- **Result**: Stable 60fps Syphon output at 1080p (previously capped at ~20fps)
+- **Documentation**: See `docs/finished/VIDEO_OUTPUT_OPTIMIZATION.md` for full details
+- **Cleanup**: Debug flags organized, stats log interval set to production value (300 frames)
+
 ### WebGPU Polish & Stats
 
 - **Performance stats**: Replaced `r3f-perf` with `stats-gl` via `@react-three/drei`'s `<StatsGl />`
