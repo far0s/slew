@@ -277,10 +277,10 @@ xattr -cr /Applications/sebcat-vj.app
 
 - [x] Research tauri-action and Tauri CI/CD docs
 - [x] Create task document with implementation plan
-- [ ] Create `.github/workflows/release.yml`
-- [ ] Test workflow with manual dispatch
-- [ ] Create test release
-- [ ] Update README with download instructions
+- [x] Create `.github/workflows/release.yml`
+- [x] Update README with download instructions
+- [ ] Push to repo and test workflow with manual dispatch
+- [ ] Create test release to verify full flow
 - [ ] Archive task document to `docs/finished/`
 
 ---
