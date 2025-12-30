@@ -230,6 +230,15 @@ Slot count increased from 6 to 8 to match Midimix columns for 1:1 hardware mappi
 
 ## Version History
 
+### v0.4.0 (WebGPU migration / video output optimization)
+
+- Full WebGPU renderer with TSL shader materials
+- Video output optimization: stable 60fps at 1080p (vs ~20fps before)
+- WebGPU async readback with `readRenderTargetPixelsAsync()`
+- Binary IPC protocol for video frames (eliminates base64 overhead)
+- PBO fallback for WebGL2 async readback
+- Performance stats via `stats-gl` (WebGPU compatible)
+
 ### v0.3.0 (Midimix integration / multi-slot / window manager)
 
 - 8-slot system with fixed layout

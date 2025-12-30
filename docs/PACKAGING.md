@@ -312,8 +312,8 @@ xcrun stapler staple sebcat-vj.app
 
 ### GitHub Releases
 
-1. Tag your release: `git tag v0.3.0`
-2. Push the tag: `git push origin v0.3.0`
+1. Tag your release: `git tag v0.4.0`
+2. Push the tag: `git push origin v0.4.0`
 3. Create a release on GitHub
 4. Upload the built artifacts
 
