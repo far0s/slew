@@ -1,4 +1,11 @@
-import { Suspense, useCallback, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useRef,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import * as Select from "@radix-ui/react-select";
 import {
   ChevronDownIcon,
@@ -199,6 +206,32 @@ function InlineSketchBrowser({
   );
 }
 
+/**
+ * PreviewContainer wraps the 3D canvas preview and ensures proper sizing.
+ * The r3f Canvas has issues with initial sizing when the container uses CSS
+ * aspect-ratio. We trigger a resize event after mount to force recalculation.
+ * CSS handles the actual sizing via absolute positioning on the canvas container.
+ */
+function PreviewContainer({ children }: { children: ReactNode }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Trigger resize after mount to ensure Canvas recalculates its size
+    // This is needed because CSS aspect-ratio may not be computed at first render
+    const timeoutId = setTimeout(() => {
+      window.dispatchEvent(new Event("resize"));
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  return (
+    <div ref={containerRef} className={styles.previewContainer}>
+      {children}
+    </div>
+  );
+}
+
 // A single column in the slot management UI containing preview, selector, and controls.
 export function SlotColumn({
   slotIndex,
@@ -275,7 +308,7 @@ export function SlotColumn({
       transition={{ duration: 0.2, ease: "easeOut" }}
       layout
     >
-      <div className={styles.previewContainer}>
+      <PreviewContainer>
         {SketchComponent ? (
           <Suspense fallback={<div className={styles.fallback}>Loading…</div>}>
             <WebGPUCanvas
@@ -307,7 +340,6 @@ export function SlotColumn({
         ) : (
           <div className={styles.fallback}>Unknown sketch: {sketchId}</div>
         )}
-
         <div
           className={`${styles.slotBadge} ${isMacropadSelected ? styles.slotBadgeSelected : ""}`}
         >
@@ -394,7 +426,7 @@ export function SlotColumn({
             )}
           </div>
         </div>
-      </div>
+      </PreviewContainer>
 
       <div className={styles.controls}>
         <SlotParameterControls

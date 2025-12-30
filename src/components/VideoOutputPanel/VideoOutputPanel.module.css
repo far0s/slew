@@ -1,77 +1,51 @@
 /* VideoOutputPanel Styles */
 
 .container {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
 }
 
-.trigger {
+.header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  padding: 12px 16px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: #e5e5e5;
-  font-size: 14px;
-  font-weight: 500;
-  transition: background-color 0.15s ease;
-}
-
-.trigger:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.triggerLeft {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.triggerRight {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.chevron {
-  width: 16px;
-  height: 16px;
-  color: #888;
-  transition: transform 0.15s ease;
-}
-
-.sectionIcon {
-  width: 16px;
-  height: 16px;
-  color: #a855f7;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.statusBadge {
+  font-size: 0.65rem;
   font-weight: 500;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  background: var(--bg-active);
+  color: var(--text-secondary);
 }
 
-.activeIndicator {
-  font-size: 12px;
-  color: #22c55e;
-  background: rgba(34, 197, 94, 0.15);
-  padding: 2px 8px;
-  border-radius: 10px;
+.statusBadge.active {
+  background: rgb(34 197 94 / 0.15);
+  color: rgb(22 163 74);
 }
 
-.inactiveIndicator {
-  font-size: 12px;
-  color: #888;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 2px 8px;
-  border-radius: 10px;
+[data-theme="dark"] .statusBadge.active {
+  color: rgb(134 239 172);
 }
 
 .content {
-  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .backendList {
@@ -81,11 +55,13 @@
 }
 
 .backendCard {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   padding: 12px;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .backendCard.active {
@@ -113,12 +89,12 @@
 .backendName {
   font-weight: 600;
   font-size: 14px;
-  color: #e5e5e5;
+  color: var(--text-primary);
 }
 
 .backendId {
   font-size: 11px;
-  color: #666;
+  color: var(--text-muted);
   font-family: monospace;
 }
 
@@ -132,12 +108,16 @@
   align-items: center;
   gap: 4px;
   font-size: 12px;
+  color: rgb(22 163 74);
+}
+
+[data-theme="dark"] .statusActive {
   color: #22c55e;
 }
 
 .statusInactive {
   font-size: 12px;
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .statusUnavailable {
@@ -145,6 +125,10 @@
   align-items: center;
   gap: 4px;
   font-size: 12px;
+  color: rgb(220 38 38);
+}
+
+[data-theme="dark"] .statusUnavailable {
   color: #ef4444;
 }
 
@@ -157,7 +141,7 @@
   display: flex;
   gap: 16px;
   padding: 8px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--border-subtle);
   margin-top: 8px;
 }
 
@@ -169,14 +153,14 @@
 
 .statLabel {
   font-size: 10px;
-  color: #666;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .statValue {
   font-size: 14px;
-  color: #e5e5e5;
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -187,6 +171,10 @@
   border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: 4px;
   font-size: 12px;
+  color: rgb(220 38 38);
+}
+
+[data-theme="dark"] .errorMessage {
   color: #ef4444;
 }
 
@@ -194,12 +182,15 @@
   width: 100%;
   margin-top: 12px;
   padding: 8px 12px;
-  border: none;
+  border: 1px solid var(--border-default);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.15s ease, opacity 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .toggleButton:disabled {
@@ -208,36 +199,42 @@
 }
 
 .toggleOn {
-  background: rgba(168, 85, 247, 0.2);
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.4);
+  color: rgb(126 34 206);
+}
+
+[data-theme="dark"] .toggleOn {
   color: #a855f7;
 }
 
 .toggleOn:hover:not(:disabled) {
-  background: rgba(168, 85, 247, 0.3);
+  background: rgba(168, 85, 247, 0.25);
+  border-color: rgba(168, 85, 247, 0.5);
 }
 
 .toggleOff {
-  background: rgba(255, 255, 255, 0.1);
-  color: #888;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .toggleOff:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.15);
-  color: #e5e5e5;
+  background: var(--bg-active);
+  color: var(--text-primary);
 }
 
 .loadingState,
 .emptyState {
   padding: 24px;
   text-align: center;
-  color: #666;
+  color: var(--text-muted);
   font-size: 13px;
 }
 
 .errorState {
   padding: 16px;
   text-align: center;
-  color: #ef4444;
+  color: rgb(220 38 38);
   font-size: 13px;
   display: flex;
   flex-direction: column;
@@ -245,19 +242,27 @@
   align-items: center;
 }
 
+[data-theme="dark"] .errorState {
+  color: #ef4444;
+}
+
 .retryButton {
   padding: 6px 12px;
-  background: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.15);
   border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: 4px;
-  color: #ef4444;
+  color: rgb(220 38 38);
   font-size: 12px;
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
 
+[data-theme="dark"] .retryButton {
+  color: #ef4444;
+}
+
 .retryButton:hover {
-  background: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.25);
 }
 
 .hint {
@@ -267,10 +272,14 @@
   border: 1px solid rgba(168, 85, 247, 0.2);
   border-radius: 6px;
   font-size: 12px;
-  color: #a3a3a3;
+  color: var(--text-secondary);
   line-height: 1.4;
 }
 
 .hint strong {
+  color: rgb(126 34 206);
+}
+
+[data-theme="dark"] .hint strong {
   color: #a855f7;
 }

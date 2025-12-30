@@ -1,4 +1,6 @@
+import { useState } from "react";
 import * as Slider from "@radix-ui/react-slider";
+import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { MidiLearnButton } from "../MidiLearnButton";
 import { MODULATION_INDICATOR_COLOR } from "../../inputs/modulation";
 import styles from "./ParameterSlider.module.css";
@@ -80,6 +82,7 @@ export interface ParameterSliderProps {
  * A reusable slider component for parameter controls.
  * Wraps Radix UI Slider with consistent styling and labeling.
  */
+
 export function ParameterSlider({
   id,
   label,
@@ -98,6 +101,8 @@ export function ParameterSlider({
   modulationIndicator,
   isMidiControlled = false,
 }: ParameterSliderProps) {
+  const [showInfo, setShowInfo] = useState(false);
+
   const rangeClass = styles[`range${capitalize(color)}`] ?? styles.rangeEmerald;
   const thumbClass = styles[`thumb${capitalize(color)}`] ?? styles.thumbEmerald;
   const disabledClass = isMidiControlled ? styles.disabled : "";
@@ -154,14 +159,36 @@ export function ParameterSlider({
           )}
           <span className={styles.value}>{formatValue(value)}</span>
         </label>
-        {midiParameterId && (
-          <MidiLearnButton
-            parameterId={midiParameterId}
-            min={min}
-            max={max}
-            compact
-          />
-        )}
+        <div className={styles.labelActions}>
+          {description && (
+            <div
+              className={styles.infoButtonWrapper}
+              onMouseEnter={() => setShowInfo(true)}
+              onMouseLeave={() => setShowInfo(false)}
+            >
+              <button
+                type="button"
+                className={`${styles.infoButton} ${showInfo ? styles.infoButtonActive : ""}`}
+                aria-label={`Info: ${description}`}
+              >
+                <InfoCircledIcon className={styles.infoIcon} />
+              </button>
+              {showInfo && (
+                <div className={styles.infoPopover} role="tooltip">
+                  <p className={styles.infoPopoverText}>{description}</p>
+                </div>
+              )}
+            </div>
+          )}
+          {midiParameterId && (
+            <MidiLearnButton
+              parameterId={midiParameterId}
+              min={min}
+              max={max}
+              // compact
+            />
+          )}
+        </div>
       </div>
 
       <Slider.Root
@@ -180,8 +207,6 @@ export function ParameterSlider({
         </Slider.Track>
         <Slider.Thumb className={`${styles.sliderThumb} ${thumbClass}`} />
       </Slider.Root>
-
-      {description && <p className={styles.description}>{description}</p>}
     </div>
   );
 }

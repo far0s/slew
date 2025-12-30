@@ -4,6 +4,110 @@
    Theme Configuration (migrated from tailwind.config.cjs)
    ========================================================================== */
 
+/* ==========================================================================
+   Theme CSS Variables (Dark/Light Mode)
+   ========================================================================== */
+
+:root {
+  /* Background colors */
+  --bg-primary: #05060a;
+  --bg-elevated: #0b0c12;
+  --bg-panel: #020617;
+  --bg-surface: #0f172a;
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-active: rgba(255, 255, 255, 0.1);
+
+  /* Text colors */
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: rgba(148, 163, 184, 0.6);
+
+  /* Border colors */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-accent: rgba(30, 64, 175, 0.7);
+
+  /* Accent colors */
+  --accent-primary: #3b82f6;
+  --accent-primary-hover: #2563eb;
+  --accent-success: #22c55e;
+  --accent-warning: #f59e0b;
+  --accent-danger: #ef4444;
+
+  /* Status colors */
+  --status-active: #22c55e;
+  --status-inactive: #64748b;
+  --status-error: #ef4444;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  /* Background colors */
+  --bg-primary: #f8fafc;
+  --bg-elevated: #ffffff;
+  --bg-panel: #f1f5f9;
+  --bg-surface: #e2e8f0;
+  --bg-hover: rgba(0, 0, 0, 0.04);
+  --bg-active: rgba(0, 0, 0, 0.08);
+
+  /* Text colors */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: rgba(71, 85, 105, 0.6);
+
+  /* Border colors - increased contrast for light mode */
+  --border-subtle: rgba(0, 0, 0, 0.12);
+  --border-default: rgba(0, 0, 0, 0.18);
+  --border-accent: rgba(59, 130, 246, 0.6);
+
+  /* MIDI Learn button colors for light mode */
+  --midi-mapped-bg: rgba(22, 163, 74, 0.15);
+  --midi-mapped-border: rgba(22, 163, 74, 0.5);
+  --midi-mapped-text: #15803d;
+  --midi-mapped-hover-bg: rgba(220, 38, 38, 0.12);
+  --midi-mapped-hover-border: rgba(220, 38, 38, 0.4);
+  --midi-mapped-hover-text: #dc2626;
+  --midi-learning-bg: rgba(217, 119, 6, 0.15);
+  --midi-learning-border: rgba(217, 119, 6, 0.5);
+  --midi-learning-text: #b45309;
+
+  /* Accent colors */
+  --accent-primary: #2563eb;
+  --accent-primary-hover: #1d4ed8;
+  --accent-success: #16a34a;
+  --accent-warning: #d97706;
+  --accent-danger: #dc2626;
+
+  /* Status colors */
+  --status-active: #16a34a;
+  --status-inactive: #94a3b8;
+  --status-error: #dc2626;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  color-scheme: light;
+}
+
+:root {
+  /* MIDI Learn button colors for dark mode (defaults) */
+  --midi-mapped-bg: rgb(34 197 94 / 0.12);
+  --midi-mapped-border: rgb(34 197 94 / 0.3);
+  --midi-mapped-text: rgb(134 239 172);
+  --midi-mapped-hover-bg: rgb(239 68 68 / 0.12);
+  --midi-mapped-hover-border: rgb(239 68 68 / 0.3);
+  --midi-mapped-hover-text: rgb(252 165 165);
+  --midi-learning-bg: rgb(234 179 8 / 0.15);
+  --midi-learning-border: rgb(234 179 8 / 0.4);
+  --midi-learning-text: rgb(253 224 71);
+}
+
 @theme {
   /* Colors */
   --color-background: #05060a;
@@ -43,19 +147,21 @@
 /* Ensure the root fills the viewport and uses the shared font stack.
    Note: reset.css already normalizes most elements; Tailwind builds on top. */
 
-:root {
-  color-scheme: dark;
-}
-
-/* Body baseline for both windows; the Controls shell will refine this via CSS Modules. */
+/* Body baseline for both windows - uses theme CSS variables */
 body {
-  @apply bg-black text-neutral-100 antialiased;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   font-family:
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
     "SF Pro Text",
     sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 /* Make sure the Tauri root element fills the window; React layout components
