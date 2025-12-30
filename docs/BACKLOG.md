@@ -20,6 +20,27 @@ Prioritized list of potential work items for sebcat-vj.
 
 ## Active / High Priority
 
+### 🔴 Global UI cleanup `feature`
+
+Go through the UI and improve graphics readability and physics.
+
+**Context**: There are some inconsistencies in the UI that make it harder to use.
+
+**Subtasks**: (non-exhaustive list)
+
+- [ ] Sidebar: tabs list should be scrollable (right now it's hard to navigate)
+- [ ] Sidebar: Settings should be first in list and shown as default
+- [ ] Sidebar: Settings should have a dark/light toggle (for the whole app) -> that also requires having a light theme
+- [ ] Sidebar: tabs content don't need to have the tab title (they are already labeled in the tabs list)
+- [ ] Sidebar: footer actions should be moved instead to the settings tab
+- [ ] Sidebar: add a search bar to quickly find tabs
+- [ ] Sidebar: MIDI tab, the Clear all mappings should be moved to the Mappings expandable section header (to be consistent with other similar tabs). Generally apply this pattern to all tabs that have expandable sections.
+- [ ] Sidebar: Video tab, we don't need an exandable section for Video output, just the contents directly.
+- [ ] Sidebar: Generally do a round of cleanup and consistency checks throughout the UI>
+- [ ] Scrolling behaviour: right now all scrollable elements have that "springy" effect from Apple, I'd like everything to have a more reliable and snappy feeling.
+
+---
+
 ### 🔴 Prepare repo for first public release `chore`
 
 Have the repo ready for first public release (that includes download links and documentation).

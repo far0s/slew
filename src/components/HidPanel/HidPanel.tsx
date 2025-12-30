@@ -25,78 +25,6 @@ import {
 import styles from "./HidPanel.module.css";
 
 /**
- * Connection status display with searching animation.
- */
-function ConnectionStatus() {
-  const {
-    isConnected,
-    isSearching,
-    connectedDevice,
-    error,
-    autoConnectEnabled,
-    setAutoConnect,
-    disconnect,
-  } = useHidDevice();
-
-  // Determine status text and style
-  let statusText: string;
-  let statusClass: string;
-
-  if (isConnected) {
-    statusText = connectedDevice?.product ?? "DOIO Megalodon";
-    statusClass = styles.connected;
-  } else if (isSearching) {
-    statusText = "Searching…";
-    statusClass = styles.searching;
-  } else {
-    statusText = "Disconnected";
-    statusClass = styles.disconnected;
-  }
-
-  return (
-    <div className={styles.connectionStatus}>
-      <div className={styles.statusRow}>
-        <span
-          className={`${styles.statusIndicator} ${statusClass}`}
-          aria-label={
-            isConnected
-              ? "Connected"
-              : isSearching
-                ? "Searching"
-                : "Disconnected"
-          }
-        />
-        <span className={styles.statusText}>{statusText}</span>
-      </div>
-
-      {error && <p className={styles.errorText}>{error}</p>}
-
-      <div className={styles.connectionActions}>
-        <label className={styles.autoConnectLabel}>
-          <input
-            type="checkbox"
-            checked={autoConnectEnabled}
-            onChange={(e) => void setAutoConnect(e.target.checked)}
-            className={styles.autoConnectCheckbox}
-          />
-          <span>Auto-connect</span>
-        </label>
-
-        {isConnected && (
-          <button
-            type="button"
-            onClick={() => void disconnect()}
-            className={styles.disconnectButton}
-          >
-            Disconnect
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/**
  * Display last key and encoder events for quick feedback.
  */
 function ActivityDisplay() {
@@ -291,6 +219,32 @@ export interface HidPanelProps {
  * - Collapsible debug section
  */
 export function HidPanel({ className, selectedSlotIndex }: HidPanelProps) {
+  // Restored: use the actual hook
+  const {
+    isConnected,
+    isSearching,
+    connectedDevice,
+    error,
+    autoConnectEnabled,
+    setAutoConnect,
+    disconnect,
+  } = useHidDevice();
+
+  // Determine status text and style
+  let statusText: string;
+  let statusClass: string;
+
+  if (isConnected) {
+    statusText = connectedDevice?.product ?? "DOIO Megalodon";
+    statusClass = styles.connected;
+  } else if (isSearching) {
+    statusText = "Searching…";
+    statusClass = styles.searching;
+  } else {
+    statusText = "Disconnected";
+    statusClass = styles.disconnected;
+  }
+
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
       <div className={styles.header}>
@@ -302,7 +256,47 @@ export function HidPanel({ className, selectedSlotIndex }: HidPanelProps) {
         )}
       </div>
 
-      <ConnectionStatus />
+      {/* Connection Status - inlined to avoid component lifecycle issues */}
+      <div className={styles.connectionStatus}>
+        <div className={styles.statusRow}>
+          <span
+            className={`${styles.statusIndicator} ${statusClass}`}
+            aria-label={
+              isConnected
+                ? "Connected"
+                : isSearching
+                  ? "Searching"
+                  : "Disconnected"
+            }
+          />
+          <span className={styles.statusText}>{statusText}</span>
+        </div>
+
+        {error && <p className={styles.errorText}>{error}</p>}
+
+        <div className={styles.connectionActions}>
+          <label className={styles.autoConnectLabel}>
+            <input
+              type="checkbox"
+              checked={autoConnectEnabled}
+              onChange={(e) => void setAutoConnect(e.target.checked)}
+              className={styles.autoConnectCheckbox}
+            />
+            <span>Auto-connect</span>
+          </label>
+
+          {isConnected && (
+            <button
+              type="button"
+              onClick={() => void disconnect()}
+              className={styles.disconnectButton}
+            >
+              Disconnect
+            </button>
+          )}
+        </div>
+      </div>
+
       <ActivityDisplay />
       <DebugSection />
     </div>

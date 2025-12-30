@@ -28,13 +28,13 @@ pub fn list_devices() -> Result<Vec<HidDeviceInfo>, String> {
 
     let devices: Vec<HidDeviceInfo> = api
         .device_list()
-        .map(|dev| {
-            let is_supported =
-                dev.vendor_id() == MEGALODON_VENDOR_ID && dev.product_id() == MEGALODON_PRODUCT_ID;
+            .map(|dev| {
+                let is_supported = dev.vendor_id() == MEGALODON_VENDOR_ID
+                    && dev.product_id() == MEGALODON_PRODUCT_ID;
 
-            let usage_page = dev.usage_page();
-            let usage = dev.usage();
-            let interface_description = describe_usage(usage_page, usage);
+                let usage_page = dev.usage_page();
+                let usage = dev.usage();
+                let interface_description = describe_usage(usage_page, usage);
 
             HidDeviceInfo {
                 vendor_id: dev.vendor_id(),

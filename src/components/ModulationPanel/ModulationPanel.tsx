@@ -56,10 +56,13 @@ interface WaveformDisplayProps {
 
 function WaveformDisplay({
   shape,
-  value,
+  value = 0,
   color,
   size = 32,
 }: WaveformDisplayProps) {
+  // Ensure value is a valid number to prevent undefined cx/cy errors
+  const safeValue =
+    typeof value === "number" && !Number.isNaN(value) ? value : 0;
   // Generate waveform path
   const points = useMemo(() => {
     const numPoints = 40;
@@ -99,8 +102,9 @@ function WaveformDisplay({
     return pts.join(" ");
   }, [shape, size]);
 
-  // Value indicator position
-  const indicatorX = Math.abs(value) * size;
+  // Value indicator position (use safeValue to prevent NaN)
+  const indicatorX = Math.abs(safeValue) * size;
+  const indicatorY = size / 2 - (safeValue * size) / 2.5;
 
   return (
     <svg
@@ -131,10 +135,10 @@ function WaveformDisplay({
       {/* Current value indicator */}
       <motion.circle
         cx={indicatorX}
-        cy={size / 2 - (value * size) / 2.5}
+        cy={indicatorY}
         r={3}
         fill={color}
-        animate={{ cx: indicatorX, cy: size / 2 - (value * size) / 2.5 }}
+        animate={{ cx: indicatorX, cy: indicatorY }}
         transition={{ type: "spring", stiffness: 500, damping: 30 }}
       />
     </svg>

@@ -226,8 +226,6 @@ export const ACTION_KEYS = ["7", "Enter", "8", "5", "6"] as const;
 // ============================================================================
 
 /**
- * Hook for managing HID device connection with auto-connect support.
- *
  * Automatically subscribes to status changes and provides connection state.
  * Auto-connect runs in the backend and periodically searches for devices.
  */
@@ -248,14 +246,14 @@ export function useHidDevice() {
 
     async function init() {
       try {
-        const [statusResult, devicesResult, autoConnect] = await Promise.all([
+        // Note: listSupportedHidDevices removed - it blocks/crashes on repeated calls
+        // and the devices list isn't used in the UI anyway
+        const [statusResult, autoConnect] = await Promise.all([
           getHidStatus(),
-          listSupportedHidDevices(),
           getHidAutoConnect(),
         ]);
         if (isMounted) {
           setStatus(statusResult);
-          setDevices(devicesResult);
           setAutoConnectEnabled(autoConnect);
         }
       } catch (e) {
