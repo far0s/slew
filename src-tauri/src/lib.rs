@@ -781,6 +781,7 @@ pub fn run() {
             video_out::init_video_backend,
             video_out::shutdown_video_backend,
             video_out::publish_video_frame,
+            video_out::publish_video_frame_binary,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

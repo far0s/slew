@@ -1,5 +1,4 @@
 import { Suspense, useCallback } from "react";
-import { Canvas } from "@react-three/fiber";
 import * as Select from "@radix-ui/react-select";
 import {
   ChevronDownIcon,
@@ -18,6 +17,7 @@ import {
 } from "../../sketches";
 import type { Slot } from "../../slots/useSlots";
 import { SlotParameterControls } from "../SlotParameterControls";
+import { WebGPUCanvas } from "../../renderer/WebGPUCanvas";
 import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import type { MidiMapping } from "../../inputs/midi";
@@ -222,23 +222,17 @@ export function SlotColumn({
       <div className={styles.previewContainer}>
         {SketchComponent ? (
           <Suspense fallback={<div className={styles.fallback}>Loading…</div>}>
-            <Canvas
-              className={styles.canvas}
+            <WebGPUCanvas
               camera={{ position: [0, 0, 4], fov: 50 }}
-              dpr={[1, 1.5]}
               frameloop="always"
-              gl={{
-                antialias: true,
-                alpha: false,
-                powerPreference: "low-power",
-              }}
+              fallback={<div className={styles.fallback}>Initializing…</div>}
             >
               <color attach="background" args={["#020617"]} />
               <ambientLight intensity={0.4} />
               <directionalLight position={[4, 6, 3]} intensity={1.1} />
               <directionalLight position={[-4, -4, -2]} intensity={0.4} />
               <SketchComponent opacity={1} params={previewParams ?? params} />
-            </Canvas>
+            </WebGPUCanvas>
             {(alpha < 0.99 || audioReactivity < 0.5) && (
               <div className={styles.alphaOverlay}>
                 {audioReactivity < 0.5 && (

@@ -14,8 +14,11 @@
 //! - **Syphon** (macOS): GPU texture sharing with Resolume, VDMX, OBS
 //! - **Spout** (Windows): GPU texture sharing with Resolume, TouchDesigner
 //! - **NDI** (Cross-platform): Network-based video streaming
-
-use base64::Engine;
+//!
+//! ## Binary IPC
+//!
+//! For optimal performance, use `publish_video_frame_binary` which accepts raw
+//! pixel data via `tauri::ipc::Request`, bypassing JSON serialization entirely.
 
 #[cfg(target_os = "macos")]
 use crate::syphon;
@@ -248,15 +251,21 @@ impl VideoOutputBackend for SyphonBackend {
     }
 
     fn publish_frame(&mut self, frame: &VideoFrame) -> Result<(), String> {
+        use std::time::Instant;
+
         if !self.active {
             return Err("Syphon backend is not active".to_string());
         }
 
         frame.validate()?;
 
+        // Time the native Syphon publish
+        let publish_start = Instant::now();
+
         // Publish to native Syphon server
         match syphon::publish_syphon_frame(&frame.data, frame.width, frame.height) {
             Ok(()) => {
+                let publish_time = publish_start.elapsed();
                 self.frames_published += 1;
 
                 // Check for clients periodically
@@ -264,14 +273,15 @@ impl VideoOutputBackend for SyphonBackend {
                     self.has_clients = syphon::syphon_has_clients();
                 }
 
-                // Log stats every ~30 seconds at 60fps
+                // Log stats with timing every ~30 seconds at 60fps
                 if self.frames_published % 1800 == 0 && self.frames_published > 0 {
                     log::debug!(
-                        "[Syphon] {} frames ({}x{}), clients: {}",
+                        "[Syphon] {} frames ({}x{}), clients: {}, last_publish: {:.2}ms",
                         self.frames_published,
                         frame.width,
                         frame.height,
-                        self.has_clients
+                        self.has_clients,
+                        publish_time.as_secs_f64() * 1000.0
                     );
                 }
 
@@ -497,16 +507,8 @@ mod ndi_impl {
         /// Check if NDI SDK is available on this system
         fn check_ndi_available() -> bool {
             // Try to initialize NDI to check if SDK is present
-            match grafton_ndi::NDI::new() {
-                Ok(_) => {
-                    log::debug!("[NDI] SDK is available");
-                    true
-                }
-                Err(e) => {
-                    log::debug!("[NDI] SDK not available: {:?}", e);
-                    false
-                }
-            }
+            // Note: We don't log here because this is called frequently
+            grafton_ndi::NDI::new().is_ok()
         }
 
         /// Convert RGBA to BGRA in-place in the buffer
@@ -861,6 +863,63 @@ impl VideoOutputManager {
         }
     }
 
+    /// Publish raw frame data directly without creating a VideoFrame.
+    /// This avoids an allocation/clone for the binary IPC path.
+    pub fn publish_frame_data(
+        &self,
+        data: &[u8],
+        width: u32,
+        height: u32,
+        format: PixelFormat,
+    ) -> Result<(), String> {
+        // Validate data size
+        let expected_size = (width * height) as usize * format.bytes_per_pixel();
+        if data.len() != expected_size {
+            return Err(format!(
+                "Frame data size mismatch: expected {} bytes, got {}",
+                expected_size,
+                data.len()
+            ));
+        }
+
+        let mut errors = Vec::new();
+
+        for (id, backend) in &self.backends {
+            if let Ok(mut backend) = backend.lock() {
+                if backend.status().active {
+                    // For Syphon/NDI, we call the underlying publish directly
+                    // This avoids creating a VideoFrame just to pass a reference
+                    let result = match id.as_str() {
+                        #[cfg(target_os = "macos")]
+                        "syphon" => {
+                            if format == PixelFormat::RGBA {
+                                crate::syphon::publish_syphon_frame(data, width, height)
+                            } else {
+                                Err("Syphon requires RGBA format".to_string())
+                            }
+                        }
+                        _ => {
+                            // For other backends, create a temporary frame
+                            // (NDI needs BGRA conversion anyway)
+                            let frame = VideoFrame::new(data.to_vec(), width, height, format);
+                            backend.publish_frame(&frame)
+                        }
+                    };
+
+                    if let Err(e) = result {
+                        errors.push(format!("{}: {}", id, e));
+                    }
+                }
+            }
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors.join("; "))
+        }
+    }
+
     /// Publish a frame to a specific backend
     pub fn publish_frame_to(&self, backend_id: &str, frame: &VideoFrame) -> Result<(), String> {
         let backend = self
@@ -894,7 +953,7 @@ impl Default for VideoOutputManager {
 // Global State
 // ============================================================================
 
-static VIDEO_OUTPUT_MANAGER: Lazy<RwLock<VideoOutputManager>> =
+pub static VIDEO_OUTPUT_MANAGER: Lazy<RwLock<VideoOutputManager>> =
     Lazy::new(|| RwLock::new(VideoOutputManager::new()));
 
 /// Initialize the video output manager with the app handle
@@ -985,6 +1044,12 @@ pub fn shutdown_video_backend(backend_id: String) -> Result<BackendStatus, Strin
         .ok_or_else(|| format!("Backend '{}' not found after shutdown", backend_id))
 }
 
+// Thread-local pre-allocated buffer for base64 decoding to avoid allocations
+thread_local! {
+    static DECODE_BUFFER: std::cell::RefCell<Vec<u8>> = std::cell::RefCell::new(Vec::with_capacity(1920 * 1080 * 4));
+    static FRAME_COUNTER: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
 /// Publish a video frame from the renderer
 ///
 /// This command receives base64-encoded frame data from the frontend.
@@ -996,8 +1061,94 @@ pub fn publish_video_frame(
     height: u32,
     format: String,
 ) -> Result<(), String> {
-    // Decode base64 data
-    let decoded = base64_decode(&data)?;
+    use std::time::Instant;
+
+    let total_start = Instant::now();
+
+    // Parse pixel format first to calculate expected size
+    let pixel_format = match format.to_lowercase().as_str() {
+        "rgba" => PixelFormat::RGBA,
+        "bgra" => PixelFormat::BGRA,
+        "rgb" => PixelFormat::RGB,
+        _ => return Err(format!("Unknown pixel format: {}", format)),
+    };
+
+    let expected_size = (width * height) as usize * pixel_format.bytes_per_pixel();
+
+    // Decode base64 data into pre-allocated buffer
+    let decode_start = Instant::now();
+    let decoded = base64_decode_into_buffer(&data, expected_size)?;
+    let decode_time = decode_start.elapsed();
+
+    // Create frame (takes ownership of the decoded data)
+    let frame = VideoFrame::new(decoded, width, height, pixel_format);
+
+    // Publish to all active backends
+    let publish_start = Instant::now();
+    let manager = VIDEO_OUTPUT_MANAGER
+        .read()
+        .map_err(|e| format!("Failed to read video output manager: {}", e))?;
+
+    let result = manager.publish_frame(&frame);
+    let publish_time = publish_start.elapsed();
+
+    let total_time = total_start.elapsed();
+
+    // Log timing every ~5 seconds at 60fps (every 300 frames)
+    FRAME_COUNTER.with(|counter| {
+        let count = counter.get() + 1;
+        counter.set(count);
+
+        if count % 300 == 0 {
+            log::info!(
+                "[VideoOut] Backend timing @ {}x{}: decode={:.2}ms, publish={:.2}ms, total={:.2}ms",
+                width,
+                height,
+                decode_time.as_secs_f64() * 1000.0,
+                publish_time.as_secs_f64() * 1000.0,
+                total_time.as_secs_f64() * 1000.0,
+            );
+        }
+    });
+
+    result
+}
+
+/// Publish a video frame using raw binary data (no base64 encoding).
+/// This is the high-performance path that bypasses JSON serialization.
+///
+/// Frontend usage:
+/// ```typescript
+/// import { invoke } from '@tauri-apps/api/core';
+/// await invoke('publish_video_frame_binary', pixelData, {
+///   headers: { 'X-Width': '960', 'X-Height': '540', 'X-Format': 'rgba' }
+/// });
+/// ```
+#[tauri::command]
+pub fn publish_video_frame_binary(request: tauri::ipc::Request<'_>) -> Result<(), String> {
+    use std::time::Instant;
+
+    let total_start = Instant::now();
+
+    // Extract dimensions from headers
+    let headers = request.headers();
+
+    let width: u32 = headers
+        .get("X-Width")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(|| "Missing or invalid X-Width header".to_string())?;
+
+    let height: u32 = headers
+        .get("X-Height")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(|| "Missing or invalid X-Height header".to_string())?;
+
+    let format = headers
+        .get("X-Format")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("rgba");
 
     // Parse pixel format
     let pixel_format = match format.to_lowercase().as_str() {
@@ -1007,19 +1158,62 @@ pub fn publish_video_frame(
         _ => return Err(format!("Unknown pixel format: {}", format)),
     };
 
-    // Create frame
-    let frame = VideoFrame::new(decoded, width, height, pixel_format);
+    // Get raw binary data from request body
+    let tauri::ipc::InvokeBody::Raw(pixel_data) = request.body() else {
+        return Err("Request body must be raw binary data (Uint8Array)".to_string());
+    };
 
-    // Publish to all active backends
+    // Validate data size
+    let expected_size = (width * height) as usize * pixel_format.bytes_per_pixel();
+    if pixel_data.len() != expected_size {
+        return Err(format!(
+            "Data size mismatch: expected {} bytes, got {}",
+            expected_size,
+            pixel_data.len()
+        ));
+    }
+
+    // Publish directly from the slice to avoid cloning ~1.7MB per frame
+    let publish_start = Instant::now();
     let manager = VIDEO_OUTPUT_MANAGER
         .read()
         .map_err(|e| format!("Failed to read video output manager: {}", e))?;
 
-    manager.publish_frame(&frame)
+    let result = manager.publish_frame_data(pixel_data, width, height, pixel_format);
+    let publish_time = publish_start.elapsed();
+
+    let total_time = total_start.elapsed();
+
+    // Log timing every ~5 seconds at 60fps (every 300 frames)
+    thread_local! {
+        static BINARY_FRAME_COUNTER: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    }
+
+    BINARY_FRAME_COUNTER.with(|counter| {
+        let count = counter.get() + 1;
+        counter.set(count);
+
+        if count % 300 == 0 {
+            log::info!(
+                "[VideoOut:Binary] Frame {} @ {}x{}: publish={:.2}ms, total={:.2}ms",
+                count,
+                width,
+                height,
+                publish_time.as_secs_f64() * 1000.0,
+                total_time.as_secs_f64() * 1000.0,
+            );
+        }
+    });
+
+    result
 }
 
-/// Decode base64 string to bytes using the base64 crate for performance.
-fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
+/// Decode base64 string into a pre-allocated buffer to minimize allocations.
+/// Uses decode_slice_unchecked for better performance when we know the expected size.
+fn base64_decode_into_buffer(input: &str, expected_size: usize) -> Result<Vec<u8>, String> {
+    use base64::engine::general_purpose::STANDARD;
+    use base64::Engine;
+
     // Remove any data URL prefix if present
     let input = if let Some(idx) = input.find(',') {
         &input[idx + 1..]
@@ -1027,10 +1221,35 @@ fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
         input
     };
 
-    // Use the standard base64 engine for fast decoding
-    base64::engine::general_purpose::STANDARD
-        .decode(input)
-        .map_err(|e| format!("Base64 decode error: {}", e))
+    // Use thread-local buffer to avoid repeated allocations
+    DECODE_BUFFER.with(|buf| {
+        let mut buffer = buf.borrow_mut();
+
+        // Ensure buffer is large enough
+        let current_capacity = buffer.capacity();
+        if current_capacity < expected_size {
+            buffer.reserve(expected_size - current_capacity);
+        }
+
+        // Resize to expected size (fills with zeros, but we'll overwrite)
+        buffer.resize(expected_size, 0);
+
+        // Decode directly into buffer
+        match STANDARD.decode_slice(input, &mut buffer[..]) {
+            Ok(written) => {
+                if written != expected_size {
+                    return Err(format!(
+                        "Decoded size mismatch: expected {}, got {}",
+                        expected_size, written
+                    ));
+                }
+                // Clone the data out of the thread-local buffer
+                // (We have to clone because the buffer is reused)
+                Ok(buffer[..written].to_vec())
+            }
+            Err(e) => Err(format!("Base64 decode error: {}", e)),
+        }
+    })
 }
 
 // ============================================================================

@@ -28,9 +28,10 @@ Improve 1080p@60fps performance for professional use.
 
 **Subtasks**:
 
-- [ ] Zero-copy IOSurface sharing for Syphon (macOS)
-- [ ] Binary IPC instead of base64 encoding
-- [ ] PBOs for async GPU readback
+- [ ] Zero-copy IOSurface sharing for Syphon (macOS) - see `docs/research/IOSURFACE_FEASIBILITY.md`
+- [x] Binary IPC instead of base64 encoding
+- [x] PBOs for async GPU readback (ping-pong pattern)
+- [ ] Shared memory IPC (if binary IPC still bottlenecked)
 - [ ] Spout implementation for Windows
 
 ---

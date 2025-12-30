@@ -74,3 +74,12 @@ body {
 .svj-caption {
   @apply text-xs text-neutral-400;
 }
+
+/* Position stats-gl in bottom-right corner */
+.stats-gl-bottom-right {
+  position: absolute !important;
+  top: auto !important;
+  left: auto !important;
+  bottom: 8px !important;
+  right: 8px !important;
+}

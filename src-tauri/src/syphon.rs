@@ -530,6 +530,8 @@ impl SyphonServer {
 
     /// Publish a frame with raw RGBA pixel data
     pub fn publish_frame(&mut self, data: &[u8], width: u32, height: u32) -> Result<(), String> {
+        use std::time::Instant;
+
         if data.len() != (width * height * 4) as usize {
             return Err(format!(
                 "Data size mismatch: expected {} bytes, got {}",
@@ -538,9 +540,13 @@ impl SyphonServer {
             ));
         }
 
+        let total_start = Instant::now();
+
         unsafe {
             // Lock the context for thread safety
+            let lock_start = Instant::now();
             CGLLockContext(self.context);
+            let lock_time = lock_start.elapsed();
 
             // Save current context
             let prev_context = CGLGetCurrentContext();
@@ -594,6 +600,8 @@ impl SyphonServer {
                 );
             }
 
+            let upload_time = total_start.elapsed();
+
             // Check for GL errors after texture upload
             let gl_error = glGetError();
             if gl_error != 0 {
@@ -606,7 +614,9 @@ impl SyphonServer {
 
             // IMPORTANT: Keep texture bound and flush before publishing
             // Syphon needs the texture to be ready
+            let flush_start = Instant::now();
             glFlush();
+            let flush_time = flush_start.elapsed();
 
             // Publish to Syphon
             // - (void)publishFrameTexture:(GLuint)texID
@@ -637,12 +647,40 @@ impl SyphonServer {
                 flipped: Bool::YES
             ];
 
+            let publish_time = total_start.elapsed();
+
             // Unbind texture after publishing
             glBindTexture(GL_TEXTURE_RECTANGLE, 0);
 
             // Restore previous context
             CGLSetCurrentContext(prev_context);
             CGLUnlockContext(self.context);
+
+            let total_time = total_start.elapsed();
+
+            // Log timing every 300 frames (~5 seconds at 60fps)
+            thread_local! {
+                static SYPHON_FRAME_COUNTER: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+            }
+
+            SYPHON_FRAME_COUNTER.with(|counter| {
+                let count = counter.get() + 1;
+                counter.set(count);
+
+                if count % 300 == 0 {
+                    log::info!(
+                        "[Syphon] Frame {} @ {}x{}: lock={:.2}ms, upload={:.2}ms, flush={:.2}ms, publish={:.2}ms, total={:.2}ms",
+                        count,
+                        width,
+                        height,
+                        lock_time.as_secs_f64() * 1000.0,
+                        upload_time.as_secs_f64() * 1000.0,
+                        flush_time.as_secs_f64() * 1000.0,
+                        publish_time.as_secs_f64() * 1000.0,
+                        total_time.as_secs_f64() * 1000.0,
+                    );
+                }
+            });
         }
 
         Ok(())

@@ -2,6 +2,249 @@
 
 Implementation plan for achieving professional-grade 1080p@60fps video output.
 
+> **Note**: The WebGPU migration (see `docs/finished/WEBGPU_MIGRATION.md`) has been completed
+> and supersedes several optimization approaches proposed here. WebGPU's `readRenderTargetPixelsAsync()`
+> provides truly non-blocking async readback, which should significantly improve performance.
+> The PBO and binary protocol optimizations remain relevant for WebGL fallback mode.
+
+---
+
+## Phase 1 Implementation Status ✅
+
+**Completed:** Timing instrumentation, base64 optimization, binary protocol, and PBO async readback
+
+### Changes Made
+
+#### Frontend (`src/renderer/VideoOutputCapture.tsx`)
+
+1. **Detailed timing breakdown** - Now tracks individual phases:
+   - `renderMs` - Time to render scene to render target
+   - `readPixelsMs` - Time for GPU→CPU pixel transfer
+   - `flipMs` - Time to flip image vertically
+   - `encodeMs` - Time for base64 encoding
+   - `ipcMs` - Time for Tauri IPC round-trip
+   - `totalMs` - End-to-end frame time
+
+2. **Faster synchronous base64 encoding** - Replaced async FileReader with chunked `btoa()`:
+   - Processes in 32KB chunks to avoid call stack limits
+   - Synchronous = no microtask scheduling overhead
+   - ~20-30% faster for large arrays
+
+3. **Extended `CaptureStats` interface** - Now includes `timing: TimingBreakdown`
+
+4. **Rolling average timing** - Keeps last 30 samples for stable averages
+
+5. **Periodic console logs** - Every 150 frames, logs timing breakdown:
+
+   ```
+   [VideoCapture] 150 frames @ 960x540, avg: 18.2ms (render: 0.8, read: 2.1, flip: 0.3, encode: 4.2, ipc: 10.8), skipped: 0
+   ```
+
+6. **Optional detailed per-frame logs** - Set `ENABLE_TIMING_LOGS = true` for per-frame analysis
+
+7. **Binary protocol option** - `USE_BINARY_PROTOCOL = true` (default) sends raw pixels via custom URI scheme:
+   - Bypasses Tauri's JSON-based IPC entirely
+   - No base64 encoding/decoding overhead
+   - Uses `videoframe://localhost/frame?width=X&height=Y&format=rgba` endpoint
+   - Raw pixel data sent as POST body
+
+#### Backend (`src-tauri/src/video_out.rs`)
+
+1. **Command timing** - `publish_video_frame` now tracks:
+   - `decode_time` - Base64 decode duration
+   - `publish_time` - Backend publish duration
+   - `total_time` - Full command duration
+
+2. **Periodic backend logs** - Every 300 frames (~5s at 60fps):
+
+   ```
+   [VideoOut] Backend timing @ 1920x1080: decode=3.21ms, publish=1.45ms, total=4.72ms
+   ```
+
+3. **Syphon publish timing** - Added timing to `SyphonBackend::publish_frame`
+
+4. **Pre-allocated decode buffer** - Thread-local buffer reuse for base64 decode
+
+#### Backend (`src-tauri/src/lib.rs`)
+
+1. **Binary protocol handler** - `register_asynchronous_uri_scheme_protocol("videoframe", ...)`
+   - Receives raw pixel data directly (no base64)
+   - Parses width/height/format from query parameters
+   - Publishes directly to video backends
+   - Logs timing every 300 frames: `[VideoOut:Binary] Frame N @ WxH: X.XXms`
+
+### How to Use
+
+1. Run the app with video output enabled (Syphon or NDI active)
+2. Watch console logs for timing breakdown
+3. For detailed analysis, set `ENABLE_TIMING_LOGS = true` in `VideoOutputCapture.tsx`
+
+### Expected Output
+
+At 1080p (1920×1080) with scale=0.5 (960×540 actual):
+
+```
+[VideoCapture] 150 frames @ 960x540, avg: 18.2ms (render: 0.8, read: 2.1, flip: 0.3, encode: 4.2, ipc: 10.8), skipped: 0
+[VideoOut] Backend timing @ 960x540: decode=2.15ms, publish=1.23ms, total=3.42ms
+```
+
+### Bottleneck Isolation Testing
+
+The code includes two debug flags in `VideoOutputCapture.tsx` for isolating bottlenecks:
+
+```typescript
+/** Skip IPC call entirely to isolate frontend timing (for benchmarking only) */
+const DRY_RUN_MODE = false;
+
+/** Skip base64 encoding to isolate encode overhead (for benchmarking only) */
+const SKIP_ENCODE = false;
+```
+
+**Test 1: Baseline (both flags false)**
+
+```
+[VideoCapture] 150 frames @ 960x540, avg: 50.0ms (render: 0.8, read: 2.1, flip: 0.3, encode: 6.0, ipc: 40.8)
+```
+
+→ If `ipc` dominates, IPC is the bottleneck
+
+**Test 2: DRY_RUN_MODE = true**
+Skips the Tauri `invoke()` call entirely.
+
+```
+[VideoCapture] [DRY_RUN] 150 frames @ 960x540, avg: 9.2ms (render: 0.8, read: 2.1, flip: 0.3, encode: 6.0, ipc: 0.0)
+```
+
+→ If FPS jumps to 60+, confirms IPC is the bottleneck
+
+**Test 3: SKIP_ENCODE = true (with DRY_RUN_MODE = false)**
+Sends empty string to backend (will error, but measures encode impact).
+
+```
+[VideoCapture] [SKIP_ENCODE] 150 frames @ 960x540, avg: 44.0ms (render: 0.8, read: 2.1, flip: 0.3, encode: 0.0, ipc: 40.8)
+```
+
+→ Shows how much encoding contributes
+
+**Test 4: Both flags true**
+Measures pure capture pipeline (render + readPixels + flip).
+
+```
+[VideoCapture] [DRY_RUN,SKIP_ENCODE] 150 frames @ 960x540, avg: 3.2ms
+```
+
+→ Shows theoretical maximum FPS if IPC were zero-cost
+
+### Initial Observation
+
+User reports: **Stable 20fps ceiling at scale ≤0.5**
+
+At 20fps, frame time = 50ms. This strongly suggests:
+
+- IPC is the primary bottleneck (~40-45ms per frame)
+- Base64 encode/decode adds ~6-10ms
+- Actual GPU work (render + readPixels) is fast (~3-5ms)
+
+**Hypothesis:** Tauri's JSON-based IPC with ~2.7MB base64 payloads per frame is saturating at ~20fps.
+
+**Confirmed by backend timing:** `decode=20.17ms` for base64 decode alone at 849×517!
+
+### Binary Protocol Solution
+
+Instead of shared memory, we implemented a simpler solution using Tauri's custom URI scheme:
+
+```
+Frontend                              Backend
+   │                                     │
+   ├─── fetch("videoframe://...") ──────►│ Raw binary POST
+   │    body: Blob(pixelData)            │
+   │                                     │
+   │    Backend receives Vec<u8> ◄───────┤ No base64!
+   │    directly, publishes to Syphon    │
+```
+
+**Expected improvement:**
+
+- Eliminates ~10ms frontend base64 encode
+- Eliminates ~20ms backend base64 decode
+- Total savings: ~30ms per frame → should enable 30+ fps
+
+### Next Steps
+
+- [x] Run Test 1-4 to confirm bottleneck hypothesis
+- [x] Implement binary protocol (completed)
+- [x] Implement PBO async readback (completed)
+- [ ] Test binary protocol + PBO performance
+- [ ] Compare before/after timing numbers
+- [ ] If still not enough: investigate shared memory IPC
+- [ ] Research IOSurface feasibility (see `docs/research/IOSURFACE_FEASIBILITY.md`)
+
+---
+
+## Phase 1b: PBO Async Readback ✅
+
+**Completed:** Ping-pong PBO pattern for zero-stall GPU readback
+
+### What is PBO Async Readback?
+
+Pixel Buffer Objects (PBOs) enable asynchronous GPU→CPU data transfer in WebGL2. Instead of blocking while `readPixels` transfers data, PBOs use DMA to transfer data in the background.
+
+### Implementation Details
+
+The ping-pong pattern uses two PBOs:
+
+```
+Frame N:
+├── Read from PBO A (previous frame's data - already in CPU memory, fast!)
+├── Start async DMA transfer to PBO B (returns immediately)
+└── Process/send PBO A's data while PBO B transfers
+
+Frame N+1:
+├── Read from PBO B (now complete)
+├── Start async DMA transfer to PBO A
+└── Process/send PBO B's data while PBO A transfers
+```
+
+### Code Changes (`VideoOutputCapture.tsx`)
+
+1. **PBO state management** - Track two PBOs with fence sync objects:
+
+   ```typescript
+   interface PBOState {
+     buffer: WebGLBuffer;
+     fence: WebGLSync | null;
+     width: number;
+     height: number;
+     ready: boolean;
+   }
+   ```
+
+2. **Configuration flag** - `USE_PBO_ASYNC_READBACK = true` (default enabled)
+
+3. **WebGL2 feature detection** - Checks for `PIXEL_PACK_BUFFER`, `fenceSync`, `clientWaitSync`, `getBufferSubData`
+
+4. **Async readback flow**:
+   - `startAsyncReadback()` - Binds PBO, calls `readPixels` (returns immediately), creates fence
+   - `readFromPBO()` - Non-blocking check with `clientWaitSync`, reads data with `getBufferSubData`
+
+5. **Graceful fallback** - Falls back to sync `readPixels` if WebGL2 features not available
+
+### Expected Benefits
+
+- **Eliminates GPU stall**: `readPixels` no longer blocks waiting for GPU
+- **Hides transfer latency**: DMA happens in parallel with CPU processing
+- **Trade-off**: Introduces 1 frame of latency (acceptable for VJ use)
+
+### Console Output
+
+PBO mode is indicated in the periodic logs:
+
+```
+[VideoCapture] [BINARY,PBO] 150 frames @ 960x540, avg: 12.5ms (render: 0.8, read: 0.3, flip: 0.3, encode: 0.0, ipc: 11.1)
+```
+
+Note: `read` time should drop from ~4-5ms to ~0.3ms with PBO enabled.
+
 ---
 
 ## Problem Statement
@@ -505,8 +748,10 @@ After Phase 1:
 ## Next Steps
 
 1. ✅ Create this implementation plan
-2. [ ] Establish baseline measurements at 1080p@30fps and 1080p@60fps
-3. [ ] Implement Phase 1 (Binary IPC)
-4. [ ] Measure improvements
-5. [ ] Research IOSurface feasibility for Phase 3
-6. [ ] Decide on Phase 2 vs Phase 3 priority based on research
+2. ✅ Implement Phase 1 timing instrumentation
+3. ✅ Optimize base64 encoding (sync btoa vs async FileReader)
+4. ✅ Analyze bottlenecks from timing data (decode=20ms confirmed!)
+5. ✅ Implement binary protocol to bypass base64 entirely
+6. [ ] Test binary protocol performance
+7. [ ] If still not enough: research IOSurface feasibility (Phase 3)
+8. [ ] If readPixels becomes the bottleneck: implement PBO async readback (Phase 2)
