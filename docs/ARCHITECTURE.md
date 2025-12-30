@@ -22,7 +22,8 @@ The Rust backend handles input processing (OSC, MIDI, Audio, HID), state managem
 | Application Shell | Tauri v2 (Rust + WebView)                                      |
 | Frontend          | React + TypeScript + Vite                                      |
 | 3D Rendering      | Three.js via react-three-fiber                                 |
-| Shaders           | Custom GLSL (TSL-style patterns)                               |
+| Shaders           | TSL (Three.js Shading Language) for WebGPU                     |
+| GPU Backend       | WebGPU (Metal on macOS), WebGL2 fallback                       |
 | Video Output      | Syphon (macOS), NDI (cross-platform)                           |
 | Input             | MIDI (midir), OSC (rosc), Audio (cpal + rustfft), HID (hidapi) |
 
@@ -118,11 +119,29 @@ Backend-driven modulation for deterministic behavior (`modulation.rs`):
 
 ### Video Output
 
-Frame capture from WebGL sent to Rust backends (`video_out.rs`):
+High-performance frame capture from WebGPU/WebGL sent to Rust backends (`video_out.rs`):
+
+**Backends:**
 
 - **Syphon** (macOS): Native bindings via `objc2` + CGL
 - **NDI** (cross-platform): `grafton-ndi` crate
 - **Spout** (Windows): Stub implementation
+
+**Optimizations (see `docs/finished/VIDEO_OUTPUT_OPTIMIZATION.md`):**
+
+- **WebGPU async readback**: `readRenderTargetPixelsAsync()` for non-blocking GPU→CPU transfer
+- **Binary IPC protocol**: Raw pixel data via custom URI scheme, bypasses JSON/base64
+- **PBO fallback**: Ping-pong Pixel Buffer Objects for WebGL2 async readback
+- **Pre-allocated buffers**: Reuses memory to avoid per-frame allocations
+
+**Data flow:**
+
+```
+WebGPU: render → readRenderTargetPixelsAsync() → flip → binary IPC → Syphon/NDI
+WebGL2: render → PBO ping-pong readPixels → flip → binary IPC → Syphon/NDI
+```
+
+**Performance:** Stable 60fps at 1080p with Syphon output.
 
 ---
 
@@ -245,4 +264,4 @@ The architecture supports future additions:
 - Multi-display support
 - Recording
 - DMX lighting control
-- WebGPU upgrade when r3f support matures
+- IOSurface zero-copy (see `docs/finished/IOSURFACE_FEASIBILITY.md`)

@@ -19,14 +19,39 @@ Status overview and key decisions for sebcat-vj.
 | Audio → Parameter  | ✅     | Full mapping system with modes (continuous/trigger/add)       |
 | HID Input          | ✅     | DOIO Megalodon macropad with encoders, auto-connect           |
 | Modulation Engine  | ✅     | Backend LFOs, modulation matrix, audio→LFO, slider indicators |
-| Video Output       | ✅     | Syphon + NDI working, 1080p@60 optimization backlogged        |
-| Shader Sketches    | ✅     | TslText3D (3D text), TslNoiseBlob (procedural noise)          |
+| Video Output       | ✅     | Syphon + NDI working, WebGPU async readback implemented       |
+| Shader Sketches    | ✅     | TslText3D (3D text), TslNoiseBlob (TSL noise blob)            |
+| WebGPU Renderer    | ✅     | Full WebGPU support, all sketches compatible                  |
 | Window Manager     | ✅     | Native menu, heartbeat monitoring, emergency recovery overlay |
 | Packaging          | 🧪     | macOS bundle config, entitlements, scripts; signing untested  |
 
 ---
 
 ## Recent Changes
+
+### Video Output Optimization Complete
+
+- **WebGPU async readback**: `readRenderTargetPixelsAsync()` provides truly non-blocking GPU→CPU transfer
+- **Binary IPC protocol**: Raw pixel data via custom URI scheme (`videoframe://`), eliminates ~30ms base64 overhead
+- **PBO fallback**: Ping-pong Pixel Buffer Objects for WebGL2 async readback when WebGPU unavailable
+- **Result**: Stable 60fps Syphon output at 1080p (previously capped at ~20fps)
+- **Documentation**: See `docs/finished/VIDEO_OUTPUT_OPTIMIZATION.md` for full details
+- **Cleanup**: Debug flags organized, stats log interval set to production value (300 frames)
+
+### WebGPU Polish & Stats
+
+- **Performance stats**: Replaced `r3f-perf` with `stats-gl` via `@react-three/drei`'s `<StatsGl />`
+  - `r3f-perf` crashed on WebGPU (called WebGL-specific `gl.getExtension()`)
+  - `stats-gl` is WebGPU-compatible, shows FPS/CPU/GPU metrics
+  - Stats panel positioned in bottom-right corner (toggle with "D" key)
+  - Removed `r3f-perf` dependency from package.json
+
+- **TslNoiseBlob soft shading**: Fixed lighting to be non-reflective with soft shadows
+  - Reverted from `MeshStandardNodeMaterial` (PBR/reflective) to `MeshBasicNodeMaterial`
+  - Implemented custom half-lambert wrap lighting for soft diffuse shadows
+  - Two-light setup: key light (top-right-front) + fill light (opposite side)
+  - Subtle rim highlight with gentle falloff
+  - Cleaned up redundant code comments
 
 ### Button Controls (Mute/Solo/Beat Indicator)
 
@@ -56,6 +81,34 @@ Status overview and key decisions for sebcat-vj.
   - Prevents parameter jumps on sketch change, app restart, or MIDI reconnect
   - First CC after reconnect is ignored (handles controller state dump)
   - Master fader uses direction-based logic after pickup
+
+### WebGPU/TSL Migration ✅ Complete
+
+- **WebGPU Canvas Infrastructure** ✅
+  - New `WebGPUCanvas.tsx` wrapper with feature detection
+  - Always uses `WebGPURenderer` (required for TSL materials)
+  - Falls back to WebGL2 backend via `forceWebGL` when native WebGPU unavailable
+  - Console logging indicates which backend is active
+
+- **Video Output Async Readback** ✅
+  - `VideoOutputCapture.tsx` detects WebGPU vs WebGL renderer
+  - WebGPU path uses `readRenderTargetPixelsAsync()` (non-blocking)
+  - Separate render targets for proper type safety
+  - Expected significant performance improvement for video capture
+
+- **TSL Shader Migration** ✅
+  - `TslNoiseBlob` migrated from GLSL `ShaderMaterial` to TSL `MeshBasicNodeMaterial`
+  - Uses `mx_noise_float()` for procedural noise with `varying` to avoid double computation
+  - TSL `positionNode` for vertex displacement, `colorNode` for fragment shading
+  - Custom soft shading with half-lambert lighting (non-reflective, soft shadows)
+  - Reduced geometry complexity (64 → 32 subdivisions) for performance
+  - All 5 sketches now fully WebGPU compatible
+
+- **Preview Components Updated** ✅
+  - `RendererPreview.tsx` now uses `WebGPUCanvas`
+  - `SlotColumn.tsx` preview now uses `WebGPUCanvas`
+  - TSL materials render correctly in all preview contexts
+  - See `docs/finished/WEBGPU_MIGRATION.md` for details
 
 ### Codebase Cleanup & Refactoring ✅ Complete
 

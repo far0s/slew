@@ -20,21 +20,6 @@ Prioritized list of potential work items for sebcat-vj.
 
 ## Active / High Priority
 
-### 🔴 Video Output Optimization `feature`
-
-Improve 1080p@60fps performance for professional use.
-
-**Context**: Current implementation uses base64-encoded frames which adds overhead. Zero-copy approaches would significantly improve performance.
-
-**Subtasks**:
-
-- [ ] Zero-copy IOSurface sharing for Syphon (macOS)
-- [ ] Binary IPC instead of base64 encoding
-- [ ] PBOs for async GPU readback
-- [ ] Spout implementation for Windows
-
----
-
 ### 🔴 Prepare repo for first public release `chore`
 
 Have the repo ready for first public release (that includes download links and documentation).
@@ -167,18 +152,19 @@ Add bloom, feedback, color grading effects.
 
 ---
 
-### 🟢 WebGPU Upgrade `chore`
+### 🟢 IOSurface Zero-Copy (macOS) `feature`
 
-Switch to WebGPU renderer when r3f support matures.
+Bypass CPU entirely for ultimate video output performance.
 
-**Context**: WebGPU offers better performance and modern GPU features. Currently blocked by r3f ecosystem readiness.
+**Context**: Current WebGPU async readback achieves stable 60fps. IOSurface would eliminate all CPU copies for sub-8ms latency, but requires significant effort and possibly private APIs.
+
+**Reference**: See `docs/finished/IOSURFACE_FEASIBILITY.md` for research.
 
 **Subtasks**:
 
-- [ ] Monitor r3f WebGPU support progress
-- [ ] Test WebGPU renderer when available
-- [ ] Migrate shaders to WGSL if needed
-- [ ] Performance comparison
+- [ ] Prototype CALayer IOSurface capture (test feasibility)
+- [ ] Investigate WebGPU Metal texture access
+- [ ] Evaluate private API risks vs. performance gains
 
 ---
 

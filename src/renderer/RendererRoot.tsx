@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Perf } from "r3f-perf";
+import { useFrame } from "@react-three/fiber";
+import { StatsGl } from "@react-three/drei";
+import { WebGPUCanvas } from "./WebGPUCanvas";
 import { VideoOutputCapture } from "./VideoOutputCapture";
 import {
   SKETCH_COMPONENT_REGISTRY,
@@ -659,15 +660,11 @@ export function RendererRoot() {
 
   return (
     <div className={styles.root}>
-      <Canvas camera={{ position: [0, 0, 4], fov: 50 }} frameloop="always">
-        {showStats && (
-          <Perf
-            position="top-left"
-            minimal={false}
-            showGraph={true}
-            colorBlind={false}
-          />
-        )}
+      <WebGPUCanvas
+        camera={{ position: [0, 0, 4], fov: 50 }}
+        frameloop="always"
+      >
+        {showStats && <StatsGl className="stats-gl-bottom-right" />}
         {/* Video output capture - sends frames to Syphon/Spout/NDI when active */}
         <VideoOutputCapture />
         <RendererContent
@@ -676,7 +673,7 @@ export function RendererRoot() {
           crossfadeTargetIndex={crossfadeTargetIndex}
           paramStore={paramStore}
         />
-      </Canvas>
+      </WebGPUCanvas>
     </div>
   );
 }

@@ -15,12 +15,13 @@
  * - Optimized for performance with reduced DPR
  */
 
-import { Suspense, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Perf } from "r3f-perf";
+import { Suspense, useState, useCallback } from "react";
+import { useFrame } from "@react-three/fiber";
+import { StatsGl } from "@react-three/drei";
 import type { SketchId, SketchProps } from "../../sketches";
 import { SKETCH_COMPONENT_REGISTRY, getSketchDescriptor } from "../../sketches";
 import { makeSlotParameterId } from "../../slots/slotTypes";
+import { WebGPUCanvas } from "../../renderer/WebGPUCanvas";
 import styles from "./RendererPreview.module.css";
 
 // =============================================================================
@@ -285,36 +286,28 @@ export function RendererPreview({
   getParam,
   showStats = false,
 }: RendererPreviewProps) {
+  // Log when renderer is ready (for debugging)
+  const handleRendererReady = useCallback((backend: "webgpu" | "webgl2") => {
+    console.log(`[RendererPreview] Using ${backend} backend`);
+  }, []);
+
   return (
     <div className={styles.container}>
       <Suspense fallback={<div className={styles.fallback}>Loading…</div>}>
-        <Canvas
-          className={styles.canvas}
+        <WebGPUCanvas
           camera={{ position: [0, 0, 4], fov: 50 }}
-          // Match main renderer camera but with reduced DPR for performance
-          dpr={[1, 1.5]}
           frameloop="always"
-          gl={{
-            antialias: true,
-            alpha: false,
-            powerPreference: "low-power",
-          }}
+          onRendererReady={handleRendererReady}
+          fallback={<div className={styles.fallback}>Initializing…</div>}
         >
-          {showStats && (
-            <Perf
-              position="top-left"
-              minimal={true}
-              showGraph={false}
-              colorBlind={false}
-            />
-          )}
+          {showStats && <StatsGl className="stats-gl-bottom-right" />}
           <RendererPreviewContent
             allSlots={allSlots}
             activeSlotIndex={activeSlotIndex}
             crossfadeTargetIndex={crossfadeTargetIndex}
             getParam={getParam}
           />
-        </Canvas>
+        </WebGPUCanvas>
       </Suspense>
       <div className={styles.label}>Live Preview</div>
     </div>
