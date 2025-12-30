@@ -20,21 +20,6 @@ Prioritized list of potential work items for sebcat-vj.
 
 ## Active / High Priority
 
-### 🔴 Automated GitHub Releases `chore`
-
-Set up GitHub Actions to automatically build and publish releases when a tag is pushed.
-
-**Context**: Packaging is working locally (unsigned macOS builds). Need automation for consistent, reproducible releases.
-
-**Subtasks**:
-
-- [ ] Create GitHub Actions workflow for release builds
-- [ ] Build macOS (aarch64 + x86_64), Windows, Linux
-- [ ] Upload artifacts to GitHub Releases
-- [ ] Update README with download links and Gatekeeper workaround instructions
-
----
-
 ### 🔴 App Branding `chore`
 
 Figure out proper name, icon, and logo for the app.

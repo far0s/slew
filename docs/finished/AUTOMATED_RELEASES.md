@@ -51,24 +51,24 @@ This significantly simplifies our workflow compared to manual setup.
 ### Phase 1: Create Workflow File
 
 - [x] Research tauri-action approach
-- [ ] Create `.github/workflows/release.yml`
-- [ ] Configure for all platforms
-- [ ] Add Syphon installation step for macOS
-- [ ] Build with `--no-default-features` (no NDI)
+- [x] Create `.github/workflows/release.yml`
+- [x] Configure for all platforms
+- [x] Add Syphon installation step for macOS
+- [x] Build with `--no-default-features` (no NDI)
 
 ### Phase 2: Test & Verify
 
-- [ ] Push workflow to a feature branch
-- [ ] Add `workflow_dispatch` trigger for manual testing
-- [ ] Create test tag to verify full flow
-- [ ] Verify all platform artifacts are uploaded
+- [x] Push workflow to a feature branch
+- [x] Add `workflow_dispatch` trigger for manual testing
+- [x] Create test tag to verify full flow
+- [x] Verify all platform artifacts are uploaded
 
 ### Phase 3: README Updates
 
-- [ ] Add "Download" section with release badge
-- [ ] Add installation instructions per platform
-- [ ] Document Gatekeeper workaround for unsigned macOS builds
-- [ ] Add "Building from Source" section
+- [x] Add "Download" section with release badge
+- [x] Add installation instructions per platform
+- [x] Document Gatekeeper workaround for unsigned macOS builds
+- [x] Add "Building from Source" section
 
 ---
 
@@ -318,9 +318,9 @@ xattr -cr /Applications/sebcat-vj.app
 - [x] Create task document with implementation plan
 - [x] Create `.github/workflows/release.yml`
 - [x] Update README with download instructions
-- [ ] Push to repo and test workflow with manual dispatch
-- [ ] Create test release to verify full flow
-- [ ] Archive task document to `docs/finished/`
+- [x] Push to repo and test workflow with manual dispatch
+- [x] Create test release to verify full flow
+- [x] Archive task document to `docs/finished/`
 
 ---
 
