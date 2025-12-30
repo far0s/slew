@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { FontLoader, Font } from "three/addons/loaders/FontLoader.js";
 import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
-import type { SketchDescriptor, SketchProps } from "../types";
+import type { SketchDescriptor, SketchProps } from "../../types";
 
 /**
  * TslText3D Sketch Descriptor

@@ -86,7 +86,7 @@ Parameter flow: **Controls UI → Backend → Renderer**
 Key characteristics:
 
 - 8 fixed slots always visible in UI
-- Empty slots show inline sketch browser
+- Empty slots show inline sketch browser with grouped sections
 - Same sketch can exist in multiple slots with independent parameters
 - Parameter IDs: `slot_{index}_{templateId}` (e.g., `slot_0_brightness`)
 - Slots layer in index order (slot 0 = back, slot 7 = front)
@@ -150,11 +150,13 @@ WebGL2: render → PBO ping-pong readPixels → flip → binary IPC → Syphon/N
 ```
 /project
   /src
-    /sketches/              # Visual programs (self-contained modules)
-      /{SketchName}/
-        index.tsx           # Component + SketchDescriptor
-      index.ts              # SKETCH_REGISTRY
-      types.ts              # SketchDescriptor, SketchProps
+    /sketches/              # Visual programs (grouped modules)
+      /{GroupName}/         # Group folder (e.g., Examples, Effects)
+        index.ts            # SketchGroup definition + re-exports
+        /{SketchName}/
+          index.tsx         # Component + SketchDescriptor
+      index.ts              # SKETCH_GROUPS, SKETCH_REGISTRY
+      types.ts              # SketchDescriptor, SketchGroup, SketchProps
     /components/            # React UI components
       /SlotColumn/          # Slot column with inline browser
     /controls/              # useParameterStore hook
@@ -173,12 +175,8 @@ WebGL2: render → PBO ping-pong readPixels → flip → binary IPC → Syphon/N
         persistence.rs      # JSON I/O helpers
         events.rs           # Event emission helpers
       /midi/                # MIDI device management (13 modules)
-        mod.rs, engine.rs, devices.rs, connections.rs,
-        mappings.rs, learn.rs, midimix.rs, message_handler.rs, ...
       /audio/               # Audio capture, FFT, beat detection (11 modules)
-        mod.rs, engine.rs, capture.rs, analysis.rs, mappings.rs, ...
       /hid/                 # HID/macropad support (11 modules)
-        mod.rs, engine.rs, connections.rs, parsing.rs, mappings.rs, ...
       osc.rs                # OSC server
       modulation.rs         # LFO engine, modulation matrix
       video_out.rs          # Video output backends
@@ -245,7 +243,7 @@ Pattern: Each submodule is <200 lines, single responsibility.
 | `src-tauri/src/hid/`                | HID/macropad support                                |
 | `src-tauri/src/modulation.rs`       | LFO engine, modulation matrix                       |
 | `src-tauri/src/video_out.rs`        | Video output backends                               |
-| `src/sketches/`                     | Self-contained sketch modules                       |
+| `src/sketches/`                     | Grouped sketch modules                              |
 | `src/slots/useSlots.ts`             | Slot management hook                                |
 | `src/inputs/shared/`                | Reusable hook infrastructure                        |
 | `src/controls/useParameterStore.ts` | Parameter state                                     |

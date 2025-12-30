@@ -26,7 +26,7 @@ import {
   varying,
 } from "three/tsl";
 import { useFrame } from "@react-three/fiber";
-import type { SketchDescriptor, SketchProps } from "../types";
+import type { SketchDescriptor, SketchProps } from "../../types";
 
 /**
  * TslNoiseBlob Sketch Descriptor

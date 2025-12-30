@@ -1,7 +1,7 @@
 import React from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import type { SketchDescriptor, SketchProps } from "../types";
+import type { SketchDescriptor, SketchProps } from "../../types";
 
 /**
  * BlueCube Sketch Descriptor

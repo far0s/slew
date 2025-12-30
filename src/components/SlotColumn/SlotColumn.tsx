@@ -1,17 +1,17 @@
-import { Suspense, useCallback } from "react";
+import { Suspense, useCallback, useState } from "react";
 import * as Select from "@radix-ui/react-select";
 import {
   ChevronDownIcon,
+  ChevronRightIcon,
   Cross2Icon,
   PlusIcon,
   CopyIcon,
   SpeakerOffIcon,
 } from "@radix-ui/react-icons";
-import { motion } from "motion/react";
-import type { SketchId, SketchProps } from "../../sketches";
+import { motion, AnimatePresence } from "motion/react";
+import type { SketchId, SketchProps, SketchGroup } from "../../sketches";
 import {
-  SKETCH_REGISTRY,
-  ALL_SKETCH_IDS,
+  SKETCH_GROUPS,
   SKETCH_COMPONENT_REGISTRY,
   getSketchDescriptor,
 } from "../../sketches";
@@ -51,8 +51,73 @@ export interface SlotColumnProps {
 }
 
 function getSketchLabel(sketchId: SketchId): string {
-  const descriptor = SKETCH_REGISTRY.find((s) => s.id === sketchId);
-  return descriptor?.shortLabel ?? sketchId;
+  for (const group of SKETCH_GROUPS) {
+    const descriptor = group.sketches.find((s) => s.id === sketchId);
+    if (descriptor) return descriptor.shortLabel;
+  }
+  return sketchId;
+}
+
+function SketchGroupSection({
+  group,
+  slotIndex,
+  onSelectSketch,
+  defaultExpanded = true,
+}: {
+  group: SketchGroup;
+  slotIndex: number;
+  onSelectSketch: (sketchId: SketchId) => void;
+  defaultExpanded?: boolean;
+}) {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const displayNumber = slotIndex + 1;
+
+  return (
+    <div className={styles.sketchGroup}>
+      <button
+        type="button"
+        className={styles.sketchGroupHeader}
+        onClick={() => setIsExpanded(!isExpanded)}
+        aria-expanded={isExpanded}
+        aria-controls={`group-${group.id}-sketches`}
+      >
+        <span
+          className={`${styles.sketchGroupChevron} ${isExpanded ? styles.sketchGroupChevronExpanded : ""}`}
+        >
+          <ChevronRightIcon />
+        </span>
+        <span className={styles.sketchGroupLabel}>{group.label}</span>
+        <span className={styles.sketchGroupCount}>{group.sketches.length}</span>
+      </button>
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            id={`group-${group.id}-sketches`}
+            className={styles.sketchGroupItems}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+          >
+            {group.sketches.map((descriptor) => (
+              <button
+                key={descriptor.id}
+                type="button"
+                className={styles.inlineSketchItem}
+                onClick={() => onSelectSketch(descriptor.id as SketchId)}
+                aria-label={`Add ${descriptor.label} to slot ${displayNumber}`}
+              >
+                <PlusIcon className={styles.inlineSketchItemIcon} />
+                <span className={styles.inlineSketchItemLabel}>
+                  {descriptor.shortLabel}
+                </span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 function InlineSketchBrowser({
@@ -91,19 +156,14 @@ function InlineSketchBrowser({
       </div>
 
       <div className={styles.inlineSketchList}>
-        {SKETCH_REGISTRY.map((descriptor) => (
-          <button
-            key={descriptor.id}
-            type="button"
-            className={styles.inlineSketchItem}
-            onClick={() => handleSelectSketch(descriptor.id as SketchId)}
-            aria-label={`Add ${descriptor.label} to slot ${displayNumber}`}
-          >
-            <PlusIcon className={styles.inlineSketchItemIcon} />
-            <span className={styles.inlineSketchItemLabel}>
-              {descriptor.shortLabel}
-            </span>
-          </button>
+        {SKETCH_GROUPS.map((group) => (
+          <SketchGroupSection
+            key={group.id}
+            group={group}
+            slotIndex={slotIndex}
+            onSelectSketch={handleSelectSketch}
+            defaultExpanded={true}
+          />
         ))}
       </div>
 
@@ -180,10 +240,6 @@ export function SlotColumn({
   const SketchComponent = SKETCH_COMPONENT_REGISTRY[sketchId];
   const displayLabel = getSketchLabel(sketchId);
   const displayNumber = slotIndex + 1;
-
-  const availableOptions = ALL_SKETCH_IDS.filter(
-    (id) => id === sketchId || !excludeSketchIds.includes(id),
-  );
 
   const isSelectDisabled = isActive || isCrossfading;
   const isCrossfadeDisabled = isActive || isCrossfading;
@@ -284,16 +340,31 @@ export function SlotColumn({
                   sideOffset={4}
                 >
                   <Select.Viewport className={styles.selectViewport}>
-                    {availableOptions.map((option) => (
-                      <Select.Item
-                        key={option}
-                        value={option}
-                        className={styles.selectItem}
-                      >
-                        <Select.ItemText>
-                          {getSketchLabel(option)}
-                        </Select.ItemText>
-                      </Select.Item>
+                    {SKETCH_GROUPS.map((group) => (
+                      <Select.Group key={group.id}>
+                        <Select.Label className={styles.selectGroupLabel}>
+                          {group.label}
+                        </Select.Label>
+                        {group.sketches.map((descriptor) => {
+                          const isExcluded =
+                            descriptor.id !== sketchId &&
+                            excludeSketchIds.includes(
+                              descriptor.id as SketchId,
+                            );
+                          if (isExcluded) return null;
+                          return (
+                            <Select.Item
+                              key={descriptor.id}
+                              value={descriptor.id}
+                              className={styles.selectItem}
+                            >
+                              <Select.ItemText>
+                                {descriptor.shortLabel}
+                              </Select.ItemText>
+                            </Select.Item>
+                          );
+                        })}
+                      </Select.Group>
                     ))}
                   </Select.Viewport>
                 </Select.Content>

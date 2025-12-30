@@ -29,6 +29,16 @@ Status overview and key decisions for sebcat-vj.
 
 ## Recent Changes
 
+### Grouped Sketch Browser
+
+- **Sketch groups**: Sketches are now organized into collapsible groups in the browser
+  - File structure mirrors UI organization (`src/sketches/{GroupName}/{SketchName}/`)
+  - Groups defined via `SketchGroup` type with `id`, `label`, `sketches`, and optional `orderHint`
+  - Groups sorted by `orderHint` (lower = first)
+- **Inline browser**: Empty slots show grouped sketch picker with expand/collapse
+- **Sketch dropdown**: Filled slots show grouped selector with section headers
+- **Future-ready**: Supports multiple presets per sketch (export multiple descriptors from one folder)
+
 ### Video Output Optimization Complete
 
 - **WebGPU async readback**: `readRenderTargetPixelsAsync()` provides truly non-blocking GPU→CPU transfer
