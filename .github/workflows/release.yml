@@ -1,0 +1,251 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: # Manual trigger for testing
+
+jobs:
+  # Build macOS separately to fix code signature
+  build-macos:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: "aarch64-apple-darwin"
+            arch: "aarch64"
+          - target: "x86_64-apple-darwin"
+            arch: "x64"
+
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Syphon (macOS)
+        run: |
+          ./scripts/install-syphon.sh --clean
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: "npm"
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        run: npm run tauri build -- --target ${{ matrix.target }} -- --no-default-features
+
+      - name: Fix code signature
+        run: |
+          APP_PATH="src-tauri/target/${{ matrix.target }}/release/bundle/macos/sebcat-vj.app"
+          DMG_PATH="src-tauri/target/${{ matrix.target }}/release/bundle/dmg"
+
+          echo "Removing invalid signature and re-signing with ad-hoc..."
+          codesign --remove-signature "$APP_PATH" || true
+          codesign --force --deep -s - "$APP_PATH"
+
+          echo "Verifying signature..."
+          codesign -vv "$APP_PATH"
+
+          echo "Recreating DMG with fixed app..."
+          # Find the DMG file
+          DMG_FILE=$(ls "$DMG_PATH"/*.dmg | head -1)
+          DMG_NAME=$(basename "$DMG_FILE")
+          echo "Original DMG: $DMG_FILE"
+
+          # Convert to read-write format (hdiutil adds .dmg automatically, so we use a name without it)
+          TEMP_DMG_BASE="$DMG_PATH/temp_rw"
+          TEMP_DMG="${TEMP_DMG_BASE}.dmg"
+          rm -f "$TEMP_DMG"
+          hdiutil convert "$DMG_FILE" -format UDRW -o "$TEMP_DMG_BASE"
+          echo "Converted to RW DMG: $TEMP_DMG"
+          ls -la "$TEMP_DMG"
+
+          # Attach without specifying mount point - let macOS choose
+          echo "Attaching DMG..."
+          ATTACH_OUTPUT=$(hdiutil attach "$TEMP_DMG" -nobrowse -noverify)
+          echo "Attach output: $ATTACH_OUTPUT"
+
+          # Find the mount point from attach output (last column of last line with /Volumes)
+          MOUNT_POINT=$(echo "$ATTACH_OUTPUT" | grep "/Volumes" | awk -F'\t' '{print $NF}' | head -1)
+          echo "Mount point: $MOUNT_POINT"
+
+          if [ -z "$MOUNT_POINT" ] || [ ! -d "$MOUNT_POINT" ]; then
+            echo "ERROR: Failed to find mount point"
+            echo "Listing /Volumes:"
+            ls -la /Volumes/
+            exit 1
+          fi
+
+          # Remove old app and copy fixed one
+          echo "Copying fixed app to DMG..."
+          rm -rf "$MOUNT_POINT/sebcat-vj.app"
+          cp -R "$APP_PATH" "$MOUNT_POINT/"
+
+          # Sync and unmount
+          sync
+          echo "Detaching DMG..."
+          hdiutil detach "$MOUNT_POINT"
+
+          # Convert back to compressed DMG
+          echo "Converting back to compressed DMG..."
+          rm -f "$DMG_FILE"
+          hdiutil convert "$TEMP_DMG" -format UDZO -o "${DMG_FILE%.dmg}"
+          rm -f "$TEMP_DMG"
+
+          echo "DMG recreated with properly signed app: $DMG_FILE"
+          ls -la "$DMG_FILE"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+
+  # Build Linux and Windows with tauri-action (no signature issues)
+  build-linux-windows:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "ubuntu-22.04"
+            args: "-- --no-default-features"
+            rust_targets: ""
+          - platform: "windows-latest"
+            args: "-- --no-default-features"
+            rust_targets: ""
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Ubuntu)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libasound2-dev \
+            libhidapi-dev \
+            libudev-dev
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: "npm"
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        run: npm run tauri build -- ${{ matrix.args }}
+
+      - name: Upload Linux artifacts
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/rpm/*.rpm
+            src-tauri/target/release/bundle/appimage/*.AppImage
+
+      - name: Upload Windows artifacts
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
+
+  # Create release and upload all artifacts
+  release:
+    needs: [build-macos, build-linux-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f -name "*" | head -50
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.version.outputs.VERSION }}
+          draft: true
+          prerelease: false
+          body: |
+            ## Download
+
+            Choose the appropriate installer for your platform:
+
+            | Platform | File |
+            |----------|------|
+            | macOS (Apple Silicon) | `.dmg` (aarch64) |
+            | macOS (Intel) | `.dmg` (x64) |
+            | Windows | `.exe` or `.msi` |
+            | Linux | `.AppImage`, `.deb`, or `.rpm` |
+
+            ### macOS Note
+
+            This app is not signed with an Apple Developer certificate. On first launch, you may see a warning. To open:
+            1. Right-click the app and select "Open"
+            2. Click "Open" in the dialog
+
+            Or run in Terminal: `xattr -cr /Applications/sebcat-vj.app`
+          files: |
+            artifacts/macos-aarch64/*.dmg
+            artifacts/macos-x64/*.dmg
+            artifacts/linux/*.deb
+            artifacts/linux/*.rpm
+            artifacts/linux/*.AppImage
+            artifacts/windows/*.exe
+            artifacts/windows/*.msi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

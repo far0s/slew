@@ -4,6 +4,37 @@ A modular VJ application built with Tauri, React, and Three.js. Create real-time
 
 ---
 
+## Download
+
+[![Latest Release](https://img.shields.io/github/v/release/far0s/sebcat-vj?style=flat-square)](https://github.com/far0s/sebcat-vj/releases/latest)
+
+Download the latest version for your platform from [Releases](https://github.com/far0s/sebcat-vj/releases/latest):
+
+| Platform              | File                             |
+| --------------------- | -------------------------------- |
+| macOS (Apple Silicon) | `sebcat-vj_x.x.x_aarch64.dmg`    |
+| macOS (Intel)         | `sebcat-vj_x.x.x_x64.dmg`        |
+| Windows               | `sebcat-vj_x.x.x_x64-setup.exe`  |
+| Linux                 | `sebcat-vj_x.x.x_amd64.AppImage` |
+
+### macOS Installation Note
+
+The app is not code-signed. On first launch, macOS may show a security warning.
+
+**To open the app:**
+
+1. Right-click the app in Finder
+2. Select "Open" from the context menu
+3. Click "Open" in the security dialog
+
+**Or run in Terminal:**
+
+```bash
+xattr -cr /Applications/sebcat-vj.app
+```
+
+---
+
 ## Features
 
 - **Dual-Window Architecture**: Separate high-performance renderer and control UI
@@ -28,7 +59,7 @@ A modular VJ application built with Tauri, React, and Three.js. Create real-time
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/sebcat-vj.git
+git clone https://github.com/far0s/sebcat-vj.git
 cd sebcat-vj
 
 # Install dependencies

@@ -92,17 +92,17 @@ jobs:
       matrix:
         include:
           - platform: "macos-latest"
-            args: "--target aarch64-apple-darwin"
-            target: "aarch64-apple-darwin"
+            args: "--target aarch64-apple-darwin -- --no-default-features"
+            rust_targets: "aarch64-apple-darwin"
           - platform: "macos-latest"
-            args: "--target x86_64-apple-darwin"
-            target: "x86_64-apple-darwin"
+            args: "--target x86_64-apple-darwin -- --no-default-features"
+            rust_targets: "x86_64-apple-darwin"
           - platform: "ubuntu-22.04"
-            args: ""
-            target: ""
+            args: "-- --no-default-features"
+            rust_targets: ""
           - platform: "windows-latest"
-            args: ""
-            target: ""
+            args: "-- --no-default-features"
+            rust_targets: ""
 
     runs-on: ${{ matrix.platform }}
 
@@ -138,7 +138,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.rust_targets }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -176,12 +176,49 @@ jobs:
             Or run: `xattr -cr /Applications/sebcat-vj.app`
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.args }} --no-default-features
+          args: ${{ matrix.args }}
 ```
 
 ---
 
-## Syphon in CI
+## Key Implementation Notes
+
+### Passing Cargo flags
+
+The `--no-default-features` flag is a Cargo flag, not a Tauri CLI flag. To pass it through:
+
+- Use `-- --no-default-features` after Tauri CLI args
+- The `--` separator tells Tauri CLI to forward remaining args to Cargo
+- Each matrix entry includes this in the `args` field
+
+### Ubuntu dependencies
+
+The `hidapi` crate requires `libudev-dev` in addition to the standard Tauri dependencies:
+
+```bash
+sudo apt-get install -y \
+  libwebkit2gtk-4.1-dev \
+  libappindicator3-dev \
+  librsvg2-dev \
+  patchelf \
+  libasound2-dev \
+  libhidapi-dev \
+  libudev-dev  # Required for hidapi crate
+```
+
+### Windows bundle targets
+
+The `tauri.conf.json` must have `"targets": "all"` (not just `["app", "dmg"]`) to generate Windows and Linux bundles:
+
+```json
+"bundle": {
+  "active": true,
+  "targets": "all",
+  ...
+}
+```
+
+### Syphon in CI
 
 The `install-syphon.sh` script should work on GitHub macOS runners because:
 
@@ -191,7 +228,9 @@ The `install-syphon.sh` script should work on GitHub macOS runners because:
 
 **Potential issue**: The script has interactive prompts for reinstallation. We use `--clean` flag to avoid this.
 
-**Verification needed**: Test that the script runs non-interactively in CI.
+### Updater signatures
+
+If you see "No artifacts were found" on Windows, ensure `uploadUpdaterSignatures: false` is set in the tauri-action config. Without signing keys configured, `.sig` files won't be generated, and the action may fail looking for them.
 
 ---
 
@@ -277,10 +316,10 @@ xattr -cr /Applications/sebcat-vj.app
 
 - [x] Research tauri-action and Tauri CI/CD docs
 - [x] Create task document with implementation plan
-- [ ] Create `.github/workflows/release.yml`
-- [ ] Test workflow with manual dispatch
-- [ ] Create test release
-- [ ] Update README with download instructions
+- [x] Create `.github/workflows/release.yml`
+- [x] Update README with download instructions
+- [ ] Push to repo and test workflow with manual dispatch
+- [ ] Create test release to verify full flow
 - [ ] Archive task document to `docs/finished/`
 
 ---
