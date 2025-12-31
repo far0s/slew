@@ -9,7 +9,7 @@ import {
   type BackendParameter,
   type SlotConfig,
 } from "./controls/useParameterStore";
-import type { SketchId } from "./sketches";
+import type { SketchId, SketchProps } from "./sketches";
 import { getSketchDescriptor } from "./sketches";
 import { makeSlotParameterId } from "./slots/slotTypes";
 import { SlotsArea, RendererPreview, DebugPanel } from "./components";
@@ -30,6 +30,19 @@ function App() {
 
   // Parameter store (replaces individual useState calls)
   const paramStore = useParameterStore();
+
+  // Color palette store - stores colors per slot
+  const [slotColors, setSlotColors] = useState<
+    Map<
+      number,
+      {
+        startColor?: [number, number, number];
+        midColor?: [number, number, number];
+        endColor?: [number, number, number];
+        background?: [number, number, number, number];
+      }
+    >
+  >(new Map());
 
   const [isInitialized, setIsInitialized] = useState(false);
   const hasHydratedRef = useRef(false);
@@ -119,7 +132,118 @@ function App() {
     [slotState, paramStore],
   );
 
-  // Get parameters for the target scene (macropad-selected or active slot)
+  // Track which sketchId each slot had to detect changes
+  const prevSlotSketchIds = useRef<Map<number, string | null>>(new Map());
+
+  // Initialize/reset colors when slots or their sketches change
+  useEffect(() => {
+    // Capture current sketch IDs for comparison BEFORE updating state
+    const changes: Array<{
+      slotIndex: number;
+      sketchId: string;
+      colorPalette: {
+        startColor: [number, number, number];
+        midColor: [number, number, number];
+        endColor: [number, number, number];
+        background: [number, number, number, number];
+      };
+    }> = [];
+    const clears: number[] = [];
+
+    slotState.slots.forEach((slot) => {
+      const prevSketchId = prevSlotSketchIds.current.get(slot.index);
+      const currentSketchId = slot.sketchId;
+
+      // Reset colors if sketch changed (including from null to a sketch, or sketch to different sketch)
+      if (currentSketchId && currentSketchId !== prevSketchId) {
+        const descriptor = getSketchDescriptor(currentSketchId);
+        if (descriptor?.colorPalette) {
+          changes.push({
+            slotIndex: slot.index,
+            sketchId: currentSketchId,
+            colorPalette: descriptor.colorPalette,
+          });
+        }
+      } else if (!currentSketchId && prevSketchId) {
+        // Clear colors when slot is cleared
+        clears.push(slot.index);
+      }
+    });
+
+    // Only update state if there are actual changes
+    if (changes.length > 0 || clears.length > 0) {
+      setSlotColors((prev) => {
+        const next = new Map(prev);
+        for (const change of changes) {
+          next.set(change.slotIndex, {
+            startColor: change.colorPalette.startColor,
+            midColor: change.colorPalette.midColor,
+            endColor: change.colorPalette.endColor,
+            background: change.colorPalette.background,
+          });
+        }
+        for (const slotIndex of clears) {
+          next.delete(slotIndex);
+        }
+        return next;
+      });
+    }
+
+    // Update tracking ref AFTER determining changes (outside of setState)
+    slotState.slots.forEach((slot) => {
+      prevSlotSketchIds.current.set(slot.index, slot.sketchId);
+    });
+  }, [slotState.slots]);
+
+  // Listen for color changes from controls
+  useEffect(() => {
+    const handleColorChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        slotIndex: number;
+        colorType: "startColor" | "midColor" | "endColor" | "background";
+        color: [number, number, number] | [number, number, number, number];
+      }>;
+
+      const { slotIndex, colorType, color } = customEvent.detail;
+
+      setSlotColors((prev) => {
+        const next = new Map(prev);
+        const current = next.get(slotIndex) || {};
+        next.set(slotIndex, {
+          ...current,
+          [colorType]: color,
+        });
+        return next;
+      });
+
+      // Forward to renderer window
+      invoke("forward_controls_event", {
+        event: "sketch-color-changed",
+        payload: JSON.stringify({
+          slotIndex,
+          colorType,
+          color,
+        }),
+      }).catch((err) => {
+        console.error("[Controls] Failed to forward color change:", err);
+      });
+    };
+
+    window.addEventListener("sketch-color-changed", handleColorChange);
+    return () => {
+      window.removeEventListener("sketch-color-changed", handleColorChange);
+    };
+  }, []);
+
+  // Get colors for a slot
+  const getSlotColors = useCallback(
+    (slotIndex: number): SketchProps["colors"] | undefined => {
+      return slotColors.get(slotIndex);
+    },
+    [slotColors],
+  );
+
+  // Retrieve all parameters for the target scene (macropad-selected or active)
   // Sorted by orderHint for encoder mapping
   const getTargetSceneParameters = useCallback(() => {
     // Use macropad selection if available, otherwise use active slot
@@ -227,22 +351,22 @@ function App() {
 
   // Handle slot sketch change
   async function handleSlotSketchChange(slotIndex: number, sketchId: SketchId) {
-    // This will return parameters to initialize
+    // Update slot state
     const initParams = slotState.setSlotSketch(slotIndex, sketchId);
+    if (!initParams) return;
 
-    if (initParams) {
-      // Initialize the new parameters in the store
-      paramStore.initializeSlotWithValues(slotIndex, initParams.parameters);
+    // Clear local parameters first, then reinitialize with new defaults
+    paramStore.removeSlotParameters(slotIndex);
+    paramStore.initializeSlotWithValues(slotIndex, initParams.parameters);
 
-      // Also initialize in the backend
-      try {
-        await invoke("initialize_slot_parameters", {
-          slotIndex,
-          sceneId: sketchId,
-        });
-      } catch (error) {
-        console.error("[Controls] Failed to initialize slot parameters", error);
-      }
+    // Reset parameters in backend (clears all slot params and reinitializes from sketch defaults)
+    try {
+      await invoke("reset_slot_parameters", {
+        slotIndex,
+        sketchId,
+      });
+    } catch (error) {
+      console.error("[Controls] Failed to reset slot parameters", error);
     }
 
     // Update backend slot pairing if this affects the active/target pair
@@ -282,14 +406,15 @@ function App() {
     const alphaParamId = makeSlotParameterId(slotIndex, "alpha");
     parameters.set(alphaParamId, 0);
 
-    // Initialize parameters in the store
+    // Clear any stale parameters first, then initialize with new defaults
+    paramStore.removeSlotParameters(slotIndex);
     paramStore.initializeSlotWithValues(slotIndex, parameters);
 
-    // Initialize in the backend
+    // Reset parameters in backend (clears all slot params and reinitializes from sketch defaults)
     try {
-      await invoke("initialize_slot_parameters", {
+      await invoke("reset_slot_parameters", {
         slotIndex,
-        sceneId: sketchId,
+        sketchId,
       });
       // Set alpha to 0 in backend (override the default of 1)
       await invoke("set_parameter", {
@@ -298,7 +423,7 @@ function App() {
         app: undefined,
       });
     } catch (error) {
-      console.error("[Controls] Failed to initialize slot parameters", error);
+      console.error("[Controls] Failed to reset slot parameters", error);
     }
   }
 
@@ -605,6 +730,7 @@ function App() {
             setValue={setValue}
             getSlotSketchParams={getSlotSketchParams}
             getSlotSketchParamsInterpolated={getSlotSketchParamsInterpolated}
+            getSlotColors={getSlotColors}
             audioMappings={audioMappings}
             modulationTargets={modulationTargets}
             lfos={lfos}
@@ -629,6 +755,7 @@ function App() {
             activeSlotIndex={activeSlotIndex}
             crossfadeTargetIndex={slotState.crossfadeTargetIndex}
             getParam={(id) => paramStore.getInterpolated(id)}
+            getSlotColors={getSlotColors}
             showStats={showStats}
           />
           <DebugPanel

@@ -629,6 +629,19 @@ const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
   noise_scale: "noiseScale",
   noise_speed: "noiseSpeed",
   color_mix: "colorMix",
+  // Aura specific
+  bloom: "bloom",
+  complexity: "complexity",
+  sample_offset: "sampleOffset",
+  speed: "speed",
+  scale_base: "scaleBase",
+  distance: "distance",
+  attenuation: "attenuation",
+  ray_steps: "raySteps",
+  seed: "seed",
+  color_interp: "colorInterp",
+  grain_intensity: "grainIntensity",
+  tonemap_mode: "tonemapMode",
 };
 
 /**

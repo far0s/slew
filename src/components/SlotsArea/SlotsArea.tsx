@@ -27,6 +27,7 @@ export interface SlotsAreaProps {
     slotIndex: number,
     sketchId: SketchId,
   ) => SketchProps["params"];
+  getSlotColors?: (slotIndex: number) => SketchProps["colors"];
   audioMappings?: AudioMapping[];
   modulationTargets?: ModulationTarget[];
   lfos?: LfoSource[];
@@ -51,6 +52,7 @@ export function SlotsArea({
   setValue,
   getSlotSketchParams,
   getSlotSketchParamsInterpolated,
+  getSlotColors,
   audioMappings,
   modulationTargets,
   lfos,
@@ -156,6 +158,9 @@ export function SlotsArea({
                             slot.sketchId,
                           )
                         : undefined
+                    }
+                    colors={
+                      slot.sketchId ? getSlotColors?.(slot.index) : undefined
                     }
                     alpha={alpha}
                     audioReactivity={audioReactivity}

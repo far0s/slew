@@ -9,9 +9,10 @@ import {
   SKETCH_COMPONENT_REGISTRY,
   type SketchProps,
   type SketchId,
+  getSketchDescriptor,
 } from "../sketches";
 import type { ParameterTemplateId } from "../slots/slotTypes";
-import { getSketchDescriptor, makeSlotParameterId } from "../slots/slotTypes";
+import { makeSlotParameterId } from "../slots/slotTypes";
 import { useStatsToggle } from "../hooks";
 import styles from "./RendererRoot.module.css";
 
@@ -95,6 +96,19 @@ const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
   noise_scale: "noiseScale",
   noise_speed: "noiseSpeed",
   color_mix: "colorMix",
+  // Aura specific
+  bloom: "bloom",
+  complexity: "complexity",
+  sample_offset: "sampleOffset",
+  speed: "speed",
+  scale_base: "scaleBase",
+  distance: "distance",
+  attenuation: "attenuation",
+  ray_steps: "raySteps",
+  seed: "seed",
+  color_interp: "colorInterp",
+  grain_intensity: "grainIntensity",
+  tonemap_mode: "tonemapMode",
 };
 
 // =============================================================================
@@ -223,6 +237,15 @@ interface RendererContentProps {
   activeSlotIndex: number;
   crossfadeTargetIndex: number | null;
   paramStore: Map<string, number>;
+  slotColors: Map<
+    number,
+    {
+      startColor?: [number, number, number];
+      midColor?: [number, number, number];
+      endColor?: [number, number, number];
+      background?: [number, number, number, number];
+    }
+  >;
 }
 
 function RendererContent({
@@ -230,6 +253,7 @@ function RendererContent({
   activeSlotIndex,
   crossfadeTargetIndex,
   paramStore,
+  slotColors,
 }: RendererContentProps) {
   const [tintLfoPhase, setTintLfoPhase] = useState(0);
 
@@ -298,11 +322,14 @@ function RendererContent({
           tintLfoPhase,
         );
 
+        const colors = slotColors.get(slot.index);
+
         return (
           <SketchComponent
             key={`slot-${slot.index}`}
             opacity={opacity}
             params={sketchParams}
+            colors={colors}
           />
         );
       })}
@@ -345,6 +372,22 @@ export function RendererRoot() {
   const [paramStore, setParamStore] = useState<Map<string, number>>(
     () => new Map([["crossfade", 0]]),
   );
+
+  // Color palette store - stores colors per slot
+  const [slotColors, setSlotColors] = useState<
+    Map<
+      number,
+      {
+        startColor?: [number, number, number];
+        midColor?: [number, number, number];
+        endColor?: [number, number, number];
+        background?: [number, number, number, number];
+      }
+    >
+  >(() => new Map());
+
+  // Track which sketchId each slot had to detect changes
+  const prevSlotSketchIds = useRef<Map<number, string | null>>(new Map());
 
   // Stats toggle (press "D" to show/hide performance stats)
   const { showStats } = useStatsToggle();
@@ -409,6 +452,60 @@ export function RendererRoot() {
         sketchId: s.sketch_id,
       })),
     );
+
+    // Initialize/reset colors for slots from their descriptors
+    // Capture changes BEFORE updating state to avoid race condition with ref updates
+    const colorChanges: Array<{
+      slotIndex: number;
+      colorPalette: {
+        startColor: [number, number, number];
+        midColor: [number, number, number];
+        endColor: [number, number, number];
+        background: [number, number, number, number];
+      };
+    }> = [];
+    const colorClears: number[] = [];
+
+    payload.slots.forEach((s) => {
+      const prevSketchId = prevSlotSketchIds.current.get(s.index);
+      const currentSketchId = s.sketch_id;
+
+      if (currentSketchId && currentSketchId !== prevSketchId) {
+        const descriptor = getSketchDescriptor(currentSketchId);
+        if (descriptor?.colorPalette) {
+          colorChanges.push({
+            slotIndex: s.index,
+            colorPalette: descriptor.colorPalette,
+          });
+        }
+      } else if (!currentSketchId && prevSketchId) {
+        colorClears.push(s.index);
+      }
+    });
+
+    // Only update state if there are actual changes
+    if (colorChanges.length > 0 || colorClears.length > 0) {
+      setSlotColors((prev) => {
+        const next = new Map(prev);
+        for (const change of colorChanges) {
+          next.set(change.slotIndex, {
+            startColor: change.colorPalette.startColor,
+            midColor: change.colorPalette.midColor,
+            endColor: change.colorPalette.endColor,
+            background: change.colorPalette.background,
+          });
+        }
+        for (const slotIndex of colorClears) {
+          next.delete(slotIndex);
+        }
+        return next;
+      });
+    }
+
+    // Update tracking ref AFTER determining changes (outside of setState)
+    payload.slots.forEach((s) => {
+      prevSlotSketchIds.current.set(s.index, s.sketch_id);
+    });
     setActiveSlotIndex(payload.active_slot_index);
     setCrossfadeTargetIndex(payload.crossfade_target_index);
   }, []);
@@ -658,6 +755,79 @@ export function RendererRoot() {
     };
   }, [handleParameterChanged]);
 
+  // Listen for color changes from controls window (both direct and via backend)
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    const handleColorChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        slotIndex: number;
+        colorType: "startColor" | "midColor" | "endColor" | "background";
+        color: [number, number, number] | [number, number, number, number];
+      }>;
+
+      const { slotIndex, colorType, color } = customEvent.detail;
+
+      setSlotColors((prev) => {
+        const next = new Map(prev);
+        const current = next.get(slotIndex) || {};
+        next.set(slotIndex, {
+          ...current,
+          [colorType]: color,
+        });
+        return next;
+      });
+    };
+
+    // Listen for local color changes
+    window.addEventListener("sketch-color-changed", handleColorChange);
+
+    // Listen for color changes forwarded from controls window via backend
+    async function subscribeToBackendEvents() {
+      try {
+        unlisten = await listen<string>(
+          "renderer:sketch-color-changed",
+          (event) => {
+            try {
+              const payload = JSON.parse(event.payload);
+              const { slotIndex, colorType, color } = payload;
+
+              setSlotColors((prev) => {
+                const next = new Map(prev);
+                const current = next.get(slotIndex) || {};
+                next.set(slotIndex, {
+                  ...current,
+                  [colorType]: color,
+                });
+                return next;
+              });
+            } catch (error) {
+              console.error(
+                "[Renderer] Failed to parse color change event:",
+                error,
+              );
+            }
+          },
+        );
+        console.log(
+          "[Renderer] Subscribed to renderer:sketch-color-changed events",
+        );
+      } catch (error) {
+        console.error(
+          "[Renderer] Failed to subscribe to renderer:sketch-color-changed:",
+          error,
+        );
+      }
+    }
+
+    void subscribeToBackendEvents();
+
+    return () => {
+      window.removeEventListener("sketch-color-changed", handleColorChange);
+      if (unlisten) unlisten();
+    };
+  }, []);
+
   return (
     <div className={styles.root}>
       <WebGPUCanvas
@@ -672,6 +842,7 @@ export function RendererRoot() {
           activeSlotIndex={activeSlotIndex}
           crossfadeTargetIndex={crossfadeTargetIndex}
           paramStore={paramStore}
+          slotColors={slotColors}
         />
       </WebGPUCanvas>
     </div>

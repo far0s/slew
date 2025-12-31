@@ -12,7 +12,7 @@ import {
 export const examplesGroup: SketchGroup = {
   id: "examples",
   label: "Examples",
-  orderHint: 10,
+  orderHint: 20,
   sketches: [
     blueCubeDescriptor,
     orangeCubeDescriptor,

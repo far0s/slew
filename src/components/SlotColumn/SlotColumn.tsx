@@ -42,6 +42,7 @@ export interface SlotColumnProps {
   canRemove: boolean;
   params?: SketchProps["params"];
   previewParams?: SketchProps["params"];
+  colors?: SketchProps["colors"];
   alpha?: number;
   audioReactivity?: number;
   getValue: (id: string) => number;
@@ -245,6 +246,7 @@ export function SlotColumn({
   canRemove,
   params,
   previewParams,
+  colors,
   alpha = 1,
   audioReactivity = 1,
   getValue,
@@ -320,7 +322,11 @@ export function SlotColumn({
               <ambientLight intensity={0.4} />
               <directionalLight position={[4, 6, 3]} intensity={1.1} />
               <directionalLight position={[-4, -4, -2]} intensity={0.4} />
-              <SketchComponent opacity={1} params={previewParams ?? params} />
+              <SketchComponent
+                opacity={1}
+                params={previewParams ?? params}
+                colors={colors}
+              />
             </WebGPUCanvas>
             {(alpha < 0.99 || audioReactivity < 0.5) && (
               <div className={styles.alphaOverlay}>

@@ -20,7 +20,7 @@ Status overview and key decisions for sebcat-vj.
 | HID Input          | ✅     | DOIO Megalodon macropad with encoders, auto-connect              |
 | Modulation Engine  | ✅     | Backend LFOs, modulation matrix, audio→LFO, slider indicators    |
 | Video Output       | ✅     | Syphon + NDI working, WebGPU async readback implemented          |
-| Shader Sketches    | ✅     | TslText3D (3D text), TslNoiseBlob (TSL noise blob)               |
+| Shader Sketches    | ✅     | TslText3D, TslNoiseBlob, Aura (8 presets)                        |
 | WebGPU Renderer    | ✅     | Full WebGPU support, all sketches compatible                     |
 | Window Manager     | ✅     | Native menu, heartbeat monitoring, emergency recovery overlay    |
 | Packaging          | ✅     | macOS/Windows/Linux builds ready; unsigned for initial release   |
@@ -29,6 +29,20 @@ Status overview and key decisions for sebcat-vj.
 ---
 
 ## Recent Changes
+
+### Aura Shader Integration
+
+**New sketch**: Volumetric raymarching shader ported from seb.cat with 8 preset variations and 12 parameters.
+
+- **Aura group**: 8 preset sketches (Original, Rose Gold, Deep Blue, Solar Plume, Ghost-Like, Forest Clearing, Intense, Blush Nebula)
+- **12 parameters**: bloom, complexity, sampleOffset (top 3 for MIDI), speed, scale, distance, attenuation, raySteps, seed, colorInterp, grain, tonemapMode
+- **7 tonemapping modes**: Reinhard, Uncharted2, ACES, Cross-process, Bleach bypass, Technicolor, Cinematic
+- **Color palettes**: Each preset defines unique colors (startColor, midColor, endColor, background) that are correctly applied when switching presets
+- **TSL utilities**: Added reusable functions for tonemapping, hyperbolic math, grain effects (`src/lib/tsl/utils.ts`)
+- **Performance**: GPU-intensive (8-16 ray steps), 60fps achievable on M1/M2 Macs
+- **Files**: `src/sketches/Aura/index.tsx`, `src/sketches/Aura/presets.ts`, `src/lib/tsl/utils.ts`
+
+**Documentation**: See `docs/AURA_SHADER.md` for complete guide.
 
 ### Automated GitHub Releases
 

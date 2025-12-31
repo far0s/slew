@@ -43,6 +43,8 @@ export interface RendererPreviewProps {
   crossfadeTargetIndex: number | null;
   /** Function to get interpolated parameter value */
   getParam: (parameterId: string) => number;
+  /** Function to get colors for a slot */
+  getSlotColors?: (slotIndex: number) => SketchProps["colors"];
   /** Show performance stats (toggled with "D" key) */
   showStats?: boolean;
 }
@@ -66,6 +68,19 @@ const TEMPLATE_ID_TO_PROPS_KEY: Record<string, string> = {
   noise_scale: "noiseScale",
   noise_speed: "noiseSpeed",
   color_mix: "colorMix",
+  // Aura parameters
+  bloom: "bloom",
+  complexity: "complexity",
+  sample_offset: "sampleOffset",
+  speed: "speed",
+  scale_base: "scaleBase",
+  distance: "distance",
+  attenuation: "attenuation",
+  ray_steps: "raySteps",
+  seed: "seed",
+  color_interp: "colorInterp",
+  grain_intensity: "grainIntensity",
+  tonemap_mode: "tonemapMode",
 };
 
 // =============================================================================
@@ -178,6 +193,7 @@ interface RendererPreviewContentProps {
   activeSlotIndex: number;
   crossfadeTargetIndex: number | null;
   getParam: (parameterId: string) => number;
+  getSlotColors?: (slotIndex: number) => SketchProps["colors"];
 }
 
 /**
@@ -189,6 +205,7 @@ function RendererPreviewContent({
   activeSlotIndex,
   crossfadeTargetIndex,
   getParam,
+  getSlotColors,
 }: RendererPreviewContentProps) {
   const [tintLfoPhase, setTintLfoPhase] = useState(0);
 
@@ -257,11 +274,14 @@ function RendererPreviewContent({
           tintLfoPhase,
         );
 
+        const colors = getSlotColors?.(slot.index);
+
         return (
           <SketchComponent
             key={`slot-${slot.index}`}
             opacity={opacity}
             params={sketchParams}
+            colors={colors}
           />
         );
       })}
@@ -284,6 +304,7 @@ export function RendererPreview({
   activeSlotIndex,
   crossfadeTargetIndex,
   getParam,
+  getSlotColors,
   showStats = false,
 }: RendererPreviewProps) {
   // Log when renderer is ready (for debugging)
@@ -306,6 +327,7 @@ export function RendererPreview({
             activeSlotIndex={activeSlotIndex}
             crossfadeTargetIndex={crossfadeTargetIndex}
             getParam={getParam}
+            getSlotColors={getSlotColors}
           />
         </WebGPUCanvas>
       </Suspense>

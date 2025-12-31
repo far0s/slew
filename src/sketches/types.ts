@@ -33,7 +33,20 @@ export type ParameterTemplateId =
   // TslNoiseBlob specific
   | "noise_scale"
   | "noise_speed"
-  | "color_mix";
+  | "color_mix"
+  // Aura specific
+  | "bloom"
+  | "complexity"
+  | "sample_offset"
+  | "speed"
+  | "scale_base"
+  | "distance"
+  | "attenuation"
+  | "ray_steps"
+  | "seed"
+  | "color_interp"
+  | "grain_intensity"
+  | "tonemap_mode";
 
 export interface ParameterTemplate {
   templateId: ParameterTemplateId;
@@ -46,6 +59,8 @@ export interface ParameterTemplate {
   defaultValue: number;
   color?: SliderColor;
   description?: string;
+  inputType?: "slider" | "select";
+  options?: Array<{ value: number; label: string }>;
 }
 
 export interface SketchDescriptor {
@@ -54,6 +69,12 @@ export interface SketchDescriptor {
   shortLabel: string;
   description?: string;
   parameters: ParameterTemplate[];
+  colorPalette?: {
+    startColor: [number, number, number];
+    midColor: [number, number, number];
+    endColor: [number, number, number];
+    background: [number, number, number, number];
+  };
 }
 
 export interface SketchGroup {
@@ -84,7 +105,26 @@ export interface SketchProps {
     noiseScale: number;
     noiseSpeed: number;
     colorMix: number;
+    // Aura specific
+    bloom: number;
+    complexity: number;
+    sampleOffset: number;
+    speed: number;
+    scaleBase: number;
+    distance: number;
+    attenuation: number;
+    raySteps: number;
+    seed: number;
+    colorInterp: number;
+    grainIntensity: number;
+    tonemapMode: number;
   }>;
+  colors?: {
+    startColor?: [number, number, number];
+    midColor?: [number, number, number];
+    endColor?: [number, number, number];
+    background?: [number, number, number, number];
+  };
 }
 
 export type SketchComponent = ComponentType<SketchProps>;
