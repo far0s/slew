@@ -9,15 +9,17 @@ import type {
 } from "./types";
 
 import { examplesGroup } from "./Examples";
+import { auraGroup } from "./Aura/presets";
 
 import { BlueCube } from "./Examples/BlueCube";
 import { OrangeCube } from "./Examples/OrangeCube";
 import { GreenPulse } from "./Examples/GreenPulse";
 import { TslText3D } from "./Examples/TslText3D";
 import { TslNoiseBlob } from "./Examples/TslNoiseBlob";
+import { Aura } from "./Aura";
 
 // Grouped registry for UI (sorted by orderHint)
-export const SKETCH_GROUPS: SketchGroup[] = [examplesGroup].sort(
+export const SKETCH_GROUPS: SketchGroup[] = [examplesGroup, auraGroup].sort(
   (a, b) => (a.orderHint ?? 0) - (b.orderHint ?? 0),
 );
 
@@ -36,6 +38,15 @@ export const SKETCH_COMPONENT_REGISTRY: Record<SketchId, SketchComponent> = {
   greenPulse: GreenPulse,
   tslText3D: TslText3D,
   tslNoiseBlob: TslNoiseBlob,
+  // Aura presets (all use same component)
+  auraOg: Aura,
+  auraRoseGold: Aura,
+  auraDeepBlue: Aura,
+  auraSolarPlume: Aura,
+  auraGhostLike: Aura,
+  auraForestClearing: Aura,
+  auraDefaultIntense: Aura,
+  auraBlushNebula: Aura,
 };
 
 export function getSketchDescriptor(
@@ -80,3 +91,4 @@ export { OrangeCube } from "./Examples/OrangeCube";
 export { GreenPulse } from "./Examples/GreenPulse";
 export { TslText3D } from "./Examples/TslText3D";
 export { TslNoiseBlob } from "./Examples/TslNoiseBlob";
+export { Aura } from "./Aura";

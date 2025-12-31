@@ -234,5 +234,6 @@ Completed items are tracked in `CHANGELOG.md`. Task documents are archived in `d
 ## Notes
 
 - When picking up an item, create a task doc in `docs/working/` with a detailed plan
+- When done, move the task document to `docs/finished/`, remove the task from the backlog, and update `CHANGELOG.md`
 - Update this file as items are started, completed, or re-prioritized
 - Items may be split into smaller chunks as needed

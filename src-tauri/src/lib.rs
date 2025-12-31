@@ -555,12 +555,10 @@ fn initialize_slot_parameters(
         for (template_id, default_value) in defaults {
             let param_id = format!("slot_{}_{}", slot_index, template_id);
 
-            // Only create if it doesn't already exist
-            if !store.parameters.contains_key(&param_id) {
-                let param = default_parameter_for_id(param_id.clone(), default_value);
-                store.parameters.insert(param_id, param.clone());
-                created.push(param);
-            }
+            // Always reset to new sketch defaults (overwrite existing values)
+            let param = default_parameter_for_id(param_id.clone(), default_value);
+            store.parameters.insert(param_id, param.clone());
+            created.push(param);
         }
     });
 
@@ -574,8 +572,90 @@ fn initialize_slot_parameters(
     created
 }
 
+/// Reset all parameters for a slot to new sketch defaults.
+/// This first clears ALL existing parameters for the slot, then reinitializes from defaults.
+/// This ensures a clean slate when switching between sketches.
+#[tauri::command]
+fn reset_slot_parameters(app: AppHandle, slot_index: usize, sketch_id: String) -> Vec<Parameter> {
+    let prefix = format!("slot_{}_", slot_index);
+    let defaults = get_sketch_defaults(&sketch_id);
+    let mut result: Vec<Parameter> = Vec::new();
+
+    with_parameter_store(|store| {
+        // First, remove ALL existing parameters for this slot
+        let keys_to_remove: Vec<String> = store
+            .parameters
+            .keys()
+            .filter(|k| k.starts_with(&prefix))
+            .cloned()
+            .collect();
+
+        for key in keys_to_remove {
+            store.parameters.remove(&key);
+        }
+
+        // Always add alpha parameter with default value of 1
+        let alpha_id = format!("slot_{}_alpha", slot_index);
+        let alpha_param = default_parameter_for_id(alpha_id.clone(), 1.0);
+        store.parameters.insert(alpha_id, alpha_param.clone());
+        result.push(alpha_param);
+
+        // Add audio_reactivity parameter
+        let audio_id = format!("slot_{}_audio_reactivity", slot_index);
+        let audio_param = default_parameter_for_id(audio_id.clone(), 1.0);
+        store.parameters.insert(audio_id, audio_param.clone());
+        result.push(audio_param);
+
+        // Add all sketch-specific parameters from defaults
+        for (template_id, default_value) in defaults {
+            let param_id = format!("slot_{}_{}", slot_index, template_id);
+            let param = default_parameter_for_id(param_id.clone(), default_value);
+            store.parameters.insert(param_id, param.clone());
+            result.push(param);
+        }
+    });
+
+    // Save and emit all parameters
+    save_parameters_to_disk(&app);
+    for param in &result {
+        let _ = app.emit("parameter_changed", param);
+    }
+
+    result
+}
+
 /// Get default parameter values for a sketch type.
 fn get_sketch_defaults(sketch_id: &str) -> Vec<(&'static str, f64)> {
+    // Common Aura parameters shared by all presets
+    let aura_base = |bloom: f64,
+                     complexity: f64,
+                     sample_offset: f64,
+                     speed: f64,
+                     scale_base: f64,
+                     distance: f64,
+                     attenuation: f64,
+                     ray_steps: f64,
+                     seed: f64,
+                     color_interp: f64,
+                     grain_intensity: f64,
+                     tonemap_mode: f64|
+     -> Vec<(&'static str, f64)> {
+        vec![
+            ("bloom", bloom),
+            ("complexity", complexity),
+            ("sample_offset", sample_offset),
+            ("speed", speed),
+            ("scale_base", scale_base),
+            ("distance", distance),
+            ("attenuation", attenuation),
+            ("ray_steps", ray_steps),
+            ("seed", seed),
+            ("color_interp", color_interp),
+            ("grain_intensity", grain_intensity),
+            ("tonemap_mode", tonemap_mode),
+        ]
+    };
+
     match sketch_id {
         // New sketch IDs
         "blueCube" => vec![
@@ -597,6 +677,32 @@ fn get_sketch_defaults(sketch_id: &str) -> Vec<(&'static str, f64)> {
             ("rotation_speed", 0.4),
             ("tint", 0.5),
         ],
+        // Aura presets - values from seb.cat/components/aura-controls/presets.ts
+        // aura_base args: bloom, complexity, sample_offset, speed, scale_base, distance, attenuation, ray_steps, seed, color_interp, grain_intensity, tonemap_mode
+        "auraOg" => aura_base(
+            3.2, 3.3, 0.15, 0.3, 1.0, 2.0, 0.15, 8.0, 0.0, 0.9, 0.05, 0.0,
+        ),
+        "auraRoseGold" => aura_base(
+            3.2, 3.3, 0.15, 0.3, 1.0, 2.0, 0.15, 8.0, 0.0, 0.9, 0.05, 4.0,
+        ),
+        "auraDeepBlue" => aura_base(
+            3.2, 3.3, 0.15, 0.3, 1.0, 2.0, 0.15, 8.0, 0.0, 0.9, 0.05, 0.0,
+        ),
+        "auraSolarPlume" => aura_base(
+            0.36, 1.57, 0.219, 0.3, 0.26, 3.05, 0.31, 8.0, 3598.0, 1.2, 0.05, 4.0,
+        ),
+        "auraGhostLike" => aura_base(
+            1.33, 2.64, 0.073, 0.3, 0.24, 1.98, 0.08, 6.0, 28.0, 1.0, 0.05, 7.0,
+        ),
+        "auraForestClearing" => aura_base(
+            0.29, 2.2, 0.209, 0.2, 0.15, 1.98, 0.17, 9.0, 28.0, 0.83, 0.05, 7.0,
+        ),
+        "auraDefaultIntense" => aura_base(
+            1.57, 2.48, 0.218, 0.3, 0.25, 2.35, 0.25, 11.0, 3578.0, 0.9, 0.05, 7.0,
+        ),
+        "auraBlushNebula" => aura_base(
+            3.0, 2.5, 0.5, 0.5, 0.2, 2.5, 0.1, 10.0, 10.0, 1.01, 0.1, 5.0,
+        ),
         _ => vec![],
     }
 }
@@ -691,6 +797,7 @@ pub fn run() {
             set_all_slots,
             get_slot_state,
             initialize_slot_parameters,
+            reset_slot_parameters,
             // Window Manager
             window_manager::restart_controls_window,
             window_manager::restart_renderer_window,
