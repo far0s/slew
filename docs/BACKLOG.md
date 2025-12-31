@@ -53,6 +53,24 @@ Save/load parameter configurations per sketch.
 
 ---
 
+### 🟡 UI Appearance options `feature`
+
+Add more UI appearance options.
+
+**Context**: Users may prefer different color schemes or themes.
+
+**Subtasks**:
+
+- [ ] Sidebar: position left/right
+- [ ] Settings: Improve light/dark themes, add "amber" mode (both themes can have orange/red accents to be easier on the eyes)
+- [ ] Settings: Add custom CSS stylesheets for advanced users
+- [ ] Settings: Allow users zoom +/-
+- [ ] Settings: fix Actions buttons not working
+- [ ] Windows: allow fullscreen toggle (native shortcut)
+- [ ] [more TBD...]
+
+---
+
 ## Low Priority / Future
 
 ### 🟢 Expand Test Coverage `chore`
