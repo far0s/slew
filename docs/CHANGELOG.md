@@ -291,6 +291,15 @@ Slot count increased from 6 to 8 to match Midimix columns for 1:1 hardware mappi
 
 ## Version History
 
+### v0.6.0 (Aura shader integration)
+
+- Aura volumetric raymarching shader ported from seb.cat
+- 8 preset variations with unique color palettes
+- 12 controllable parameters with MIDI mapping support
+- 7 tonemapping modes
+- TSL utilities library for reusable shader functions
+- Fixed color initialization race condition in slot system
+
 ### v0.5.0 (WebGPU migration / video output optimization)
 
 - Full WebGPU renderer with TSL shader materials

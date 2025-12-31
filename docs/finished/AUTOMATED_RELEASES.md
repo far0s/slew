@@ -6,7 +6,7 @@ Task document for setting up GitHub Actions to automatically build and publish r
 
 ## Goal
 
-When a version tag (e.g., `v0.5.0`) is pushed to the repository, GitHub Actions should:
+When a version tag (e.g., `0.6.0`) is pushed to the repository, GitHub Actions should:
 
 1. Build the app for all platforms (macOS, Windows, Linux)
 2. Create a GitHub Release with the tag name
@@ -247,7 +247,7 @@ The workflow uses `GITHUB_TOKEN` which is automatically provided. Ensure the rep
 1. Update version in `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`
 2. Update `CHANGELOG.md`
 3. Commit changes
-4. Create and push tag: `git tag v0.5.0 && git push origin v0.5.0`
+4. Create and push tag: `git tag 0.6.0 && git push origin 0.6.0`
 5. GitHub Actions builds all platforms
 6. Draft release is created with all artifacts
 7. Review and publish the release
