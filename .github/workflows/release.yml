@@ -242,10 +242,10 @@ jobs:
           files: |
             artifacts/macos-aarch64/*.dmg
             artifacts/macos-x64/*.dmg
-            artifacts/linux/*.deb
-            artifacts/linux/*.rpm
-            artifacts/linux/*.AppImage
-            artifacts/windows/*.exe
-            artifacts/windows/*.msi
+            artifacts/linux/deb/*.deb
+            artifacts/linux/rpm/*.rpm
+            artifacts/linux/appimage/*.AppImage
+            artifacts/windows/nsis/*.exe
+            artifacts/windows/msi/*.msi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
