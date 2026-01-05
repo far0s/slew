@@ -1,6 +1,6 @@
 # Frameworks Directory
 
-This directory contains native frameworks required for sebcat-vj.
+This directory contains native frameworks required for Slew.
 
 ## Syphon.framework
 
@@ -64,8 +64,8 @@ xcodebuild \
 # (Location varies by Xcode version)
 find ~/Library/Developer/Xcode/DerivedData -name "Syphon.framework" -type d
 
-# Copy to sebcat-vj
-cp -R /path/to/built/Syphon.framework sebcat-vj/src-tauri/frameworks/
+# Copy to Slew
+cp -R /path/to/built/Syphon.framework slew/src-tauri/frameworks/
 ```
 
 #### Option B: Download Pre-built SDK (Intel only)
@@ -190,7 +190,7 @@ However, this is not recommended for performance reasons. Building a universal f
 ### Technical Notes
 
 - Syphon uses IOSurface for zero-copy GPU texture sharing
-- sebcat-vj uses `SyphonOpenGLServer` with a CGL context
+- Slew uses `SyphonOpenGLServer` with a CGL context
 - Frame data is uploaded to an OpenGL texture rectangle, then published
 - The implementation is in `src-tauri/src/syphon.rs`
 

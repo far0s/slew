@@ -34,8 +34,8 @@ pub fn open_device(device_id: String) -> Result<(), String> {
         .map_err(|_| format!("Invalid device ID: {}", device_id))?;
 
     // Create MIDI input
-    let midi_in = MidiInput::new("sebcat-vj-input")
-        .map_err(|e| format!("Failed to create MIDI input: {}", e))?;
+    let midi_in =
+        MidiInput::new("slew-input").map_err(|e| format!("Failed to create MIDI input: {}", e))?;
 
     let ports = midi_in.ports();
     let port = ports
@@ -51,7 +51,7 @@ pub fn open_device(device_id: String) -> Result<(), String> {
     let engine = MIDI_ENGINE.clone();
 
     // Set up the callback for incoming MIDI messages
-    let mut midi_in_ignored = MidiInput::new("sebcat-vj-input-conn")
+    let mut midi_in_ignored = MidiInput::new("slew-input-conn")
         .map_err(|e| format!("Failed to create MIDI input: {}", e))?;
     midi_in_ignored.ignore(Ignore::None);
 
@@ -63,7 +63,7 @@ pub fn open_device(device_id: String) -> Result<(), String> {
     let connection = midi_in_ignored
         .connect(
             port2,
-            "sebcat-vj-midi",
+            "slew-midi",
             move |timestamp, message, _| {
                 handle_midi_message(&engine, &device_id_for_callback, timestamp, message);
             },
@@ -190,7 +190,7 @@ pub fn open_output_device(device_id: String) -> Result<(), String> {
         .map_err(|_| format!("Invalid output device ID: {}", device_id))?;
 
     // Create MIDI output
-    let midi_out = MidiOutput::new("sebcat-vj-output")
+    let midi_out = MidiOutput::new("slew-output")
         .map_err(|e| format!("Failed to create MIDI output: {}", e))?;
 
     let ports = midi_out.ports();
@@ -203,7 +203,7 @@ pub fn open_output_device(device_id: String) -> Result<(), String> {
         .unwrap_or_else(|_| format!("Output Device {}", port_idx));
 
     let connection = midi_out
-        .connect(&port, "sebcat-vj-midi-out")
+        .connect(&port, "slew-midi-out")
         .map_err(|e| format!("Failed to connect to output device: {}", e))?;
 
     // Store the connection and mark for auto-reconnect

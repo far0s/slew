@@ -24,7 +24,7 @@ pub fn config_path(app: &AppHandle, filename: &str) -> Option<PathBuf> {
 /// Returns `None` if the data directory cannot be determined.
 pub fn local_data_path(filename: &str) -> Option<PathBuf> {
     dirs::data_local_dir().map(|mut path| {
-        path.push("sebcat-vj");
+        path.push("slew");
         path.push(filename);
         path
     })

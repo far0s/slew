@@ -1,6 +1,6 @@
-# sebcat-vj Packaging Guide
+# Slew Packaging Guide
 
-This guide covers building, packaging, and distributing sebcat-vj for macOS, Windows, and Linux.
+This guide covers building, packaging, and distributing Slew for macOS, Windows, and Linux.
 
 ---
 
@@ -128,8 +128,8 @@ The `package.sh` script provides more control:
 
 After building, you'll find:
 
-- **App Bundle**: `src-tauri/target/release/bundle/macos/sebcat-vj.app`
-- **DMG Installer**: `src-tauri/target/release/bundle/dmg/sebcat-vj_<version>_<arch>.dmg`
+- **App Bundle**: `src-tauri/target/release/bundle/macos/Slew.app`
+- **DMG Installer**: `src-tauri/target/release/bundle/dmg/Slew_<version>_<arch>.dmg`
 
 #### Bundled Frameworks
 
@@ -164,8 +164,8 @@ The app requires **macOS 11.0 (Big Sur)** or later, configured in `tauri.conf.js
 
 #### Output Locations
 
-- **NSIS Installer**: `src-tauri/target/release/bundle/nsis/sebcat-vj_<version>_x64-setup.exe`
-- **MSI Installer**: `src-tauri/target/release/bundle/msi/sebcat-vj_<version>_x64_en-US.msi`
+- **NSIS Installer**: `src-tauri/target/release/bundle/nsis/Slew_<version>_x64-setup.exe`
+- **MSI Installer**: `src-tauri/target/release/bundle/msi/Slew_<version>_x64_en-US.msi`
 
 #### WebView2 Runtime
 
@@ -175,14 +175,14 @@ The app requires WebView2, which is included in Windows 10 (version 1803+) and W
 
 #### Output Locations
 
-- **AppImage**: `src-tauri/target/release/bundle/appimage/sebcat-vj_<version>_amd64.AppImage`
-- **Debian Package**: `src-tauri/target/release/bundle/deb/sebcat-vj_<version>_amd64.deb`
+- **AppImage**: `src-tauri/target/release/bundle/appimage/Slew_<version>_amd64.AppImage`
+- **Debian Package**: `src-tauri/target/release/bundle/deb/Slew_<version>_amd64.deb`
 
 #### AppImage Usage
 
 ```bash
-chmod +x sebcat-vj_*.AppImage
-./sebcat-vj_*.AppImage
+chmod +x Slew_*.AppImage
+./Slew_*.AppImage
 ```
 
 ---
@@ -234,7 +234,7 @@ Or configure in `tauri.conf.json`:
 codesign --force --deep --sign "Developer ID Application: Your Name (TEAMID)" \
          --options runtime \
          --entitlements src-tauri/entitlements.plist \
-         src-tauri/target/release/bundle/macos/sebcat-vj.app
+         src-tauri/target/release/bundle/macos/Slew.app
 ```
 
 ### Windows Code Signing
@@ -286,17 +286,17 @@ Apple notarization is required for distributing apps outside the Mac App Store o
 
 ```bash
 # Create ZIP for submission
-ditto -c -k --keepParent sebcat-vj.app sebcat-vj.zip
+ditto -c -k --keepParent Slew.app Slew.zip
 
 # Submit for notarization
-xcrun notarytool submit sebcat-vj.zip \
+xcrun notarytool submit Slew.zip \
     --apple-id "$APPLE_ID" \
     --team-id "$APPLE_TEAM_ID" \
     --password "$APPLE_PASSWORD" \
     --wait
 
 # Staple the ticket to the app
-xcrun stapler staple sebcat-vj.app
+xcrun stapler staple Slew.app
 ```
 
 ---
@@ -312,8 +312,8 @@ xcrun stapler staple sebcat-vj.app
 
 ### GitHub Releases
 
-1. Tag your release: `git tag 0.6.0`
-2. Push the tag: `git push origin 0.6.0`
+1. Tag your release: `git tag 0.7.0`
+2. Push the tag: `git push origin 0.7.0`
 3. Create a release on GitHub
 4. Upload the built artifacts
 
@@ -362,7 +362,7 @@ This happens when the app isn't properly signed or notarized.
 **For development**:
 
 ```bash
-xattr -cr /Applications/sebcat-vj.app
+xattr -cr /Applications/Slew.app
 ```
 
 **For distribution**: Sign and notarize the app.
@@ -372,7 +372,7 @@ xattr -cr /Applications/sebcat-vj.app
 Ensure Syphon.framework is properly bundled:
 
 ```bash
-ls -la sebcat-vj.app/Contents/Frameworks/
+ls -la Slew.app/Contents/Frameworks/
 ```
 
 Should show `Syphon.framework`.

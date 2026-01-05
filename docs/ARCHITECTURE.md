@@ -1,6 +1,6 @@
 # Architecture
 
-System design and conventions for sebcat-vj.
+System design and conventions for Slew.
 
 ---
 

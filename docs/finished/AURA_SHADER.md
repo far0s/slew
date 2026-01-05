@@ -431,7 +431,7 @@ Integration is successful if:
 ## Credits
 
 - **Original Shader**: seb.cat/sketches/aura
-- **Integration**: sebcat-vj (2025-01-24)
+- **Integration**: Slew (2025-01-24)
 - **Technology**: Three.js TSL (Shading Language), WebGPU
 
 ---

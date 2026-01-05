@@ -1,6 +1,6 @@
 # Backlog
 
-Prioritized list of potential work items for sebcat-vj.
+Prioritized list of potential work items for Slew.
 
 ---
 
@@ -20,18 +20,18 @@ Prioritized list of potential work items for sebcat-vj.
 
 ## Active / High Priority
 
-### 🔴 App Branding `chore`
+### 🔴 App Icon `chore`
 
-Figure out proper name, icon, and logo for the app.
+Design and implement proper app icon for Slew.
 
-**Context**: Current name "sebcat-vj" is a placeholder. Need final branding before public release.
+**Context**: App name is now "Slew" with tagline "VJ software for creative coders". Currently using 🎛️ emoji as a placeholder symbol. Need a proper icon before public release.
 
 **Subtasks**:
 
-- [ ] Decide on final app name
-- [ ] Design app icon (all required sizes)
-- [ ] Update `tauri.conf.json`, `package.json`, window titles
-- [ ] Update documentation references
+- [ ] Design app icon concept
+- [ ] Export all required sizes (32x32, 128x128, 128x128@2x, .icns, .ico)
+- [ ] Replace placeholder icons in `src-tauri/icons/`
+- [ ] Test icon appearance on all platforms
 
 ---
 

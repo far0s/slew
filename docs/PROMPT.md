@@ -1,6 +1,6 @@
-# Agent Prompt – sebcat-vj
+# Agent Prompt – Slew 🎛️
 
-Welcome! This document is your starting point for understanding the **sebcat-vj** project.
+Welcome! This document is your starting point for understanding the **Slew** project.
 
 ---
 
@@ -15,7 +15,7 @@ Welcome! This document is your starting point for understanding the **sebcat-vj*
 
 ## Project Summary
 
-**sebcat-vj** is a modular VJ application built with:
+**Slew** is VJ software for creative coders, built with:
 
 - **Tauri v2** (Rust backend + WebView frontend)
 - **Dual-window architecture**: Renderer (high-performance 3D visuals) + Controls (UI dashboard)

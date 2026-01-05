@@ -718,7 +718,7 @@ pub fn run() {
         .format_timestamp_millis()
         .init();
 
-    log::info!("[App] Starting sebcat-vj");
+    log::info!("[App] Starting Slew");
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())

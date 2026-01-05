@@ -1,6 +1,6 @@
 # Changelog
 
-Status overview and key decisions for sebcat-vj.
+Status overview and key decisions for Slew.
 
 ---
 
@@ -290,6 +290,16 @@ Slot count increased from 6 to 8 to match Midimix columns for 1:1 hardware mappi
 ---
 
 ## Version History
+
+### v0.7.0 (App Rebranding)
+
+- Renamed app from "sebcat-vj" to "Slew"
+- Added tagline: "VJ software for creative coders"
+- Using 🎛️ emoji as temporary symbol until icon is designed
+- Updated all configuration files, documentation, and source code
+- Updated window titles, menu names, and video output source names
+- Updated MIDI client identifiers and local data directory
+- Updated GitHub Actions workflow for new app name
 
 ### v0.6.0 (Aura shader integration)
 

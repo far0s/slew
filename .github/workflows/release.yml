@@ -53,7 +53,7 @@ jobs:
 
       - name: Fix code signature
         run: |
-          APP_PATH="src-tauri/target/${{ matrix.target }}/release/bundle/macos/sebcat-vj.app"
+          APP_PATH="src-tauri/target/${{ matrix.target }}/release/bundle/macos/Slew.app"
           DMG_PATH="src-tauri/target/${{ matrix.target }}/release/bundle/dmg"
 
           echo "Removing invalid signature and re-signing with ad-hoc..."
@@ -95,7 +95,7 @@ jobs:
 
           # Remove old app and copy fixed one
           echo "Copying fixed app to DMG..."
-          rm -rf "$MOUNT_POINT/sebcat-vj.app"
+          rm -rf "$MOUNT_POINT/Slew.app"
           cp -R "$APP_PATH" "$MOUNT_POINT/"
 
           # Sync and unmount
@@ -238,7 +238,7 @@ jobs:
             1. Right-click the app and select "Open"
             2. Click "Open" in the dialog
 
-            Or run in Terminal: `xattr -cr /Applications/sebcat-vj.app`
+            Or run in Terminal: `xattr -cr /Applications/Slew.app`
           files: |
             artifacts/macos-aarch64/*.dmg
             artifacts/macos-x64/*.dmg

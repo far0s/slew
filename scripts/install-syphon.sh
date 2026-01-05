@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Syphon Framework Installer for sebcat-vj
+# Syphon Framework Installer for Slew
 #
 # This script downloads and installs the Syphon framework required
 # for video output on macOS.
@@ -54,7 +54,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 echo "╔════════════════════════════════════════════════════════════╗"
-echo "║         Syphon Framework Installer for sebcat-vj          ║"
+echo "║           Syphon Framework Installer for Slew             ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -307,7 +307,7 @@ if [[ -d "$FRAMEWORKS_DIR/Syphon.framework" ]]; then
     echo "Next steps:"
     echo "  1. Rebuild the app:  npm run tauri dev"
     echo "  2. Enable Syphon in the Video tab"
-    echo "  3. Open Resolume Arena → Sources → Syphon → sebcat-vj"
+    echo "  3. Open Resolume Arena → Sources → Syphon → Slew"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 else
     echo -e "${RED}Error: Framework installation failed${NC}"

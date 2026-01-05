@@ -1,12 +1,12 @@
 {
-  "name": "sebcat-vj",
+  "name": "slew",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "ck": "pkill -f 'sebcat-vj' && sudo killall -9 coreaudiod",
+    "ck": "pkill -f 'slew' && sudo killall -9 coreaudiod",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:no-ndi": "tauri dev --no-default-features",

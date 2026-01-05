@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "sebcat-vj",
-  "version": "0.6.0",
-  "identifier": "com.seb.sebcat-vj",
+  "productName": "Slew",
+  "version": "0.7.0",
+  "identifier": "com.seb.slew",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "renderer",
-        "title": "sebcat-vj — Renderer",
+        "title": "Slew — Renderer",
         "width": 1920,
         "height": 1080,
         "resizable": true,
@@ -25,7 +25,7 @@
       },
       {
         "label": "controls",
-        "title": "sebcat-vj — Controls",
+        "title": "Slew — Controls",
         "width": 1440,
         "height": 1080,
         "resizable": true,
@@ -51,8 +51,8 @@
       "icons/icon.ico"
     ],
     "category": "Entertainment",
-    "shortDescription": "Real-time VJ visuals with MIDI, OSC, and audio reactivity",
-    "longDescription": "sebcat-vj is a modular VJ engine for real-time visual performance. Features include dual-window architecture (renderer + controls), scene system with crossfading, MIDI/OSC/HID input, audio-reactive parameters with FFT analysis, LFO modulation, and video output via Syphon (macOS) and NDI.",
+    "shortDescription": "VJ software for creative coders",
+    "longDescription": "Slew is a modular VJ engine for real-time visual performance. Features include dual-window architecture (renderer + controls), scene system with crossfading, MIDI/OSC/HID input, audio-reactive parameters with FFT analysis, LFO modulation, and video output via Syphon (macOS) and NDI.",
     "copyright": "© 2024 Seb",
     "publisher": "Seb",
     "macOS": {

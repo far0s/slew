@@ -1,6 +1,6 @@
 # Controller Reference
 
-Hardware controller layouts and mappings for sebcat-vj.
+Hardware controller layouts and mappings for Slew.
 
 ---
 

@@ -1,4 +1,6 @@
-# sebcat-vj 🎛️
+# Slew 🎛️
+
+**VJ software for creative coders**
 
 A modular VJ application built with Tauri, React, and Three.js. Create real-time visuals with hardware control, audio reactivity, and professional video output.
 
@@ -6,16 +8,16 @@ A modular VJ application built with Tauri, React, and Three.js. Create real-time
 
 ## Download
 
-[![Latest Release](https://img.shields.io/github/v/release/far0s/sebcat-vj?style=flat-square)](https://github.com/far0s/sebcat-vj/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/far0s/slew?style=flat-square)](https://github.com/far0s/slew/releases/latest)
 
-Download the latest version for your platform from [Releases](https://github.com/far0s/sebcat-vj/releases/latest):
+Download the latest version for your platform from [Releases](https://github.com/far0s/slew/releases/latest):
 
-| Platform              | File                             |
-| --------------------- | -------------------------------- |
-| macOS (Apple Silicon) | `sebcat-vj_x.x.x_aarch64.dmg`    |
-| macOS (Intel)         | `sebcat-vj_x.x.x_x64.dmg`        |
-| Windows               | `sebcat-vj_x.x.x_x64-setup.exe`  |
-| Linux                 | `sebcat-vj_x.x.x_amd64.AppImage` |
+| Platform              | File                        |
+| --------------------- | --------------------------- |
+| macOS (Apple Silicon) | `Slew_x.x.x_aarch64.dmg`    |
+| macOS (Intel)         | `Slew_x.x.x_x64.dmg`        |
+| Windows               | `Slew_x.x.x_x64-setup.exe`  |
+| Linux                 | `Slew_x.x.x_amd64.AppImage` |
 
 ### macOS Installation Note
 
@@ -30,7 +32,7 @@ The app is not code-signed. On first launch, macOS may show a security warning.
 **Or run in Terminal:**
 
 ```bash
-xattr -cr /Applications/sebcat-vj.app
+xattr -cr /Applications/Slew.app
 ```
 
 ---
@@ -59,8 +61,8 @@ xattr -cr /Applications/sebcat-vj.app
 
 ```bash
 # Clone the repo
-git clone https://github.com/far0s/sebcat-vj.git
-cd sebcat-vj
+git clone https://github.com/far0s/slew.git
+cd slew
 
 # Install dependencies
 npm install

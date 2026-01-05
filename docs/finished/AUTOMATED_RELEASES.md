@@ -173,7 +173,7 @@ jobs:
             1. Right-click the app and select "Open"
             2. Click "Open" in the dialog
 
-            Or run: `xattr -cr /Applications/sebcat-vj.app`
+            Or run: `xattr -cr /Applications/Slew.app`
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
@@ -285,16 +285,16 @@ Add the following sections to README:
 ```markdown
 ## Download
 
-[![Latest Release](https://img.shields.io/github/v/release/username/sebcat-vj)](https://github.com/username/sebcat-vj/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/username/slew)](https://github.com/username/slew/releases/latest)
 
 Download the latest version for your platform:
 
-| Platform              | Download                               |
-| --------------------- | -------------------------------------- |
-| macOS (Apple Silicon) | [sebcat-vj_x.x.x_aarch64.dmg](link)    |
-| macOS (Intel)         | [sebcat-vj_x.x.x_x64.dmg](link)        |
-| Windows               | [sebcat-vj_x.x.x_x64-setup.exe](link)  |
-| Linux                 | [sebcat-vj_x.x.x_amd64.AppImage](link) |
+| Platform              | Download                          |
+| --------------------- | --------------------------------- |
+| macOS (Apple Silicon) | [Slew_x.x.x_aarch64.dmg](link)    |
+| macOS (Intel)         | [Slew_x.x.x_x64.dmg](link)        |
+| Windows               | [Slew_x.x.x_x64-setup.exe](link)  |
+| Linux                 | [Slew_x.x.x_amd64.AppImage](link) |
 
 ### macOS Installation
 
@@ -306,7 +306,7 @@ The app is not code-signed. On first launch:
 
 Alternatively, run in Terminal:
 \`\`\`bash
-xattr -cr /Applications/sebcat-vj.app
+xattr -cr /Applications/Slew.app
 \`\`\`
 ```
 

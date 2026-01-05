@@ -54,7 +54,7 @@ export async function listVideoBackends(): Promise<BackendStatus[]> {
 
 /** Get status of a specific backend. */
 export async function getVideoBackendStatus(
-  backendId: string
+  backendId: string,
 ): Promise<BackendStatus> {
   return invoke<BackendStatus>("get_video_backend_status", {
     backendId,
@@ -64,7 +64,7 @@ export async function getVideoBackendStatus(
 /** Initialize a video output backend. */
 export async function initVideoBackend(
   backendId: string,
-  name: string
+  name: string,
 ): Promise<BackendStatus> {
   return invoke<BackendStatus>("init_video_backend", {
     backendId,
@@ -74,7 +74,7 @@ export async function initVideoBackend(
 
 /** Shutdown a video output backend. */
 export async function shutdownVideoBackend(
-  backendId: string
+  backendId: string,
 ): Promise<BackendStatus> {
   return invoke<BackendStatus>("shutdown_video_backend", {
     backendId,
@@ -93,7 +93,7 @@ export async function publishVideoFrame(
   data: string,
   width: number,
   height: number,
-  format: PixelFormat
+  format: PixelFormat,
 ): Promise<void> {
   return invoke("publish_video_frame", {
     data,
@@ -116,7 +116,7 @@ export async function publishVideoFrame(
  */
 export function captureCanvas(
   canvas: HTMLCanvasElement,
-  format: PixelFormat = "rgba"
+  format: PixelFormat = "rgba",
 ): { data: string; width: number; height: number; format: PixelFormat } {
   const ctx = canvas.getContext("2d") || canvas.getContext("webgl");
 
@@ -125,7 +125,10 @@ export function captureCanvas(
   }
 
   // For WebGL, we need to read pixels differently
-  if (ctx instanceof WebGLRenderingContext || ctx instanceof WebGL2RenderingContext) {
+  if (
+    ctx instanceof WebGLRenderingContext ||
+    ctx instanceof WebGL2RenderingContext
+  ) {
     const width = canvas.width;
     const height = canvas.height;
     const pixels = new Uint8Array(width * height * 4);
@@ -166,9 +169,12 @@ export function captureCanvas(
  * @param canvas - The canvas element to capture
  * @returns Object with base64 data and dimensions
  */
-export function captureCanvasRaw(
-  canvas: HTMLCanvasElement
-): { data: string; width: number; height: number; format: PixelFormat } {
+export function captureCanvasRaw(canvas: HTMLCanvasElement): {
+  data: string;
+  width: number;
+  height: number;
+  format: PixelFormat;
+} {
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     throw new Error("Could not get 2D canvas context");
@@ -226,7 +232,7 @@ export function useVideoOutputBackends() {
 
     listen<BackendStatus>("video_output_status_changed", (event) => {
       setBackends((prev) =>
-        prev.map((b) => (b.id === event.payload.id ? event.payload : b))
+        prev.map((b) => (b.id === event.payload.id ? event.payload : b)),
       );
     }).then((fn) => {
       unlisten = fn;
@@ -239,11 +245,11 @@ export function useVideoOutputBackends() {
 
   // Initialize a backend
   const initialize = useCallback(
-    async (backendId: string, name: string = "sebcat-vj") => {
+    async (backendId: string, name: string = "Slew") => {
       try {
         const status = await initVideoBackend(backendId, name);
         setBackends((prev) =>
-          prev.map((b) => (b.id === backendId ? status : b))
+          prev.map((b) => (b.id === backendId ? status : b)),
         );
         return status;
       } catch (e) {
@@ -251,16 +257,14 @@ export function useVideoOutputBackends() {
         throw e;
       }
     },
-    []
+    [],
   );
 
   // Shutdown a backend
   const shutdown = useCallback(async (backendId: string) => {
     try {
       const status = await shutdownVideoBackend(backendId);
-      setBackends((prev) =>
-        prev.map((b) => (b.id === backendId ? status : b))
-      );
+      setBackends((prev) => prev.map((b) => (b.id === backendId ? status : b)));
       return status;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -270,7 +274,7 @@ export function useVideoOutputBackends() {
 
   // Toggle a backend on/off
   const toggle = useCallback(
-    async (backendId: string, name: string = "sebcat-vj") => {
+    async (backendId: string, name: string = "Slew") => {
       const backend = backends.find((b) => b.id === backendId);
       if (!backend) {
         throw new Error(`Backend '${backendId}' not found`);
@@ -282,7 +286,7 @@ export function useVideoOutputBackends() {
         return initialize(backendId, name);
       }
     },
-    [backends, initialize, shutdown]
+    [backends, initialize, shutdown],
   );
 
   return {
@@ -345,9 +349,7 @@ export function useVideoFramePublisher(options?: {
         const elapsed = Date.now() - fpsCounterRef.current.lastTime;
         if (elapsed >= 1000) {
           setActualFps(
-            Math.round(
-              (fpsCounterRef.current.frames * 1000) / elapsed
-            )
+            Math.round((fpsCounterRef.current.frames * 1000) / elapsed),
           );
           fpsCounterRef.current.frames = 0;
           fpsCounterRef.current.lastTime = Date.now();
@@ -356,7 +358,7 @@ export function useVideoFramePublisher(options?: {
         setError(e instanceof Error ? e.message : String(e));
       }
     },
-    [format, frameInterval]
+    [format, frameInterval],
   );
 
   // Start continuous publishing from a canvas
@@ -380,7 +382,7 @@ export function useVideoFramePublisher(options?: {
         setIsPublishing(false);
       };
     },
-    [publishFrame]
+    [publishFrame],
   );
 
   return {
@@ -437,7 +439,7 @@ export function useVideoBackend(backendId: string) {
 
   // Initialize the backend
   const initialize = useCallback(
-    async (name: string = "sebcat-vj") => {
+    async (name: string = "Slew") => {
       try {
         const newStatus = await initVideoBackend(backendId, name);
         setStatus(newStatus);
@@ -449,7 +451,7 @@ export function useVideoBackend(backendId: string) {
         throw e;
       }
     },
-    [backendId]
+    [backendId],
   );
 
   // Shutdown the backend
@@ -468,14 +470,14 @@ export function useVideoBackend(backendId: string) {
 
   // Toggle on/off
   const toggle = useCallback(
-    async (name: string = "sebcat-vj") => {
+    async (name: string = "Slew") => {
       if (status?.active) {
         return shutdown();
       } else {
         return initialize(name);
       }
     },
-    [status, initialize, shutdown]
+    [status, initialize, shutdown],
   );
 
   return {

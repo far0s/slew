@@ -1,6 +1,6 @@
 # Codebase Cleanup Task
 
-Comprehensive plan for cleaning up and refactoring the sebcat-vj codebase.
+Comprehensive plan for cleaning up and refactoring the Slew codebase.
 
 ---
 

@@ -71,15 +71,7 @@ where
 /// Restart the controls window
 #[tauri::command]
 pub async fn restart_controls_window(app: AppHandle) -> Result<(), String> {
-    restart_window(
-        &app,
-        "controls",
-        "/",
-        "sebcat-vj — Controls",
-        1440.0,
-        1080.0,
-    )
-    .await
+    restart_window(&app, "controls", "/", "Slew — Controls", 1440.0, 1080.0).await
 }
 
 /// Restart the renderer window
@@ -89,7 +81,7 @@ pub async fn restart_renderer_window(app: AppHandle) -> Result<(), String> {
         &app,
         "renderer",
         "/renderer",
-        "sebcat-vj — Renderer",
+        "Slew — Renderer",
         1920.0,
         1080.0,
     )
@@ -359,12 +351,8 @@ fn check_window_health(app: &AppHandle) {
 /// Build the application menu with window management options
 pub fn build_app_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, tauri::Error> {
     // App menu (macOS)
-    let app_menu = SubmenuBuilder::new(app, "sebcat-vj")
-        .item(&PredefinedMenuItem::about(
-            app,
-            Some("About sebcat-vj"),
-            None,
-        )?)
+    let app_menu = SubmenuBuilder::new(app, "Slew")
+        .item(&PredefinedMenuItem::about(app, Some("About Slew"), None)?)
         .separator()
         .item(&PredefinedMenuItem::services(app, None)?)
         .separator()
@@ -418,11 +406,7 @@ pub fn build_app_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, 
 
     // Help menu
     let help_menu = SubmenuBuilder::new(app, "Help")
-        .item(&PredefinedMenuItem::about(
-            app,
-            Some("About sebcat-vj"),
-            None,
-        )?)
+        .item(&PredefinedMenuItem::about(app, Some("About Slew"), None)?)
         .build()?;
 
     // Build full menu

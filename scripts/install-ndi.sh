@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# NDI SDK Installer for sebcat-vj
+# NDI SDK Installer for Slew
 #
 # This script helps install the NDI SDK required for NDI video output.
 # The NDI SDK must be downloaded manually from NewTek's website due to
@@ -49,7 +49,7 @@ for arg in "$@"; do
             shift
             ;;
         --help|-h)
-            echo "NDI SDK Installer for sebcat-vj"
+            echo "NDI SDK Installer for Slew"
             echo ""
             echo "Usage: $0 [options]"
             echo ""
@@ -65,7 +65,7 @@ for arg in "$@"; do
 done
 
 echo "╔════════════════════════════════════════════════════════════╗"
-echo "║            NDI SDK Installer for sebcat-vj                 ║"
+echo "║               NDI SDK Installer for Slew                   ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -266,7 +266,7 @@ print_instructions() {
     echo ""
     echo -e "${BLUE}Step 4: Build with NDI Support${NC}"
     echo ""
-    echo "  Once the SDK is installed, build sebcat-vj with NDI:"
+    echo "  Once the SDK is installed, build Slew with NDI:"
     echo "  ${CYAN}cd src-tauri && cargo build --features ndi${NC}"
     echo ""
     echo "  Or for development:"
@@ -342,7 +342,7 @@ print_success() {
     echo "     - Resolume Arena/Avenue"
     echo "     - Any NDI-compatible software"
     echo ""
-    echo "  The source will appear as 'sebcat-vj' on your network."
+    echo "  The source will appear as 'Slew' on your network."
     echo ""
     echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }

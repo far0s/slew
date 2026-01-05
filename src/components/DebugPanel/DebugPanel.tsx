@@ -18,13 +18,13 @@ type Theme = "dark" | "light";
 function useTheme() {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window === "undefined") return "dark";
-    const stored = localStorage.getItem("sebcat-vj-theme") as Theme | null;
+    const stored = localStorage.getItem("slew-theme") as Theme | null;
     return stored ?? "dark";
   });
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("sebcat-vj-theme", theme);
+    localStorage.setItem("slew-theme", theme);
   }, [theme]);
 
   const toggleTheme = useCallback(() => {

@@ -414,4 +414,4 @@ IOSurface integration would provide the ultimate performance solution, but the p
 
 ---
 
-_Last updated: Research conducted for sebcat-vj video output optimization project_
+_Last updated: Research conducted for Slew video output optimization project_

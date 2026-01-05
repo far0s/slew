@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# sebcat-vj Packaging Script
+# Slew Packaging Script
 #
-# This script prepares and builds distributable packages for sebcat-vj.
+# This script prepares and builds distributable packages for Slew.
 # It handles framework dependencies, code signing, and bundle creation.
 #
 # Usage:
@@ -102,7 +102,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "╔════════════════════════════════════════════════════════════╗"
-echo "║              sebcat-vj Packaging Script                    ║"
+echo "║                 Slew Packaging Script                      ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -338,7 +338,7 @@ sign_app() {
 
     echo -e "${BLUE}Code signing application...${NC}"
 
-    local app_path="$TARGET_DIR/release/bundle/macos/sebcat-vj.app"
+    local app_path="$TARGET_DIR/release/bundle/macos/Slew.app"
 
     if [[ ! -d "$app_path" ]]; then
         echo -e "${RED}App bundle not found at: $app_path${NC}"
@@ -381,8 +381,8 @@ notarize_app() {
 
     echo -e "${BLUE}Notarizing application...${NC}"
 
-    local app_path="$TARGET_DIR/release/bundle/macos/sebcat-vj.app"
-    local zip_path="$TARGET_DIR/release/bundle/macos/sebcat-vj-notarize.zip"
+    local app_path="$TARGET_DIR/release/bundle/macos/Slew.app"
+    local zip_path="$TARGET_DIR/release/bundle/macos/Slew-notarize.zip"
 
     # Create ZIP for notarization
     echo "  Creating ZIP archive..."
@@ -417,7 +417,7 @@ create_dmg() {
     echo -e "${BLUE}Creating DMG installer...${NC}"
 
     local bundle_dir="$TARGET_DIR/release/bundle"
-    local dmg_path="$bundle_dir/dmg/sebcat-vj_$(cat "$PROJECT_ROOT/package.json" | grep '"version"' | sed 's/.*: "\(.*\)".*/\1/')_$(uname -m).dmg"
+    local dmg_path="$bundle_dir/dmg/Slew_$(cat "$PROJECT_ROOT/package.json" | grep '"version"' | sed 's/.*: "\(.*\)".*/\1/')_$(uname -m).dmg"
 
     if [[ -f "$dmg_path" ]]; then
         echo -e "  ${GREEN}✓${NC} DMG already created at: $dmg_path"
@@ -439,7 +439,7 @@ print_summary() {
     local bundle_dir="$TARGET_DIR/release/bundle"
 
     if [[ "$PLATFORM" == "macos" ]]; then
-        local app_path="$bundle_dir/macos/sebcat-vj.app"
+        local app_path="$bundle_dir/macos/Slew.app"
         local dmg_path=$(find "$bundle_dir/dmg" -name "*.dmg" 2>/dev/null | head -1)
 
         if [[ -d "$app_path" ]]; then

@@ -110,7 +110,7 @@ pub struct BackendConfig {
 impl Default for BackendConfig {
     fn default() -> Self {
         Self {
-            name: "sebcat-vj".to_string(),
+            name: "Slew".to_string(),
             settings: HashMap::new(),
         }
     }

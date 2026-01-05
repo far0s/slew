@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    sebcat_vj_lib::run()
+    slew_lib::run()
 }

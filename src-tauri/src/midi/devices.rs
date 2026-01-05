@@ -12,8 +12,8 @@ use super::types::{MidiDeviceInfo, MidiOutputDeviceInfo};
 
 /// Internal input device listing that doesn't require the mutex.
 pub(crate) fn list_devices_internal() -> Result<Vec<MidiDeviceInfo>, String> {
-    let midi_in = MidiInput::new("sebcat-vj-probe")
-        .map_err(|e| format!("Failed to create MIDI input: {}", e))?;
+    let midi_in =
+        MidiInput::new("slew-probe").map_err(|e| format!("Failed to create MIDI input: {}", e))?;
 
     let ports = midi_in.ports();
 
@@ -36,7 +36,7 @@ pub(crate) fn list_devices_internal() -> Result<Vec<MidiDeviceInfo>, String> {
 
 /// Internal output device listing that doesn't require the mutex.
 pub(crate) fn list_output_devices_internal() -> Result<Vec<MidiOutputDeviceInfo>, String> {
-    let midi_out = MidiOutput::new("sebcat-vj-probe-out")
+    let midi_out = MidiOutput::new("slew-probe-out")
         .map_err(|e| format!("Failed to create MIDI output: {}", e))?;
 
     let ports = midi_out.ports();
