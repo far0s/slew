@@ -71,6 +71,21 @@ Add more UI appearance options.
 
 ---
 
+### 🟡 Better Color Picker `feature`
+
+Replace the current color picker with a more advanced and functional one.
+
+**Context**: The current color picker has a limited choice of colors. It needs to be more flexible, accessible and playful.
+
+**Subtasks**:
+
+- [ ] Add a color wheel, sliders, and a color picker palette
+- [ ] Add support for color formats (HEX, RGB, HSL, HSV)
+- [ ] Add color history / swatches
+- [ ] [more TBD...]
+
+---
+
 ## Low Priority / Future
 
 ### 🟢 Expand Test Coverage `chore`
