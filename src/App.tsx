@@ -16,7 +16,11 @@ import { SlotsArea, RendererPreview, DebugPanel } from "./components";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings } from "./inputs/audio";
 import { useLfos, useModulationTargets } from "./inputs/modulation";
-import { useMidiMappings, useMidiDevices } from "./inputs/midi";
+import {
+  useMidiMappings,
+  useMidiDevices,
+  useMidiPickupStates,
+} from "./inputs/midi";
 import { useStatsToggle, useWindowManager } from "./hooks";
 import styles from "./App.module.css";
 
@@ -59,6 +63,7 @@ function App() {
   // MIDI mappings and device state (to disable direct input for MIDI-controlled parameters)
   const { mappings: midiMappings } = useMidiMappings();
   const { devices: midiDevices } = useMidiDevices();
+  const { pickupStates: midiPickupStates } = useMidiPickupStates();
 
   // Check if any MIDI device is connected (for disabling direct input on mapped controls)
   const isMidiDeviceConnected = midiDevices.some((d) => d.is_connected);
@@ -735,6 +740,9 @@ function App() {
             modulationTargets={modulationTargets}
             lfos={lfos}
             midiMappings={isMidiDeviceConnected ? midiMappings : undefined}
+            midiPickupStates={
+              isMidiDeviceConnected ? midiPickupStates : undefined
+            }
             onSlotSketchChange={handleSlotSketchChange}
             onCrossfade={handleCrossfade}
             onClearSlot={handleClearSlot}

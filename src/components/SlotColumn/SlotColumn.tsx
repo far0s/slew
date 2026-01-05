@@ -27,7 +27,7 @@ import { SlotParameterControls } from "../SlotParameterControls";
 import { WebGPUCanvas } from "../../renderer/WebGPUCanvas";
 import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
-import type { MidiMapping } from "../../inputs/midi";
+import type { MidiMapping, MidiPickupState } from "../../inputs/midi";
 import styles from "./SlotColumn.module.css";
 
 export interface SlotColumnProps {
@@ -51,6 +51,7 @@ export interface SlotColumnProps {
   modulationTargets?: ModulationTarget[];
   lfos?: LfoSource[];
   midiMappings?: MidiMapping[];
+  midiPickupStates?: Map<string, MidiPickupState>;
   filledSlots?: Array<Slot & { sketchId: SketchId }>;
   onSketchChange: (sketchId: SketchId) => void;
   onCrossfade: () => void;
@@ -255,6 +256,7 @@ export function SlotColumn({
   modulationTargets,
   lfos,
   midiMappings,
+  midiPickupStates,
   onSketchChange,
   onCrossfade,
   onRemove,
@@ -444,6 +446,7 @@ export function SlotColumn({
           modulationTargets={modulationTargets}
           lfos={lfos}
           midiMappings={midiMappings}
+          midiPickupStates={midiPickupStates}
         />
       </div>
     </motion.article>

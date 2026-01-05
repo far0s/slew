@@ -18,7 +18,7 @@ import {
   AUDIO_SOURCE_COLORS,
 } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
-import type { MidiMapping } from "../../inputs/midi";
+import type { MidiMapping, MidiPickupState } from "../../inputs/midi";
 import { ColorPalette } from "../ColorPalette";
 import styles from "./SlotParameterControls.module.css";
 
@@ -31,6 +31,7 @@ export interface SlotParameterControlsProps {
   modulationTargets?: ModulationTarget[];
   lfos?: LfoSource[];
   midiMappings?: MidiMapping[];
+  midiPickupStates?: Map<string, MidiPickupState>;
 }
 
 async function setParameter(id: string, value: number): Promise<void> {
@@ -122,6 +123,7 @@ export function SlotParameterControls({
   modulationTargets,
   lfos,
   midiMappings,
+  midiPickupStates,
 }: SlotParameterControlsProps) {
   const descriptor = getSketchDescriptor(sketchId);
 
@@ -332,6 +334,7 @@ export function SlotParameterControls({
                 lfos,
               )}
               isMidiControlled={hasMidiMapping}
+              pickupState={midiPickupStates?.get(paramId)}
             />
           );
         })}

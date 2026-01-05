@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::time::Instant;
 
 use midir::{MidiInputConnection, MidiOutputConnection};
 use tauri::AppHandle;
@@ -105,6 +106,25 @@ pub(crate) struct PickupState {
     pub ignore_next: bool,
 }
 
+/// Pickup state update sent to frontend for soft takeover indicator.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MidiPickupStateUpdate {
+    /// The parameter ID this pickup state is for
+    pub parameter_id: String,
+    /// Whether the control has picked up the parameter value
+    pub picked_up: bool,
+    /// MIDI value normalized to parameter range (min_value to max_value)
+    pub midi_value: f64,
+    /// Direction to move to pick up: "left", "right", or null if picked up
+    pub direction: Option<String>,
+}
+
+/// Tracks last pickup event emission time for throttling
+#[derive(Debug, Clone, Default)]
+pub(crate) struct PickupEventThrottle {
+    pub last_event_time: Option<Instant>,
+}
+
 pub(crate) struct MidiEngineState {
     pub connections: HashMap<String, ActiveInputConnection>,
     pub output_connections: HashMap<String, ActiveOutputConnection>,
@@ -121,6 +141,8 @@ pub(crate) struct MidiEngineState {
     pub active_slots: Vec<SlotState>,
     pub last_master_value: Option<f64>,
     pub pickup_state: HashMap<(u8, u8), PickupState>,
+    /// Throttle state for pickup events per parameter
+    pub pickup_event_throttle: HashMap<String, PickupEventThrottle>,
     pub slot_muted: [bool; 8],
     pub solo_held: bool,
 }
@@ -148,6 +170,7 @@ impl Default for MidiEngineState {
             active_slots: Vec::new(),
             last_master_value: None,
             pickup_state: HashMap::new(),
+            pickup_event_throttle: HashMap::new(),
             slot_muted: [false; 8],
             solo_held: false,
         }

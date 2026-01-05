@@ -830,6 +830,7 @@ pub fn run() {
             midi::commands::set_midi_output_config,
             midi::commands::get_midi_output_config,
             midi::commands::trigger_midi_feedback,
+            midi::commands::get_midi_pickup_states,
             // OSC
             osc::start_osc_server,
             osc::stop_osc_server,
