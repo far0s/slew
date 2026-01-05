@@ -2,6 +2,34 @@
 // This runs before each test file
 
 import { vi } from "vitest";
+import "@testing-library/jest-dom/vitest";
+
+// Mock ResizeObserver (not available in jsdom, required by Radix UI)
+class MockResizeObserver {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+}
+global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+
+// Mock PointerEvent (not fully available in jsdom, required by Radix UI)
+class MockPointerEvent extends MouseEvent {
+  constructor(type: string, props: PointerEventInit = {}) {
+    super(type, props);
+    Object.assign(this, {
+      pointerId: props.pointerId ?? 0,
+      pointerType: props.pointerType ?? "mouse",
+      isPrimary: props.isPrimary ?? true,
+    });
+  }
+}
+global.PointerEvent = MockPointerEvent as unknown as typeof PointerEvent;
+
+// Mock Element.prototype methods required by Radix UI
+Element.prototype.scrollIntoView = vi.fn();
+Element.prototype.hasPointerCapture = vi.fn().mockReturnValue(false);
+Element.prototype.setPointerCapture = vi.fn();
+Element.prototype.releasePointerCapture = vi.fn();
 
 // Mock Three.js WebGPU modules (not available in jsdom/happy-dom)
 vi.mock("three/webgpu", () => ({
@@ -60,5 +88,4 @@ vi.mock("@tauri-apps/api/window", () => ({
   Window: vi.fn(),
 }));
 
-// Extend expect matchers if needed
-// import "@testing-library/jest-dom";
+// jest-dom matchers are imported at the top of this file

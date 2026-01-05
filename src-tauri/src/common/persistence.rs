@@ -92,5 +92,322 @@ pub fn save_json<T: Serialize>(path: &PathBuf, data: &T, module_name: &str) -> R
     }
 }
 
-// Tests require tempfile dev dependency - to be added in Phase 4 (Testing Infrastructure)
-// See docs/working/CLEANUP.md for the testing plan
+// =============================================================================
+// Tests
+// =============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::{Deserialize, Serialize};
+    use tempfile::TempDir;
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    struct TestConfig {
+        name: String,
+        value: i32,
+        enabled: bool,
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    struct NestedConfig {
+        items: Vec<String>,
+        settings: TestConfig,
+    }
+
+    // =========================================================================
+    // save_json / load_json round-trip tests
+    // =========================================================================
+
+    #[test]
+    fn test_save_and_load_json_simple() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("test_config.json");
+
+        let config = TestConfig {
+            name: "test".to_string(),
+            value: 42,
+            enabled: true,
+        };
+
+        // Save
+        let result = save_json(&path, &config, "TEST");
+        assert!(result.is_ok());
+
+        // Load
+        let loaded: Option<TestConfig> = load_json(&path, "TEST");
+        assert!(loaded.is_some());
+        assert_eq!(loaded.unwrap(), config);
+    }
+
+    #[test]
+    fn test_save_and_load_json_nested() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("nested_config.json");
+
+        let config = NestedConfig {
+            items: vec!["one".to_string(), "two".to_string(), "three".to_string()],
+            settings: TestConfig {
+                name: "nested".to_string(),
+                value: 100,
+                enabled: false,
+            },
+        };
+
+        // Save
+        let result = save_json(&path, &config, "TEST");
+        assert!(result.is_ok());
+
+        // Load
+        let loaded: Option<NestedConfig> = load_json(&path, "TEST");
+        assert!(loaded.is_some());
+        assert_eq!(loaded.unwrap(), config);
+    }
+
+    #[test]
+    fn test_save_and_load_json_vector() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("vector_config.json");
+
+        let configs = vec![
+            TestConfig {
+                name: "first".to_string(),
+                value: 1,
+                enabled: true,
+            },
+            TestConfig {
+                name: "second".to_string(),
+                value: 2,
+                enabled: false,
+            },
+            TestConfig {
+                name: "third".to_string(),
+                value: 3,
+                enabled: true,
+            },
+        ];
+
+        // Save
+        let result = save_json(&path, &configs, "TEST");
+        assert!(result.is_ok());
+
+        // Load
+        let loaded: Option<Vec<TestConfig>> = load_json(&path, "TEST");
+        assert!(loaded.is_some());
+        assert_eq!(loaded.unwrap(), configs);
+    }
+
+    // =========================================================================
+    // load_json error handling tests
+    // =========================================================================
+
+    #[test]
+    fn test_load_json_missing_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("nonexistent.json");
+
+        let loaded: Option<TestConfig> = load_json(&path, "TEST");
+        assert!(loaded.is_none());
+    }
+
+    #[test]
+    fn test_load_json_invalid_json() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("invalid.json");
+
+        // Write invalid JSON
+        fs::write(&path, "{ not valid json }").unwrap();
+
+        let loaded: Option<TestConfig> = load_json(&path, "TEST");
+        assert!(loaded.is_none());
+    }
+
+    #[test]
+    fn test_load_json_wrong_type() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("wrong_type.json");
+
+        // Write valid JSON but wrong structure
+        fs::write(&path, r#"{"different": "structure"}"#).unwrap();
+
+        let loaded: Option<TestConfig> = load_json(&path, "TEST");
+        assert!(loaded.is_none());
+    }
+
+    #[test]
+    fn test_load_json_empty_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("empty.json");
+
+        // Write empty file
+        fs::write(&path, "").unwrap();
+
+        let loaded: Option<TestConfig> = load_json(&path, "TEST");
+        assert!(loaded.is_none());
+    }
+
+    // =========================================================================
+    // save_json directory creation tests
+    // =========================================================================
+
+    #[test]
+    fn test_save_json_creates_directories() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir
+            .path()
+            .join("nested")
+            .join("deep")
+            .join("config.json");
+
+        let config = TestConfig {
+            name: "nested_dir_test".to_string(),
+            value: 99,
+            enabled: true,
+        };
+
+        // Parent directories don't exist yet
+        assert!(!path.parent().unwrap().exists());
+
+        // Save should create directories
+        let result = save_json(&path, &config, "TEST");
+        assert!(result.is_ok());
+
+        // Verify file was created
+        assert!(path.exists());
+
+        // Verify content
+        let loaded: Option<TestConfig> = load_json(&path, "TEST");
+        assert_eq!(loaded.unwrap(), config);
+    }
+
+    // =========================================================================
+    // save_json formatting tests
+    // =========================================================================
+
+    #[test]
+    fn test_save_json_pretty_printed() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("pretty.json");
+
+        let config = TestConfig {
+            name: "pretty".to_string(),
+            value: 1,
+            enabled: true,
+        };
+
+        save_json(&path, &config, "TEST").unwrap();
+
+        // Read raw content
+        let content = fs::read_to_string(&path).unwrap();
+
+        // Should be pretty-printed (contains newlines and indentation)
+        assert!(content.contains('\n'));
+        assert!(content.contains("  ")); // Indentation
+    }
+
+    // =========================================================================
+    // local_data_path tests
+    // =========================================================================
+
+    #[test]
+    fn test_local_data_path_returns_path() {
+        let path = local_data_path("test_file.json");
+
+        // Should return a path (may be None on some systems, but usually not)
+        if let Some(p) = path {
+            assert!(p.ends_with("slew/test_file.json"));
+        }
+    }
+
+    #[test]
+    fn test_local_data_path_different_filenames() {
+        let path1 = local_data_path("file1.json");
+        let path2 = local_data_path("file2.json");
+
+        if let (Some(p1), Some(p2)) = (path1, path2) {
+            assert_ne!(p1, p2);
+            assert!(p1.ends_with("file1.json"));
+            assert!(p2.ends_with("file2.json"));
+        }
+    }
+
+    // =========================================================================
+    // Edge case tests
+    // =========================================================================
+
+    #[test]
+    fn test_save_and_load_empty_string() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("empty_string.json");
+
+        let config = TestConfig {
+            name: "".to_string(),
+            value: 0,
+            enabled: false,
+        };
+
+        save_json(&path, &config, "TEST").unwrap();
+        let loaded: Option<TestConfig> = load_json(&path, "TEST");
+        assert_eq!(loaded.unwrap(), config);
+    }
+
+    #[test]
+    fn test_save_and_load_special_characters() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("special_chars.json");
+
+        let config = TestConfig {
+            name: "Test with \"quotes\" and \\backslashes\\ and 日本語".to_string(),
+            value: -42,
+            enabled: true,
+        };
+
+        save_json(&path, &config, "TEST").unwrap();
+        let loaded: Option<TestConfig> = load_json(&path, "TEST");
+        assert_eq!(loaded.unwrap(), config);
+    }
+
+    #[test]
+    fn test_save_and_load_large_values() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("large.json");
+
+        let config = TestConfig {
+            name: "x".repeat(10000), // Large string
+            value: i32::MAX,
+            enabled: true,
+        };
+
+        save_json(&path, &config, "TEST").unwrap();
+        let loaded: Option<TestConfig> = load_json(&path, "TEST");
+        assert_eq!(loaded.unwrap(), config);
+    }
+
+    #[test]
+    fn test_overwrite_existing_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("overwrite.json");
+
+        let config1 = TestConfig {
+            name: "original".to_string(),
+            value: 1,
+            enabled: true,
+        };
+
+        let config2 = TestConfig {
+            name: "updated".to_string(),
+            value: 2,
+            enabled: false,
+        };
+
+        // Save first config
+        save_json(&path, &config1, "TEST").unwrap();
+
+        // Overwrite with second config
+        save_json(&path, &config2, "TEST").unwrap();
+
+        // Should load the second config
+        let loaded: Option<TestConfig> = load_json(&path, "TEST");
+        assert_eq!(loaded.unwrap(), config2);
+    }
+}

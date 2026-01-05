@@ -88,29 +88,6 @@ Replace the current color picker with a more advanced and functional one.
 
 ## Low Priority / Future
 
-### 🟢 Expand Test Coverage `chore`
-
-Add more tests for remaining untested areas.
-
-**Context**: Codebase cleanup (Phase 4) established testing infrastructure with 52 Rust tests and 33 frontend tests. Core utilities are tested but some areas remain.
-
-**Current coverage**:
-
-- `modulation.rs` - 18 tests for LFO waveforms, phase, depth, offset, BPM sync
-- `midi/message_handler.rs` - 26 tests for MIDI parsing, CC normalization, range mapping
-- `video_out.rs` - 6 tests for pixel formats, frame validation, base64 decoding
-- `slotTypes.ts` - 33 tests for parameter ID utilities
-
-**Subtasks**:
-
-- [ ] Add tests for beat detection (`audio/buffer.rs`) - extract pure functions first
-- [ ] Add tests for mapping persistence (JSON load/save)
-- [ ] Add tests for `useParameterStore` hook
-- [ ] Add tests for `useSlots` hook
-- [ ] Add component tests for key UI components
-
----
-
 ### 🟢 More Shader Sketches `feature`
 
 Expand the visual library with new procedural sketches.

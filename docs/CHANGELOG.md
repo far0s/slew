@@ -30,6 +30,30 @@ Status overview and key decisions for Slew.
 
 ## Recent Changes
 
+### Test Coverage Expansion
+
+Significantly expanded test coverage from 85 tests to 238 tests (+153 tests).
+
+**Rust tests (52 → 93):**
+
+- `audio/buffer.rs` - 15 tests for AudioBuffer and BeatDetector (push_samples, analysis window, adaptive threshold, cooldown)
+- `audio/analysis.rs` - 10 tests for band_energy FFT analysis (edge cases, different sample rates)
+- `common/persistence.rs` - 15 tests for JSON load/save utilities (round-trip, error handling, directory creation)
+- Added `tempfile` dev dependency for testing file I/O
+
+**Frontend tests (33 → 145):**
+
+- `useSlots.test.ts` - 55 tests for slot management hook (initial state, slot operations, crossfade, hydration)
+- `Button.test.tsx` - 24 tests for Button component (variants, sizes, loading, disabled, accessibility)
+- `ParameterSlider.test.tsx` - 33 tests for ParameterSlider component (rendering, MIDI, audio mapping, pickup state)
+
+**Test infrastructure:**
+
+- Added `@testing-library/jest-dom` for better assertions
+- Added mocks for ResizeObserver, PointerEvent (required by Radix UI components)
+
+**Documentation**: See `docs/finished/TEST_COVERAGE.md` for details.
+
 ### MIDI Soft Takeover Indicator
 
 Visual feedback for MIDI controller pickup state on parameter sliders.

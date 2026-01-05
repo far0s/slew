@@ -73,3 +73,6 @@ debug = true
 inherits = "release"
 debug = true
 strip = false
+
+[dev-dependencies]
+tempfile = "3.15"     # Temp files/dirs for testing persistence
