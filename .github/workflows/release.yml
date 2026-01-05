@@ -249,3 +249,14 @@ jobs:
             artifacts/windows/msi/*.msi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify Slack
+        if: success()
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "🤖 Slew ${{ steps.version.outputs.VERSION }} draft release is ready for publishing!\n<${{ github.server_url }}/${{ github.repository }}/releases|View Release>"
+            }
