@@ -78,6 +78,22 @@ export interface MidiLearnComplete {
 }
 
 // ============================================================================
+// Pickup State Types (Soft Takeover Indicator)
+// ============================================================================
+
+/** Pickup state for soft takeover indicator. */
+export interface MidiPickupState {
+  /** The parameter ID this pickup state is for */
+  parameter_id: string;
+  /** Whether the control has picked up the parameter value */
+  picked_up: boolean;
+  /** MIDI value normalized to parameter range (min_value to max_value) */
+  midi_value: number;
+  /** Direction to move to pick up: "left", "right", or null if picked up */
+  direction: "left" | "right" | null;
+}
+
+// ============================================================================
 // Output Types
 // ============================================================================
 
@@ -257,6 +273,11 @@ export async function triggerMidiFeedback(
   value: number,
 ): Promise<void> {
   return invoke("trigger_midi_feedback", { parameterId, value });
+}
+
+/** Get all current MIDI pickup states for mapped parameters. */
+export async function getMidiPickupStates(): Promise<MidiPickupState[]> {
+  return invoke<MidiPickupState[]>("get_midi_pickup_states");
 }
 
 // ============================================================================
@@ -987,5 +1008,125 @@ export function useMidiOutput() {
     sendNoteOn,
     sendNoteOff,
     sendFeedback,
+  };
+}
+
+// ============================================================================
+// Pickup State Hook (Soft Takeover Indicator)
+// ============================================================================
+
+/**
+ * Hook for tracking MIDI pickup states (soft takeover indicator).
+ * Returns a Map of parameter_id → MidiPickupState for parameters that
+ * have MIDI mappings but haven't picked up yet.
+ */
+export function useMidiPickupStates(): {
+  pickupStates: Map<string, MidiPickupState>;
+  getPickupState: (parameterId: string) => MidiPickupState | undefined;
+} {
+  const [pickupStates, setPickupStates] = useState<
+    Map<string, MidiPickupState>
+  >(new Map());
+
+  // Fetch initial state and subscribe to events
+  useEffect(() => {
+    let isMounted = true;
+
+    // Fetch initial pickup states
+    async function fetchInitial() {
+      try {
+        const states = await getMidiPickupStates();
+        if (isMounted) {
+          const stateMap = new Map<string, MidiPickupState>();
+          for (const state of states) {
+            stateMap.set(state.parameter_id, state);
+          }
+          setPickupStates(stateMap);
+        }
+      } catch (e) {
+        console.error("[MIDI] Failed to fetch initial pickup states:", e);
+      }
+    }
+
+    void fetchInitial();
+
+    // Subscribe to pickup state events
+    let unlisten: (() => void) | undefined;
+
+    listen<MidiPickupState>("midi_pickup_state", (event) => {
+      if (!isMounted) return;
+
+      const update = event.payload;
+      setPickupStates((prev) => {
+        const next = new Map(prev);
+
+        if (update.picked_up) {
+          // When picked up, keep it briefly for the flash animation, then remove
+          next.set(update.parameter_id, update);
+          // Remove after animation completes (400ms)
+          setTimeout(() => {
+            if (isMounted) {
+              setPickupStates((current) => {
+                const updated = new Map(current);
+                // Only remove if still picked up (not re-triggered)
+                const existing = updated.get(update.parameter_id);
+                if (existing?.picked_up) {
+                  updated.delete(update.parameter_id);
+                }
+                return updated;
+              });
+            }
+          }, 400);
+        } else {
+          // Not picked up yet, update the state
+          next.set(update.parameter_id, update);
+        }
+
+        return next;
+      });
+    }).then((u) => {
+      unlisten = u;
+    });
+
+    // Also listen for mapping removals to clear pickup state
+    let unlistenMappings: (() => void) | undefined;
+
+    listen<MidiMapping[]>("midi_mappings_changed", (event) => {
+      if (!isMounted) return;
+
+      const mappings = event.payload;
+      const mappedParams = new Set(mappings.map((m) => m.parameter_id));
+
+      setPickupStates((prev) => {
+        const next = new Map(prev);
+        // Remove pickup states for parameters that no longer have mappings
+        for (const paramId of prev.keys()) {
+          if (!mappedParams.has(paramId)) {
+            next.delete(paramId);
+          }
+        }
+        return next;
+      });
+    }).then((u) => {
+      unlistenMappings = u;
+    });
+
+    return () => {
+      isMounted = false;
+      unlisten?.();
+      unlistenMappings?.();
+    };
+  }, []);
+
+  const getPickupState = useCallback(
+    (parameterId: string): MidiPickupState | undefined => {
+      return pickupStates.get(parameterId);
+    },
+    [pickupStates],
+  );
+
+  return {
+    pickupStates,
+    getPickupState,
   };
 }

@@ -8,14 +8,18 @@
 //! - Soft takeover (pickup) logic
 
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::AppHandle;
 
 use super::constants::*;
 use super::engine::{is_midimix_device, with_midi_engine, MIDI_ENGINE};
+use super::events::emit_pickup_state_changed;
 use super::mappings::save_mappings_to_disk;
 use super::output::{send_note_off, send_note_on};
-use super::types::{MidiEngineState, MidiMapping, PickupState, SlotState};
+use super::types::{
+    MidiEngineState, MidiMapping, MidiPickupStateUpdate, PickupEventThrottle, PickupState,
+    SlotState,
+};
 
 // ============================================================================
 // LED Animations
@@ -663,9 +667,12 @@ fn get_sketch_param_range(sketch_id: &str, param_id: &str) -> (f64, f64) {
 // Soft Takeover (Pickup)
 // ============================================================================
 
+/// Throttle interval for pickup state events (~30fps)
+const PICKUP_EVENT_THROTTLE: Duration = Duration::from_millis(33);
+
 /// Check if a CC value has "picked up" the current parameter value.
 /// Returns true if the CC should be applied, false if it should be ignored.
-/// Updates the pickup state as a side effect.
+/// Updates the pickup state as a side effect and emits events for the frontend indicator.
 pub(crate) fn check_and_update_pickup(
     engine: &Arc<Mutex<MidiEngineState>>,
     channel: u8,
@@ -693,6 +700,10 @@ pub(crate) fn check_and_update_pickup(
         (normalized.clamp(0.0, 1.0) * 127.0).round() as u8
     };
 
+    // Convert CC value to parameter range for the frontend indicator
+    let midi_value_normalized = (cc_value as f64) / 127.0;
+    let midi_value_in_range = mapping.min_value + midi_value_normalized * range;
+
     let mut state = engine.lock().unwrap();
     let pickup = state
         .pickup_state
@@ -710,6 +721,19 @@ pub(crate) fn check_and_update_pickup(
             cc_number,
             cc_value
         );
+
+        // Emit initial pickup state (not picked up, show ghost marker)
+        let direction = calculate_pickup_direction(cc_value, param_cc);
+        drop(state); // Release lock before emitting
+        emit_pickup_state_throttled(
+            engine,
+            &mapping.parameter_id,
+            false,
+            midi_value_in_range,
+            direction,
+            true, // Force emit on first CC
+        );
+
         return false;
     }
 
@@ -754,6 +778,18 @@ pub(crate) fn check_and_update_pickup(
             cc_value,
             param_cc
         );
+
+        // Emit pickup complete event (always emit immediately for feedback)
+        drop(state); // Release lock before emitting
+        emit_pickup_state_throttled(
+            engine,
+            &mapping.parameter_id,
+            true,
+            midi_value_in_range,
+            None,
+            true, // Force emit on pickup
+        );
+
         true
     } else {
         log::trace!(
@@ -764,8 +800,80 @@ pub(crate) fn check_and_update_pickup(
             param_cc,
             pickup.last_cc
         );
+
+        // Emit pickup state update (throttled)
+        let direction = calculate_pickup_direction(cc_value, param_cc);
+        drop(state); // Release lock before emitting
+        emit_pickup_state_throttled(
+            engine,
+            &mapping.parameter_id,
+            false,
+            midi_value_in_range,
+            direction,
+            false,
+        );
+
         false
     }
+}
+
+/// Calculate which direction the user needs to move the controller to pick up.
+fn calculate_pickup_direction(cc_value: u8, param_cc: u8) -> Option<String> {
+    if cc_value < param_cc {
+        Some("right".to_string())
+    } else if cc_value > param_cc {
+        Some("left".to_string())
+    } else {
+        None // Already at target
+    }
+}
+
+/// Emit pickup state update, with throttling to prevent UI flooding.
+/// State change events (picked_up transitions) are always emitted immediately.
+fn emit_pickup_state_throttled(
+    engine: &Arc<Mutex<MidiEngineState>>,
+    parameter_id: &str,
+    picked_up: bool,
+    midi_value: f64,
+    direction: Option<String>,
+    force: bool,
+) {
+    let now = Instant::now();
+
+    // Check throttle (unless forced)
+    if !force {
+        let mut state = engine.lock().unwrap();
+        let throttle = state
+            .pickup_event_throttle
+            .entry(parameter_id.to_string())
+            .or_insert_with(PickupEventThrottle::default);
+
+        if let Some(last_time) = throttle.last_event_time {
+            if now.duration_since(last_time) < PICKUP_EVENT_THROTTLE {
+                return; // Throttled, skip this event
+            }
+        }
+
+        throttle.last_event_time = Some(now);
+    } else {
+        // Update throttle time even when forced
+        let mut state = engine.lock().unwrap();
+        let throttle = state
+            .pickup_event_throttle
+            .entry(parameter_id.to_string())
+            .or_insert_with(PickupEventThrottle::default);
+        throttle.last_event_time = Some(now);
+    }
+
+    // Emit the event
+    let update = MidiPickupStateUpdate {
+        parameter_id: parameter_id.to_string(),
+        picked_up,
+        midi_value,
+        direction,
+    };
+
+    emit_pickup_state_changed(&update);
 }
 
 /// Check pickup for the master fader.
@@ -836,6 +944,62 @@ pub(crate) fn reset_all_pickup(engine: &Arc<Mutex<MidiEngineState>>) {
     entry.ignore_next = true;
 
     log::debug!("[MIDI] Pickup: reset all pickup state (reconnect)");
+}
+
+/// Get all current pickup states for mapped parameters.
+/// Returns pickup state updates for parameters that haven't been picked up yet.
+pub fn get_all_pickup_states() -> Vec<MidiPickupStateUpdate> {
+    use super::engine::with_midi_engine;
+
+    with_midi_engine(|state| {
+        let mut updates = Vec::new();
+
+        // For each mapping, check if there's a pickup state that isn't picked up
+        for mapping in &state.mappings {
+            // Find the pickup state for this mapping's channel/cc
+            let channel = mapping.channel.unwrap_or(0);
+            let key = (channel, mapping.cc_number);
+
+            if let Some(pickup) = state.pickup_state.get(&key) {
+                // Only include if we have a last_cc value and haven't picked up
+                if let Some(last_cc) = pickup.last_cc {
+                    // Get current parameter value to calculate direction
+                    let param_value = crate::with_parameter_store(|store| {
+                        store.get(&mapping.parameter_id).map(|p| p.value)
+                    });
+
+                    if let Some(param_value) = param_value {
+                        let range = mapping.max_value - mapping.min_value;
+                        let param_cc = if range.abs() < f64::EPSILON {
+                            64
+                        } else {
+                            let normalized = (param_value - mapping.min_value) / range;
+                            (normalized.clamp(0.0, 1.0) * 127.0).round() as u8
+                        };
+
+                        // Convert CC value to parameter range
+                        let midi_value_normalized = (last_cc as f64) / 127.0;
+                        let midi_value_in_range = mapping.min_value + midi_value_normalized * range;
+
+                        let direction = if pickup.picked_up {
+                            None
+                        } else {
+                            calculate_pickup_direction(last_cc, param_cc)
+                        };
+
+                        updates.push(MidiPickupStateUpdate {
+                            parameter_id: mapping.parameter_id.clone(),
+                            picked_up: pickup.picked_up,
+                            midi_value: midi_value_in_range,
+                            direction,
+                        });
+                    }
+                }
+            }
+        }
+
+        updates
+    })
 }
 
 // ============================================================================

@@ -30,6 +30,22 @@ Status overview and key decisions for Slew.
 
 ## Recent Changes
 
+### MIDI Soft Takeover Indicator
+
+Visual feedback for MIDI controller pickup state on parameter sliders.
+
+- **Ghost marker**: Shows current MIDI controller position as a dimmed thumb on the slider
+- **Direction badge**: Amber "▸ PICKUP" or "◂ PICKUP" badge indicates which way to move
+- **Pickup flash**: Brief green pulse animation when controller successfully picks up
+- **Real-time updates**: Ghost marker moves smoothly (~30fps throttled) as you adjust the controller
+- **Reduced motion support**: Animations disabled when `prefers-reduced-motion` is set
+
+**Backend**: New `MidiPickupStateUpdate` type, `midi_pickup_state` event emission with throttling, `get_midi_pickup_states` command.
+
+**Frontend**: New `useMidiPickupStates()` hook, `pickupState` prop on `ParameterSlider`.
+
+**Documentation**: See `docs/finished/SOFT_TAKEOVER_INDICATOR.md` for design details.
+
 ### Aura Shader Integration
 
 **New sketch**: Volumetric raymarching shader ported from seb.cat with 8 preset variations and 12 parameters.
@@ -290,6 +306,15 @@ Slot count increased from 6 to 8 to match Midimix columns for 1:1 hardware mappi
 ---
 
 ## Version History
+
+### v0.7.1 (MIDI Soft Takeover Indicator)
+
+- Added visual feedback for MIDI controller pickup state on parameter sliders
+- Ghost marker shows current MIDI controller position
+- Direction badge indicates which way to move controller to pick up
+- Pickup flash animation confirms successful pickup
+- Real-time updates with 30fps throttling
+- Respects `prefers-reduced-motion` preference
 
 ### v0.7.0 (App Rebranding)
 

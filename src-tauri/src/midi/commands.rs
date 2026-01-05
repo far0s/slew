@@ -4,9 +4,11 @@ use super::connections;
 use super::devices;
 use super::learn;
 use super::mappings;
+use super::midimix;
 use super::output;
 use super::types::{
     MidiDeviceInfo, MidiLearnState, MidiMapping, MidiOutputConfig, MidiOutputDeviceInfo,
+    MidiPickupStateUpdate,
 };
 
 #[tauri::command]
@@ -136,4 +138,9 @@ pub fn get_midi_output_config() -> MidiOutputConfig {
 #[tauri::command]
 pub fn trigger_midi_feedback(parameter_id: String, value: f64) {
     output::send_parameter_feedback(&parameter_id, value)
+}
+
+#[tauri::command]
+pub fn get_midi_pickup_states() -> Vec<MidiPickupStateUpdate> {
+    midimix::get_all_pickup_states()
 }

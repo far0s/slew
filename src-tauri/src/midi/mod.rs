@@ -29,5 +29,5 @@ pub use output::{
 };
 pub use types::{
     MidiDeviceInfo, MidiLearnComplete, MidiLearnState, MidiMapping, MidiMessage, MidiOutputConfig,
-    MidiOutputDeviceInfo,
+    MidiOutputDeviceInfo, MidiPickupStateUpdate,
 };

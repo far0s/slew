@@ -5,7 +5,7 @@ import type { SketchId, SketchProps } from "../../sketches";
 import type { Slot } from "../../slots/useSlots";
 import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
-import type { MidiMapping } from "../../inputs/midi";
+import type { MidiMapping, MidiPickupState } from "../../inputs/midi";
 import { makeSlotParameterId } from "../../slots/slotTypes";
 import { SlotColumn } from "../SlotColumn";
 import styles from "./SlotsArea.module.css";
@@ -32,6 +32,7 @@ export interface SlotsAreaProps {
   modulationTargets?: ModulationTarget[];
   lfos?: LfoSource[];
   midiMappings?: MidiMapping[];
+  midiPickupStates?: Map<string, MidiPickupState>;
   onSlotSketchChange: (slotIndex: number, sketchId: SketchId) => void;
   onCrossfade: (slotIndex: number) => void;
   onClearSlot: (slotIndex: number) => void;
@@ -57,6 +58,7 @@ export function SlotsArea({
   modulationTargets,
   lfos,
   midiMappings,
+  midiPickupStates,
   onSlotSketchChange,
   onCrossfade,
   onClearSlot,
@@ -170,6 +172,7 @@ export function SlotsArea({
                     modulationTargets={modulationTargets}
                     lfos={lfos}
                     midiMappings={midiMappings}
+                    midiPickupStates={midiPickupStates}
                     filledSlots={filledSlots}
                     onSketchChange={(sketchId) => {
                       if (slot.sketchId === null) {

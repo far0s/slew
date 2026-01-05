@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import * as Slider from "@radix-ui/react-slider";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { MidiLearnButton } from "../MidiLearnButton";
 import { MODULATION_INDICATOR_COLOR } from "../../inputs/modulation";
+import type { MidiPickupState } from "../../inputs/midi";
 import styles from "./ParameterSlider.module.css";
 
 export type SliderColorVariant =
@@ -56,6 +57,7 @@ export interface ModulationIndicator {
  * @property audioMapping - Audio mapping indicator info; if provided, shows mapping badge
  * @property modulationIndicator - Modulation indicator info; if provided, shows modulation badge
  * @property isMidiControlled - If true, disables direct user input (controlled via MIDI only)
+ * @property pickupState - MIDI pickup state for soft takeover indicator
  */
 export interface ParameterSliderProps {
   id: string;
@@ -74,6 +76,7 @@ export interface ParameterSliderProps {
   audioMapping?: AudioMappingIndicator | null;
   modulationIndicator?: ModulationIndicator | null;
   isMidiControlled?: boolean;
+  pickupState?: MidiPickupState | null;
 }
 
 /**
@@ -100,12 +103,31 @@ export function ParameterSlider({
   audioMapping,
   modulationIndicator,
   isMidiControlled = false,
+  pickupState,
 }: ParameterSliderProps) {
   const [showInfo, setShowInfo] = useState(false);
+  const [showPickupFlash, setShowPickupFlash] = useState(false);
+  const prevPickedUpRef = useRef<boolean | undefined>(undefined);
+
+  // Detect when pickup state transitions from not picked up to picked up
+  useEffect(() => {
+    if (pickupState?.picked_up && prevPickedUpRef.current === false) {
+      setShowPickupFlash(true);
+      const timer = setTimeout(() => setShowPickupFlash(false), 400);
+      return () => clearTimeout(timer);
+    }
+    prevPickedUpRef.current = pickupState?.picked_up;
+  }, [pickupState?.picked_up]);
 
   const rangeClass = styles[`range${capitalize(color)}`] ?? styles.rangeEmerald;
   const thumbClass = styles[`thumb${capitalize(color)}`] ?? styles.thumbEmerald;
   const disabledClass = isMidiControlled ? styles.disabled : "";
+
+  // Calculate ghost marker position as percentage
+  const showGhostMarker = pickupState && !pickupState.picked_up;
+  const ghostMarkerPercent = showGhostMarker
+    ? ((pickupState.midi_value - min) / (max - min)) * 100
+    : 0;
 
   const handleValueChange = ([next]: number[]) => {
     const newValue = Number.isFinite(next) ? next : value;
@@ -157,6 +179,17 @@ export function ParameterSlider({
               LFO
             </span>
           )}
+          {showGhostMarker && pickupState.direction && (
+            <span
+              className={styles.pickupBadge}
+              title={`Move ${pickupState.direction} to pick up`}
+            >
+              <span className={styles.pickupArrow}>
+                {pickupState.direction === "right" ? "▸" : "◂"}
+              </span>
+              pickup
+            </span>
+          )}
           <span className={styles.value}>{formatValue(value)}</span>
         </label>
         <div className={styles.labelActions}>
@@ -198,13 +231,21 @@ export function ParameterSlider({
         step={step}
         value={[value]}
         onValueChange={handleValueChange}
-        className={styles.sliderRoot}
+        className={`${styles.sliderRoot} ${showPickupFlash ? styles.pickupFlash : ""}`}
         aria-label={ariaLabel ?? label}
         disabled={isMidiControlled}
       >
         <Slider.Track className={styles.sliderTrack}>
           <Slider.Range className={`${styles.sliderRange} ${rangeClass}`} />
         </Slider.Track>
+        {showGhostMarker && (
+          <div
+            className={styles.ghostMarker}
+            style={{ left: `${ghostMarkerPercent}%` }}
+            aria-hidden="true"
+            title={`MIDI position: ${formatValue(pickupState.midi_value)}`}
+          />
+        )}
         <Slider.Thumb className={`${styles.sliderThumb} ${thumbClass}`} />
       </Slider.Root>
     </div>

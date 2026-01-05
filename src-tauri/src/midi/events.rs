@@ -4,6 +4,7 @@ use tauri::Emitter;
 
 use super::devices::{list_devices, list_output_devices};
 use super::engine::with_midi_engine;
+use super::types::MidiPickupStateUpdate;
 
 pub fn emit_devices_changed() {
     let app_handle = with_midi_engine(|state| state.app_handle.clone());
@@ -70,6 +71,19 @@ pub fn emit_midi_message(message: &super::types::MidiMessage) {
     if let Some(handle) = app_handle {
         if let Err(e) = handle.emit("midi_message", message) {
             log::trace!("[MIDI] Failed to emit midi message: {}", e);
+        }
+    }
+}
+
+/// Emit pickup state update for soft takeover indicator.
+/// Called when CC is received for a mapped parameter that hasn't picked up yet,
+/// or when pickup state changes.
+pub fn emit_pickup_state_changed(update: &MidiPickupStateUpdate) {
+    let app_handle = with_midi_engine(|state| state.app_handle.clone());
+
+    if let Some(handle) = app_handle {
+        if let Err(e) = handle.emit("midi_pickup_state", update) {
+            log::trace!("[MIDI] Failed to emit pickup state: {}", e);
         }
     }
 }
