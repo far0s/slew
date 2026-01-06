@@ -1,7 +1,15 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { invoke } from "@tauri-apps/api/core";
-import { SunIcon, MoonIcon, MinusIcon, PlusIcon } from "@radix-ui/react-icons";
+import {
+  SunIcon,
+  MoonIcon,
+  MinusIcon,
+  PlusIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+} from "@radix-ui/react-icons";
+import { motion, AnimatePresence } from "motion/react";
 import { MidiPanel } from "../MidiPanel";
 import { OscPanel } from "../OscPanel";
 import { AudioPanel } from "../AudioPanel";
@@ -18,6 +26,55 @@ import {
   MAX_ZOOM,
 } from "../../hooks";
 import styles from "./Sidebar.module.css";
+
+/**
+ * Collapsible section wrapper (matches VideoOutputPanel pattern)
+ */
+function Section({
+  title,
+  badge,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  badge?: React.ReactNode;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className={styles.section}>
+      <button
+        type="button"
+        className={styles.sectionHeader}
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+      >
+        {isOpen ? (
+          <ChevronDownIcon className={styles.sectionChevron} />
+        ) : (
+          <ChevronRightIcon className={styles.sectionChevron} />
+        )}
+        <span className={styles.sectionTitle}>{title}</span>
+        {badge}
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0, overflow: "hidden" }}
+            animate={{ height: "auto", opacity: 1, overflow: "visible" }}
+            exit={{ height: 0, opacity: 0, overflow: "hidden" }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className={styles.sectionContent}
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 /**
  * Props for the Sidebar component.
@@ -408,6 +465,19 @@ export function Sidebar({
               <h4 className={styles.settingsHeader}>Layout</h4>
               <LayoutControls />
             </div>
+
+            <Section
+              title="Custom CSS"
+              badge={
+                <span className={styles.comingSoonBadge}>Coming Soon</span>
+              }
+              defaultOpen={false}
+            >
+              <p className={styles.placeholderText}>
+                Custom CSS is not yet available. This feature will allow you to
+                load your own stylesheet to customize the UI appearance.
+              </p>
+            </Section>
           </div>
         </Tabs.Content>
       </div>

@@ -405,3 +405,86 @@
   outline: 2px solid var(--accent-primary);
   outline-offset: -2px;
 }
+
+/* ==========================================================================
+   Collapsible Sections
+   ========================================================================== */
+
+.section {
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 0.5rem;
+  padding-top: 0;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-height: 34px;
+  padding: 0.6rem 0.25rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.sectionHeader:hover {
+  color: var(--text-primary);
+}
+
+.sectionHeader:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+  border-radius: 0.25rem;
+}
+
+.sectionChevron {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.sectionTitle {
+  flex: 1;
+  text-align: left;
+}
+
+.sectionContent {
+  padding-bottom: 0.5rem;
+}
+
+/* ==========================================================================
+   Placeholder Sections
+   ========================================================================== */
+
+.placeholderText {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-hover);
+  border: 1px dashed var(--border-subtle);
+  border-radius: 0.35rem;
+}
+
+.comingSoonBadge {
+  display: inline-block;
+  font-size: 0.58rem;
+  font-weight: 500;
+  padding: 0.1rem 0.35rem;
+  margin-left: 0.5rem;
+  border-radius: 9999px;
+  background: var(--bg-active);
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+  vertical-align: middle;
+}
