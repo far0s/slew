@@ -20,6 +20,16 @@ Prioritized list of potential work items for Slew.
 
 ## Active / High Priority
 
+### 🔴 Stream the same renderer to Renderer window and all Slot/Live Preview canvases in real-time
+
+**Context**: Right now the preview canvases in the Controls window are rendered separately from the Renderer window, which means there are noticeable differences in the way graphics are rendered. This can lead to unpredicatibility in the output and unexpected behavior. To ensure consistent results, it is necessary to stream the same renderer to all relevant windows in real-time. It's also necessary to separate all the different slots into their own canvases.
+
+**Subtasks**:
+
+- [ ] Implement real-time streaming of renderer to Renderer window and all Slot/Live Preview canvases
+- [ ] Separate all the different slots into their own canvases
+- [ ] [more TBD...]
+
 ### 🔴 App Icon `chore`
 
 Design and implement proper app icon for Slew.
@@ -50,24 +60,6 @@ Save/load parameter configurations per sketch.
 - [ ] Persist to JSON files (`presets/{sketchId}/{presetName}.json`)
 - [ ] Default preset per sketch type
 - [ ] Preset management UI (rename, delete)
-
----
-
-### 🟡 UI Appearance options `feature`
-
-Add more UI appearance options.
-
-**Context**: Users may prefer different color schemes or themes.
-
-**Subtasks**:
-
-- [ ] Sidebar: position left/right
-- [ ] Settings: Improve light/dark themes, add "amber" mode (both themes can have orange/red accents to be easier on the eyes)
-- [ ] Settings: Add custom CSS stylesheets for advanced users
-- [ ] Settings: Allow users zoom +/-
-- [ ] Settings: fix Actions buttons not working
-- [ ] Windows: allow fullscreen toggle (native shortcut)
-- [ ] [more TBD...]
 
 ---
 
@@ -134,16 +126,17 @@ GPU-based capture or frame export.
 
 ### 🟢 Post-Processing Pipeline `feature`
 
-Add bloom, feedback, color grading effects.
+Add grain, bloom, feedback, color grading effects, etc.
 
-**Context**: Post-processing can add polish and visual interest to any sketch.
+**Context**: Post-processing can add polish and visual interest to any sketch. Right now the Aura sketch does have grain (and tone mapping modes, but that needs to stay separate I believe) baked in, but it would be useful to have more control over these effects at a more global level.
 
 **Subtasks**:
 
-- [ ] Bloom effect
-- [ ] Feedback/delay buffer
-- [ ] Color grading (LUT support)
-- [ ] Effect chain ordering
+- [ ] Add Post-processing pipeline
+- [ ] Sidebar: add post-processing controls tab
+- [ ] Allow to add independent post-processing effects
+- [ ] Allow post-processing effects to be chained, re-ordered
+- [ ] Effects: Grain, Chromatic Aberration, Bloom, CRT Scanlines, Dither, Halftone, Pixellation, Vignette, LED, Bulge Distortion, Swirl distortion, Wave Distortion... These effects can be ported over from Phobon's Fragments Boilerplate https://github.com/phobon/fragments-boilerplate
 
 ---
 

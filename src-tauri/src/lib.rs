@@ -802,6 +802,7 @@ pub fn run() {
             window_manager::restart_controls_window,
             window_manager::restart_renderer_window,
             window_manager::toggle_window_visibility,
+            window_manager::toggle_fullscreen,
             window_manager::focus_window,
             window_manager::get_window_status,
             window_manager::window_heartbeat,

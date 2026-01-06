@@ -30,6 +30,25 @@ Status overview and key decisions for Slew.
 
 ## Recent Changes
 
+### Sidebar & Appearance Update
+
+Major overhaul of sidebar organization and UI theming:
+
+- **Video Tab Restructure**: Renamed to "Video", reorganized into three sections (Renderer, Output, Recording placeholder)
+- **Renderer Section**: Stats moved from Settings, DPR controls, live FPS/frame time with color-coded status
+- **Output Section**: Syphon/NDI/Spout in consistent order, unavailable backends visually dimmed with clear reasons
+- **Collapsible Sections**: Animated expand/collapse with chevron indicators
+- **New Appearance Tab**: Added at end of tab list with Theme and Layout sections
+- **Theme Mode**: Dark/Light toggle with full color scheme switching
+- **Theme Warmth**: Cool/Warm toggle - warm mode uses deeper orange-red accents (shifted from yellow-orange)
+- **Sidebar Position**: Left/Right toggle with animated transition
+- **UI Zoom**: 80%-150% zoom control with +/- buttons and click-to-reset
+- **Fullscreen Toggle**: Cmd+Shift+F keyboard shortcut, buttons in Settings > Actions
+- **Custom CSS Placeholder**: Collapsible "Coming Soon" section for future custom stylesheets
+- **Fixed Action Buttons**: Replaced `window.confirm()` with native Tauri dialogs (WebView blocks `confirm()`)
+
+---
+
 ### Renderer Settings & DPR Scaling
 
 Added a new Renderer Settings panel in the Debug Panel for controlling pixel density and monitoring performance:
@@ -356,6 +375,18 @@ Slot count increased from 6 to 8 to match Midimix columns for 1:1 hardware mappi
 ---
 
 ## Version History
+
+### v0.8.0 (Sidebar & Appearance Update)
+
+- Video tab restructured: Renderer stats, Output backends, Recording placeholder
+- New Appearance tab with Theme (Dark/Light, Cool/Warm) and Layout (sidebar position, UI zoom)
+- Warm theme shifted to deeper orange-red accents for easier viewing
+- Sidebar position toggle (left/right) with smooth CSS transitions
+- UI zoom control (80%-150%) with persistence
+- Fullscreen toggle with Cmd+Shift+F shortcut
+- Custom CSS placeholder section (coming soon)
+- Fixed action buttons that were blocked by WebView's `confirm()` restriction
+- Collapsible sections with animated expand/collapse throughout
 
 ### v0.7.5 (Renderer Settings & DPR Scaling)
 

@@ -90,10 +90,19 @@ export async function focusWindow(label: string): Promise<void> {
 }
 
 /**
+ * Toggle fullscreen for a window.
+ * @returns The new fullscreen state
+ */
+export async function toggleFullscreen(label: string): Promise<boolean> {
+  return invoke<boolean>("toggle_fullscreen", { label });
+}
+
+/**
  * Get status of all windows.
  */
 export async function getWindowStatus(): Promise<AllWindowStatus> {
-  const status = await invoke<Record<string, WindowStatus>>("get_window_status");
+  const status =
+    await invoke<Record<string, WindowStatus>>("get_window_status");
   return {
     controls: status.controls ?? {
       exists: false,
@@ -152,6 +161,8 @@ export interface UseWindowManagerOptions {
  * @property restartRenderer - Restart the renderer window
  * @property focusControls - Focus the controls window
  * @property focusRenderer - Focus the renderer window
+ * @property toggleFullscreenControls - Toggle fullscreen for the controls window
+ * @property toggleFullscreenRenderer - Toggle fullscreen for the renderer window
  */
 export interface UseWindowManagerResult {
   status: AllWindowStatus | null;
@@ -160,6 +171,8 @@ export interface UseWindowManagerResult {
   restartRenderer: () => Promise<void>;
   focusControls: () => Promise<void>;
   focusRenderer: () => Promise<void>;
+  toggleFullscreenControls: () => Promise<boolean>;
+  toggleFullscreenRenderer: () => Promise<boolean>;
 }
 
 /**
@@ -172,9 +185,13 @@ export interface UseWindowManagerResult {
  * - Event listeners for window lifecycle events
  */
 export function useWindowManager(
-  options: UseWindowManagerOptions
+  options: UseWindowManagerOptions,
 ): UseWindowManagerResult {
-  const { windowLabel, enableHeartbeat = true, enableStatusPolling = false } = options;
+  const {
+    windowLabel,
+    enableHeartbeat = true,
+    enableStatusPolling = false,
+  } = options;
 
   const [status, setStatus] = useState<AllWindowStatus | null>(null);
   const [isRestarting, setIsRestarting] = useState(false);
@@ -236,19 +253,39 @@ export function useWindowManager(
     }
   }, []);
 
+  // Toggle fullscreen controls
+  const toggleFullscreenControls = useCallback(async (): Promise<boolean> => {
+    try {
+      return await toggleFullscreen("controls");
+    } catch (e) {
+      console.error("[WindowManager] Failed to toggle fullscreen controls:", e);
+      return false;
+    }
+  }, []);
+
+  // Toggle fullscreen renderer
+  const toggleFullscreenRenderer = useCallback(async (): Promise<boolean> => {
+    try {
+      return await toggleFullscreen("renderer");
+    } catch (e) {
+      console.error("[WindowManager] Failed to toggle fullscreen renderer:", e);
+      return false;
+    }
+  }, []);
+
   // Heartbeat effect
   useEffect(() => {
     if (!enableHeartbeat) return;
 
     // Send initial heartbeat
     sendWindowHeartbeat(windowLabel).catch((e) =>
-      console.warn("[WindowManager] Initial heartbeat failed:", e)
+      console.warn("[WindowManager] Initial heartbeat failed:", e),
     );
 
     // Set up interval
     heartbeatRef.current = setInterval(() => {
       sendWindowHeartbeat(windowLabel).catch((e) =>
-        console.warn("[WindowManager] Heartbeat failed:", e)
+        console.warn("[WindowManager] Heartbeat failed:", e),
       );
     }, HEARTBEAT_INTERVAL_MS);
 
@@ -288,22 +325,22 @@ export function useWindowManager(
         "window_restarted",
         (event) => {
           console.log(
-            `[WindowManager] Window '${event.payload.label}' restarted at ${event.payload.timestamp}`
+            `[WindowManager] Window '${event.payload.label}' restarted at ${event.payload.timestamp}`,
           );
           // Refresh status after restart
           fetchStatus();
-        }
+        },
       );
 
       unlistenUnresponsive = await listen<WindowUnresponsiveEvent>(
         "window_unresponsive",
         (event) => {
           console.warn(
-            `[WindowManager] Window '${event.payload.label}' is unresponsive`
+            `[WindowManager] Window '${event.payload.label}' is unresponsive`,
           );
           // Refresh status
           fetchStatus();
-        }
+        },
       );
     }
 
@@ -322,6 +359,8 @@ export function useWindowManager(
     restartRenderer,
     focusControls,
     focusRenderer,
+    toggleFullscreenControls,
+    toggleFullscreenRenderer,
   };
 }
 

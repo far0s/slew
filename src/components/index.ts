@@ -32,5 +32,5 @@ export { HidPanel, type HidPanelProps } from "./HidPanel";
 export { ModulationPanel, type ModulationPanelProps } from "./ModulationPanel";
 export { VideoOutputPanel } from "./VideoOutputPanel";
 
-// Debug Components
-export { DebugPanel, type DebugPanelProps } from "./DebugPanel";
+// Sidebar Component
+export { Sidebar, type SidebarProps } from "./Sidebar";

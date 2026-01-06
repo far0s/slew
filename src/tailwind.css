@@ -108,6 +108,89 @@
   --midi-learning-text: rgb(253 224 71);
 }
 
+/* ==========================================================================
+   Amber Theme (Dark Mode)
+   Full warm color shift for night use and reduced eye strain.
+   All colors shifted from blue/cool tones to orange/warm tones.
+   ========================================================================== */
+
+[data-accent="amber"] {
+  /* Background colors - warmer dark tones */
+  --bg-primary: #0a0605;
+  --bg-elevated: #120e0a;
+  --bg-panel: #0a0603;
+  --bg-surface: #1a120c;
+  --bg-hover: rgba(255, 160, 120, 0.06);
+  --bg-active: rgba(255, 160, 120, 0.12);
+
+  /* Text colors - warmer whites */
+  --text-primary: #faf3ed;
+  --text-secondary: #c49880;
+  --text-muted: rgba(196, 152, 128, 0.6);
+
+  /* Border colors - warm tones */
+  --border-subtle: rgba(255, 140, 100, 0.08);
+  --border-default: rgba(255, 140, 100, 0.12);
+  --border-accent: rgba(234, 88, 12, 0.7);
+
+  /* Accent colors - deeper orange/red tones */
+  --accent-primary: #ea580c;
+  --accent-primary-hover: #c2410c;
+  --accent-success: #84cc16;
+  --accent-warning: #f97316;
+  --accent-danger: #dc2626;
+
+  /* Status colors - warmer */
+  --status-active: #84cc16;
+  --status-inactive: #8b6b55;
+  --status-error: #dc2626;
+
+  /* Shadows - warmer */
+  --shadow-sm: 0 1px 2px rgba(20, 8, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(20, 8, 0, 0.5);
+}
+
+/* ==========================================================================
+   Amber Theme (Light Mode)
+   Full warm color shift for light backgrounds.
+   ========================================================================== */
+
+[data-theme="light"][data-accent="amber"] {
+  /* Background colors - warm cream/beige tones */
+  --bg-primary: #fdf6f0;
+  --bg-elevated: #fffaf5;
+  --bg-panel: #f5e8dc;
+  --bg-surface: #ebdacc;
+  --bg-hover: rgba(200, 80, 40, 0.06);
+  --bg-active: rgba(200, 80, 40, 0.1);
+
+  /* Text colors - warm darks */
+  --text-primary: #1a0c06;
+  --text-secondary: #6b4030;
+  --text-muted: rgba(107, 64, 48, 0.6);
+
+  /* Border colors - warm tones */
+  --border-subtle: rgba(140, 60, 30, 0.12);
+  --border-default: rgba(140, 60, 30, 0.18);
+  --border-accent: rgba(194, 65, 12, 0.6);
+
+  /* Accent colors - deeper orange/red for light backgrounds */
+  --accent-primary: #c2410c;
+  --accent-primary-hover: #9a3412;
+  --accent-success: #65a30d;
+  --accent-warning: #ea580c;
+  --accent-danger: #b91c1c;
+
+  /* Status colors - warmer */
+  --status-active: #65a30d;
+  --status-inactive: #a89078;
+  --status-error: #dc2626;
+
+  /* Shadows - warmer */
+  --shadow-sm: 0 1px 2px rgba(80, 50, 20, 0.08);
+  --shadow-md: 0 4px 12px rgba(80, 50, 20, 0.12);
+}
+
 @theme {
   /* Colors */
   --color-background: #05060a;

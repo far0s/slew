@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { LayoutGroup, motion } from "motion/react";
 import { useSlots } from "./slots/useSlots";
 import {
   useParameterStore,
@@ -12,7 +13,7 @@ import {
 import type { SketchId, SketchProps } from "./sketches";
 import { getSketchDescriptor } from "./sketches";
 import { makeSlotParameterId } from "./slots/slotTypes";
-import { SlotsArea, RendererPreview, DebugPanel } from "./components";
+import { SlotsArea, RendererPreview, Sidebar } from "./components";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings } from "./inputs/audio";
 import { useLfos, useModulationTargets } from "./inputs/modulation";
@@ -21,7 +22,7 @@ import {
   useMidiDevices,
   useMidiPickupStates,
 } from "./inputs/midi";
-import { useWindowManager } from "./hooks";
+import { useWindowManager, useLayoutPreferences } from "./hooks";
 import styles from "./App.module.css";
 
 function App() {
@@ -78,11 +79,29 @@ function App() {
   >(null);
 
   // Window manager for heartbeat and recovery
-  useWindowManager({
+  const { toggleFullscreenControls } = useWindowManager({
     windowLabel: "controls",
     enableHeartbeat: true,
     enableStatusPolling: false,
   });
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+Shift+F (macOS) or Ctrl+Shift+F (Windows/Linux) - Toggle fullscreen
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "f"
+      ) {
+        e.preventDefault();
+        toggleFullscreenControls();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggleFullscreenControls]);
 
   // Handle crossfade to a slot
   const handleCrossfade = useCallback(
@@ -716,60 +735,76 @@ function App() {
   // Get active slot info for preview
   const activeSlotIndex = slotState.activeIndex;
 
+  // Layout preferences for sidebar position
+  const { sidebarPosition } = useLayoutPreferences();
+
   return (
     <div className={styles.root}>
-      <main className={styles.main}>
-        {/* Scenes Area (4/5 width) */}
-        <div className={styles.scenesArea}>
-          <SlotsArea
-            slots={slotState.slots}
-            activeIndex={slotState.activeIndex}
-            crossfadeTargetIndex={slotState.crossfadeTargetIndex}
-            crossfadeValue={slotState.crossfadeValue}
-            isCrossfading={slotState.isCrossfading}
-            macropadSelectedIndex={macropadSelectedIndex}
-            getValue={getValue}
-            setValue={setValue}
-            getSlotSketchParams={getSlotSketchParams}
-            getSlotSketchParamsInterpolated={getSlotSketchParamsInterpolated}
-            getSlotColors={getSlotColors}
-            audioMappings={audioMappings}
-            modulationTargets={modulationTargets}
-            lfos={lfos}
-            midiMappings={isMidiDeviceConnected ? midiMappings : undefined}
-            midiPickupStates={
-              isMidiDeviceConnected ? midiPickupStates : undefined
-            }
-            onSlotSketchChange={handleSlotSketchChange}
-            onCrossfade={handleCrossfade}
-            onClearSlot={handleClearSlot}
-            onSetSketch={handleSetSketch}
-            onCopyToSlot={handleCopyToSlot}
-          />
-        </div>
+      <LayoutGroup>
+        <main className={styles.main}>
+          {/* Scenes Area (4/5 width) */}
+          <motion.div
+            className={styles.scenesArea}
+            layout
+            transition={{ type: "spring", stiffness: 400, damping: 35 }}
+            style={{ order: sidebarPosition === "left" ? 2 : 1 }}
+          >
+            <SlotsArea
+              slots={slotState.slots}
+              activeIndex={slotState.activeIndex}
+              crossfadeTargetIndex={slotState.crossfadeTargetIndex}
+              crossfadeValue={slotState.crossfadeValue}
+              isCrossfading={slotState.isCrossfading}
+              macropadSelectedIndex={macropadSelectedIndex}
+              getValue={getValue}
+              setValue={setValue}
+              getSlotSketchParams={getSlotSketchParams}
+              getSlotSketchParamsInterpolated={getSlotSketchParamsInterpolated}
+              getSlotColors={getSlotColors}
+              audioMappings={audioMappings}
+              modulationTargets={modulationTargets}
+              lfos={lfos}
+              midiMappings={isMidiDeviceConnected ? midiMappings : undefined}
+              midiPickupStates={
+                isMidiDeviceConnected ? midiPickupStates : undefined
+              }
+              onSlotSketchChange={handleSlotSketchChange}
+              onCrossfade={handleCrossfade}
+              onClearSlot={handleClearSlot}
+              onSetSketch={handleSetSketch}
+              onCopyToSlot={handleCopyToSlot}
+            />
+          </motion.div>
 
-        {/* Sidebar (1/5 width) */}
-        <aside className={styles.sidebar} aria-label="Preview and debug">
-          <RendererPreview
-            allSlots={slotState.slots
-              .filter((slot) => slot.sketchId !== null)
-              .map((slot) => ({
-                index: slot.index,
-                sketchId: slot.sketchId as SketchId,
-              }))}
-            activeSlotIndex={activeSlotIndex}
-            crossfadeTargetIndex={slotState.crossfadeTargetIndex}
-            getParam={(id) => paramStore.getInterpolated(id)}
-            getSlotColors={getSlotColors}
-          />
-          <DebugPanel
-            macropadSelectedIndex={macropadSelectedIndex}
-            slots={slotState.slots}
-            getValue={getValue}
-            setValue={setValue}
-          />
-        </aside>
-      </main>
+          {/* Sidebar (1/5 width) */}
+          <motion.aside
+            className={styles.sidebar}
+            aria-label="Preview and debug"
+            layout
+            transition={{ type: "spring", stiffness: 400, damping: 35 }}
+            style={{ order: sidebarPosition === "left" ? 1 : 2 }}
+          >
+            <RendererPreview
+              allSlots={slotState.slots
+                .filter((slot) => slot.sketchId !== null)
+                .map((slot) => ({
+                  index: slot.index,
+                  sketchId: slot.sketchId as SketchId,
+                }))}
+              activeSlotIndex={activeSlotIndex}
+              crossfadeTargetIndex={slotState.crossfadeTargetIndex}
+              getParam={(id) => paramStore.getInterpolated(id)}
+              getSlotColors={getSlotColors}
+            />
+            <Sidebar
+              macropadSelectedIndex={macropadSelectedIndex}
+              slots={slotState.slots}
+              getValue={getValue}
+              setValue={setValue}
+            />
+          </motion.aside>
+        </main>
+      </LayoutGroup>
     </div>
   );
 }
