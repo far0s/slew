@@ -63,29 +63,6 @@ Save/load parameter configurations per sketch.
 
 ---
 
-### 🟡 Sidebar - Settings + Video + UI Appearance options `feature`
-
-Add more UI appearance options.
-
-**Context**: Users may prefer different color schemes or themes.
-
-**Subtasks**:
-
-- [ ] Sidebar: Clean up the Video tab:
-  - [ ] Sections: Renderer stats+options / Output (Syphon & NDI) / placeholder for Recording
-  - [ ] Output: Always show in the same order, show a reduced disabled version if output option is not available.
-  - [ ] Output: Improve the "Active" state, right now we have Frames and Receivers but not useful. It would also be nice to have some instructions on how to share the output with others.
-- [ ] Sidebar: New Appearance tab
-- [ ] Appearance: Sidebar position left/right (should be animated)
-- [ ] Settings: Allow users zoom +/- (for the Controls window fonts)
-- [ ] Settings: fix Actions buttons not working (nothing happens on click)
-- [ ] Windows: allow fullscreen toggle (native shortcut), put more controls in native window bar.
-- [ ] Appearance: Add custom CSS stylesheets for advanced users (placeholder for future implementation)
-- [ ] Settings: Improve light/dark themes, add "amber" mode (both themes can have orange/red accents to be easier on the eyes)
-- [ ] [more TBD...]
-
----
-
 ### 🟡 Better Color Picker `feature`
 
 Replace the current color picker with a more advanced and functional one.

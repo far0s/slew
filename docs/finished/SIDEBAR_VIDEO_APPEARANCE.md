@@ -423,7 +423,7 @@ if (selected) {
 - [x] Action buttons fixed (removed `window.confirm()` which is blocked in Tauri WebView)
 - [x] Fullscreen toggle works with keyboard shortcut (Cmd+Shift+F)
 - [x] Fullscreen toggle buttons added to Settings > Actions
-- [ ] Custom CSS can be loaded and removed (deferred to future work)
+- [x] Custom CSS placeholder section added (collapsible "Coming Soon" in Appearance tab)
 
 ### Phase 4: Appearance Tab ✅ COMPLETE
 
@@ -436,3 +436,10 @@ if (selected) {
   - Dark + Warm (amber/orange tones)
   - Light + Cool (default blue tones)
   - Light + Warm (cream/beige tones)
+- [x] Warm theme accents shifted to deeper orange-red (less yellow)
+
+---
+
+## Final Status: ✅ COMPLETE
+
+All phases completed. Task document archived to `docs/finished/`.
