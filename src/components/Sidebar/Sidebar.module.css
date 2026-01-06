@@ -302,6 +302,9 @@
 }
 
 .toggleSegment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   padding: 0.35rem 0.65rem;
   font-size: 0.7rem;
   font-weight: 500;
@@ -309,6 +312,12 @@
   transition:
     background-color 0.15s ease,
     color 0.15s ease;
+}
+
+.toggleIcon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
 }
 
 .toggleSegment:first-child {

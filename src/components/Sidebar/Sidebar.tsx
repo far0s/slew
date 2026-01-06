@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useMemo } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { invoke } from "@tauri-apps/api/core";
 import { SunIcon, MoonIcon, MinusIcon, PlusIcon } from "@radix-ui/react-icons";
@@ -13,31 +13,11 @@ import type { Slot } from "../../slots/useSlots";
 import {
   useWindowManager,
   useLayoutPreferences,
+  useTheme,
   MIN_ZOOM,
   MAX_ZOOM,
 } from "../../hooks";
 import styles from "./Sidebar.module.css";
-
-type Theme = "dark" | "light";
-
-function useTheme() {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "dark";
-    const stored = localStorage.getItem("slew-theme") as Theme | null;
-    return stored ?? "dark";
-  });
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("slew-theme", theme);
-  }, [theme]);
-
-  const toggleTheme = useCallback(() => {
-    setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
-  }, []);
-
-  return { theme, toggleTheme };
-}
 
 /**
  * Props for the Sidebar component.
@@ -55,30 +35,65 @@ export interface SidebarProps {
 }
 
 /**
- * Theme toggle button component
+ * Theme controls component for mode and accent selection
  */
-function ThemeToggle() {
-  const { theme, toggleTheme } = useTheme();
+function ThemeControls() {
+  const { mode, accent, setMode, setAccent } = useTheme();
 
   return (
-    <button
-      type="button"
-      onClick={toggleTheme}
-      className={styles.themeToggle}
-      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-    >
-      {theme === "dark" ? (
-        <>
-          <SunIcon className={styles.themeIcon} />
-          <span>Light Mode</span>
-        </>
-      ) : (
-        <>
-          <MoonIcon className={styles.themeIcon} />
-          <span>Dark Mode</span>
-        </>
-      )}
-    </button>
+    <div className={styles.layoutControls}>
+      {/* Theme Mode */}
+      <div className={styles.layoutRow}>
+        <span className={styles.layoutLabel}>Mode</span>
+        <button
+          type="button"
+          className={styles.toggleGroup}
+          onClick={() => setMode(mode === "dark" ? "light" : "dark")}
+          aria-label={`Theme mode: ${mode}. Click to switch to ${mode === "dark" ? "light" : "dark"}`}
+        >
+          <span
+            className={`${styles.toggleSegment} ${mode === "dark" ? styles.toggleSegmentActive : ""}`}
+            aria-hidden="true"
+          >
+            <MoonIcon className={styles.toggleIcon} />
+            Dark
+          </span>
+          <span
+            className={`${styles.toggleSegment} ${mode === "light" ? styles.toggleSegmentActive : ""}`}
+            aria-hidden="true"
+          >
+            <SunIcon className={styles.toggleIcon} />
+            Light
+          </span>
+        </button>
+      </div>
+
+      {/* Theme Warmth */}
+      <div className={styles.layoutRow}>
+        <span className={styles.layoutLabel}>Warmth</span>
+        <button
+          type="button"
+          className={styles.toggleGroup}
+          onClick={() =>
+            setAccent(accent === "standard" ? "amber" : "standard")
+          }
+          aria-label={`Theme warmth: ${accent === "standard" ? "cool" : "warm"}. Click to switch`}
+        >
+          <span
+            className={`${styles.toggleSegment} ${accent === "standard" ? styles.toggleSegmentActive : ""}`}
+            aria-hidden="true"
+          >
+            Cool
+          </span>
+          <span
+            className={`${styles.toggleSegment} ${accent === "amber" ? styles.toggleSegmentActive : ""}`}
+            aria-hidden="true"
+          >
+            Warm
+          </span>
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -240,8 +255,14 @@ export function Sidebar({
   getValue,
   setValue,
 }: SidebarProps) {
-  // Window manager for restart functionality
-  const { isRestarting, restartControls, restartRenderer } = useWindowManager({
+  // Window manager for restart and fullscreen functionality
+  const {
+    isRestarting,
+    restartControls,
+    restartRenderer,
+    toggleFullscreenControls,
+    toggleFullscreenRenderer,
+  } = useWindowManager({
     windowLabel: "controls",
     enableHeartbeat: false, // Heartbeat is handled in App.tsx
     enableStatusPolling: false,
@@ -249,21 +270,11 @@ export function Sidebar({
 
   const handleRestartControls = useCallback(async () => {
     if (isRestarting) return;
-    if (
-      !window.confirm("Restart the Controls window? This will reload the UI.")
-    )
-      return;
     await restartControls();
   }, [isRestarting, restartControls]);
 
   const handleRestartRenderer = useCallback(async () => {
     if (isRestarting) return;
-    if (
-      !window.confirm(
-        "Restart the Renderer window? Visuals will briefly reset.",
-      )
-    )
-      return;
     await restartRenderer();
   }, [isRestarting, restartRenderer]);
 
@@ -288,24 +299,17 @@ export function Sidebar({
         <Tabs.Trigger value="hid" className={styles.tabTrigger}>
           HID
         </Tabs.Trigger>
-        <Tabs.Trigger value="modulation" className={styles.tabTrigger}>
+        <Tabs.Trigger value="mod" className={styles.tabTrigger}>
           Mod
+        </Tabs.Trigger>
+        <Tabs.Trigger value="appearance" className={styles.tabTrigger}>
+          Appearance
         </Tabs.Trigger>
       </Tabs.List>
 
       <div className={styles.tabBody}>
         <Tabs.Content value="settings" className={styles.tabContent}>
           <div className={styles.settingsPanel}>
-            <div className={styles.settingsSection}>
-              <h4 className={styles.settingsHeader}>Appearance</h4>
-              <ThemeToggle />
-            </div>
-
-            <div className={styles.settingsSection}>
-              <h4 className={styles.settingsHeader}>Layout</h4>
-              <LayoutControls />
-            </div>
-
             <div className={styles.settingsSection}>
               <h4 className={styles.settingsHeader}>Transition Times</h4>
               <p className={styles.settingsDescription}>
@@ -323,6 +327,25 @@ export function Sidebar({
             <div className={styles.settingsSection}>
               <h4 className={styles.settingsHeader}>Actions</h4>
               <div className={styles.actionsList}>
+                <button
+                  type="button"
+                  onClick={() => toggleFullscreenControls()}
+                  className={styles.actionButton}
+                >
+                  <span className={styles.actionLabel}>
+                    Toggle Fullscreen (Controls)
+                  </span>
+                  <kbd className={styles.actionShortcut}>⌘⇧F</kbd>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleFullscreenRenderer()}
+                  className={styles.actionButton}
+                >
+                  <span className={styles.actionLabel}>
+                    Toggle Fullscreen (Renderer)
+                  </span>
+                </button>
                 <button
                   type="button"
                   onClick={handleRestartRenderer}
@@ -370,8 +393,22 @@ export function Sidebar({
           <HidPanel selectedSlotIndex={macropadSelectedIndex} />
         </Tabs.Content>
 
-        <Tabs.Content value="modulation" className={styles.tabContent}>
+        <Tabs.Content value="mod" className={styles.tabContent}>
           <ModulationPanel slots={slots} />
+        </Tabs.Content>
+
+        <Tabs.Content value="appearance" className={styles.tabContent}>
+          <div className={styles.settingsPanel}>
+            <div className={styles.settingsSection}>
+              <h4 className={styles.settingsHeader}>Theme</h4>
+              <ThemeControls />
+            </div>
+
+            <div className={styles.settingsSection}>
+              <h4 className={styles.settingsHeader}>Layout</h4>
+              <LayoutControls />
+            </div>
+          </div>
         </Tabs.Content>
       </div>
     </Tabs.Root>

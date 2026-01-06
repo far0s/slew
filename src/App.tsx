@@ -79,11 +79,29 @@ function App() {
   >(null);
 
   // Window manager for heartbeat and recovery
-  useWindowManager({
+  const { toggleFullscreenControls } = useWindowManager({
     windowLabel: "controls",
     enableHeartbeat: true,
     enableStatusPolling: false,
   });
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+Shift+F (macOS) or Ctrl+Shift+F (Windows/Linux) - Toggle fullscreen
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "f"
+      ) {
+        e.preventDefault();
+        toggleFullscreenControls();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggleFullscreenControls]);
 
   // Handle crossfade to a slot
   const handleCrossfade = useCallback(

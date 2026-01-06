@@ -116,6 +116,20 @@ pub fn focus_window(app: AppHandle, label: String) -> Result<(), String> {
     }
 }
 
+/// Toggle fullscreen for a window
+#[tauri::command]
+pub fn toggle_fullscreen(app: AppHandle, label: String) -> Result<bool, String> {
+    if let Some(window) = app.get_webview_window(&label) {
+        let is_fullscreen = window.is_fullscreen().unwrap_or(false);
+        window
+            .set_fullscreen(!is_fullscreen)
+            .map_err(|e| e.to_string())?;
+        Ok(!is_fullscreen)
+    } else {
+        Err(format!("Window '{}' not found", label))
+    }
+}
+
 /// Get window status for all managed windows
 #[tauri::command]
 pub fn get_window_status(app: AppHandle) -> HashMap<String, WindowStatus> {
