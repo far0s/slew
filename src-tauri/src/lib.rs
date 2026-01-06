@@ -10,6 +10,7 @@ use tauri::{AppHandle, Emitter, Manager, RunEvent};
 
 pub mod audio;
 pub mod common;
+pub mod frame_distribution;
 pub mod hid;
 pub mod midi;
 pub mod modulation;
@@ -758,6 +759,7 @@ pub fn run() {
             hid::init_hid_engine(app.handle());
             modulation::init_modulation_engine(app.handle().clone());
             video_out::init_video_output(app.handle().clone());
+            frame_distribution::init_frame_distribution(app.handle().clone());
 
             // Log startup summary
             let video_backends = video_out::get_available_backends();
@@ -891,6 +893,12 @@ pub fn run() {
             video_out::shutdown_video_backend,
             video_out::publish_video_frame,
             video_out::publish_video_frame_binary,
+            // Frame Distribution (Preview Streaming)
+            frame_distribution::distribute_frame,
+            frame_distribution::get_frame_distribution_config,
+            frame_distribution::set_frame_distribution_config,
+            frame_distribution::set_frame_distribution_enabled,
+            frame_distribution::get_frame_distribution_stats,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

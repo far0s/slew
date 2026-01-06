@@ -38,6 +38,8 @@ export interface SlotColumnProps {
   crossfadeProgress: number;
   isCrossfading: boolean;
   isMacropadSelected?: boolean;
+  /** Aspect ratio from the Renderer window (width/height). Defaults to 16/9. */
+  rendererAspectRatio?: number;
   excludeSketchIds: SketchId[];
   canRemove: boolean;
   params?: SketchProps["params"];
@@ -214,7 +216,13 @@ function InlineSketchBrowser({
  * aspect-ratio. We trigger a resize event after mount to force recalculation.
  * CSS handles the actual sizing via absolute positioning on the canvas container.
  */
-function PreviewContainer({ children }: { children: ReactNode }) {
+function PreviewContainer({
+  children,
+  aspectRatio = 16 / 9,
+}: {
+  children: ReactNode;
+  aspectRatio?: number;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -227,8 +235,16 @@ function PreviewContainer({ children }: { children: ReactNode }) {
     return () => clearTimeout(timeoutId);
   }, []);
 
+  const containerStyle = {
+    "--renderer-aspect-ratio": aspectRatio,
+  } as React.CSSProperties;
+
   return (
-    <div ref={containerRef} className={styles.previewContainer}>
+    <div
+      ref={containerRef}
+      className={styles.previewContainer}
+      style={containerStyle}
+    >
       {children}
     </div>
   );
@@ -243,6 +259,7 @@ export function SlotColumn({
   crossfadeProgress,
   isCrossfading,
   isMacropadSelected = false,
+  rendererAspectRatio = 16 / 9,
   excludeSketchIds,
   canRemove,
   params,
@@ -312,7 +329,7 @@ export function SlotColumn({
       transition={{ duration: 0.2, ease: "easeOut" }}
       layout
     >
-      <PreviewContainer>
+      <PreviewContainer aspectRatio={rendererAspectRatio}>
         {SketchComponent ? (
           <Suspense fallback={<div className={styles.fallback}>Loading…</div>}>
             <WebGPUCanvas

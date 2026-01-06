@@ -22,7 +22,11 @@ import {
   useMidiDevices,
   useMidiPickupStates,
 } from "./inputs/midi";
-import { useWindowManager, useLayoutPreferences } from "./hooks";
+import {
+  useWindowManager,
+  useLayoutPreferences,
+  useRendererSettings,
+} from "./hooks";
 import styles from "./App.module.css";
 
 function App() {
@@ -72,6 +76,17 @@ function App() {
   // Modulation state for parameter indicators
   const { lfos } = useLfos();
   const { targets: modulationTargets } = useModulationTargets();
+
+  // Renderer settings (for aspect ratio sync)
+  const { info: rendererInfo } = useRendererSettings();
+
+  // Calculate aspect ratio from renderer window dimensions
+  const rendererAspectRatio =
+    rendererInfo &&
+    rendererInfo.windowWidth > 0 &&
+    rendererInfo.windowHeight > 0
+      ? rendererInfo.windowWidth / rendererInfo.windowHeight
+      : 16 / 9; // Default to 16:9
 
   // Macropad selected slot (distinct from crossfade target)
   const [macropadSelectedIndex, setMacropadSelectedIndex] = useState<
@@ -756,6 +771,7 @@ function App() {
               crossfadeValue={slotState.crossfadeValue}
               isCrossfading={slotState.isCrossfading}
               macropadSelectedIndex={macropadSelectedIndex}
+              rendererAspectRatio={rendererAspectRatio}
               getValue={getValue}
               setValue={setValue}
               getSlotSketchParams={getSlotSketchParams}
@@ -795,6 +811,7 @@ function App() {
               crossfadeTargetIndex={slotState.crossfadeTargetIndex}
               getParam={(id) => paramStore.getInterpolated(id)}
               getSlotColors={getSlotColors}
+              aspectRatio={rendererAspectRatio}
             />
             <Sidebar
               macropadSelectedIndex={macropadSelectedIndex}

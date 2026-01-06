@@ -17,6 +17,8 @@ export interface SlotsAreaProps {
   crossfadeValue: number;
   isCrossfading: boolean;
   macropadSelectedIndex?: number | null;
+  /** Aspect ratio from the Renderer window (width/height). Defaults to 16/9. */
+  rendererAspectRatio?: number;
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
   getSlotSketchParams: (
@@ -49,6 +51,7 @@ export function SlotsArea({
   crossfadeValue,
   isCrossfading,
   macropadSelectedIndex,
+  rendererAspectRatio = 16 / 9,
   getValue,
   setValue,
   getSlotSketchParams,
@@ -144,6 +147,7 @@ export function SlotsArea({
                     crossfadeProgress={getCrossfadeProgress(slot.index)}
                     isCrossfading={isCrossfading}
                     isMacropadSelected={slot.index === macropadSelectedIndex}
+                    rendererAspectRatio={rendererAspectRatio}
                     excludeSketchIds={[]}
                     canRemove={
                       slot.sketchId !== null && slot.index !== activeIndex

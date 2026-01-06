@@ -8,6 +8,8 @@ import { emit, listen } from "@tauri-apps/api/event";
 export interface RendererSettings {
   /** Device pixel ratio (1 = performance, 2 = quality on Retina displays) */
   dpr: number;
+  /** Preview stream FPS (15, 30, 45, or 60) */
+  previewStreamFps: number;
 }
 
 /**
@@ -56,6 +58,7 @@ const INFO_EVENT = "renderer-info-updated";
 
 const DEFAULT_SETTINGS: RendererSettings = {
   dpr: 1, // Default to 1x for performance
+  previewStreamFps: 30, // Default to 30fps for smooth previews
 };
 
 /**
@@ -100,6 +103,8 @@ export interface UseRendererSettingsResult {
   info: RendererInfo | null;
   /** Update the DPR setting */
   setDpr: (dpr: number) => void;
+  /** Update the preview stream FPS setting */
+  setPreviewStreamFps: (fps: number) => void;
   /** Broadcast current settings (useful for initial sync) */
   broadcastSettings: () => void;
   /** Report renderer info (called from Renderer window) */
@@ -135,6 +140,21 @@ export function useRendererSettings(): UseRendererSettingsResult {
     const clampedDpr = Math.max(0.25, Math.min(3, dpr));
     setSettings((prev) => {
       const next = { ...prev, dpr: clampedDpr };
+      saveSettings(next);
+      // Broadcast after state update
+      emit(SETTINGS_EVENT, next).catch((e) => {
+        console.warn("[RendererSettings] Failed to emit settings:", e);
+      });
+      return next;
+    });
+  }, []);
+
+  // Update preview stream FPS and broadcast
+  const setPreviewStreamFps = useCallback((fps: number) => {
+    // Only allow valid FPS values
+    const validFps = [15, 30, 45, 60].includes(fps) ? fps : 30;
+    setSettings((prev) => {
+      const next = { ...prev, previewStreamFps: validFps };
       saveSettings(next);
       // Broadcast after state update
       emit(SETTINGS_EVENT, next).catch((e) => {
@@ -197,6 +217,7 @@ export function useRendererSettings(): UseRendererSettingsResult {
     settings,
     info,
     setDpr,
+    setPreviewStreamFps,
     broadcastSettings,
     reportInfo,
   };
