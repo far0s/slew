@@ -57,7 +57,7 @@
     "publisher": "Seb",
     "macOS": {
       "frameworks": ["./frameworks/Syphon.framework"],
-      "minimumSystemVersion": "11.0",
+      "minimumSystemVersion": "15.0",
       "entitlements": "./entitlements.plist",
       "signingIdentity": null,
       "providerShortName": null,

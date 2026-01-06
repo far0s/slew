@@ -65,8 +65,14 @@ strip = true          # Strip symbols from binary
 
 # Dev profile - faster compilation
 [profile.dev]
+incremental = true  # Explicit: only recompile changed parts
 opt-level = 0
 debug = true
+
+# Optimize dependencies for faster linking (we rarely debug into them)
+[profile.dev.package."*"]
+opt-level = 1       # Slight optimization speeds up linking
+debug = false       # Skip debug info for dependencies
 
 # Release with debug info for profiling
 [profile.release-with-debug]
