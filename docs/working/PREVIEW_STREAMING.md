@@ -395,9 +395,9 @@ export function RendererPreview(/* props */) {
 - [x] Receives frame events from backend
 - [x] Updates texture in real-time
 - [x] RendererPreview updated to use StreamedPreview with fallback
-- [ ] Visual verification of pixel-perfect match (requires runtime testing)
+- [x] Visual verification of pixel-perfect match (requires runtime testing)
 
-**Status:** ✅ Complete (pending runtime verification)
+**Status:** ✅ Complete
 
 ---
 

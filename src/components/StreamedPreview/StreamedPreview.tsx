@@ -3,7 +3,7 @@
  * Receives frame data via Tauri events and updates a texture in real-time.
  */
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
@@ -14,7 +14,7 @@ interface FrameMetadata {
   height: number;
   source: "composited" | { Slot: number };
   capture_timestamp_ms: number;
-  data: string; // Base64-encoded RGBA pixel data
+  data: string;
 }
 
 interface StreamedPreviewProps {
@@ -27,12 +27,36 @@ const DEBUG =
   typeof localStorage !== "undefined" &&
   localStorage.getItem("previewStreamDebug") === "true";
 const STREAM_TIMEOUT_MS = 2000;
+const BG_COLOR = { r: 2, g: 6, b: 23 };
 
 function base64ToUint8Array(base64: string): Uint8Array {
   const bin = atob(base64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return bytes;
+}
+
+function createTexture(width: number, height: number): THREE.DataTexture {
+  const data = new Uint8Array(width * height * 4);
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = BG_COLOR.r;
+    data[i + 1] = BG_COLOR.g;
+    data[i + 2] = BG_COLOR.b;
+    data[i + 3] = 255;
+  }
+
+  const texture = new THREE.DataTexture(
+    data,
+    width,
+    height,
+    THREE.RGBAFormat,
+    THREE.UnsignedByteType,
+  );
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
 }
 
 export function StreamedPreview({
@@ -52,42 +76,50 @@ export function StreamedPreview({
     height: number;
   } | null>(null);
 
-  const eventName = useMemo(() => {
-    if (source === "composited") return "preview-frame-composited";
-    const match = source.match(/^slot-(\d)$/);
-    return match
-      ? `preview-frame-slot-${match[1]}`
-      : "preview-frame-composited";
-  }, [source]);
+  const eventName = useMemo(
+    () =>
+      source === "composited"
+        ? "preview-frame-composited"
+        : `preview-frame-slot-${source.match(/\d/)?.[0] ?? 0}`,
+    [source],
+  );
 
-  // Initialize texture
+  const updateTexture = useCallback(
+    (pixels: Uint8Array, width: number, height: number) => {
+      const tex = textureRef.current;
+      if (!tex?.image?.data) return;
+
+      const expected = width * height * 4;
+      if (pixels.length === expected) {
+        (tex.image.data as Uint8Array).set(pixels);
+        tex.needsUpdate = true;
+      }
+    },
+    [],
+  );
+
+  // Initialize texture on dimension change
   useEffect(() => {
-    const { width, height } = dimensions;
-    const data = new Uint8Array(width * height * 4);
-    // Fill with dark background (#020617)
-    for (let i = 0; i < data.length; i += 4) {
-      data[i] = 2;
-      data[i + 1] = 6;
-      data[i + 2] = 23;
-      data[i + 3] = 255;
-    }
-
-    const texture = new THREE.DataTexture(
-      data,
-      width,
-      height,
-      THREE.RGBAFormat,
-      THREE.UnsignedByteType,
-    );
-    texture.minFilter = THREE.LinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.needsUpdate = true;
+    const texture = createTexture(dimensions.width, dimensions.height);
     textureRef.current = texture;
 
     if (materialRef.current) {
       materialRef.current.map = texture;
       materialRef.current.needsUpdate = true;
+    }
+
+    // Apply pending frame if dimension change was triggered by incoming frame
+    if (pendingFrameRef.current) {
+      const { data, width, height } = pendingFrameRef.current;
+      if (
+        width === dimensions.width &&
+        height === dimensions.height &&
+        data.length === width * height * 4
+      ) {
+        (texture.image.data as Uint8Array).set(data);
+        texture.needsUpdate = true;
+      }
+      pendingFrameRef.current = null;
     }
 
     return () => texture.dispose();
@@ -114,19 +146,12 @@ export function StreamedPreview({
 
         // Handle dimension change
         if (width !== dimensions.width || height !== dimensions.height) {
-          setDimensions({ width, height });
           pendingFrameRef.current = { data: pixels, width, height };
+          setDimensions({ width, height });
           return;
         }
 
-        // Update texture
-        if (textureRef.current?.image?.data) {
-          const expected = width * height * 4;
-          if (pixels.length === expected) {
-            (textureRef.current.image.data as Uint8Array).set(pixels);
-            textureRef.current.needsUpdate = true;
-          }
-        }
+        updateTexture(pixels, width, height);
 
         if (!isStreaming) {
           setIsStreaming(true);
@@ -145,19 +170,8 @@ export function StreamedPreview({
     isStreaming,
     onFrameReceived,
     onStreamingStatusChange,
+    updateTexture,
   ]);
-
-  // Apply pending frame after dimension change
-  useEffect(() => {
-    if (pendingFrameRef.current && textureRef.current?.image?.data) {
-      const { data, width, height } = pendingFrameRef.current;
-      if (data.length === width * height * 4) {
-        (textureRef.current.image.data as Uint8Array).set(data);
-        textureRef.current.needsUpdate = true;
-      }
-      pendingFrameRef.current = null;
-    }
-  }, [dimensions]);
 
   // Stream timeout detection
   useFrame(() => {
