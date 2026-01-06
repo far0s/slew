@@ -44,6 +44,8 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
+          cache-on-failure: true
+          shared-key: "macos-rust"
 
       - name: Install frontend dependencies
         run: npm ci
@@ -166,6 +168,8 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
+          cache-on-failure: true
+          shared-key: "${{ matrix.platform }}-rust"
 
       - name: Install frontend dependencies
         run: npm ci

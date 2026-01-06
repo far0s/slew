@@ -1,6 +1,6 @@
 [package]
 name = "slew"
-version = "0.7.5"
+version = "0.7.6"
 description = "VJ software for creative coders"
 authors = ["Seb"]
 license = "MIT"
@@ -34,8 +34,8 @@ cpal = "0.15"        # Cross-platform audio I/O
 rustfft = "6.2"      # FFT processing
 hidapi = "2.6"       # Cross-platform HID device access
 log = "0.4"          # Logging facade
-rand = "0.8"         # Random number generation for LFO
-chrono = "0.4"       # Date/time for logging
+rand = { version = "0.8", default-features = false, features = ["std", "std_rng"] }  # Random number generation for LFO
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }  # Date/time for logging
 tokio = { version = "1", features = ["time"] }  # Async runtime for delays
 base64 = "0.22"      # Fast base64 decoding for video frames
 env_logger = "0.11"  # Logging implementation
@@ -55,11 +55,11 @@ optional = true
 default = ["ndi"]                # NDI enabled by default (requires SDK)
 ndi = ["grafton-ndi"]            # NDI requires SDK installation
 
-# Release profile optimizations for smaller, faster binaries
+# Release profile - balanced optimization and compile speed
 [profile.release]
 panic = "abort"       # Smaller binary, no unwinding
-codegen-units = 1     # Better optimization (slower compile)
-lto = true            # Link-time optimization
+codegen-units = 16    # Parallel codegen (faster compile)
+lto = "thin"          # Thin LTO: ~90% of full LTO benefit, much faster than full
 opt-level = "s"       # Optimize for size (use "3" for max speed)
 strip = true          # Strip symbols from binary
 
