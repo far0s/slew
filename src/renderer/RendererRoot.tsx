@@ -96,6 +96,26 @@ const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
   noise_scale: "noiseScale",
   noise_speed: "noiseSpeed",
   color_mix: "colorMix",
+  // Plasma specific
+  plasma_speed: "plasmaSpeed",
+  plasma_scale: "plasmaScale",
+  plasma_complexity: "plasmaComplexity",
+  plasma_color_cycle: "plasmaColorCycle",
+  // Kaleidoscope specific
+  kaleid_segments: "kaleidSegments",
+  kaleid_zoom: "kaleidZoom",
+  kaleid_rotation: "kaleidRotation",
+  kaleid_pattern_speed: "kaleidPatternSpeed",
+  // FeedbackTunnel specific
+  tunnel_speed: "tunnelSpeed",
+  tunnel_twist: "tunnelTwist",
+  tunnel_layers: "tunnelLayers",
+  tunnel_color_speed: "tunnelColorSpeed",
+  // Waveform specific
+  wave_speed: "waveSpeed",
+  wave_amplitude: "waveAmplitude",
+  wave_frequency: "waveFrequency",
+  wave_glow: "waveGlow",
   // Aura specific
   bloom: "bloom",
   complexity: "complexity",

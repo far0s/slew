@@ -34,6 +34,26 @@ export type ParameterTemplateId =
   | "noise_scale"
   | "noise_speed"
   | "color_mix"
+  // Plasma specific
+  | "plasma_speed"
+  | "plasma_scale"
+  | "plasma_complexity"
+  | "plasma_color_cycle"
+  // Kaleidoscope specific
+  | "kaleid_segments"
+  | "kaleid_zoom"
+  | "kaleid_rotation"
+  | "kaleid_pattern_speed"
+  // FeedbackTunnel specific
+  | "tunnel_speed"
+  | "tunnel_twist"
+  | "tunnel_layers"
+  | "tunnel_color_speed"
+  // Waveform specific
+  | "wave_speed"
+  | "wave_amplitude"
+  | "wave_frequency"
+  | "wave_glow"
   // Aura specific
   | "bloom"
   | "complexity"
@@ -105,6 +125,26 @@ export interface SketchProps {
     noiseScale: number;
     noiseSpeed: number;
     colorMix: number;
+    // Plasma specific
+    plasmaSpeed: number;
+    plasmaScale: number;
+    plasmaComplexity: number;
+    plasmaColorCycle: number;
+    // Kaleidoscope specific
+    kaleidSegments: number;
+    kaleidZoom: number;
+    kaleidRotation: number;
+    kaleidPatternSpeed: number;
+    // FeedbackTunnel specific
+    tunnelSpeed: number;
+    tunnelTwist: number;
+    tunnelLayers: number;
+    tunnelColorSpeed: number;
+    // Waveform specific
+    waveSpeed: number;
+    waveAmplitude: number;
+    waveFrequency: number;
+    waveGlow: number;
     // Aura specific
     bloom: number;
     complexity: number;

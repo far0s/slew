@@ -88,22 +88,6 @@ Replace the current color picker with a more advanced and functional one.
 
 ## Low Priority / Future
 
-### 🟢 More Shader Sketches `feature`
-
-Expand the visual library with new procedural sketches.
-
-**Context**: Currently have basic geometry sketches and two shader sketches (TslText3D, TslNoiseBlob). More variety would improve creative options.
-
-**Subtasks**:
-
-- [ ] **Feedback/Tunnel**: Infinite zoom with color cycling
-- [ ] **Particles**: GPU-driven particle system with audio reactivity
-- [ ] **Kaleidoscope**: Mirror/reflection patterns
-- [ ] **Waveform**: Audio-reactive visualization
-- [ ] **Plasma**: Classic demoscene effect with modern twist
-
----
-
 ### 🟢 Presets & Projects (Full Session Management) `feature`
 
 Save/load complete project state.

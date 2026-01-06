@@ -9,6 +9,7 @@ import type {
 } from "./types";
 
 import { examplesGroup } from "./Examples";
+import { advancedExamplesGroup } from "./AdvancedExamples";
 import { auraGroup } from "./Aura/presets";
 
 import { BlueCube } from "./Examples/BlueCube";
@@ -16,12 +17,18 @@ import { OrangeCube } from "./Examples/OrangeCube";
 import { GreenPulse } from "./Examples/GreenPulse";
 import { TslText3D } from "./Examples/TslText3D";
 import { TslNoiseBlob } from "./Examples/TslNoiseBlob";
+import { Plasma } from "./AdvancedExamples/Plasma";
+import { Kaleidoscope } from "./AdvancedExamples/Kaleidoscope";
+import { FeedbackTunnel } from "./AdvancedExamples/FeedbackTunnel";
+import { Waveform } from "./AdvancedExamples/Waveform";
 import { Aura } from "./Aura";
 
 // Grouped registry for UI (sorted by orderHint)
-export const SKETCH_GROUPS: SketchGroup[] = [examplesGroup, auraGroup].sort(
-  (a, b) => (a.orderHint ?? 0) - (b.orderHint ?? 0),
-);
+export const SKETCH_GROUPS: SketchGroup[] = [
+  examplesGroup,
+  advancedExamplesGroup,
+  auraGroup,
+].sort((a, b) => (a.orderHint ?? 0) - (b.orderHint ?? 0));
 
 // Flat registry for backward compatibility
 export const SKETCH_REGISTRY: SketchDescriptor[] = SKETCH_GROUPS.flatMap(
@@ -38,6 +45,11 @@ export const SKETCH_COMPONENT_REGISTRY: Record<SketchId, SketchComponent> = {
   greenPulse: GreenPulse,
   tslText3D: TslText3D,
   tslNoiseBlob: TslNoiseBlob,
+  // Advanced Examples
+  plasma: Plasma,
+  kaleidoscope: Kaleidoscope,
+  feedbackTunnel: FeedbackTunnel,
+  waveform: Waveform,
   // Aura presets (all use same component)
   auraOg: Aura,
   auraRoseGold: Aura,
@@ -91,4 +103,8 @@ export { OrangeCube } from "./Examples/OrangeCube";
 export { GreenPulse } from "./Examples/GreenPulse";
 export { TslText3D } from "./Examples/TslText3D";
 export { TslNoiseBlob } from "./Examples/TslNoiseBlob";
+export { Plasma } from "./AdvancedExamples/Plasma";
+export { Kaleidoscope } from "./AdvancedExamples/Kaleidoscope";
+export { FeedbackTunnel } from "./AdvancedExamples/FeedbackTunnel";
+export { Waveform } from "./AdvancedExamples/Waveform";
 export { Aura } from "./Aura";

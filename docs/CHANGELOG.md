@@ -20,7 +20,7 @@ Status overview and key decisions for Slew.
 | HID Input          | ✅     | DOIO Megalodon macropad with encoders, auto-connect              |
 | Modulation Engine  | ✅     | Backend LFOs, modulation matrix, audio→LFO, slider indicators    |
 | Video Output       | ✅     | Syphon + NDI working, WebGPU async readback implemented          |
-| Shader Sketches    | ✅     | TslText3D, TslNoiseBlob, Aura (8 presets)                        |
+| Shader Sketches    | ✅     | Aura (8 presets), Examples (5), Advanced Examples (4)            |
 | WebGPU Renderer    | ✅     | Full WebGPU support, all sketches compatible                     |
 | Window Manager     | ✅     | Native menu, heartbeat monitoring, emergency recovery overlay    |
 | Packaging          | ✅     | macOS/Windows/Linux builds ready; unsigned for initial release   |
@@ -29,6 +29,19 @@ Status overview and key decisions for Slew.
 ---
 
 ## Recent Changes
+
+### Advanced Examples Sketches
+
+Added four new WebGPU/TSL shader sketches in the "Advanced Examples" group:
+
+- **Plasma**: Classic demoscene plasma effect with animated color cycling and wave interference patterns
+- **Kaleidoscope**: Mesmerizing mirror/reflection patterns with configurable symmetry and animated source texture
+- **Feedback Tunnel**: Infinite zoom tunnel effect with hypnotic color cycling and depth layers
+- **Waveform**: Animated audio-style waveform visualization with multiple frequency bands and glow effects
+
+Each sketch includes customizable parameters for speed, scale, and visual appearance.
+
+---
 
 ### Test Coverage Expansion
 
@@ -330,6 +343,16 @@ Slot count increased from 6 to 8 to match Midimix columns for 1:1 hardware mappi
 ---
 
 ## Version History
+
+### v0.7.4 (Advanced Examples Sketches)
+
+- Added four new WebGPU/TSL shader sketches in "Advanced Examples" group:
+  - **Plasma**: Classic demoscene effect with animated color cycling and wave interference
+  - **Kaleidoscope**: Mirror/reflection patterns with configurable symmetry
+  - **Feedback Tunnel**: Infinite zoom tunnel with hypnotic color cycling
+  - **Waveform**: Audio-style visualization with multiple frequency bands and glow
+- All sketches scale correctly to renderer resolution (viewport-aware geometry)
+- Each sketch includes customizable parameters for speed, scale, and visual appearance
 
 ### v0.7.1 (MIDI Soft Takeover Indicator)
 
