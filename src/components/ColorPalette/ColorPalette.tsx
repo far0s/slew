@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ResetIcon } from "@radix-ui/react-icons";
+import { ColorPicker } from "../ColorPicker";
 import styles from "./ColorPalette.module.css";
 
 export interface ColorPaletteProps {
@@ -107,7 +108,25 @@ export function ColorPalette({
   onReset,
   onBackgroundReset,
 }: ColorPaletteProps) {
+  // Build palette swatches from the current colors only
+  const paletteSwatches = [
+    rgbToHex(startColor),
+    rgbToHex(midColor),
+    rgbToHex(endColor),
+    ...(background ? [rgbaToHex(background)] : []),
+  ];
+
+  // Deduplicate swatches (case-insensitive)
+  const uniqueSwatches = paletteSwatches.reduce<string[]>((acc, swatch) => {
+    const normalized = swatch.toUpperCase();
+    if (!acc.some((s) => s.toUpperCase() === normalized)) {
+      acc.push(swatch);
+    }
+    return acc;
+  }, []);
+
   const [startHex, setStartHex] = useState(rgbToHex(startColor));
+
   const [midHex, setMidHex] = useState(rgbToHex(midColor));
   const [endHex, setEndHex] = useState(rgbToHex(endColor));
   const [backgroundHex, setBackgroundHex] = useState(
@@ -133,32 +152,28 @@ export function ColorPalette({
     }
   }, [background]);
 
-  const handleStartColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const hex = e.target.value;
+  const handleStartColorChange = (hex: string) => {
     setStartHex(hex);
     if (onStartColorChange) {
       onStartColorChange(hexToRgb(hex));
     }
   };
 
-  const handleMidColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const hex = e.target.value;
+  const handleMidColorChange = (hex: string) => {
     setMidHex(hex);
     if (onMidColorChange) {
       onMidColorChange(hexToRgb(hex));
     }
   };
 
-  const handleEndColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const hex = e.target.value;
+  const handleEndColorChange = (hex: string) => {
     setEndHex(hex);
     if (onEndColorChange) {
       onEndColorChange(hexToRgb(hex));
     }
   };
 
-  const handleBackgroundChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const hex = e.target.value;
+  const handleBackgroundChange = (hex: string) => {
     setBackgroundHex(hex);
     if (onBackgroundChange && background) {
       // Preserve existing alpha when changing color
@@ -196,45 +211,24 @@ export function ColorPalette({
         <div className={styles.section}>
           <div className={styles.label}>Colors</div>
           <div className={styles.palette}>
-            <div className={styles.colorInput}>
-              <input
-                type="color"
-                value={startHex}
-                onChange={handleStartColorChange}
-                className={styles.colorPicker}
-                title="Start color"
-              />
-              <div
-                className={styles.colorSwatch}
-                style={{ backgroundColor: startHex }}
-              />
-            </div>
-            <div className={styles.colorInput}>
-              <input
-                type="color"
-                value={midHex}
-                onChange={handleMidColorChange}
-                className={styles.colorPicker}
-                title="Mid color"
-              />
-              <div
-                className={styles.colorSwatch}
-                style={{ backgroundColor: midHex }}
-              />
-            </div>
-            <div className={styles.colorInput}>
-              <input
-                type="color"
-                value={endHex}
-                onChange={handleEndColorChange}
-                className={styles.colorPicker}
-                title="End color"
-              />
-              <div
-                className={styles.colorSwatch}
-                style={{ backgroundColor: endHex }}
-              />
-            </div>
+            <ColorPicker
+              value={startHex}
+              onChange={handleStartColorChange}
+              label="Start color"
+              swatches={uniqueSwatches}
+            />
+            <ColorPicker
+              value={midHex}
+              onChange={handleMidColorChange}
+              label="Mid color"
+              swatches={uniqueSwatches}
+            />
+            <ColorPicker
+              value={endHex}
+              onChange={handleEndColorChange}
+              label="End color"
+              swatches={uniqueSwatches}
+            />
             {hasColorChanges && (
               <button
                 type="button"
@@ -254,19 +248,12 @@ export function ColorPalette({
           <div className={styles.section}>
             <div className={styles.label}>Background</div>
             <div className={styles.palette}>
-              <div className={styles.colorInput}>
-                <input
-                  type="color"
-                  value={backgroundHex}
-                  onChange={handleBackgroundChange}
-                  className={styles.colorPicker}
-                  title="Background color"
-                />
-                <div
-                  className={styles.colorSwatch}
-                  style={{ backgroundColor: backgroundHex }}
-                />
-              </div>
+              <ColorPicker
+                value={backgroundHex}
+                onChange={handleBackgroundChange}
+                label="Background color"
+                swatches={uniqueSwatches}
+              />
               {hasBackgroundChanges && (
                 <button
                   type="button"

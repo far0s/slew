@@ -192,14 +192,6 @@
 }
 
 @theme {
-  /* Colors */
-  --color-background: #05060a;
-  --color-background-elevated: #0b0c12;
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-accent: #38bdf8;
-  --color-accent-muted: #0f172a;
-  --color-accent-soft: #1e293b;
-
   /* Font Families */
   --font-sans:
     system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",

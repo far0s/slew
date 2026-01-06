@@ -5,6 +5,7 @@ export {
   type ButtonVariant,
   type ButtonSize,
 } from "./Button";
+export { ColorPicker, type ColorPickerProps } from "./ColorPicker";
 export {
   ParameterSlider,
   type ParameterSliderProps,

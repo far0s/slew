@@ -158,6 +158,7 @@ WebGL2: render → PBO ping-pong readPixels → flip → binary IPC → Syphon/N
       index.ts              # SKETCH_GROUPS, SKETCH_REGISTRY
       types.ts              # SketchDescriptor, SketchGroup, SketchProps
     /components/            # React UI components
+      /ColorPicker/         # Rich color picker (React Aria)
       /SlotColumn/          # Slot column with inline browser
     /controls/              # useParameterStore hook
     /inputs/                # MIDI, OSC, Audio, HID hooks

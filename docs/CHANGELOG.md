@@ -30,6 +30,25 @@ Status overview and key decisions for Slew.
 
 ## Recent Changes
 
+### Better Color Picker
+
+Replaced native `<input type="color">` elements with a rich, accessible color picker built on React Aria:
+
+- **Color Area**: 2D saturation/brightness picker (HSB color space, square aspect ratio)
+- **Hue Slider**: Full hue range with smooth dragging
+- **Format Toggle**: Switch between Hex, RGB, and HSL display formats
+- **Copy/Paste**: Clipboard buttons for quick color transfer
+- **Eye Dropper**: Pick colors from screen (Chrome/Edge)
+- **Preset Swatches**: Shows current palette colors for quick selection
+- **Color History**: Last 5 colors persisted to localStorage with clear button
+- **Alpha Support**: Optional `showAlpha` prop for transparency slider
+- **Full Accessibility**: Keyboard navigation, ARIA labels, focus management
+- **Theme Integration**: Uses Slew CSS variables, respects `prefers-reduced-motion`
+
+Also removed unused dependencies (`tailwindcss-animate`, shadcn/JollyUI CSS variables) and consolidated CSS.
+
+---
+
 ### Sidebar & Appearance Update
 
 Major overhaul of sidebar organization and UI theming:
