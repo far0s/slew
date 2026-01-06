@@ -1,0 +1,289 @@
+/* ColorPicker.module.css */
+
+/* Trigger button */
+.trigger {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.trigger:hover {
+  background: var(--bg-hover);
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Swatch (used in trigger and picker) */
+.swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 2px solid var(--border-default);
+  flex-shrink: 0;
+}
+
+.swatchSmall {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  border: 2px solid var(--border-default);
+}
+
+/* Popover container */
+.popover {
+  z-index: 50;
+  width: fit-content;
+  max-width: 240px;
+  overflow: hidden;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  outline: none;
+}
+
+.popover[data-entering] {
+  animation: fadeIn 0.15s ease-out;
+}
+
+.popover[data-exiting] {
+  animation: fadeOut 0.1s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover[data-entering],
+  .popover[data-exiting] {
+    animation: none;
+  }
+}
+
+/* Dialog content */
+.dialog {
+  display: flex;
+  flex-direction: column;
+  outline: none;
+}
+
+/* Color area (saturation/brightness) */
+.colorArea {
+  aspect-ratio: 1;
+  width: 100%;
+  flex-shrink: 0;
+  border: 1px solid var(--border-default);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+}
+
+/* Hue slider track */
+.sliderTrack {
+  height: 28px;
+  width: 100%;
+  border: 1px solid var(--border-default);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+}
+
+/* Color thumb (used in area and slider) */
+.colorThumb {
+  z-index: 10;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.colorThumb[data-focus-visible] {
+  width: 24px;
+  height: 24px;
+}
+
+.colorThumbSlider {
+  top: 50%;
+}
+
+/* Content area below color area */
+.content {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+/* Field group */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Label */
+.label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Hex input */
+.input {
+  flex: 1;
+  height: 36px;
+  padding: 0 12px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Eye dropper button */
+.eyeDropperButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.eyeDropperButton:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+
+.eyeDropperButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.eyeDropperButton:active {
+  background: var(--bg-active);
+}
+
+.eyeDropperIcon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Swatch section */
+.swatchSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.swatchLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* Swatch picker grid */
+.swatchPicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Swatch picker item */
+.swatchPickerItem {
+  width: 26px;
+  height: 26px;
+  overflow: hidden;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.swatchPickerItem:hover {
+  transform: scale(1.08);
+}
+
+.swatchPickerItem[data-selected] {
+  border-color: var(--text-primary);
+}
+
+.swatchPickerItem[data-focus-visible] {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.swatchPickerItem:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Inner swatch in picker item */
+.swatchInner {
+  width: 100%;
+  height: 100%;
+}

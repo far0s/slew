@@ -38,7 +38,9 @@
     "@tauri-apps/plugin-opener": "^2",
     "motion": "^12.24.7",
     "react": "^19.2.3",
+    "react-aria-components": "^1.14.0",
     "react-dom": "^19.2.3",
+    "tailwindcss-animate": "^1.0.7",
     "three": "^0.182.0"
   },
   "devDependencies": {

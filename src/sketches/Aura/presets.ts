@@ -286,7 +286,7 @@ export const auraBlushNebulaDescriptor = createPresetDescriptor(
     ray_steps: 10,
     seed: 10,
     color_interp: 1.01,
-    grain_intensity: 0.1,
+    grain_intensity: 0.05,
     tonemap_mode: 5, // Bleach bypass
   },
   {
