@@ -116,38 +116,38 @@
 
 [data-accent="amber"] {
   /* Background colors - warmer dark tones */
-  --bg-primary: #0a0806;
-  --bg-elevated: #12100c;
-  --bg-panel: #0a0704;
-  --bg-surface: #1a1510;
-  --bg-hover: rgba(255, 200, 150, 0.06);
-  --bg-active: rgba(255, 200, 150, 0.12);
+  --bg-primary: #0a0605;
+  --bg-elevated: #120e0a;
+  --bg-panel: #0a0603;
+  --bg-surface: #1a120c;
+  --bg-hover: rgba(255, 160, 120, 0.06);
+  --bg-active: rgba(255, 160, 120, 0.12);
 
   /* Text colors - warmer whites */
-  --text-primary: #faf5f0;
-  --text-secondary: #b8a090;
-  --text-muted: rgba(184, 160, 144, 0.6);
+  --text-primary: #faf3ed;
+  --text-secondary: #c49880;
+  --text-muted: rgba(196, 152, 128, 0.6);
 
   /* Border colors - warm tones */
-  --border-subtle: rgba(255, 180, 120, 0.08);
-  --border-default: rgba(255, 180, 120, 0.12);
-  --border-accent: rgba(217, 119, 6, 0.7);
+  --border-subtle: rgba(255, 140, 100, 0.08);
+  --border-default: rgba(255, 140, 100, 0.12);
+  --border-accent: rgba(234, 88, 12, 0.7);
 
-  /* Accent colors - warm orange tones */
-  --accent-primary: #f59e0b;
-  --accent-primary-hover: #d97706;
+  /* Accent colors - deeper orange/red tones */
+  --accent-primary: #ea580c;
+  --accent-primary-hover: #c2410c;
   --accent-success: #84cc16;
-  --accent-warning: #fb923c;
-  --accent-danger: #ef4444;
+  --accent-warning: #f97316;
+  --accent-danger: #dc2626;
 
   /* Status colors - warmer */
   --status-active: #84cc16;
-  --status-inactive: #8b7355;
-  --status-error: #ef4444;
+  --status-inactive: #8b6b55;
+  --status-error: #dc2626;
 
   /* Shadows - warmer */
-  --shadow-sm: 0 1px 2px rgba(20, 10, 0, 0.4);
-  --shadow-md: 0 4px 12px rgba(20, 10, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(20, 8, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(20, 8, 0, 0.5);
 }
 
 /* ==========================================================================
@@ -157,29 +157,29 @@
 
 [data-theme="light"][data-accent="amber"] {
   /* Background colors - warm cream/beige tones */
-  --bg-primary: #fdf8f3;
-  --bg-elevated: #fffcf8;
-  --bg-panel: #f5ede4;
-  --bg-surface: #ebe0d4;
-  --bg-hover: rgba(180, 100, 50, 0.06);
-  --bg-active: rgba(180, 100, 50, 0.1);
+  --bg-primary: #fdf6f0;
+  --bg-elevated: #fffaf5;
+  --bg-panel: #f5e8dc;
+  --bg-surface: #ebdacc;
+  --bg-hover: rgba(200, 80, 40, 0.06);
+  --bg-active: rgba(200, 80, 40, 0.1);
 
   /* Text colors - warm darks */
-  --text-primary: #1a1008;
-  --text-secondary: #5c4a3a;
-  --text-muted: rgba(92, 74, 58, 0.6);
+  --text-primary: #1a0c06;
+  --text-secondary: #6b4030;
+  --text-muted: rgba(107, 64, 48, 0.6);
 
   /* Border colors - warm tones */
-  --border-subtle: rgba(120, 80, 40, 0.12);
-  --border-default: rgba(120, 80, 40, 0.18);
-  --border-accent: rgba(180, 83, 9, 0.6);
+  --border-subtle: rgba(140, 60, 30, 0.12);
+  --border-default: rgba(140, 60, 30, 0.18);
+  --border-accent: rgba(194, 65, 12, 0.6);
 
-  /* Accent colors - deeper orange for light backgrounds */
-  --accent-primary: #d97706;
-  --accent-primary-hover: #b45309;
+  /* Accent colors - deeper orange/red for light backgrounds */
+  --accent-primary: #c2410c;
+  --accent-primary-hover: #9a3412;
   --accent-success: #65a30d;
   --accent-warning: #ea580c;
-  --accent-danger: #dc2626;
+  --accent-danger: #b91c1c;
 
   /* Status colors - warmer */
   --status-active: #65a30d;
