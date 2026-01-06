@@ -1,6 +1,3 @@
-/* ColorPicker.module.css */
-
-/* Trigger button */
 .trigger {
   display: flex;
   align-items: center;
@@ -26,7 +23,6 @@
   cursor: not-allowed;
 }
 
-/* Swatch (used in trigger and picker) */
 .swatch {
   width: 28px;
   height: 28px;
@@ -35,18 +31,9 @@
   flex-shrink: 0;
 }
 
-.swatchSmall {
-  width: 26px;
-  height: 26px;
-  border-radius: 5px;
-  border: 2px solid var(--border-default);
-}
-
-/* Popover container */
 .popover {
   z-index: 50;
-  width: fit-content;
-  max-width: 240px;
+  width: 240px;
   overflow: hidden;
   background: var(--bg-panel);
   border: 1px solid var(--border-default);
@@ -92,14 +79,12 @@
   }
 }
 
-/* Dialog content */
 .dialog {
   display: flex;
   flex-direction: column;
   outline: none;
 }
 
-/* Color area (saturation/brightness) */
 .colorArea {
   aspect-ratio: 1;
   width: 100%;
@@ -109,7 +94,6 @@
   border-radius: 8px 8px 0 0;
 }
 
-/* Hue slider track */
 .sliderTrack {
   height: 28px;
   width: 100%;
@@ -118,7 +102,18 @@
   border-radius: 0 0 8px 8px;
 }
 
-/* Color thumb (used in area and slider) */
+.alphaSliderTrack {
+  height: 20px;
+  width: 100%;
+  border: 1px solid var(--border-default);
+  border-top: none;
+  background-image: repeating-conic-gradient(
+    var(--bg-surface) 0% 25%,
+    var(--bg-muted) 0% 50%
+  );
+  background-size: 8px 8px;
+}
+
 .colorThumb {
   z-index: 10;
   box-sizing: border-box;
@@ -138,7 +133,6 @@
   top: 50%;
 }
 
-/* Content area below color area */
 .content {
   display: flex;
   flex-direction: column;
@@ -146,7 +140,6 @@
   padding: 12px;
 }
 
-/* Field group */
 .field {
   display: flex;
   flex-direction: column;
@@ -157,17 +150,22 @@
   display: flex;
   flex-flow: row nowrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
-/* Label */
 .label {
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--text-primary);
 }
 
-/* Hex input */
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .input {
   flex: 1 1 auto;
   min-width: 0;
@@ -195,8 +193,7 @@
   color: var(--text-muted);
 }
 
-/* Eye dropper button */
-.eyeDropperButton {
+.iconButton {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -215,18 +212,18 @@
     border-color 0.15s ease;
 }
 
-.eyeDropperButton:hover {
+.iconButton:hover {
   color: var(--text-primary);
   background: var(--bg-hover);
   border-color: var(--text-secondary);
 }
 
-.eyeDropperButton:focus-visible {
+.iconButton:focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 1px;
 }
 
-.eyeDropperButton:active {
+.iconButton:active {
   background: var(--bg-active);
 }
 
@@ -240,90 +237,6 @@
   height: 12px;
 }
 
-/* Alpha slider track */
-.alphaSliderTrack {
-  height: 20px;
-  width: 100%;
-  border: 1px solid var(--border-default);
-  border-top: none;
-  background-image: repeating-conic-gradient(
-    var(--bg-surface) 0% 25%,
-    var(--bg-muted) 0% 50%
-  );
-  background-size: 8px 8px;
-}
-
-/* Copy button */
-.copyButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition:
-    color 0.15s ease,
-    background-color 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.copyButton:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-  border-color: var(--text-secondary);
-}
-
-.copyButton:focus-visible {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 1px;
-}
-
-.copyButton:active {
-  background: var(--bg-active);
-}
-
-/* Paste button */
-.pasteButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition:
-    color 0.15s ease,
-    background-color 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.pasteButton:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-  border-color: var(--text-secondary);
-}
-
-.pasteButton:focus-visible {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 1px;
-}
-
-.pasteButton:active {
-  background: var(--bg-active);
-}
-
-/* Format toggle button */
 .formatToggle {
   padding: 2px 6px;
   font-size: 0.625rem;
@@ -354,15 +267,6 @@
   outline-offset: 1px;
 }
 
-/* Label row (with format toggle) */
-.labelRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-/* Swatch section */
 .swatchSection {
   display: flex;
   flex-direction: column;
@@ -382,7 +286,6 @@
   color: var(--text-secondary);
 }
 
-/* Clear history button */
 .clearHistoryButton {
   display: flex;
   align-items: center;
@@ -410,14 +313,12 @@
   outline-offset: 1px;
 }
 
-/* Swatch picker grid */
 .swatchPicker {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
 }
 
-/* Swatch picker item */
 .swatchPickerItem {
   width: 26px;
   height: 26px;
@@ -448,7 +349,6 @@
   pointer-events: none;
 }
 
-/* Inner swatch in picker item */
 .swatchInner {
   width: 100%;
   height: 100%;

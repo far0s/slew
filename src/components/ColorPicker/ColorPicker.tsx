@@ -45,7 +45,7 @@ function loadColorHistory(): string[] {
       }
     }
   } catch {
-    // Ignore localStorage errors
+    /* ignore */
   }
   return [];
 }
@@ -57,7 +57,7 @@ function saveColorHistory(history: string[]): void {
       JSON.stringify(history.slice(0, MAX_HISTORY_SIZE)),
     );
   } catch {
-    // Ignore localStorage errors
+    /* ignore */
   }
 }
 
@@ -65,7 +65,7 @@ function clearColorHistory(): void {
   try {
     localStorage.removeItem(HISTORY_STORAGE_KEY);
   } catch {
-    // Ignore localStorage errors
+    /* ignore */
   }
 }
 
@@ -138,7 +138,6 @@ function getNextFormat(current: ColorFormat): ColorFormat {
   return formats[(index + 1) % formats.length];
 }
 
-// EyeDropper API type declaration (not yet in TypeScript lib)
 declare global {
   interface Window {
     EyeDropper?: new () => {
@@ -149,8 +148,6 @@ declare global {
 
 function EyeDropperButton() {
   const state = useContext(ColorPickerStateContext);
-
-  // Check browser support
   if (typeof window === "undefined" || !window.EyeDropper) {
     return null;
   }
@@ -158,7 +155,7 @@ function EyeDropperButton() {
   return (
     <button
       type="button"
-      className={styles.eyeDropperButton}
+      className={styles.iconButton}
       aria-label="Pick color from screen"
       onClick={() => {
         new window.EyeDropper!()
@@ -166,9 +163,7 @@ function EyeDropperButton() {
           .then((result: { sRGBHex: string }) => {
             state?.setColor(parseColor(result.sRGBHex));
           })
-          .catch(() => {
-            // User cancelled or error occurred
-          });
+          .catch(() => {});
       }}
     >
       <svg
@@ -201,14 +196,14 @@ function CopyButton({ value }: CopyButtonProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard API not available or permission denied
+      /* ignore */
     }
   }, [value]);
 
   return (
     <button
       type="button"
-      className={styles.copyButton}
+      className={styles.iconButton}
       aria-label={copied ? "Copied!" : "Copy color value"}
       onClick={handleCopy}
     >
@@ -254,11 +249,10 @@ function PasteButton({ onPaste }: PasteButtonProps) {
         onPaste(text.trim());
       }
     } catch {
-      // Clipboard API not available or permission denied
+      /* ignore */
     }
   }, [onPaste]);
 
-  // Check if clipboard read is likely supported
   if (typeof navigator === "undefined" || !navigator.clipboard?.readText) {
     return null;
   }
@@ -266,7 +260,7 @@ function PasteButton({ onPaste }: PasteButtonProps) {
   return (
     <button
       type="button"
-      className={styles.pasteButton}
+      className={styles.iconButton}
       aria-label="Paste color from clipboard"
       onClick={handlePaste}
     >
@@ -351,16 +345,14 @@ export function ColorPicker({
   const [format, setFormat] = useState<ColorFormat>("hex");
   const lastCommittedValue = useRef(value);
 
-  // Sync internal state when external value changes
   useEffect(() => {
     try {
       const newColor = parseColor(value);
-      // Only update if the value actually changed (avoid loops)
       if (newColor.toString("hex") !== color.toString("hex")) {
         setColor(newColor);
       }
     } catch {
-      // Invalid color, ignore
+      /* ignore */
     }
   }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -377,7 +369,6 @@ export function ColorPicker({
     const hex = color.toString("hex");
     if (hex !== lastCommittedValue.current) {
       lastCommittedValue.current = hex;
-      // Add to history when user commits a color
       const newHistory = addToHistory(hex, history);
       setHistory(newHistory);
       saveColorHistory(newHistory);
@@ -396,12 +387,11 @@ export function ColorPicker({
   const handlePasteColor = useCallback(
     (text: string) => {
       try {
-        // Try to parse the pasted value as a color
         const parsedColor = parseColor(text);
         handleColorChange(parsedColor);
         handleColorChangeEnd();
       } catch {
-        // Invalid color format, ignore
+        /* ignore */
       }
     },
     [handleColorChange, handleColorChangeEnd],
@@ -423,7 +413,6 @@ export function ColorPicker({
         </Button>
         <Popover placement="bottom start" className={styles.popover}>
           <Dialog className={styles.dialog}>
-            {/* Color Area + Hue Slider */}
             <ColorArea
               colorSpace="hsb"
               xChannel="saturation"
@@ -445,7 +434,6 @@ export function ColorPicker({
               </SliderTrack>
             </ColorSlider>
 
-            {/* Alpha Slider (optional) */}
             {showAlpha && (
               <ColorSlider channel="alpha" onChangeEnd={handleColorChangeEnd}>
                 <SliderTrack className={styles.alphaSliderTrack}>
@@ -457,11 +445,10 @@ export function ColorPicker({
             )}
 
             <div className={styles.content}>
-              {/* Color Value Input */}
               <ColorField className={styles.field}>
                 <div className={styles.labelRow}>
                   <Label className={styles.label}>Color</Label>
-                  {/*<FormatToggle forsmat={format} onToggle={handleToggleFormat} />*/}
+                  <FormatToggle format={format} onToggle={handleToggleFormat} />
                 </div>
                 <div className={styles.fieldRow}>
                   <Input
@@ -476,7 +463,6 @@ export function ColorPicker({
                 </div>
               </ColorField>
 
-              {/* Preset Swatches */}
               {swatches.length > 0 && (
                 <div className={styles.swatchSection}>
                   <span className={styles.swatchLabel}>Presets</span>
@@ -497,7 +483,6 @@ export function ColorPicker({
                 </div>
               )}
 
-              {/* History Swatches */}
               {history.length > 0 && (
                 <div className={styles.swatchSection}>
                   <div className={styles.swatchLabelRow}>

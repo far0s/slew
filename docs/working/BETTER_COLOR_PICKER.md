@@ -4,10 +4,10 @@ Task document for implementing an improved color picker using React Aria compone
 
 ---
 
-## Status: ✅ Complete
+## Status: ✅ Complete (All Enhancements + Cleanup)
 
 **Started:** Previous session  
-**Completed:** Current session (CSS modules refactor)
+**Completed:** Current session (enhancements + refactor)
 
 ---
 
@@ -43,8 +43,8 @@ Replace the current native `<input type="color">` elements in `ColorPalette` wit
 ### New Files
 
 - `src/components/ColorPicker/index.ts` - Re-exports
-- `src/components/ColorPicker/ColorPicker.tsx` - Main component (~520 lines)
-- `src/components/ColorPicker/ColorPicker.module.css` - Styles (~450 lines)
+- `src/components/ColorPicker/ColorPicker.tsx` - Main component (~530 lines)
+- `src/components/ColorPicker/ColorPicker.module.css` - Styles (~380 lines, consolidated)
 
 ### Modified Files
 
@@ -109,7 +109,7 @@ const SWATCHES = ["#FF0000", "#00FF00", "#0000FF", "#FFFFFF", "#000000"];
 ### Color History
 
 - Stored in `localStorage` under key `slew-color-history`
-- Maximum 8 colors
+- Maximum 5 colors
 - Automatically deduplicated (case-insensitive)
 - Updated on: color area/slider release, swatch selection, eye dropper pick
 
@@ -173,6 +173,18 @@ _Add screenshots after manual testing_
 - ✅ Uninstalled unused dependencies (clsx, tailwind-merge, class-variance-authority, lucide-react)
 - ✅ Replaced Lucide Pipette icon with inline SVG
 - ✅ Swatch styles now consistent inside and outside picker
+
+---
+
+## Final Cleanup (Session 4)
+
+- ✅ Consolidated `.eyeDropperButton`, `.copyButton`, `.pasteButton` → single `.iconButton` class
+- ✅ Removed unused `.swatchSmall` class
+- ✅ Fixed popover to use fixed `width: 240px` instead of `max-width`
+- ✅ Reduced button sizes from 36px to 32px to fit within popover
+- ✅ Removed unused shadcn/JollyUI CSS variables from `tailwind.css` (~65 lines removed)
+- ✅ Removed unused `@theme` color definitions
+- ✅ All icon buttons now use `flex: 0 0 auto` (no grow/shrink), input uses `min-width: 0` to flex
 
 ---
 
