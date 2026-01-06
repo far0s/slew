@@ -30,6 +30,19 @@ Status overview and key decisions for Slew.
 
 ## Recent Changes
 
+### Renderer Settings & DPR Scaling
+
+Added a new Renderer Settings panel in the Debug Panel for controlling pixel density and monitoring performance:
+
+- **DPR Control**: Buttons to switch between 0.5×, 1×, and 2× pixel density for performance tuning
+- **Live Stats**: Real-time FPS and frame time display with color-coded status indicators
+- **Renderer Info**: Shows window size, render resolution, native DPR, and backend (WebGPU/WebGL2)
+- **Cross-window Sync**: Settings persist to localStorage and sync between Controls and Renderer windows via Tauri events
+
+Replaced the old "D" key stats overlay (`StatsGl`) with this integrated UI for better discoverability.
+
+---
+
 ### Advanced Examples Sketches
 
 Added four new WebGPU/TSL shader sketches in the "Advanced Examples" group:
@@ -343,6 +356,14 @@ Slot count increased from 6 to 8 to match Midimix columns for 1:1 hardware mappi
 ---
 
 ## Version History
+
+### v0.7.5 (Renderer Settings & DPR Scaling)
+
+- Added Renderer Settings panel in Debug Panel with DPR control (0.5×, 1×, 2×)
+- Live FPS and frame time display with color-coded status (green/amber/red)
+- Shows render resolution, native DPR, and backend info (WebGPU/WebGL2)
+- Cross-window settings sync via Tauri events with localStorage persistence
+- Removed old `StatsGl` overlay and "D" key toggle
 
 ### v0.7.4 (Advanced Examples Sketches)
 

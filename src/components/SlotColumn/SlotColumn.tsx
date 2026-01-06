@@ -318,6 +318,7 @@ export function SlotColumn({
             <WebGPUCanvas
               camera={{ position: [0, 0, 4], fov: 50 }}
               frameloop="always"
+              dpr={1}
               fallback={<div className={styles.fallback}>Initializing…</div>}
             >
               <color attach="background" args={["#020617"]} />

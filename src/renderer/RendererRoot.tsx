@@ -1,8 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { useFrame } from "@react-three/fiber";
-import { StatsGl } from "@react-three/drei";
+import { useFrame, useThree } from "@react-three/fiber";
 import { WebGPUCanvas } from "./WebGPUCanvas";
 import { VideoOutputCapture } from "./VideoOutputCapture";
 import {
@@ -13,7 +12,8 @@ import {
 } from "../sketches";
 import type { ParameterTemplateId } from "../slots/slotTypes";
 import { makeSlotParameterId } from "../slots/slotTypes";
-import { useStatsToggle } from "../hooks";
+import { useRendererSettings } from "../hooks";
+import type { RendererInfo, RendererStats } from "../hooks";
 import styles from "./RendererRoot.module.css";
 
 // Heartbeat interval for health monitoring
@@ -249,6 +249,85 @@ function calculateSlotOpacity(
 }
 
 // =============================================================================
+// Renderer Info Reporter
+// =============================================================================
+
+interface RendererInfoReporterProps {
+  appliedDpr: number;
+  backend: "webgpu" | "webgl2" | "unknown";
+  reportInfo: (info: RendererInfo) => void;
+}
+
+// Number of frame time samples to average for smooth FPS display
+const FPS_SAMPLE_COUNT = 60;
+
+/**
+ * Component that reports renderer info (dimensions, DPR, backend, stats) to Controls window.
+ * Must be inside a Canvas to access useThree.
+ * Tracks FPS and other stats every frame and reports them periodically.
+ */
+function RendererInfoReporter({
+  appliedDpr,
+  backend,
+  reportInfo,
+}: RendererInfoReporterProps) {
+  const { size, gl } = useThree();
+
+  // FPS tracking
+  const frameTimesRef = useRef<number[]>([]);
+  const lastTimeRef = useRef<number>(performance.now());
+
+  // Track frame times and report stats
+  useFrame(() => {
+    const now = performance.now();
+    const deltaMs = now - lastTimeRef.current;
+    lastTimeRef.current = now;
+
+    // Add frame time to ring buffer
+    const frameTimes = frameTimesRef.current;
+    frameTimes.push(deltaMs);
+    if (frameTimes.length > FPS_SAMPLE_COUNT) {
+      frameTimes.shift();
+    }
+
+    // Calculate average frame time and FPS
+    const avgFrameTime =
+      frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
+    const fps = avgFrameTime > 0 ? 1000 / avgFrameTime : 0;
+
+    // Get renderer stats (works for both WebGL and WebGPU)
+    const glInfo = gl.info;
+    const stats: RendererStats = {
+      fps: Math.round(fps),
+      frameTimeMs: Math.round(avgFrameTime * 100) / 100,
+      drawCalls: glInfo?.render?.calls ?? 0,
+      triangles: glInfo?.render?.triangles ?? 0,
+      textures: glInfo?.memory?.textures ?? 0,
+      geometries: glInfo?.memory?.geometries ?? 0,
+    };
+
+    // Get actual render dimensions from the renderer
+    const renderWidth = gl.domElement.width;
+    const renderHeight = gl.domElement.height;
+
+    const info: RendererInfo = {
+      windowWidth: size.width,
+      windowHeight: size.height,
+      renderWidth,
+      renderHeight,
+      nativePixelRatio: window.devicePixelRatio,
+      appliedDpr,
+      backend,
+      stats,
+    };
+
+    reportInfo(info);
+  });
+
+  return null;
+}
+
+// =============================================================================
 // Canvas Content
 // =============================================================================
 
@@ -409,8 +488,17 @@ export function RendererRoot() {
   // Track which sketchId each slot had to detect changes
   const prevSlotSketchIds = useRef<Map<number, string | null>>(new Map());
 
-  // Stats toggle (press "D" to show/hide performance stats)
-  const { showStats } = useStatsToggle();
+  // Renderer settings (DPR, etc.) from Controls window
+  const { settings, reportInfo } = useRendererSettings();
+
+  // Track the renderer backend
+  const [rendererBackend, setRendererBackend] = useState<
+    "webgpu" | "webgl2" | "unknown"
+  >("unknown");
+
+  const handleRendererReady = useCallback((backend: "webgpu" | "webgl2") => {
+    setRendererBackend(backend);
+  }, []);
 
   // Heartbeat for window health monitoring
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -853,8 +941,15 @@ export function RendererRoot() {
       <WebGPUCanvas
         camera={{ position: [0, 0, 4], fov: 50 }}
         frameloop="always"
+        dpr={settings.dpr}
+        onRendererReady={handleRendererReady}
       >
-        {showStats && <StatsGl className="stats-gl-bottom-right" />}
+        {/* Report renderer info and stats to Controls window */}
+        <RendererInfoReporter
+          appliedDpr={settings.dpr}
+          backend={rendererBackend}
+          reportInfo={reportInfo}
+        />
         {/* Video output capture - sends frames to Syphon/Spout/NDI when active */}
         <VideoOutputCapture />
         <RendererContent

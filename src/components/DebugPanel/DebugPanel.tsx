@@ -10,7 +10,7 @@ import { ModulationPanel } from "../ModulationPanel";
 import { VideoOutputPanel } from "../VideoOutputPanel";
 import { ParameterSlider } from "../ParameterSlider";
 import type { Slot } from "../../slots/useSlots";
-import { useWindowManager } from "../../hooks";
+import { useWindowManager, useRendererSettings } from "../../hooks";
 import styles from "./DebugPanel.module.css";
 
 type Theme = "dark" | "light";
@@ -77,6 +77,132 @@ function ThemeToggle() {
         </>
       )}
     </button>
+  );
+}
+
+/**
+ * RendererSettings
+ *
+ * Controls for renderer settings like DPR, with info display.
+ */
+function RendererSettingsSection() {
+  const { settings, info, setDpr } = useRendererSettings();
+
+  const dprOptions = [
+    { value: 0.5, label: "0.5×", description: "Half resolution" },
+    { value: 1, label: "1×", description: "Native resolution" },
+    { value: 2, label: "2×", description: "Retina (4× pixels)" },
+  ];
+
+  return (
+    <div className={styles.rendererSettings}>
+      <div className={styles.rendererDprRow}>
+        <span className={styles.rendererLabel}>Pixel Density</span>
+        <div className={styles.dprButtons}>
+          {dprOptions.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={styles.dprButton}
+              data-active={settings.dpr === opt.value}
+              onClick={() => setDpr(opt.value)}
+              title={opt.description}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {info && (
+        <div className={styles.rendererInfo}>
+          <div className={styles.rendererInfoRow}>
+            <span className={styles.rendererInfoLabel}>Window</span>
+            <span className={styles.rendererInfoValue}>
+              {info.windowWidth}&nbsp;×&nbsp;{info.windowHeight}
+            </span>
+          </div>
+          <div className={styles.rendererInfoRow}>
+            <span className={styles.rendererInfoLabel}>Render</span>
+            <span className={styles.rendererInfoValue}>
+              {info.renderWidth}&nbsp;×&nbsp;{info.renderHeight}
+              <span className={styles.rendererInfoUnit}>px</span>
+            </span>
+          </div>
+          <div className={styles.rendererInfoRow}>
+            <span className={styles.rendererInfoLabel}>Native DPR</span>
+            <span className={styles.rendererInfoValue}>
+              {info.nativePixelRatio.toFixed(1)}×
+            </span>
+          </div>
+          <div className={styles.rendererInfoRow}>
+            <span className={styles.rendererInfoLabel}>Backend</span>
+            <span
+              className={styles.rendererInfoValue}
+              data-backend={info.backend}
+            >
+              {info.backend === "webgpu"
+                ? "WebGPU"
+                : info.backend === "webgl2"
+                  ? "WebGL2"
+                  : "—"}
+            </span>
+          </div>
+          {info.stats && (
+            <>
+              <div className={styles.rendererStatsDivider} />
+              <div className={styles.rendererInfoRow}>
+                <span className={styles.rendererInfoLabel}>FPS</span>
+                <span
+                  className={styles.rendererInfoValue}
+                  data-fps-status={
+                    info.stats.fps >= 55
+                      ? "good"
+                      : info.stats.fps >= 30
+                        ? "ok"
+                        : "low"
+                  }
+                >
+                  {info.stats.fps}
+                  <span
+                    className={styles.rendererInfoUnit}
+                    data-fps-status={
+                      info.stats.fps >= 55
+                        ? "good"
+                        : info.stats.fps >= 30
+                          ? "ok"
+                          : "low"
+                    }
+                  >
+                    fps
+                  </span>
+                </span>
+              </div>
+              <div className={styles.rendererInfoRow}>
+                <span className={styles.rendererInfoLabel}>Frame Time</span>
+                <span
+                  className={styles.rendererInfoValue}
+                  data-frametime-status={
+                    info.stats.frameTimeMs <= 18
+                      ? "good"
+                      : info.stats.frameTimeMs <= 33
+                        ? "ok"
+                        : "slow"
+                  }
+                >
+                  {info.stats.frameTimeMs.toFixed(1)}
+                  <span className={styles.rendererInfoUnit}>ms</span>
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {!info && (
+        <p className={styles.settingsNote}>Waiting for Renderer window…</p>
+      )}
+    </div>
   );
 }
 
@@ -217,6 +343,14 @@ export function DebugPanel({
         <Tabs.Content value="settings" className={styles.tabContent}>
           <div className={styles.settingsPanel}>
             <div className={styles.settingsSection}>
+              <h4 className={styles.settingsHeader}>Renderer</h4>
+              <p className={styles.settingsDescription}>
+                Lower pixel density improves performance for heavy shaders.
+              </p>
+              <RendererSettingsSection />
+            </div>
+
+            <div className={styles.settingsSection}>
               <h4 className={styles.settingsHeader}>Appearance</h4>
               <ThemeToggle />
             </div>
@@ -238,12 +372,6 @@ export function DebugPanel({
             <div className={styles.settingsSection}>
               <h4 className={styles.settingsHeader}>Actions</h4>
               <div className={styles.actionsList}>
-                <div className={styles.actionItem}>
-                  <span className={styles.actionLabel}>
-                    Toggle stats overlay
-                  </span>
-                  <kbd className={styles.actionShortcut}>D</kbd>
-                </div>
                 <button
                   type="button"
                   onClick={handleRestartRenderer}

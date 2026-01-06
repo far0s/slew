@@ -14,6 +14,15 @@ interface WebGPUCanvasProps {
   className?: string;
   /** Optional style for the Canvas */
   style?: React.CSSProperties;
+  /**
+   * Device pixel ratio for rendering.
+   * - 1 = 1x resolution (best performance, recommended for heavy shaders)
+   * - 2 = 2x resolution (Retina quality, 4x pixel count)
+   * - [min, max] = Clamp between range
+   * - undefined = Use device default (respects window.devicePixelRatio)
+   * @default 1
+   */
+  dpr?: number | [min: number, max: number];
 }
 
 /**
@@ -45,6 +54,11 @@ async function checkWebGPUSupport(): Promise<boolean> {
  * - TSL node materials (MeshBasicNodeMaterial, etc.) work everywhere
  * - Best performance with native WebGPU when available
  * - Fallback to WebGL2 backend for broad compatibility
+ *
+ * Performance note:
+ * The `dpr` prop defaults to 1 to optimize for heavy shaders like Aura.
+ * On Retina displays (2x DPR), this reduces pixel count by 4x.
+ * Set `dpr={2}` or `dpr={[1, 2]}` for sharper rendering at the cost of performance.
  */
 export function WebGPUCanvas({
   children,
@@ -54,6 +68,7 @@ export function WebGPUCanvas({
   onRendererReady,
   className,
   style,
+  dpr = 1,
 }: WebGPUCanvasProps) {
   const [backend, setBackend] = useState<RendererBackend>("detecting");
   const [forceWebGL, setForceWebGL] = useState(false);
@@ -146,6 +161,7 @@ export function WebGPUCanvas({
       camera={camera}
       frameloop={frameloop}
       style={style}
+      dpr={dpr}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       gl={createRenderer as any}
     >

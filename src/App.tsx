@@ -21,7 +21,7 @@ import {
   useMidiDevices,
   useMidiPickupStates,
 } from "./inputs/midi";
-import { useStatsToggle, useWindowManager } from "./hooks";
+import { useWindowManager } from "./hooks";
 import styles from "./App.module.css";
 
 function App() {
@@ -76,9 +76,6 @@ function App() {
   const [macropadSelectedIndex, setMacropadSelectedIndex] = useState<
     number | null
   >(null);
-
-  // Stats toggle (press "D" to show/hide performance stats)
-  const { showStats } = useStatsToggle();
 
   // Window manager for heartbeat and recovery
   useWindowManager({
@@ -764,7 +761,6 @@ function App() {
             crossfadeTargetIndex={slotState.crossfadeTargetIndex}
             getParam={(id) => paramStore.getInterpolated(id)}
             getSlotColors={getSlotColors}
-            showStats={showStats}
           />
           <DebugPanel
             macropadSelectedIndex={macropadSelectedIndex}

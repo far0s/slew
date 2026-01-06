@@ -17,7 +17,6 @@
 
 import { Suspense, useState, useCallback } from "react";
 import { useFrame } from "@react-three/fiber";
-import { StatsGl } from "@react-three/drei";
 import type { SketchId, SketchProps } from "../../sketches";
 import { SKETCH_COMPONENT_REGISTRY, getSketchDescriptor } from "../../sketches";
 import { makeSlotParameterId } from "../../slots/slotTypes";
@@ -45,8 +44,6 @@ export interface RendererPreviewProps {
   getParam: (parameterId: string) => number;
   /** Function to get colors for a slot */
   getSlotColors?: (slotIndex: number) => SketchProps["colors"];
-  /** Show performance stats (toggled with "D" key) */
-  showStats?: boolean;
 }
 
 // =============================================================================
@@ -305,7 +302,6 @@ export function RendererPreview({
   crossfadeTargetIndex,
   getParam,
   getSlotColors,
-  showStats = false,
 }: RendererPreviewProps) {
   // Log when renderer is ready (for debugging)
   const handleRendererReady = useCallback((backend: "webgpu" | "webgl2") => {
@@ -318,10 +314,10 @@ export function RendererPreview({
         <WebGPUCanvas
           camera={{ position: [0, 0, 4], fov: 50 }}
           frameloop="always"
+          dpr={1}
           onRendererReady={handleRendererReady}
           fallback={<div className={styles.fallback}>Initializing…</div>}
         >
-          {showStats && <StatsGl className="stats-gl-bottom-right" />}
           <RendererPreviewContent
             allSlots={allSlots}
             activeSlotIndex={activeSlotIndex}

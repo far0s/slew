@@ -3837,7 +3837,7 @@ checksum = "7a2ae44ef20feb57a68b23d846850f861394c2e02dc425a50098ae8c90267589"
 
 [[package]]
 name = "slew"
-version = "0.7.4"
+version = "0.7.5"
 dependencies = [
  "base64 0.22.1",
  "block2",
