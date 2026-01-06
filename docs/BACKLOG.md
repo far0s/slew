@@ -20,6 +20,16 @@ Prioritized list of potential work items for Slew.
 
 ## Active / High Priority
 
+### 🔴 Stream the same renderer to Renderer window and all Slot/Live Preview canvases in real-time
+
+**Context**: Right now the preview canvases in the Controls window are rendered separately from the Renderer window, which means there are noticeable differences in the way graphics are rendered. This can lead to unpredicatibility in the output and unexpected behavior. To ensure consistent results, it is necessary to stream the same renderer to all relevant windows in real-time. It's also necessary to separate all the different slots into their own canvases.
+
+**Subtasks**:
+
+- [ ] Implement real-time streaming of renderer to Renderer window and all Slot/Live Preview canvases
+- [ ] Separate all the different slots into their own canvases
+- [ ] [more TBD...]
+
 ### 🔴 App Icon `chore`
 
 Design and implement proper app icon for Slew.
@@ -53,7 +63,7 @@ Save/load parameter configurations per sketch.
 
 ---
 
-### 🟡 UI Appearance options `feature`
+### 🟡 Sidebar - Settings + Video + UI Appearance options `feature`
 
 Add more UI appearance options.
 
@@ -61,12 +71,17 @@ Add more UI appearance options.
 
 **Subtasks**:
 
-- [ ] Sidebar: position left/right
+- [ ] Sidebar: Clean up the Video tab:
+  - [ ] Sections: Renderer stats+options / Output (Syphon & NDI) / placeholder for Recording
+  - [ ] Output: Always show in the same order, show a reduced disabled version if output option is not available.
+  - [ ] Output: Improve the "Active" state, right now we have Frames and Receivers but not useful. It would also be nice to have some instructions on how to share the output with others.
+- [ ] Sidebar: New Appearance tab
+- [ ] Appearance: Sidebar position left/right (should be animated)
+- [ ] Settings: Allow users zoom +/- (for the Controls window fonts)
+- [ ] Settings: fix Actions buttons not working (nothing happens on click)
+- [ ] Windows: allow fullscreen toggle (native shortcut), put more controls in native window bar.
+- [ ] Appearance: Add custom CSS stylesheets for advanced users (placeholder for future implementation)
 - [ ] Settings: Improve light/dark themes, add "amber" mode (both themes can have orange/red accents to be easier on the eyes)
-- [ ] Settings: Add custom CSS stylesheets for advanced users
-- [ ] Settings: Allow users zoom +/-
-- [ ] Settings: fix Actions buttons not working
-- [ ] Windows: allow fullscreen toggle (native shortcut)
 - [ ] [more TBD...]
 
 ---
@@ -134,16 +149,17 @@ GPU-based capture or frame export.
 
 ### 🟢 Post-Processing Pipeline `feature`
 
-Add bloom, feedback, color grading effects.
+Add grain, bloom, feedback, color grading effects, etc.
 
-**Context**: Post-processing can add polish and visual interest to any sketch.
+**Context**: Post-processing can add polish and visual interest to any sketch. Right now the Aura sketch does have grain (and tone mapping modes, but that needs to stay separate I believe) baked in, but it would be useful to have more control over these effects at a more global level.
 
 **Subtasks**:
 
-- [ ] Bloom effect
-- [ ] Feedback/delay buffer
-- [ ] Color grading (LUT support)
-- [ ] Effect chain ordering
+- [ ] Add Post-processing pipeline
+- [ ] Sidebar: add post-processing controls tab
+- [ ] Allow to add independent post-processing effects
+- [ ] Allow post-processing effects to be chained, re-ordered
+- [ ] Effects: Grain, Chromatic Aberration, Bloom, CRT Scanlines, Dither, Halftone, Pixellation, Vignette, LED, Bulge Distortion, Swirl distortion, Wave Distortion... These effects can be ported over from Phobon's Fragments Boilerplate https://github.com/phobon/fragments-boilerplate
 
 ---
 
