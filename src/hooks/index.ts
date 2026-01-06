@@ -1,6 +1,7 @@
 export { useStatsToggle } from "./useStatsToggle";
 export { useWindowManager } from "./useWindowManager";
 export { useRendererSettings } from "./useRendererSettings";
+export { useLayoutPreferences } from "./useLayoutPreferences";
 export type {
   WindowStatus,
   AllWindowStatus,
@@ -13,3 +14,14 @@ export type {
   RendererStats,
   UseRendererSettingsResult,
 } from "./useRendererSettings";
+export type {
+  SidebarPosition,
+  LayoutPreferences,
+  UseLayoutPreferencesResult,
+} from "./useLayoutPreferences";
+export {
+  MIN_ZOOM,
+  MAX_ZOOM,
+  ZOOM_STEP,
+  DEFAULT_UI_ZOOM,
+} from "./useLayoutPreferences";

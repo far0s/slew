@@ -252,3 +252,147 @@
   color: var(--text-secondary);
   flex-shrink: 0;
 }
+
+/* ==========================================================================
+   Layout Controls
+   ========================================================================== */
+
+.layoutControls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.layoutRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.layoutLabel {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* Toggle Group (Sidebar Position) - Single button with two visual segments */
+.toggleGroup {
+  display: flex;
+  gap: 0;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  background: var(--bg-hover);
+  cursor: pointer;
+  padding: 0;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.toggleGroup:hover {
+  border-color: var(--border-default);
+  background: var(--bg-active);
+}
+
+.toggleGroup:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.toggleSegment {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.toggleSegment:first-child {
+  border-right: 1px solid var(--border-default);
+}
+
+.toggleSegmentActive {
+  background: var(--accent-primary);
+  color: white;
+}
+
+/* Zoom Controls */
+.zoomControls {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+}
+
+.zoomButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  padding: 0.35rem 0;
+  background: var(--bg-hover);
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.zoomButton:first-child {
+  border-right: 1px solid var(--border-default);
+}
+
+.zoomButton:last-child {
+  border-left: 1px solid var(--border-default);
+}
+
+.zoomButton:hover:not(:disabled) {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
+.zoomButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.zoomButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.zoomIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.zoomValue {
+  min-width: 44px;
+  padding: 0.35rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.zoomValue:hover {
+  background: var(--bg-hover);
+}
+
+.zoomValue:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+}

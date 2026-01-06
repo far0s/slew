@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState, useEffect } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { invoke } from "@tauri-apps/api/core";
-import { SunIcon, MoonIcon } from "@radix-ui/react-icons";
+import { SunIcon, MoonIcon, MinusIcon, PlusIcon } from "@radix-ui/react-icons";
 import { MidiPanel } from "../MidiPanel";
 import { OscPanel } from "../OscPanel";
 import { AudioPanel } from "../AudioPanel";
@@ -10,7 +10,12 @@ import { ModulationPanel } from "../ModulationPanel";
 import { VideoOutputPanel } from "../VideoOutputPanel";
 import { ParameterSlider } from "../ParameterSlider";
 import type { Slot } from "../../slots/useSlots";
-import { useWindowManager } from "../../hooks";
+import {
+  useWindowManager,
+  useLayoutPreferences,
+  MIN_ZOOM,
+  MAX_ZOOM,
+} from "../../hooks";
 import styles from "./DebugPanel.module.css";
 
 type Theme = "dark" | "light";
@@ -74,6 +79,82 @@ function ThemeToggle() {
         </>
       )}
     </button>
+  );
+}
+
+/**
+ * Layout controls component for sidebar position and UI zoom
+ */
+function LayoutControls() {
+  const {
+    sidebarPosition,
+    toggleSidebarPosition,
+    uiZoom,
+    increaseZoom,
+    decreaseZoom,
+    resetZoom,
+  } = useLayoutPreferences();
+
+  return (
+    <div className={styles.layoutControls}>
+      {/* Sidebar Position */}
+      <div className={styles.layoutRow}>
+        <span className={styles.layoutLabel}>Sidebar</span>
+        <button
+          type="button"
+          className={styles.toggleGroup}
+          onClick={toggleSidebarPosition}
+          aria-label={`Sidebar position: ${sidebarPosition}. Click to move to ${sidebarPosition === "left" ? "right" : "left"}`}
+        >
+          <span
+            className={`${styles.toggleSegment} ${sidebarPosition === "left" ? styles.toggleSegmentActive : ""}`}
+            aria-hidden="true"
+          >
+            Left
+          </span>
+          <span
+            className={`${styles.toggleSegment} ${sidebarPosition === "right" ? styles.toggleSegmentActive : ""}`}
+            aria-hidden="true"
+          >
+            Right
+          </span>
+        </button>
+      </div>
+
+      {/* UI Zoom */}
+      <div className={styles.layoutRow}>
+        <span className={styles.layoutLabel}>UI Zoom</span>
+        <div className={styles.zoomControls}>
+          <button
+            type="button"
+            className={styles.zoomButton}
+            onClick={decreaseZoom}
+            disabled={uiZoom <= MIN_ZOOM}
+            aria-label="Decrease zoom"
+          >
+            <MinusIcon className={styles.zoomIcon} />
+          </button>
+          <button
+            type="button"
+            className={styles.zoomValue}
+            onClick={resetZoom}
+            aria-label="Reset zoom to 100%"
+            title="Click to reset"
+          >
+            {uiZoom}%
+          </button>
+          <button
+            type="button"
+            className={styles.zoomButton}
+            onClick={increaseZoom}
+            disabled={uiZoom >= MAX_ZOOM}
+            aria-label="Increase zoom"
+          >
+            <PlusIcon className={styles.zoomIcon} />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -218,6 +299,11 @@ export function DebugPanel({
             <div className={styles.settingsSection}>
               <h4 className={styles.settingsHeader}>Appearance</h4>
               <ThemeToggle />
+            </div>
+
+            <div className={styles.settingsSection}>
+              <h4 className={styles.settingsHeader}>Layout</h4>
+              <LayoutControls />
             </div>
 
             <div className={styles.settingsSection}>

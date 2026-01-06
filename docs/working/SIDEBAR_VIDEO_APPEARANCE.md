@@ -141,18 +141,18 @@ Add sidebar position and UI zoom controls.
 
 #### Sidebar Position
 
-- [ ] Add sidebar position toggle (left/right)
-- [ ] Store in localStorage as `slew-sidebar-position`
-- [ ] Update `App.tsx` layout to support both positions
-- [ ] Ensure transitions are smooth
+- [x] Add sidebar position toggle (left/right)
+- [x] Store in localStorage as `slew-sidebar-position`
+- [x] Update `App.tsx` layout to support both positions
+- [x] Ensure transitions are smooth
 
 #### UI Zoom
 
-- [ ] Add zoom controls (-10%, reset, +10%)
-- [ ] Range: 80% to 150%
-- [ ] Store in localStorage as `slew-ui-zoom`
-- [ ] Apply via CSS `zoom` or `transform: scale()` on `#root`
-- [ ] Ensure hit targets remain accessible at all zoom levels
+- [x] Add zoom controls (-10%, reset, +10%)
+- [x] Range: 80% to 150%
+- [x] Store in localStorage as `slew-ui-zoom`
+- [x] Apply via CSS `zoom` or `transform: scale()` on `#root`
+- [x] Ensure hit targets remain accessible at all zoom levels
 
 ---
 
@@ -403,11 +403,11 @@ if (selected) {
 - [x] Unavailable backends are visually distinct (dimmed, clear reason)
 - [x] "How to use" instructions are inline and expandable
 
-### Phase 2: Layout Options
+### Phase 2: Layout Options ✅ COMPLETE
 
-- [ ] Sidebar can be positioned left or right
-- [ ] UI zoom works from 80% to 150%
-- [ ] Settings persist across sessions
+- [x] Sidebar can be positioned left or right
+- [x] UI zoom works from 80% to 150%
+- [x] Settings persist across sessions
 
 ### Phase 3: Advanced & Fixes
 
