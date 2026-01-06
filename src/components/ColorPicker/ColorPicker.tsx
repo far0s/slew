@@ -24,6 +24,8 @@ import styles from "./ColorPicker.module.css";
 const HISTORY_STORAGE_KEY = "slew-color-history";
 const MAX_HISTORY_SIZE = 5;
 
+type ColorFormat = "hex" | "rgb" | "hsl";
+
 export interface ColorPickerProps {
   value: string;
   onChange: (hex: string) => void;
@@ -59,10 +61,81 @@ function saveColorHistory(history: string[]): void {
   }
 }
 
+function clearColorHistory(): void {
+  try {
+    localStorage.removeItem(HISTORY_STORAGE_KEY);
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
 function addToHistory(color: string, history: string[]): string[] {
   const normalizedColor = color.toUpperCase();
   const filtered = history.filter((c) => c.toUpperCase() !== normalizedColor);
   return [normalizedColor, ...filtered].slice(0, MAX_HISTORY_SIZE);
+}
+
+function formatColor(color: Color, format: ColorFormat): string {
+  switch (format) {
+    case "hex":
+      return color.toString("hex");
+    case "rgb": {
+      const rgb = color.toFormat("rgb");
+      const r = Math.round(rgb.getChannelValue("red"));
+      const g = Math.round(rgb.getChannelValue("green"));
+      const b = Math.round(rgb.getChannelValue("blue"));
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+    case "hsl": {
+      const hsl = color.toFormat("hsl");
+      const h = Math.round(hsl.getChannelValue("hue"));
+      const s = Math.round(hsl.getChannelValue("saturation"));
+      const l = Math.round(hsl.getChannelValue("lightness"));
+      return `hsl(${h}, ${s}%, ${l}%)`;
+    }
+  }
+}
+
+function formatColorWithAlpha(color: Color, format: ColorFormat): string {
+  const alpha = color.getChannelValue("alpha");
+  switch (format) {
+    case "hex": {
+      const hex = color.toString("hex");
+      if (alpha < 1) {
+        const alphaHex = Math.round(alpha * 255)
+          .toString(16)
+          .padStart(2, "0");
+        return hex + alphaHex;
+      }
+      return hex;
+    }
+    case "rgb": {
+      const rgb = color.toFormat("rgb");
+      const r = Math.round(rgb.getChannelValue("red"));
+      const g = Math.round(rgb.getChannelValue("green"));
+      const b = Math.round(rgb.getChannelValue("blue"));
+      if (alpha < 1) {
+        return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(2)})`;
+      }
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+    case "hsl": {
+      const hsl = color.toFormat("hsl");
+      const h = Math.round(hsl.getChannelValue("hue"));
+      const s = Math.round(hsl.getChannelValue("saturation"));
+      const l = Math.round(hsl.getChannelValue("lightness"));
+      if (alpha < 1) {
+        return `hsla(${h}, ${s}%, ${l}%, ${alpha.toFixed(2)})`;
+      }
+      return `hsl(${h}, ${s}%, ${l}%)`;
+    }
+  }
+}
+
+function getNextFormat(current: ColorFormat): ColorFormat {
+  const formats: ColorFormat[] = ["hex", "rgb", "hsl"];
+  const index = formats.indexOf(current);
+  return formats[(index + 1) % formats.length];
 }
 
 // EyeDropper API type declaration (not yet in TypeScript lib)
@@ -99,7 +172,7 @@ function EyeDropperButton() {
       }}
     >
       <svg
-        className={styles.eyeDropperIcon}
+        className={styles.iconSmall}
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -115,11 +188,156 @@ function EyeDropperButton() {
   );
 }
 
+interface CopyButtonProps {
+  value: string;
+}
+
+function CopyButton({ value }: CopyButtonProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard API not available or permission denied
+    }
+  }, [value]);
+
+  return (
+    <button
+      type="button"
+      className={styles.copyButton}
+      aria-label={copied ? "Copied!" : "Copy color value"}
+      onClick={handleCopy}
+    >
+      {copied ? (
+        <svg
+          className={styles.iconSmall}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      ) : (
+        <svg
+          className={styles.iconSmall}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+interface PasteButtonProps {
+  onPaste: (value: string) => void;
+}
+
+function PasteButton({ onPaste }: PasteButtonProps) {
+  const handlePaste = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        onPaste(text.trim());
+      }
+    } catch {
+      // Clipboard API not available or permission denied
+    }
+  }, [onPaste]);
+
+  // Check if clipboard read is likely supported
+  if (typeof navigator === "undefined" || !navigator.clipboard?.readText) {
+    return null;
+  }
+
+  return (
+    <button
+      type="button"
+      className={styles.pasteButton}
+      aria-label="Paste color from clipboard"
+      onClick={handlePaste}
+    >
+      <svg
+        className={styles.iconSmall}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      </svg>
+    </button>
+  );
+}
+
+interface FormatToggleProps {
+  format: ColorFormat;
+  onToggle: () => void;
+}
+
+function FormatToggle({ format, onToggle }: FormatToggleProps) {
+  return (
+    <button
+      type="button"
+      className={styles.formatToggle}
+      aria-label={`Color format: ${format.toUpperCase()}. Click to change.`}
+      onClick={onToggle}
+    >
+      {format.toUpperCase()}
+    </button>
+  );
+}
+
+interface ClearHistoryButtonProps {
+  onClear: () => void;
+}
+
+function ClearHistoryButton({ onClear }: ClearHistoryButtonProps) {
+  return (
+    <button
+      type="button"
+      className={styles.clearHistoryButton}
+      aria-label="Clear color history"
+      onClick={onClear}
+    >
+      <svg
+        className={styles.iconTiny}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M18 6 6 18" />
+        <path d="m6 6 12 12" />
+      </svg>
+    </button>
+  );
+}
+
 export function ColorPicker({
   value,
   onChange,
   label,
   swatches = [],
+  showAlpha = false,
   disabled = false,
 }: ColorPickerProps) {
   const [color, setColor] = useState<Color>(() => {
@@ -130,6 +348,7 @@ export function ColorPicker({
     }
   });
   const [history, setHistory] = useState<string[]>(loadColorHistory);
+  const [format, setFormat] = useState<ColorFormat>("hex");
   const lastCommittedValue = useRef(value);
 
   // Sync internal state when external value changes
@@ -165,6 +384,33 @@ export function ColorPicker({
     }
   }, [color, history]);
 
+  const handleClearHistory = useCallback(() => {
+    setHistory([]);
+    clearColorHistory();
+  }, []);
+
+  const handleToggleFormat = useCallback(() => {
+    setFormat((prev) => getNextFormat(prev));
+  }, []);
+
+  const handlePasteColor = useCallback(
+    (text: string) => {
+      try {
+        // Try to parse the pasted value as a color
+        const parsedColor = parseColor(text);
+        handleColorChange(parsedColor);
+        handleColorChangeEnd();
+      } catch {
+        // Invalid color format, ignore
+      }
+    },
+    [handleColorChange, handleColorChangeEnd],
+  );
+
+  const displayValue = showAlpha
+    ? formatColorWithAlpha(color, format)
+    : formatColor(color, format);
+
   return (
     <AriaColorPicker value={color} onChange={handleColorChange}>
       <DialogTrigger>
@@ -199,15 +445,33 @@ export function ColorPicker({
               </SliderTrack>
             </ColorSlider>
 
+            {/* Alpha Slider (optional) */}
+            {showAlpha && (
+              <ColorSlider channel="alpha" onChangeEnd={handleColorChangeEnd}>
+                <SliderTrack className={styles.alphaSliderTrack}>
+                  <ColorThumb
+                    className={`${styles.colorThumb} ${styles.colorThumbSlider}`}
+                  />
+                </SliderTrack>
+              </ColorSlider>
+            )}
+
             <div className={styles.content}>
-              {/* Hex Input */}
+              {/* Color Value Input */}
               <ColorField className={styles.field}>
-                <Label className={styles.label}>Hex</Label>
+                <div className={styles.labelRow}>
+                  <Label className={styles.label}>Color</Label>
+                  {/*<FormatToggle forsmat={format} onToggle={handleToggleFormat} />*/}
+                </div>
                 <div className={styles.fieldRow}>
                   <Input
                     className={styles.input}
                     onBlur={handleColorChangeEnd}
+                    value={format === "hex" ? undefined : displayValue}
+                    readOnly={format !== "hex"}
                   />
+                  <CopyButton value={displayValue} />
+                  <PasteButton onPaste={handlePasteColor} />
                   <EyeDropperButton />
                 </div>
               </ColorField>
@@ -236,7 +500,10 @@ export function ColorPicker({
               {/* History Swatches */}
               {history.length > 0 && (
                 <div className={styles.swatchSection}>
-                  <span className={styles.swatchLabel}>Recent</span>
+                  <div className={styles.swatchLabelRow}>
+                    <span className={styles.swatchLabel}>Recent</span>
+                    <ClearHistoryButton onClear={handleClearHistory} />
+                  </div>
                   <ColorSwatchPicker
                     className={styles.swatchPicker}
                     onChange={handleColorChangeEnd}

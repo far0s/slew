@@ -140,7 +140,8 @@
 
 /* Content area below color area */
 .content {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   padding: 12px;
 }
@@ -154,6 +155,7 @@
 
 .fieldRow {
   display: flex;
+  flex-flow: row nowrap;
   align-items: center;
   gap: 6px;
 }
@@ -167,10 +169,12 @@
 
 /* Hex input */
 .input {
-  flex: 1;
-  height: 36px;
-  padding: 0 12px;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.875rem;
   color: var(--text-primary);
   background: var(--bg-surface);
@@ -196,15 +200,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
   padding: 0;
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: 6px;
   color: var(--text-secondary);
   cursor: pointer;
-  flex-shrink: 0;
   transition:
     color 0.15s ease,
     background-color 0.15s ease,
@@ -226,9 +230,136 @@
   background: var(--bg-active);
 }
 
-.eyeDropperIcon {
+.iconSmall {
   width: 16px;
   height: 16px;
+}
+
+.iconTiny {
+  width: 12px;
+  height: 12px;
+}
+
+/* Alpha slider track */
+.alphaSliderTrack {
+  height: 20px;
+  width: 100%;
+  border: 1px solid var(--border-default);
+  border-top: none;
+  background-image: repeating-conic-gradient(
+    var(--bg-surface) 0% 25%,
+    var(--bg-muted) 0% 50%
+  );
+  background-size: 8px 8px;
+}
+
+/* Copy button */
+.copyButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.copyButton:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+
+.copyButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.copyButton:active {
+  background: var(--bg-active);
+}
+
+/* Paste button */
+.pasteButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.pasteButton:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+
+.pasteButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.pasteButton:active {
+  background: var(--bg-active);
+}
+
+/* Format toggle button */
+.formatToggle {
+  padding: 2px 6px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.formatToggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+
+.formatToggle:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+/* Label row (with format toggle) */
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 /* Swatch section */
@@ -238,10 +369,45 @@
   gap: 4px;
 }
 
+.swatchLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .swatchLabel {
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--text-secondary);
+}
+
+/* Clear history button */
+.clearHistoryButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.clearHistoryButton:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.clearHistoryButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
 }
 
 /* Swatch picker grid */
