@@ -16,7 +16,7 @@ import {
   MIN_ZOOM,
   MAX_ZOOM,
 } from "../../hooks";
-import styles from "./DebugPanel.module.css";
+import styles from "./Sidebar.module.css";
 
 type Theme = "dark" | "light";
 
@@ -40,11 +40,11 @@ function useTheme() {
 }
 
 /**
- * Props for the DebugPanel component.
+ * Props for the Sidebar component.
  *
  * @property macropadSelectedIndex - Currently selected slot via macropad (for HID panel display)
  */
-export interface DebugPanelProps {
+export interface SidebarProps {
   // HID/Macropad
   macropadSelectedIndex?: number | null;
   // Active slots for parameter filtering
@@ -223,10 +223,10 @@ function SettingsSliders({
 }
 
 /**
- * DebugPanel
+ * Sidebar
  *
- * Tabbed debug interface for input configuration and monitoring:
- * - Settings: Theme, transition times, actions
+ * Tabbed interface for input configuration and monitoring:
+ * - Settings: Theme, layout, transition times, actions
  * - MIDI: Device selection and mapping
  * - OSC: Endpoint management
  * - Audio: Input configuration and mappings
@@ -234,12 +234,12 @@ function SettingsSliders({
  * - Modulation: LFO and modulation matrix
  * - Video: Renderer stats, video output backends
  */
-export function DebugPanel({
+export function Sidebar({
   macropadSelectedIndex,
   slots = [],
   getValue,
   setValue,
-}: DebugPanelProps) {
+}: SidebarProps) {
   // Window manager for restart functionality
   const { isRestarting, restartControls, restartRenderer } = useWindowManager({
     windowLabel: "controls",
@@ -269,7 +269,7 @@ export function DebugPanel({
 
   return (
     <Tabs.Root defaultValue="settings" className={styles.container}>
-      <Tabs.List className={styles.tabList} aria-label="Debug panel tabs">
+      <Tabs.List className={styles.tabList} aria-label="Sidebar tabs">
         <Tabs.Trigger value="settings" className={styles.tabTrigger}>
           Settings
         </Tabs.Trigger>
@@ -378,4 +378,4 @@ export function DebugPanel({
   );
 }
 
-export default DebugPanel;
+export default Sidebar;

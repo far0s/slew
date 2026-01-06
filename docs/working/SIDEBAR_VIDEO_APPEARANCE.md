@@ -38,7 +38,7 @@ This feature covers two main areas:
   - "Frames" and "Receivers" stats not very useful without context
   - No instructions on how to actually use the output in other software
 
-### Settings Tab (`DebugPanel.tsx`)
+### Settings Tab (`Sidebar.tsx`)
 
 - Renderer section: DPR control, window/render size, backend type, FPS/frame time
 - Appearance section: Only dark/light toggle
@@ -231,7 +231,7 @@ Create a new dedicated Appearance tab in the sidebar:
 
 #### Subtasks
 
-- [ ] Add "Appearance" tab to DebugPanel tabs
+- [ ] Add "Appearance" tab to Sidebar tabs
 - [ ] Create `AppearancePanel` component
 - [ ] Move theme toggle from Settings to Appearance
 
@@ -382,7 +382,7 @@ if (selected) {
 
 | File                                                          | Changes                                    |
 | ------------------------------------------------------------- | ------------------------------------------ |
-| `src/components/DebugPanel/DebugPanel.tsx`                    | Add Appearance tab, reorganize tabs        |
+| `src/components/Sidebar/Sidebar.tsx`                          | Add Appearance tab, reorganize tabs        |
 | `src/components/VideoOutputPanel/VideoOutputPanel.tsx`        | Restructure with sections, rename header   |
 | `src/components/VideoOutputPanel/VideoOutputPanel.module.css` | Update styles for new layout               |
 | `src/tailwind.css`                                            | Add amber accent variables                 |

@@ -13,7 +13,7 @@ import {
 import type { SketchId, SketchProps } from "./sketches";
 import { getSketchDescriptor } from "./sketches";
 import { makeSlotParameterId } from "./slots/slotTypes";
-import { SlotsArea, RendererPreview, DebugPanel } from "./components";
+import { SlotsArea, RendererPreview, Sidebar } from "./components";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings } from "./inputs/audio";
 import { useLfos, useModulationTargets } from "./inputs/modulation";
@@ -778,7 +778,7 @@ function App() {
               getParam={(id) => paramStore.getInterpolated(id)}
               getSlotColors={getSlotColors}
             />
-            <DebugPanel
+            <Sidebar
               macropadSelectedIndex={macropadSelectedIndex}
               slots={slotState.slots}
               getValue={getValue}
