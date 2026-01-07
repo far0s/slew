@@ -2,150 +2,145 @@
 
 ## Executive Summary
 
-**Verdict: High complexity, uncertain feasibility for the WebView/Tauri architecture**
+**Updated Verdict: Performance target achieved; IOSurface remains a future optimization opportunity**
 
-IOSurface is Apple's cross-process GPU texture sharing mechanism on macOS. While Syphon is built on IOSurface and supports it natively, the challenge lies in **accessing WebGL textures from WKWebView as IOSurfaces** — which is not publicly supported.
+With the WebGPU migration complete, Slew now achieves stable **60fps Syphon output at 1080p** using `readRenderTargetPixelsAsync()` and binary IPC. IOSurface zero-copy would provide further gains but is **no longer a blocking requirement**.
 
-| Aspect                         | Assessment                                     |
-| ------------------------------ | ---------------------------------------------- |
-| **Potential Performance Gain** | Very High (~10× improvement possible)          |
-| **Technical Feasibility**      | Low-Medium (relies on undocumented behavior)   |
-| **Implementation Complexity**  | Very High                                      |
-| **Maintenance Risk**           | High (private APIs, macOS version sensitivity) |
-| **Time Estimate**              | 2-4 weeks exploration + unknown unknowns       |
+| Aspect                      | Previous (WebGL)                      | Current (WebGPU)                         |
+| --------------------------- | ------------------------------------- | ---------------------------------------- |
+| **Performance**             | ~20-30 FPS at 1080p                   | Stable 60 FPS at 1080p ✅                |
+| **GPU Readback**            | Blocking `readPixels()` (4-5ms stall) | Async `readRenderTargetPixelsAsync()` ✅ |
+| **IPC Method**              | Base64 JSON (~30ms overhead)          | Binary protocol via custom URI scheme ✅ |
+| **IOSurface Value**         | Critical for acceptable performance   | Incremental improvement (~10-20% gain)   |
+| **Implementation Priority** | High                                  | Low (nice-to-have)                       |
 
 ---
 
 ## What is IOSurface?
 
-IOSurface is a macOS framework for sharing GPU-backed image buffers between processes without copying pixel data. Key characteristics:
+IOSurface is Apple's cross-process GPU texture sharing mechanism on macOS:
 
-- **Zero-copy**: Surfaces exist in GPU memory and are shared via Mach ports
+- **Zero-copy**: Surfaces exist in GPU memory, shared via Mach ports
 - **Cross-process**: Can be shared between any processes on the system
-- **GPU-native**: Metal, OpenGL, and Core Graphics can all work with IOSurfaces
+- **GPU-native**: Metal, OpenGL, and Core Graphics all support IOSurface
 - **Reference-counted**: Safe sharing with automatic cleanup
 
 ### How Syphon Uses IOSurface
 
-Syphon is built entirely on IOSurface:
-
-1. **Server** creates an IOSurface and renders/copies its texture content to it
-2. **Server** publishes the IOSurface ID (a 32-bit integer) via distributed notifications
-3. **Client** looks up the IOSurface by ID using `IOSurfaceLookup()`
-4. **Client** binds the IOSurface to its own OpenGL/Metal texture
-5. **Both** access the same GPU memory — zero copies
-
-From `SyphonIOSurfaceImageCore.m`:
+Syphon is built entirely on IOSurface. From `SyphonMetalServer.m`:
 
 ```objc
-// Server side: create IOSurface-backed texture
-IOSurfaceRef surface = IOSurfaceCreate(properties);
-CVOpenGLTextureCacheCreateTextureFromImage(..., surface, &texture);
+// Server creates IOSurface-backed Metal texture
+IOSurfaceRef surface = [self newSurfaceForWidth:size.width height:size.height options:nil];
+_surfaceTexture = [_device newTextureWithDescriptor:descriptor iosurface:surface plane:0];
 
-// Client side: look up by ID
-IOSurfaceRef surface = IOSurfaceLookup(surfaceID);
+// Publishing uses GPU blit (zero CPU involvement)
+id<MTLBlitCommandEncoder> blitCommandEncoder = [commandBuffer blitCommandEncoder];
+[blitCommandEncoder copyFromTexture:textureToPublish ... toTexture:destination ...];
 ```
+
+The key insight: **if we could get a Metal texture handle from WebGPU, we could blit directly to the Syphon IOSurface**.
 
 ---
 
-## Current Architecture & Bottlenecks
+## Current Architecture
 
-### Current Pipeline
-
-```
-WebGL Canvas (GPU)
-       │
-       ▼
-gl.readPixels() ─────────── 4-5ms (GPU→CPU sync stall)
-       │
-       ▼
-Uint8Array (CPU)
-       │
-       ▼
-Binary IPC ───────────────── 25-30ms (Tauri invoke, memcpy)
-       │
-       ▼
-Rust Backend (CPU)
-       │
-       ▼
-glTexSubImage2D() ─────────── 0.5ms (CPU→GPU upload)
-       │
-       ▼
-Syphon publishFrameTexture ── 0.5ms
-```
-
-**Total: ~30-40ms per frame = ~25-30 FPS ceiling**
-
-### Ideal IOSurface Pipeline
+### Data Flow (WebGPU Mode)
 
 ```
-WebGL Canvas (GPU)
+Three.js Scene
        │
        ▼
-Get IOSurface handle ─────── 0.01ms (just retrieve a pointer)
+WebGPU Renderer (Metal backend)
        │
        ▼
-invoke("publish_iosurface", {id}) ── 0.1ms (tiny IPC)
+readRenderTargetPixelsAsync() ── ~1-2ms (async DMA, non-blocking)
        │
        ▼
-Syphon publish from IOSurface ─── 0.5ms (GPU→GPU, no copy)
+Uint8Array (CPU buffer)
+       │
+       ▼
+flipVerticallyInPlace() ──────── ~0.5ms
+       │
+       ▼
+Binary IPC (videoframe://) ───── ~2-3ms (raw bytes, no encoding)
+       │
+       ▼
+Rust Backend
+       │
+       ▼
+glTexSubImage2D() ───────────── ~0.5ms (CPU→GPU upload)
+       │
+       ▼
+Syphon publishFrameTexture ──── ~0.5ms
 ```
 
-**Total: ~0.6ms per frame = 1000+ FPS theoretically possible**
+**Current Total: ~5-8ms per frame = stable 60 FPS**
+
+### Theoretical IOSurface Flow
+
+```
+Three.js Scene
+       │
+       ▼
+WebGPU Renderer (Metal backend)
+       │
+       ▼
+Get Metal texture handle ─────── N/A (no public API)
+       │
+       ▼
+Blit to IOSurface ───────────── ~0.1ms (GPU-to-GPU)
+       │
+       ▼
+Syphon publish ──────────────── ~0.1ms (surface ID only)
+```
+
+**Theoretical Total: ~0.2ms per frame = 1000+ FPS ceiling**
 
 ---
 
 ## Technical Analysis
 
-### Challenge 1: Accessing WebGL Texture as IOSurface
+### The Core Challenge
 
-**The core problem**: WebGL textures in WKWebView are managed internally by WebKit. There is no public API to get the underlying IOSurface.
+WebGPU on macOS uses Metal internally, but WebKit does not expose any public API to access the underlying Metal textures. The `GPUTexture` JavaScript object is an opaque handle.
 
-#### What We Know
+### Path 1: WebKit WebGPU Internals (Blocked)
 
-1. **WKWebView uses IOSurface internally**: WebKit's GPU process uses IOSurface for compositing layers. This is how Safari achieves efficient rendering.
+**WebKit's Implementation:**
 
-2. **CALayer can expose IOSurface**: `CALayer` has a private property `_contentsIOSurface` that can return the backing IOSurface, but:
-   - It's a private API (App Store rejection risk)
-   - It gives you the **composited** layer, not individual WebGL textures
-   - The IOSurface may be the entire WebView contents, not just the canvas
+- WebGPU in Safari/WKWebView runs in a separate GPU process
+- Textures are managed internally using IOSurface for compositing
+- No public API to access Metal handles from JavaScript
 
-3. **No public WebGL→IOSurface bridge**: Unlike on iOS where `CVPixelBuffer` can back a WebGL texture in some contexts, macOS WebKit doesn't expose this.
+**Chromium's Approach (for reference):**
 
-#### Potential Approaches
+- Chromium uses `iosurface_image_backing.mm` for shared image backing
+- This is internal to Chromium's GPU process, not exposed to web content
 
-**Approach A: CALayer Capture (Compositor Level)**
+**Conclusion:** No path through the standard WebGPU API.
+
+### Path 2: CALayer Capture (Private API)
 
 ```objc
-// PRIVATE API - would capture entire WebView
+// PRIVATE API - captures composited WebView layer
 CALayer *webViewLayer = wkWebView.layer;
 IOSurfaceRef surface = (__bridge IOSurfaceRef)[webViewLayer valueForKey:@"contentsIOSurface"];
 ```
 
-**Pros:**
+**Issues:**
 
-- Might work without modifying WebGL code
-- Gets final composited output
-
-**Cons:**
-
-- Private API (App Store rejection)
+- `_contentsIOSurface` is a private API (App Store rejection)
 - Captures entire WebView, not just the canvas
 - May include UI elements, overlays
 - Timing/synchronization unclear
-- No control over when frame is "ready"
+- May only update at display refresh rate
 
-**Approach B: OffscreenCanvas + transferToImageBitmap**
+**Assessment:** High risk, uncertain benefit.
 
-WebGL2 `OffscreenCanvas` and `transferToImageBitmap()` are designed for efficient image transfer, but:
+### Path 3: Native Metal Renderer (Bypass WebView)
 
-- Still requires `readPixels` or similar under the hood
-- No direct IOSurface exposure
-- Doesn't solve the fundamental problem
-
-**Approach C: Native Metal Rendering (Replace WebGL)**
-
-Abandon WebGL entirely and render directly with Metal:
+Replace WebGL/WebGPU rendering entirely with native Metal:
 
 ```
 Scene Data (JSON/binary) ──► Native Metal Renderer ──► IOSurface ──► Syphon
@@ -154,264 +149,216 @@ Scene Data (JSON/binary) ──► Native Metal Renderer ──► IOSurface ─
 **Pros:**
 
 - Full control over IOSurface
-- Maximum performance possible
+- Maximum performance
 - Clean architecture
 
 **Cons:**
 
 - Massive rewrite (lose all Three.js/r3f benefits)
-- Would need to reimplement all shaders in Metal
-- Loses web dev velocity
+- Must reimplement all TSL shaders in Metal/MSL
 - Different skill set required
+- Loses hot-reload and web dev velocity
 
-**Approach D: WebGPU Future**
+**Assessment:** Only viable if VJ performance becomes the singular priority.
 
-When react-three-fiber supports WebGPU:
+### Path 4: Tauri Custom Render Target (Speculative)
 
-- WebGPU on macOS uses Metal underneath
-- `GPUTexture` might expose Metal texture handle
-- Metal textures can be created from IOSurface
-- Still speculative — no confirmed API for this
+Tauri v2 uses WKWebView on macOS. A custom Tauri plugin could:
 
-### Challenge 2: Rust/Tauri Integration
+1. Create an IOSurface-backed render target in Rust/Metal
+2. Inject this as a custom WebGPU external texture
+3. Render to it from JavaScript
+4. Publish directly to Syphon
 
-Even if we could get an IOSurface handle from WebView, we'd need to:
+**Challenges:**
 
-1. **Get the IOSurface ID from JavaScript**: No standard API; would need native bridge
-2. **Pass it to Rust**: Just a 32-bit integer, trivial once we have it
-3. **Create Metal/OpenGL texture from IOSurface in Rust**: Possible with `objc` crate and Metal bindings
+- Requires deep WebKit/WebGPU integration
+- WebGPU `importExternalTexture` is designed for video, not custom surfaces
+- No documentation or prior art for this approach
 
-```rust
-// Hypothetical Rust code
-extern "C" {
-    fn IOSurfaceLookup(csid: u32) -> *mut c_void;
-}
+**Assessment:** Highly experimental, 2-4 weeks exploration minimum.
 
-fn publish_from_iosurface(surface_id: u32) -> Result<(), String> {
-    unsafe {
-        let surface = IOSurfaceLookup(surface_id);
-        if surface.is_null() {
-            return Err("Failed to lookup IOSurface".into());
-        }
+### Path 5: wgpu Native + Shared Memory
 
-        // Bind to OpenGL texture
-        let texture = create_texture_from_iosurface(surface);
+Use `wgpu` (Rust WebGPU implementation) as the renderer instead of WebKit's:
 
-        // Publish to Syphon
-        syphon_server.publish_frame_texture(texture, ...);
-    }
-}
+```
+Scene Data ──► wgpu (native) ──► Metal texture ──► IOSurface ──► Syphon
 ```
 
-### Challenge 3: SyphonMetalServer
+`wgpu` supports Metal interop and has access to underlying textures. However:
 
-Your current implementation uses `SyphonOpenGLServer`. There's also `SyphonMetalServer` which is more modern:
+- Would require a completely different rendering architecture
+- Scene data would need to be serialized from frontend to Rust
+- Loses Three.js/r3f ecosystem entirely
+
+**Assessment:** Similar to Path 3, not practical without major rewrite.
+
+---
+
+## SyphonMetalServer Analysis
+
+Syphon supports both OpenGL (`SyphonOpenGLServer`) and Metal (`SyphonMetalServer`). Our current implementation uses OpenGL.
+
+### Why We Use OpenGL
+
+1. **Simpler integration**: CGL context creation is straightforward
+2. **Texture upload**: `glTexSubImage2D` accepts raw pixel data
+3. **No command buffer management**: OpenGL handles synchronization
+
+### Migrating to SyphonMetalServer
+
+If we had access to Metal textures, `SyphonMetalServer` would be preferable:
 
 ```objc
-// Metal-based publishing (from Syphon-Framework)
-- (void)publishFrameTexture:(id<MTLTexture>)texture
-              commandBuffer:(id<MTLCommandBuffer>)commandBuffer
+- (void)publishFrameTexture:(id<MTLTexture>)textureToPublish
+            onCommandBuffer:(id<MTLCommandBuffer>)commandBuffer
                 imageRegion:(NSRect)region
                     flipped:(BOOL)isFlipped;
-
-// Alternative: publish directly from IOSurface
-- (void)publishSurface:(IOSurfaceRef)surface
 ```
 
-Using `SyphonMetalServer` would be cleaner if we're working with IOSurface, since:
+Benefits:
 
-- Metal natively supports IOSurface-backed textures
-- Avoids OpenGL deprecation concerns
+- Uses GPU blit (no CPU involvement if textures match format)
 - Better performance on Apple Silicon
+- Avoids OpenGL deprecation concerns
+
+**Blocker:** We don't have access to Metal textures from WebGPU.
 
 ---
 
-## Alternative Approaches to Consider
+## Comparison with node-syphon
 
-Before investing in IOSurface, consider these intermediate optimizations:
+[node-syphon](https://github.com/benoitlahoz/node-syphon) achieves IOSurface integration in Electron by:
 
-### 1. Shared Memory IPC (Medium Complexity)
+1. Using native addons with direct GPU access
+2. Creating IOSurface-backed textures in native code
+3. Rendering directly to those surfaces
 
-Instead of Tauri's binary invoke (which still copies), use true shared memory:
+However, this approach:
 
-```
-WebGL → readPixels → SharedArrayBuffer/mmap → Rust reads directly
-```
-
-**Benefits:**
-
-- Eliminates IPC copy (~25ms savings)
-- Well-documented approach
-- No private APIs
-
-**Implementation:**
-
-- Create memory-mapped file in Rust
-- Map it in JavaScript via WebAssembly or custom Tauri plugin
-- Frontend writes pixels, signals Rust
-- Rust reads directly from shared memory
-
-### 2. PBO Async Readback (Lower Complexity)
-
-Reduce `readPixels` stall with ping-pong buffers:
-
-```javascript
-// Frame N: Start async readback
-gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo1);
-gl.readPixels(...); // Returns immediately, async DMA
-
-// Frame N+1: Read from previous PBO (now complete)
-gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo0);
-const data = gl.getBufferSubData(...); // Fast, no stall
-```
-
-**Benefits:**
-
-- Hides GPU→CPU latency
-- 1-frame latency, but smooth framerate
-- Standard WebGL2 APIs
-
-### 3. Resolution Scaling + Upscaling
-
-Current capture at `scale=0.5` (~540p) performs reasonably well. Consider:
-
-- Keep capture at 540p or 720p
-- Use GPU upscaling on Syphon client side
-- Most VJ apps (Resolume, VDMX) can upscale
+- Bypasses the web content entirely
+- Requires native rendering pipeline
+- Doesn't help with WebView-based rendering
 
 ---
 
-## Estimated Implementation Effort
+## What We've Already Optimized
 
-| Approach                        | Effort     | Risk      | Potential Gain |
-| ------------------------------- | ---------- | --------- | -------------- |
-| Shared Memory IPC               | 1-2 weeks  | Low       | 40-60%         |
-| PBO Async Readback              | 3-5 days   | Low       | 20-30%         |
-| CALayer IOSurface (private API) | 2-4 weeks  | Very High | 90%+           |
-| Native Metal Renderer           | 2-3 months | Medium    | 95%+           |
-| Wait for WebGPU                 | Unknown    | Low       | Unknown        |
+| Optimization                    | Status      | Impact                         |
+| ------------------------------- | ----------- | ------------------------------ |
+| WebGPU Renderer                 | ✅ Complete | GPU-native rendering via Metal |
+| `readRenderTargetPixelsAsync()` | ✅ Complete | Non-blocking GPU→CPU transfer  |
+| Binary IPC Protocol             | ✅ Complete | ~30ms saved vs base64          |
+| PBO Async Readback (WebGL)      | ✅ Complete | Fallback for WebGL2            |
+| Pre-allocated Buffers           | ✅ Complete | Avoid per-frame allocations    |
+
+These optimizations have brought us from ~20 FPS to stable 60 FPS at 1080p.
+
+---
+
+## Remaining Bottlenecks
+
+With current optimizations, the remaining overhead per frame is approximately:
+
+| Stage                         | Time   | Notes                              |
+| ----------------------------- | ------ | ---------------------------------- |
+| `readRenderTargetPixelsAsync` | ~1-2ms | Async DMA, minimal stall           |
+| `flipVerticallyInPlace`       | ~0.5ms | CPU-side row swap                  |
+| Binary IPC transfer           | ~2-3ms | 8MB raw data at 1080p RGBA         |
+| `glTexSubImage2D`             | ~0.5ms | CPU→GPU upload                     |
+| Syphon publish                | ~0.5ms | GPU blit to clients                |
+| **Total**                     | ~5-8ms | Well within 16.67ms budget (60fps) |
+
+IOSurface would eliminate steps 1-4 entirely (~5-6ms savings), but we're already hitting our target.
 
 ---
 
 ## Recommendations
 
-### Short-term (Next Sprint)
+### Current State: ✅ Performance Goals Met
 
-1. **Implement shared memory IPC** — eliminates the ~25ms IPC copy
-2. **Add PBO async readback** — reduces readPixels stall
-3. **Expected result**: ~60 FPS at 720p, ~45 FPS at 1080p
+With WebGPU + binary IPC, we achieve stable 60fps Syphon output at 1080p. No immediate action required.
 
-### Medium-term (If Still Needed)
+### Short-term Improvements (Low Priority)
 
-4. **Prototype CALayer IOSurface capture** — test if it even works
-   - Create a test app outside App Store constraints
-   - Evaluate quality, timing, and reliability
-   - If successful, decide if private API risk is acceptable
+1. **Explore CPU-side flip elimination**: WebGPU might support different coordinate systems
+2. **Investigate `SyphonMetalServer`**: Even with CPU upload, Metal might be faster than OpenGL
+3. **Profile on different hardware**: Ensure performance on Intel Macs
 
-### Long-term
+### Long-term Opportunities
 
-5. **Monitor WebGPU r3f support** — cleanest path to true zero-copy
-6. **Consider native renderer** — only if VJ performance becomes critical selling point
+1. **Monitor WebGPU Native Extensions**: Future specs may expose Metal handles
+2. **Watch for Tauri GPU Plugins**: Community plugins for GPU interop
+3. **Apple API Changes**: Safari may eventually expose more control
+
+### When to Revisit IOSurface
+
+Consider investing in IOSurface if:
+
+- Performance requirements increase (4K output, multiple outputs)
+- Apple provides public APIs for WebGPU texture access
+- VJ performance becomes a key differentiator worth the development cost
 
 ---
 
-## Research References
+## Implementation Cost vs Benefit
+
+| Approach                        | Effort     | Risk      | Benefit Over Current |
+| ------------------------------- | ---------- | --------- | -------------------- |
+| Do nothing (current state)      | None       | None      | Baseline (60fps ✅)  |
+| SyphonMetalServer migration     | 1 week     | Low       | ~5-10% improvement   |
+| CALayer IOSurface (private API) | 2-4 weeks  | Very High | ~20% improvement     |
+| Native Metal renderer           | 2-3 months | Medium    | ~25% improvement     |
+| Tauri GPU plugin prototype      | 3-4 weeks  | Very High | Unknown              |
+
+**Verdict:** Given stable 60fps with current implementation, none of these are justified unless requirements change.
+
+---
+
+## Key Insights from Research
+
+1. **WebGPU on macOS uses Metal internally**, but no public API exposes the Metal textures
+2. **Chromium uses IOSurface internally** for shared image backing, proving the concept works
+3. **SyphonMetalServer** can publish directly from Metal textures with GPU blit
+4. **The bottleneck has moved**: Previously GPU→CPU was the issue; now IPC is comparable
+5. **60fps is achievable** without IOSurface through async readback + binary IPC
+
+---
+
+## References
 
 ### Apple Documentation
 
 - [IOSurface Framework](https://developer.apple.com/documentation/iosurface)
-- [CVPixelBuffer and IOSurface](https://developer.apple.com/documentation/corevideo/cvpixelbuffer)
-- [Metal and IOSurface](https://developer.apple.com/documentation/metal/mtltexture/1515598-iosurface)
+- [MTLTexture ioSurface Property](https://developer.apple.com/documentation/metal/mtltexture/1515598-iosurface)
 
 ### Syphon Source Code
 
 - [SyphonMetalServer.m](https://github.com/Syphon/Syphon-Framework/blob/master/SyphonMetalServer.m)
 - [SyphonIOSurfaceImageCore.m](https://github.com/Syphon/Syphon-Framework/blob/master/SyphonIOSurfaceImageCore.m)
-- [SyphonServerBase.m](https://github.com/Syphon/Syphon-Framework/blob/master/SyphonServerBase.m)
+
+### Browser Internals
+
+- Chromium `iosurface_image_backing.mm` - internal IOSurface integration for GPU process
+- WebKit WebGPU implementation - uses IOSurface for layer compositing
 
 ### Related Projects
 
-- [node-syphon](https://github.com/benoitlahoz/node-syphon) — Electron/Node.js Syphon bindings using IOSurface
-- [Unity-VideoOutput](https://github.com/anome/Unity-VideoOutput) — Syphon/NDI from Unity with Metal
-
-### WebKit Internals
-
-- WebKit uses IOSurface for layer compositing
-- No public API to access from JavaScript
-- `_contentsIOSurface` is private but exists
-
----
-
-## WebGPU + r3f Status (as of 2024)
-
-React Three Fiber now has experimental WebGPU support. This is relevant because WebGPU on macOS uses Metal, which has native IOSurface integration.
-
-### Current r3f WebGPU Usage
-
-```typescript
-import * as THREE from 'three/webgpu'
-import * as TSL from 'three/tsl'
-import { Canvas, extend } from '@react-three/fiber'
-
-declare module '@react-three/fiber' {
-  interface ThreeElements extends ThreeToJSXElements<typeof THREE> {}
-}
-
-extend(THREE as any)
-
-export default () => (
-  <Canvas
-    gl={async (props) => {
-      const renderer = new THREE.WebGPURenderer(props as any)
-      await renderer.init()
-      return renderer
-    }}>
-      <mesh>
-        <meshBasicNodeMaterial />
-        <boxGeometry />
-      </mesh>
-  </Canvas>
-)
-```
-
-### What This Means for IOSurface
-
-1. **WebGPU uses Metal on macOS** - Metal textures can be created from/to IOSurface
-2. **Three.js TSL shaders** - Required for WebGPU, but many sketches are already TSL-based
-3. **Potential path forward**:
-   - Migrate to WebGPU renderer
-   - Use `GPUTexture` which is backed by Metal
-   - Access Metal texture → IOSurface (if Apple exposes this)
-   - Publish to Syphon via `SyphonMetalServer`
-
-### Blockers
-
-- WebGPU renderer still experimental in Three.js
-- No public API to get Metal texture handle from `GPUTexture`
-- Would need to investigate WebKit's WebGPU implementation internals
-- TSL shader migration effort for existing WebGL shaders
-
-### Recommendation
-
-When migrating to WebGPU for TSL sketch support:
-
-1. Test WebGPU renderer with existing sketches
-2. Investigate if `GPUTexture` exposes any handles
-3. Check if WebKit's WebGPU uses IOSurface-backed textures internally
-4. If yes, this becomes the cleanest path to zero-copy
+- [node-syphon](https://github.com/benoitlahoz/node-syphon) - Electron/Node.js Syphon bindings
+- [wgpu](https://github.com/gfx-rs/wgpu) - Rust WebGPU implementation with Metal interop
+- [Geyser](https://github.com/compiling-org/Geyser) - Rust GPU texture sharing library (experimental)
 
 ---
 
 ## Conclusion
 
-IOSurface integration would provide the ultimate performance solution, but the path from WebView/WebGL to IOSurface is blocked by private APIs and WebKit internals.
+IOSurface zero-copy remains the theoretical ideal for video output performance, but the practical path from WebView/WebGPU to IOSurface is blocked by lack of public APIs.
 
-**Recommendation**: Pursue shared memory IPC + PBO async readback first. These provide meaningful gains (potentially 2× improvement) with well-documented, maintainable code. Revisit IOSurface when/if:
+**The good news:** Our current implementation with WebGPU async readback and binary IPC delivers the performance we need. IOSurface optimization can be deferred until requirements change or Apple/WebKit provide new APIs.
 
-1. WebGPU support in r3f matures and exposes Metal textures
-2. Apple provides public IOSurface APIs for WebView
-3. Performance requirements justify the risk of private APIs
+**Status:** Research complete. No action required. Revisit if performance requirements increase significantly.
 
 ---
 
-_Last updated: Research conducted for Slew video output optimization project_
+_Last updated: Based on Slew architecture with WebGPU renderer, binary IPC, and stable 60fps Syphon output_

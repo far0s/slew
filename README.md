@@ -41,6 +41,7 @@ xattr -cr /Applications/Slew.app
 
 - **Dual-Window Architecture**: Separate high-performance renderer and control UI
 - **8 Slot System**: Load multiple visual sketches with independent parameters
+- **Preview Streaming**: Pixel-perfect previews streamed from renderer to control UI
 - **Hardware Control**: MIDI (Akai Midimix), OSC, HID macropads
 - **Audio Reactivity**: FFT analysis, beat detection, audio-to-parameter mapping
 - **Video Output**: Syphon (macOS) and NDI for integration with VJ software

@@ -127,6 +127,21 @@ const USE_PBO_ASYNC_READBACK = true;
  */
 const PREFER_WEBGPU_ASYNC = true;
 
+/** Enable preview streaming to Controls window */
+const USE_PREVIEW_STREAMING = true;
+
+/** Preview resolution scale (0.5 = half resolution) */
+const PREVIEW_STREAM_SCALE = 0.5;
+
+/** Default preview FPS (can be changed via settings) */
+const DEFAULT_PREVIEW_STREAM_FPS = 30;
+
+const SETTINGS_EVENT = "renderer-settings-changed";
+
+const PREVIEW_STREAM_DEBUG =
+  typeof localStorage !== "undefined" &&
+  localStorage.getItem("previewStreamDebug") === "true";
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -230,6 +245,7 @@ export interface VideoOutputCaptureProps {
 }
 
 export function VideoOutputCapture({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   enabled: enabledProp,
   targetFps = DEFAULT_CAPTURE_FPS,
   scale = 0.5,
@@ -242,7 +258,7 @@ export function VideoOutputCapture({
   // Detect renderer type
   const isWebGPU = isWebGPURenderer(gl);
 
-  // Log renderer type on mount
+  // Log renderer type and preview streaming status on mount
   useEffect(() => {
     if (isWebGPU) {
       console.log(
@@ -253,6 +269,9 @@ export function VideoOutputCapture({
         `[VideoOutputCapture] Using WebGL renderer (PBO async: ${USE_PBO_ASYNC_READBACK})`,
       );
     }
+    console.log(
+      `[VideoOutputCapture] Preview streaming: ${USE_PREVIEW_STREAMING ? "enabled" : "disabled"}`,
+    );
   }, [isWebGPU]);
 
   // Render target for capturing frames
@@ -294,6 +313,47 @@ export function VideoOutputCapture({
   // Reusable buffers to avoid allocations
   const fullResBufferRef = useRef<Uint8Array | null>(null);
   const tempRowBufferRef = useRef<Uint8Array | null>(null);
+
+  // Preview streaming state
+  const lastPreviewTime = useRef(0);
+  const nativePreviewCanvasRef = useRef<OffscreenCanvas | null>(null);
+  const nativePreviewCtxRef = useRef<OffscreenCanvasRenderingContext2D | null>(
+    null,
+  );
+
+  // Preview FPS from settings
+  const [previewStreamFps, setPreviewStreamFps] = useState(() => {
+    if (typeof localStorage !== "undefined") {
+      try {
+        const stored = localStorage.getItem("slew-renderer-settings");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (
+            parsed.previewStreamFps &&
+            [15, 30, 45, 60].includes(parsed.previewStreamFps)
+          ) {
+            return parsed.previewStreamFps;
+          }
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+    return DEFAULT_PREVIEW_STREAM_FPS;
+  });
+  const previewIntervalMs = 1000 / previewStreamFps;
+
+  // Listen for preview FPS changes
+  useEffect(() => {
+    let unlisten: UnlistenFn | undefined;
+    listen<{ previewStreamFps?: number }>(SETTINGS_EVENT, (event) => {
+      const fps = event.payload.previewStreamFps;
+      if (fps && [15, 30, 45, 60].includes(fps)) {
+        setPreviewStreamFps(fps);
+      }
+    }).then((fn) => (unlisten = fn));
+    return () => unlisten?.();
+  }, []);
 
   // Buffer for the data being sent (so we can capture new frames while sending)
   const sendBufferRef = useRef<Uint8Array | null>(null);
@@ -465,7 +525,11 @@ export function VideoOutputCapture({
   }, [gl]);
 
   // Effective enabled state
-  const isEnabled = enabledProp ?? hasActiveBackend;
+  // Enable capture if:
+  // 1. Explicitly enabled via prop, OR
+  // 2. Any video backend is active (Syphon/NDI), OR
+  // 3. Preview streaming is enabled (so Controls window can receive frames)
+  const isEnabled = enabledProp ?? (hasActiveBackend || USE_PREVIEW_STREAMING);
 
   // Check for active backends on mount and listen for changes
   useEffect(() => {
@@ -550,16 +614,17 @@ export function VideoOutputCapture({
         let encodeMs: number;
         let ipcMs: number;
 
+        const ipcStart = performance.now();
+
+        // Preview streaming handled separately in its own useFrame hook
+
         if (USE_BINARY_PROTOCOL && !DRY_RUN_MODE) {
           // Binary protocol: send raw pixels via Tauri's native binary invoke
           // No base64 encoding needed!
           const encodeEnd = performance.now();
           encodeMs = encodeEnd - encodeStart; // Should be ~0ms
 
-          const ipcStart = performance.now();
-
-          // Use Tauri's native binary invoke with raw Uint8Array
-          // Pass dimensions via headers to avoid JSON serialization
+          // Publish to video backends (Syphon/NDI) if any are active
           await invoke("publish_video_frame_binary", pixelData, {
             headers: {
               "X-Width": String(width),
@@ -859,7 +924,67 @@ export function VideoOutputCapture({
     [],
   );
 
-  // Hook into the render loop - render to our target, then read pixels
+  // Preview streaming - captures from native canvas at correct aspect ratio
+  useFrame(() => {
+    if (!USE_PREVIEW_STREAMING || DRY_RUN_MODE) return;
+    if (performance.now() - lastPreviewTime.current < previewIntervalMs) return;
+    lastPreviewTime.current = performance.now();
+
+    const nativeWidth = size.width;
+    const nativeHeight = size.height;
+    if (nativeWidth <= 0 || nativeHeight <= 0) return;
+
+    const previewWidth = Math.round(nativeWidth * PREVIEW_STREAM_SCALE);
+    const previewHeight = Math.round(nativeHeight * PREVIEW_STREAM_SCALE);
+
+    // Initialize/resize OffscreenCanvas
+    if (
+      !nativePreviewCanvasRef.current ||
+      nativePreviewCanvasRef.current.width !== previewWidth ||
+      nativePreviewCanvasRef.current.height !== previewHeight
+    ) {
+      nativePreviewCanvasRef.current = new OffscreenCanvas(
+        previewWidth,
+        previewHeight,
+      );
+      nativePreviewCtxRef.current = nativePreviewCanvasRef.current.getContext(
+        "2d",
+        { willReadFrequently: true, colorSpace: "srgb" },
+      );
+    }
+
+    const ctx = nativePreviewCtxRef.current;
+    const canvas = gl.domElement;
+    if (!ctx || !canvas) return;
+
+    // Flip Y-axis (WebGL/WebGPU coordinate system)
+    ctx.save();
+    ctx.translate(0, previewHeight);
+    ctx.scale(1, -1);
+    ctx.drawImage(canvas, 0, 0, previewWidth, previewHeight);
+    ctx.restore();
+
+    const imageData = ctx.getImageData(0, 0, previewWidth, previewHeight, {
+      colorSpace: "srgb",
+    });
+
+    invoke("distribute_frame", new Uint8Array(imageData.data.buffer), {
+      headers: {
+        "X-Width": String(previewWidth),
+        "X-Height": String(previewHeight),
+        "X-Format": "rgba",
+        "X-Source": "composited",
+      },
+    }).catch(() => {});
+
+    if (PREVIEW_STREAM_DEBUG && frameCount.current % 300 === 0) {
+      console.log(
+        `[PreviewStream] ${previewWidth}x${previewHeight} from ${nativeWidth}x${nativeHeight}`,
+      );
+    }
+  });
+
+  // Video output capture
   useFrame(() => {
     if (!isEnabled) return;
 

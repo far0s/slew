@@ -20,16 +20,6 @@ Prioritized list of potential work items for Slew.
 
 ## Active / High Priority
 
-### 🔴 Stream the same renderer to Renderer window and all Slot/Live Preview canvases in real-time
-
-**Context**: Right now the preview canvases in the Controls window are rendered separately from the Renderer window, which means there are noticeable differences in the way graphics are rendered. This can lead to unpredicatibility in the output and unexpected behavior. To ensure consistent results, it is necessary to stream the same renderer to all relevant windows in real-time. It's also necessary to separate all the different slots into their own canvases.
-
-**Subtasks**:
-
-- [ ] Implement real-time streaming of renderer to Renderer window and all Slot/Live Preview canvases
-- [ ] Separate all the different slots into their own canvases
-- [ ] [more TBD...]
-
 ### 🔴 App Icon `chore`
 
 Design and implement proper app icon for Slew.
@@ -129,15 +119,28 @@ Add grain, bloom, feedback, color grading effects, etc.
 
 Bypass CPU entirely for ultimate video output performance.
 
-**Context**: Current WebGPU async readback achieves stable 60fps. IOSurface would eliminate all CPU copies for sub-8ms latency, but requires significant effort and possibly private APIs.
+**Context**: Current WebGPU async readback + binary IPC achieves **stable 60fps at 1080p**. IOSurface would provide ~10-20% additional improvement by eliminating CPU copies entirely, but requires significant effort and possibly private APIs. **Not a priority** given current performance meets requirements.
 
-**Reference**: See `docs/finished/IOSURFACE_FEASIBILITY.md` for research.
+**Reference**: See `docs/finished/IOSURFACE_FEASIBILITY.md` for detailed research (updated June 2025).
 
-**Subtasks**:
+**Key findings from research**:
 
-- [ ] Prototype CALayer IOSurface capture (test feasibility)
-- [ ] Investigate WebGPU Metal texture access
-- [ ] Evaluate private API risks vs. performance gains
+- WebGPU uses Metal internally on macOS, but no public API exposes Metal textures
+- SyphonMetalServer can publish directly from Metal textures with GPU blit
+- CALayer private API (`_contentsIOSurface`) is high risk (App Store rejection)
+- Current ~5-8ms per frame is well within 16.67ms budget for 60fps
+
+**When to revisit**:
+
+- Performance requirements increase (4K output, multiple simultaneous outputs)
+- Apple provides new public APIs for WebGPU texture access
+- VJ performance becomes a key differentiator worth major investment
+
+**Subtasks** (deferred):
+
+- [ ] Monitor WebGPU native extensions for Metal handle access
+- [ ] Prototype CALayer IOSurface capture (test feasibility outside App Store)
+- [ ] Evaluate SyphonMetalServer migration (even with CPU upload)
 
 ---
 

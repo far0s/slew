@@ -1,9 +1,11 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import * as THREE from "three";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useFrame, useThree } from "@react-three/fiber";
 import { WebGPUCanvas } from "./WebGPUCanvas";
 import { VideoOutputCapture } from "./VideoOutputCapture";
+import { SlotPreviewCapture } from "./SlotPreviewCapture";
 import {
   SKETCH_COMPONENT_REGISTRY,
   type SketchProps,
@@ -355,6 +357,7 @@ function RendererContent({
   slotColors,
 }: RendererContentProps) {
   const [tintLfoPhase, setTintLfoPhase] = useState(0);
+  const slotGroupsRef = useRef<Map<number, THREE.Group>>(new Map());
 
   const crossfade = paramStore.get("crossfade") ?? 0;
 
@@ -397,6 +400,12 @@ function RendererContent({
       <directionalLight position={[4, 6, 3]} intensity={1.1} />
       <directionalLight position={[-4, -4, -2]} intensity={0.4} />
 
+      {/* Per-slot preview capture for streaming to Controls window */}
+      <SlotPreviewCapture
+        slotGroups={slotGroupsRef}
+        visibleSlotIndices={slotsToRender.map((s) => s.index)}
+      />
+
       {/* Render all visible slots in index order */}
       {slotsToRender.map((slot) => {
         const SketchComponent = SKETCH_COMPONENT_REGISTRY[slot.sketchId];
@@ -424,12 +433,22 @@ function RendererContent({
         const colors = slotColors.get(slot.index);
 
         return (
-          <SketchComponent
+          <group
             key={`slot-${slot.index}`}
-            opacity={opacity}
-            params={sketchParams}
-            colors={colors}
-          />
+            ref={(group) => {
+              if (group) {
+                slotGroupsRef.current.set(slot.index, group);
+              } else {
+                slotGroupsRef.current.delete(slot.index);
+              }
+            }}
+          >
+            <SketchComponent
+              opacity={opacity}
+              params={sketchParams}
+              colors={colors}
+            />
+          </group>
         );
       })}
     </>

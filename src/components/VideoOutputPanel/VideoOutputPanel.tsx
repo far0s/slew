@@ -99,8 +99,9 @@ function Section({
  * Renderer stats and DPR controls section
  */
 function RendererSection() {
-  const { settings, info, setDpr } = useRendererSettings();
+  const { settings, info, setDpr, setPreviewStreamFps } = useRendererSettings();
   const [showDprInfo, setShowDprInfo] = useState(false);
+  const [showPreviewFpsInfo, setShowPreviewFpsInfo] = useState(false);
 
   const dprOptions = [
     {
@@ -111,6 +112,13 @@ function RendererSection() {
     { value: 0.5, label: "0.5×", description: "Half resolution (fast)" },
     { value: 1, label: "1×", description: "Native resolution" },
     { value: 2, label: "2×", description: "Retina quality (4× pixels)" },
+  ];
+
+  const previewFpsOptions = [
+    { value: 15, label: "15", description: "Low bandwidth" },
+    { value: 30, label: "30", description: "Balanced (recommended)" },
+    { value: 45, label: "45", description: "Smoother" },
+    { value: 60, label: "60", description: "Maximum smoothness" },
   ];
 
   return (
@@ -221,6 +229,53 @@ function RendererSection() {
                     data-first={index === 0}
                     data-last={index === dprOptions.length - 1}
                     onClick={() => setDpr(opt.value)}
+                    title={opt.description}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.dprControl}>
+              <div className={styles.dprLabelRow}>
+                <span className={styles.dprLabel}>Preview FPS</span>
+                <div
+                  className={styles.infoButtonWrapper}
+                  onMouseEnter={() => setShowPreviewFpsInfo(true)}
+                  onMouseLeave={() => setShowPreviewFpsInfo(false)}
+                >
+                  <button
+                    type="button"
+                    className={`${styles.infoButton} ${showPreviewFpsInfo ? styles.infoButtonActive : ""}`}
+                    aria-label="What is preview FPS?"
+                  >
+                    <QuestionMarkCircledIcon className={styles.infoIcon} />
+                  </button>
+                  {showPreviewFpsInfo && (
+                    <div className={styles.infoPopover} role="tooltip">
+                      <p>
+                        <strong>Preview FPS</strong> controls how often the Live
+                        Preview updates from the Renderer.
+                      </p>
+                      <p>
+                        Lower values reduce CPU usage. Higher values provide
+                        smoother preview updates.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className={styles.dprButtonGroup}>
+                {previewFpsOptions.map((opt, index) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={styles.dprButton}
+                    data-active={settings.previewStreamFps === opt.value}
+                    data-first={index === 0}
+                    data-last={index === previewFpsOptions.length - 1}
+                    onClick={() => setPreviewStreamFps(opt.value)}
                     title={opt.description}
                   >
                     {opt.label}

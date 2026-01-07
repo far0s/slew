@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useRef } from "react";
+import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { MeshBasicNodeMaterial } from "three/webgpu";
 import {
@@ -553,6 +554,8 @@ function createAuraMaterial(
  *   colorInterp, grainIntensity, tonemapMode
  */
 export function Aura({ opacity, params, colors }: SketchProps) {
+  const { viewport } = useThree();
+
   // Extract parameters with defaults
   const bloom = params?.bloom ?? 3.2;
   const complexity = params?.complexity ?? 3.3;
@@ -663,7 +666,7 @@ export function Aura({ opacity, params, colors }: SketchProps) {
 
   return (
     <mesh>
-      <planeGeometry args={[10, 10]} />
+      <planeGeometry args={[viewport.width, viewport.height]} />
       <primitive object={material} attach="material" />
     </mesh>
   );

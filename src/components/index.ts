@@ -23,6 +23,7 @@ export { SlotsArea, type SlotsAreaProps } from "./SlotsArea";
 
 // Preview Components
 export { RendererPreview, type RendererPreviewProps } from "./RendererPreview";
+export { StreamedPreview } from "./StreamedPreview";
 
 // Input Panel Components
 export { MidiPanel, type MidiPanelProps } from "./MidiPanel";

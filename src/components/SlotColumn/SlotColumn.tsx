@@ -4,8 +4,10 @@ import {
   useRef,
   useEffect,
   useState,
+  useMemo,
   type ReactNode,
 } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import * as Select from "@radix-ui/react-select";
 import {
   ChevronDownIcon,
@@ -25,6 +27,7 @@ import {
 import type { Slot } from "../../slots/useSlots";
 import { SlotParameterControls } from "../SlotParameterControls";
 import { WebGPUCanvas } from "../../renderer/WebGPUCanvas";
+import { StreamedPreview } from "../StreamedPreview";
 import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import type { MidiMapping, MidiPickupState } from "../../inputs/midi";
@@ -38,6 +41,8 @@ export interface SlotColumnProps {
   crossfadeProgress: number;
   isCrossfading: boolean;
   isMacropadSelected?: boolean;
+  /** Aspect ratio from the Renderer window (width/height). Defaults to 16/9. */
+  rendererAspectRatio?: number;
   excludeSketchIds: SketchId[];
   canRemove: boolean;
   params?: SketchProps["params"];
@@ -214,7 +219,13 @@ function InlineSketchBrowser({
  * aspect-ratio. We trigger a resize event after mount to force recalculation.
  * CSS handles the actual sizing via absolute positioning on the canvas container.
  */
-function PreviewContainer({ children }: { children: ReactNode }) {
+function PreviewContainer({
+  children,
+  aspectRatio = 16 / 9,
+}: {
+  children: ReactNode;
+  aspectRatio?: number;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -227,8 +238,16 @@ function PreviewContainer({ children }: { children: ReactNode }) {
     return () => clearTimeout(timeoutId);
   }, []);
 
+  const containerStyle = {
+    "--renderer-aspect-ratio": aspectRatio,
+  } as React.CSSProperties;
+
   return (
-    <div ref={containerRef} className={styles.previewContainer}>
+    <div
+      ref={containerRef}
+      className={styles.previewContainer}
+      style={containerStyle}
+    >
       {children}
     </div>
   );
@@ -243,6 +262,7 @@ export function SlotColumn({
   crossfadeProgress,
   isCrossfading,
   isMacropadSelected = false,
+  rendererAspectRatio = 16 / 9,
   excludeSketchIds,
   canRemove,
   params,
@@ -263,6 +283,8 @@ export function SlotColumn({
   filledSlots = [],
   onCopyToSlot,
 }: SlotColumnProps) {
+  const [isSlotStreaming, setIsSlotStreaming] = useState(false);
+
   if (sketchId === null) {
     return (
       <InlineSketchBrowser
@@ -312,25 +334,16 @@ export function SlotColumn({
       transition={{ duration: 0.2, ease: "easeOut" }}
       layout
     >
-      <PreviewContainer>
+      <PreviewContainer aspectRatio={rendererAspectRatio}>
         {SketchComponent ? (
           <Suspense fallback={<div className={styles.fallback}>Loading…</div>}>
-            <WebGPUCanvas
-              camera={{ position: [0, 0, 4], fov: 50 }}
-              frameloop="always"
-              dpr={1}
-              fallback={<div className={styles.fallback}>Initializing…</div>}
-            >
-              <color attach="background" args={["#020617"]} />
-              <ambientLight intensity={0.4} />
-              <directionalLight position={[4, 6, 3]} intensity={1.1} />
-              <directionalLight position={[-4, -4, -2]} intensity={0.4} />
-              <SketchComponent
-                opacity={1}
-                params={previewParams ?? params}
-                colors={colors}
-              />
-            </WebGPUCanvas>
+            <SlotPreview
+              slotIndex={slotIndex}
+              SketchComponent={SketchComponent}
+              params={previewParams ?? params}
+              colors={colors}
+              onStreamingChange={setIsSlotStreaming}
+            />
             {(alpha < 0.99 || audioReactivity < 0.5) && (
               <div className={styles.alphaOverlay}>
                 {audioReactivity < 0.5 && (
@@ -351,7 +364,15 @@ export function SlotColumn({
         )}
         <div
           className={`${styles.slotBadge} ${isMacropadSelected ? styles.slotBadgeSelected : ""}`}
+          title={isSlotStreaming ? "Streamed from Renderer" : "Local preview"}
         >
+          <span
+            className={
+              isSlotStreaming
+                ? styles.streamDotActive
+                : styles.streamDotInactive
+            }
+          />
           {displayNumber}
           {isMacropadSelected && (
             <span className={styles.macropadIndicator}>⎈</span>
@@ -451,6 +472,119 @@ export function SlotColumn({
         />
       </div>
     </motion.article>
+  );
+}
+
+/**
+ * SlotPreview - Displays either streamed frames from Renderer or local rendering.
+ *
+ * Simplified streaming logic:
+ * - Check config to see if streaming is enabled
+ * - Once first frame is received, commit to streaming mode permanently
+ * - No timeout-based fallback - if frames stop, show last valid frame
+ * - Click to refresh: user can click to force reconnection if stuck
+ */
+function SlotPreview({
+  slotIndex,
+  SketchComponent,
+  params,
+  colors,
+  onStreamingChange,
+}: {
+  slotIndex: number;
+  SketchComponent: React.ComponentType<SketchProps>;
+  params?: SketchProps["params"];
+  colors?: SketchProps["colors"];
+  onStreamingChange?: (isStreaming: boolean) => void;
+}) {
+  // Whether streaming is enabled in backend config
+  const [streamingEnabled, setStreamingEnabled] = useState(false);
+  // Whether we've received at least one frame (commit to streaming)
+  const [hasReceivedFrame, setHasReceivedFrame] = useState(false);
+  // Key to force StreamedPreview remount (for manual refresh)
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const source = useMemo(() => `slot-${slotIndex}` as const, [slotIndex]);
+
+  // Handle click to refresh - remount StreamedPreview to reconnect
+  const handleRefreshClick = useCallback(() => {
+    setHasReceivedFrame(false);
+    onStreamingChange?.(false);
+    setRefreshKey((k) => k + 1);
+  }, [onStreamingChange]);
+
+  // Check backend config periodically
+  useEffect(() => {
+    let mounted = true;
+    const checkConfig = async () => {
+      try {
+        const config = await invoke<{
+          enabled: boolean;
+          stream_slots: boolean;
+        }>("get_frame_distribution_config");
+        const shouldEnable = config.enabled && config.stream_slots;
+        if (mounted) setStreamingEnabled(shouldEnable);
+      } catch {
+        // Config fetch failed - streaming will remain disabled
+      }
+    };
+    checkConfig();
+    // Check less frequently - config doesn't change often
+    const interval = setInterval(checkConfig, 5000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [slotIndex]);
+
+  // Called when StreamedPreview receives its first frame
+  const handleFirstFrame = useCallback(() => {
+    setHasReceivedFrame(true);
+    onStreamingChange?.(true);
+  }, [onStreamingChange]);
+
+  // Use streamed preview once we've received a frame and streaming is enabled
+  const useStreamedPreview = streamingEnabled && hasReceivedFrame;
+
+  return (
+    <div
+      className={styles.slotPreviewWrapper}
+      onClick={handleRefreshClick}
+      title="Click to refresh preview"
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          handleRefreshClick();
+        }
+      }}
+    >
+      <WebGPUCanvas
+        camera={{ position: [0, 0, 4], fov: 50 }}
+        frameloop="always"
+        dpr={1}
+        fallback={<div className={styles.fallback}>Initializing…</div>}
+      >
+        {/* Always render StreamedPreview when enabled - it will show last valid frame */}
+        {streamingEnabled && (
+          <StreamedPreview
+            key={refreshKey}
+            source={source}
+            onFirstFrame={handleFirstFrame}
+          />
+        )}
+        {/* Only render local sketch if we haven't received any streamed frames yet */}
+        {!useStreamedPreview && (
+          <>
+            <color attach="background" args={["#020617"]} />
+            <ambientLight intensity={0.4} />
+            <directionalLight position={[4, 6, 3]} intensity={1.1} />
+            <directionalLight position={[-4, -4, -2]} intensity={0.4} />
+            <SketchComponent opacity={1} params={params} colors={colors} />
+          </>
+        )}
+      </WebGPUCanvas>
+    </div>
   );
 }
 

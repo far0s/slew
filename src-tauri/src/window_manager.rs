@@ -469,8 +469,6 @@ pub fn handle_menu_event(app: &AppHandle, event_id: &str) {
 
 /// Initialize the window manager
 pub fn init_window_manager(app: &AppHandle) {
-    log::info!("[WindowManager] Initializing window manager");
-
     // Register initial window health
     with_window_health(|health| {
         health.insert("controls".to_string(), WindowHealth::new("controls"));
@@ -479,6 +477,4 @@ pub fn init_window_manager(app: &AppHandle) {
 
     // Start heartbeat monitor
     start_heartbeat_monitor(app.clone());
-
-    log::info!("[WindowManager] Window manager initialized");
 }

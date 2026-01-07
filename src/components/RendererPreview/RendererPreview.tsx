@@ -1,56 +1,35 @@
 /**
- * RendererPreview
- *
- * A preview component that mirrors the actual Renderer output.
- * Shows all slots with alpha > 0, blended according to crossfade and alpha values.
- *
- * This is used in the Controls window to give the operator an accurate
- * representation of what's being displayed in the Renderer window.
- *
- * Features:
- * - Multi-slot rendering with individual alpha values
- * - Accurate crossfade blending matching the main renderer
- * - Tint LFO modulation support
- * - Fixed 16:9 aspect ratio
- * - Optimized for performance with reduced DPR
+ * RendererPreview - Mirrors the Renderer output in the Controls window.
+ * Uses streaming mode by default, with local rendering as fallback.
  */
 
-import { Suspense, useState, useCallback } from "react";
+import { Suspense, useState, useCallback, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { SketchId, SketchProps } from "../../sketches";
 import { SKETCH_COMPONENT_REGISTRY, getSketchDescriptor } from "../../sketches";
 import { makeSlotParameterId } from "../../slots/slotTypes";
 import { WebGPUCanvas } from "../../renderer/WebGPUCanvas";
+import { StreamedPreview } from "../StreamedPreview";
 import styles from "./RendererPreview.module.css";
 
-// =============================================================================
-// Types
-// =============================================================================
+const USE_STREAMING_BY_DEFAULT = true;
+const STREAMING_FALLBACK_TIMEOUT_MS = 3000;
 
-/** Information about a slot to render */
 export interface SlotInfo {
   index: number;
   sketchId: SketchId;
 }
 
 export interface RendererPreviewProps {
-  /** All slots that could potentially be rendered */
   allSlots: SlotInfo[];
-  /** The currently active slot index */
   activeSlotIndex: number;
-  /** The crossfade target slot index (null if not crossfading) */
   crossfadeTargetIndex: number | null;
-  /** Function to get interpolated parameter value */
   getParam: (parameterId: string) => number;
-  /** Function to get colors for a slot */
   getSlotColors?: (slotIndex: number) => SketchProps["colors"];
+  useStreaming?: boolean;
+  aspectRatio?: number;
 }
 
-// =============================================================================
-// Parameter Mapping
-// =============================================================================
-
-/** Maps parameter template IDs to sketch props keys */
 const TEMPLATE_ID_TO_PROPS_KEY: Record<string, string> = {
   alpha: "alpha",
   brightness: "brightness",
@@ -65,7 +44,6 @@ const TEMPLATE_ID_TO_PROPS_KEY: Record<string, string> = {
   noise_scale: "noiseScale",
   noise_speed: "noiseSpeed",
   color_mix: "colorMix",
-  // Aura parameters
   bloom: "bloom",
   complexity: "complexity",
   sample_offset: "sampleOffset",
@@ -80,19 +58,11 @@ const TEMPLATE_ID_TO_PROPS_KEY: Record<string, string> = {
   tonemap_mode: "tonemapMode",
 };
 
-// =============================================================================
-// Tint LFO Driver
-// =============================================================================
-
 interface TintLfoDriverProps {
   depth: number;
   setPhase: (phase: number) => void;
 }
 
-/**
- * Drives the tint LFO phase inside the r3f Canvas.
- * Uses elapsed time to compute phase (matching main renderer behavior).
- */
 function TintLfoDriver({ depth, setPhase }: TintLfoDriverProps) {
   useFrame(({ clock }) => {
     if (depth <= 0) return;
@@ -103,14 +73,6 @@ function TintLfoDriver({ depth, setPhase }: TintLfoDriverProps) {
   return null;
 }
 
-// =============================================================================
-// Slot Parameters Builder
-// =============================================================================
-
-/**
- * Build sketch props for a slot from the parameter store.
- * Matches the logic in RendererRoot.
- */
 function buildSlotParams(
   slotIndex: number,
   sketchId: SketchId,
@@ -144,14 +106,6 @@ function buildSlotParams(
   return params;
 }
 
-// =============================================================================
-// Opacity Calculation
-// =============================================================================
-
-/**
- * Calculate the final opacity for a slot based on its alpha and crossfade state.
- * Matches the logic in RendererRoot.
- */
 function calculateSlotOpacity(
   slotIndex: number,
   activeSlotIndex: number,
@@ -166,24 +120,14 @@ function calculateSlotOpacity(
   const isTarget =
     crossfadeTargetIndex !== null && slotIndex === crossfadeTargetIndex;
 
-  // If this slot is involved in crossfade, apply crossfade weight
   if (isActive && crossfadeTargetIndex !== null) {
-    // Active slot fades out
     return clampedAlpha * (1 - clampedCrossfade);
   }
-
   if (isTarget) {
-    // Target slot fades in
     return clampedAlpha * clampedCrossfade;
   }
-
-  // Other slots just use their alpha
   return clampedAlpha;
 }
-
-// =============================================================================
-// Renderer Content
-// =============================================================================
 
 interface RendererPreviewContentProps {
   allSlots: SlotInfo[];
@@ -193,10 +137,6 @@ interface RendererPreviewContentProps {
   getSlotColors?: (slotIndex: number) => SketchProps["colors"];
 }
 
-/**
- * Inner content component that renders inside the Canvas.
- * Handles multi-slot rendering with alpha-based blending.
- */
 function RendererPreviewContent({
   allSlots,
   activeSlotIndex,
@@ -208,7 +148,6 @@ function RendererPreviewContent({
 
   const crossfade = getParam("crossfade");
 
-  // Calculate max tint LFO depth across all visible slots for the driver
   let maxTintLfoDepth = 0;
   for (const slot of allSlots) {
     const alphaParamId = makeSlotParameterId(slot.index, "alpha");
@@ -223,7 +162,6 @@ function RendererPreviewContent({
     }
   }
 
-  // Render all slots with alpha > 0, in index order (lower index = behind)
   const slotsToRender = allSlots
     .filter((slot) => {
       const alphaParamId = makeSlotParameterId(slot.index, "alpha");
@@ -237,7 +175,7 @@ function RendererPreviewContent({
       );
       return opacity > 0.001;
     })
-    .sort((a, b) => a.index - b.index); // Ensure index order for z-layering
+    .sort((a, b) => a.index - b.index);
 
   return (
     <>
@@ -247,12 +185,10 @@ function RendererPreviewContent({
       <directionalLight position={[4, 6, 3]} intensity={1.1} />
       <directionalLight position={[-4, -4, -2]} intensity={0.4} />
 
-      {/* Render all visible slots in index order */}
       {slotsToRender.map((slot) => {
         const SketchComponent = SKETCH_COMPONENT_REGISTRY[slot.sketchId];
         if (!SketchComponent) return null;
 
-        // Get the slot's alpha (master opacity) parameter
         const alphaParamId = makeSlotParameterId(slot.index, "alpha");
         const alpha = getParam(alphaParamId);
 
@@ -286,15 +222,14 @@ function RendererPreviewContent({
   );
 }
 
-// =============================================================================
-// Main Component
-// =============================================================================
-
 /**
- * RendererPreview
+ * RendererPreview - Displays either streamed composited frames or local rendering.
  *
- * A preview component that mirrors the actual Renderer output.
- * Shows all slots with alpha > 0, blended according to crossfade and alpha values.
+ * Simplified streaming logic:
+ * - Check if streaming is enabled via prop
+ * - Once first frame is received, commit to streaming mode permanently
+ * - No timeout-based fallback after streaming starts - show last valid frame
+ * - Only fall back to local rendering if no frames received within initial timeout
  */
 export function RendererPreview({
   allSlots,
@@ -302,32 +237,77 @@ export function RendererPreview({
   crossfadeTargetIndex,
   getParam,
   getSlotColors,
+  useStreaming,
+  aspectRatio = 16 / 9,
 }: RendererPreviewProps) {
-  // Log when renderer is ready (for debugging)
-  const handleRendererReady = useCallback((backend: "webgpu" | "webgl2") => {
-    console.log(`[RendererPreview] Using ${backend} backend`);
+  const streamingEnabled = useStreaming ?? USE_STREAMING_BY_DEFAULT;
+  // Whether we've received at least one frame (commit to streaming)
+  const [hasReceivedFrame, setHasReceivedFrame] = useState(false);
+  // Whether initial connection failed (fall back to local rendering)
+  const [initialConnectionFailed, setInitialConnectionFailed] = useState(false);
+
+  // Called when StreamedPreview receives its first frame
+  const handleFirstFrame = useCallback(() => {
+    setHasReceivedFrame(true);
+    setInitialConnectionFailed(false);
   }, []);
 
+  // Initial connection timeout - only applies before first frame received
+  useEffect(() => {
+    if (!streamingEnabled || hasReceivedFrame) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      if (!hasReceivedFrame) setInitialConnectionFailed(true);
+    }, STREAMING_FALLBACK_TIMEOUT_MS);
+
+    return () => clearTimeout(timeout);
+  }, [streamingEnabled, hasReceivedFrame]);
+
+  // Use streaming if enabled and either we've received frames OR we're still waiting
+  const shouldStream = streamingEnabled && !initialConnectionFailed;
+  // Visual indicator: streaming is active if we've received at least one frame
+  const isStreaming = shouldStream && hasReceivedFrame;
+
+  const containerStyle = {
+    "--renderer-aspect-ratio": aspectRatio,
+  } as React.CSSProperties;
+
   return (
-    <div className={styles.container}>
+    <div className={styles.container} style={containerStyle}>
       <Suspense fallback={<div className={styles.fallback}>Loading…</div>}>
         <WebGPUCanvas
           camera={{ position: [0, 0, 4], fov: 50 }}
           frameloop="always"
           dpr={1}
-          onRendererReady={handleRendererReady}
           fallback={<div className={styles.fallback}>Initializing…</div>}
         >
-          <RendererPreviewContent
-            allSlots={allSlots}
-            activeSlotIndex={activeSlotIndex}
-            crossfadeTargetIndex={crossfadeTargetIndex}
-            getParam={getParam}
-            getSlotColors={getSlotColors}
-          />
+          {/* Always render StreamedPreview when should stream - it shows last valid frame */}
+          {shouldStream ? (
+            <StreamedPreview
+              source="composited"
+              onFirstFrame={handleFirstFrame}
+            />
+          ) : (
+            <RendererPreviewContent
+              allSlots={allSlots}
+              activeSlotIndex={activeSlotIndex}
+              crossfadeTargetIndex={crossfadeTargetIndex}
+              getParam={getParam}
+              getSlotColors={getSlotColors}
+            />
+          )}
         </WebGPUCanvas>
       </Suspense>
-      <div className={styles.label}>Live Preview</div>
+      <div className={styles.label}>
+        <span
+          className={
+            isStreaming ? styles.streamDotActive : styles.streamDotInactive
+          }
+        />
+        {isStreaming ? "Live Preview" : "Local Preview"}
+      </div>
     </div>
   );
 }
