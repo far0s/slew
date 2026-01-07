@@ -20,16 +20,6 @@ Prioritized list of potential work items for Slew.
 
 ## Active / High Priority
 
-### 🔴 Stream the same renderer to Renderer window and all Slot/Live Preview canvases in real-time `feature`
-
-**Context**: Right now the preview canvases in the Controls window are rendered separately from the Renderer window, which means there are noticeable differences in the way graphics are rendered. This can lead to unpredicatibility in the output and unexpected behavior. To ensure consistent results, it is necessary to stream the same renderer to all relevant windows in real-time. It's also necessary to separate all the different slots into their own canvases.
-
-**Subtasks**:
-
-- [ ] Implement real-time streaming of renderer to Renderer window and all Slot/Live Preview canvases
-- [ ] Separate all the different slots into their own canvases
-- [ ] [more TBD...]
-
 ### 🔴 App Icon `chore`
 
 Design and implement proper app icon for Slew.

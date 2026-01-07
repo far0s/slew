@@ -143,6 +143,32 @@ WebGL2: render → PBO ping-pong readPixels → flip → binary IPC → Syphon/N
 
 **Performance:** Stable 60fps at 1080p with Syphon output.
 
+### Preview Streaming
+
+Stream rendered frames from Renderer to Controls window for pixel-perfect previews (`frame_distribution.rs`):
+
+**Architecture:**
+
+- Composited frames captured alongside video output, distributed via Tauri events
+- Per-slot frames captured via visibility toggling (isolate one slot, render to offscreen target)
+- Controls window receives frames and updates WebGL textures in real-time
+- Automatic fallback to local rendering when streaming unavailable
+
+**Components:**
+
+- `SlotPreviewCapture.tsx`: Round-robin slot capture in Renderer window
+- `StreamedPreview.tsx`: Texture display component for Controls window
+- `frame_distribution.rs`: Backend frame routing and statistics
+
+**Optimizations:**
+
+- Round-robin capture: One slot per frame to minimize GPU overhead
+- Debounced resize: Texture recreation delayed during window resize
+- Configurable FPS: Default 30fps for previews (configurable via backend)
+- Resolution scaling: 50% scale for slot previews to reduce bandwidth
+
+**See:** `docs/finished/PREVIEW_STREAMING.md` for full implementation details.
+
 ---
 
 ## Project Structure
@@ -160,10 +186,11 @@ WebGL2: render → PBO ping-pong readPixels → flip → binary IPC → Syphon/N
     /components/            # React UI components
       /ColorPicker/         # Rich color picker (React Aria)
       /SlotColumn/          # Slot column with inline browser
+      /StreamedPreview/     # Streamed frame display for preview streaming
     /controls/              # useParameterStore hook
     /inputs/                # MIDI, OSC, Audio, HID hooks
       /shared/              # Reusable hook infrastructure
-    /renderer/              # Renderer window (RendererRoot, VideoOutputCapture)
+    /renderer/              # Renderer window (RendererRoot, VideoOutputCapture, SlotPreviewCapture)
     /slots/                 # Slot system utilities
       slotTypes.ts          # Parameter ID utilities
       useSlots.ts           # Slot state management
@@ -181,6 +208,7 @@ WebGL2: render → PBO ping-pong readPixels → flip → binary IPC → Syphon/N
       osc.rs                # OSC server
       modulation.rs         # LFO engine, modulation matrix
       video_out.rs          # Video output backends
+      frame_distribution.rs # Preview frame distribution to Controls
       syphon.rs             # Native Syphon bindings (macOS)
   /docs/                    # Documentation
     /finished/              # Archived task documents
@@ -234,22 +262,26 @@ Pattern: Each submodule is <200 lines, single responsibility.
 
 ## Key Files Reference
 
-| File                                | Purpose                                             |
-| ----------------------------------- | --------------------------------------------------- |
-| `src-tauri/src/lib.rs`              | Parameter Server, tick loop, command registration   |
-| `src-tauri/src/window_manager.rs`   | Window lifecycle, heartbeat monitoring, native menu |
-| `src-tauri/src/common/`             | Shared utilities (persistence, events)              |
-| `src-tauri/src/midi/`               | MIDI device management, Midimix integration         |
-| `src-tauri/src/audio/`              | Audio capture, FFT, beat detection                  |
-| `src-tauri/src/hid/`                | HID/macropad support                                |
-| `src-tauri/src/modulation.rs`       | LFO engine, modulation matrix                       |
-| `src-tauri/src/video_out.rs`        | Video output backends                               |
-| `src/sketches/`                     | Grouped sketch modules                              |
-| `src/slots/useSlots.ts`             | Slot management hook                                |
-| `src/inputs/shared/`                | Reusable hook infrastructure                        |
-| `src/controls/useParameterStore.ts` | Parameter state                                     |
-| `src/renderer/RendererRoot.tsx`     | Multi-slot rendering loop                           |
-| `src/components/SlotColumn/`        | Slot UI with inline sketch browser                  |
+| File                                  | Purpose                                             |
+| ------------------------------------- | --------------------------------------------------- |
+| `src-tauri/src/lib.rs`                | Parameter Server, tick loop, command registration   |
+| `src-tauri/src/window_manager.rs`     | Window lifecycle, heartbeat monitoring, native menu |
+| `src-tauri/src/common/`               | Shared utilities (persistence, events)              |
+| `src-tauri/src/midi/`                 | MIDI device management, Midimix integration         |
+| `src-tauri/src/audio/`                | Audio capture, FFT, beat detection                  |
+| `src-tauri/src/hid/`                  | HID/macropad support                                |
+| `src-tauri/src/modulation.rs`         | LFO engine, modulation matrix                       |
+| `src-tauri/src/video_out.rs`          | Video output backends                               |
+| `src-tauri/src/frame_distribution.rs` | Preview frame distribution to Controls window       |
+| `src/sketches/`                       | Grouped sketch modules                              |
+| `src/slots/useSlots.ts`               | Slot management hook                                |
+| `src/inputs/shared/`                  | Reusable hook infrastructure                        |
+| `src/controls/useParameterStore.ts`   | Parameter state                                     |
+| `src/renderer/RendererRoot.tsx`       | Multi-slot rendering loop                           |
+| `src/renderer/SlotPreviewCapture.tsx` | Per-slot frame capture for preview streaming        |
+| `src/renderer/VideoOutputCapture.tsx` | Frame capture for Syphon/NDI + composited preview   |
+| `src/components/StreamedPreview/`     | Streamed frame display in Controls window           |
+| `src/components/SlotColumn/`          | Slot UI with inline sketch browser                  |
 
 ---
 

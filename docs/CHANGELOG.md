@@ -13,6 +13,7 @@ Status overview and key decisions for Slew.
 | Sketch/Slot System | ✅     | Slot-based (1-8), multi-instance, auto-generated controls        |
 | Sketch Browser UI  | ✅     | Inline browser in empty slots, no extra click needed             |
 | Crossfade          | ✅     | Smooth blending with correct scene pairing                       |
+| Preview Streaming  | ✅     | Pixel-perfect previews streamed from Renderer to Controls        |
 | MIDI Input         | ✅     | Hot-plug detection, auto-reconnect, Learn workflow               |
 | OSC Input          | ✅     | UDP server (port 9000), default mappings                         |
 | Audio Input        | ✅     | Hot-plug detection, auto-reconnect, FFT, beat detection          |
@@ -29,6 +30,23 @@ Status overview and key decisions for Slew.
 ---
 
 ## Recent Changes
+
+### Preview Streaming
+
+Stream rendered frames from the Renderer window to Controls window previews, ensuring pixel-perfect consistency between what the operator sees and what goes out to Syphon/NDI:
+
+- **Composited Preview**: Live Preview in Controls now shows actual rendered pixels from Renderer
+- **Per-Slot Previews**: Each slot preview streams its isolated render (visibility toggling approach)
+- **Binary IPC Protocol**: Frames distributed via Tauri events with base64-encoded RGBA data
+- **Automatic Fallback**: Local rendering kicks in if streaming unavailable or during initialization
+- **Streaming Indicators**: Green dot = streaming from Renderer, gray = local rendering
+- **Round-Robin Capture**: One slot captured per frame to minimize GPU overhead
+- **WebGPU/WebGL Support**: Async readback for WebGPU, sync readback for WebGL2
+- **Resize Handling**: Debounced dimension changes with graceful reconnection
+- **Click-to-Refresh**: Slot previews can be clicked to force reconnection if stuck
+- **Documentation**: See `docs/finished/PREVIEW_STREAMING.md` for full implementation details
+
+---
 
 ### Better Color Picker
 
