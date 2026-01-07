@@ -1,8 +1,3 @@
-/**
- * StreamedPreview - Displays frames streamed from the Renderer window.
- * Receives frame data via Tauri events and updates a texture in real-time.
- */
-
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useFrame, useThree } from "@react-three/fiber";
@@ -23,9 +18,6 @@ interface StreamedPreviewProps {
   onStreamingStatusChange?: (isStreaming: boolean) => void;
 }
 
-const DEBUG =
-  typeof localStorage !== "undefined" &&
-  localStorage.getItem("previewStreamDebug") === "true";
 const STREAM_TIMEOUT_MS = 2000;
 const BG_COLOR = { r: 2, g: 6, b: 23 };
 
@@ -98,7 +90,6 @@ export function StreamedPreview({
     [],
   );
 
-  // Initialize texture on dimension change
   useEffect(() => {
     const texture = createTexture(dimensions.width, dimensions.height);
     textureRef.current = texture;
@@ -108,7 +99,6 @@ export function StreamedPreview({
       materialRef.current.needsUpdate = true;
     }
 
-    // Apply pending frame if dimension change was triggered by incoming frame
     if (pendingFrameRef.current) {
       const { data, width, height } = pendingFrameRef.current;
       if (
@@ -125,7 +115,6 @@ export function StreamedPreview({
     return () => texture.dispose();
   }, [dimensions]);
 
-  // Listen for frame events
   useEffect(() => {
     let unlisten: UnlistenFn | null = null;
 
@@ -144,7 +133,6 @@ export function StreamedPreview({
 
         onFrameReceived?.(frame_number, Date.now() - capture_timestamp_ms);
 
-        // Handle dimension change
         if (width !== dimensions.width || height !== dimensions.height) {
           pendingFrameRef.current = { data: pixels, width, height };
           setDimensions({ width, height });
@@ -173,7 +161,6 @@ export function StreamedPreview({
     updateTexture,
   ]);
 
-  // Stream timeout detection
   useFrame(() => {
     if (
       isStreaming &&
@@ -181,11 +168,9 @@ export function StreamedPreview({
     ) {
       setIsStreaming(false);
       onStreamingStatusChange?.(false);
-      if (DEBUG) console.log(`[PreviewStream] Timeout for ${source}`);
     }
   });
 
-  // Calculate plane size preserving frame aspect ratio ("contain" logic)
   const { planeWidth, planeHeight } = useMemo(() => {
     const frameAspect = dimensions.width / dimensions.height;
 

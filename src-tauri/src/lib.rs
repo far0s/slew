@@ -269,10 +269,6 @@ fn load_slots_from_disk(app: &tauri::App) {
             with_slot_state(|s| {
                 *s = state;
             });
-            log::info!(
-                "[SlotState] Loaded {} slots from disk",
-                with_slot_state(|s| s.slots.len())
-            );
         }
     }
 }
@@ -764,7 +760,7 @@ pub fn run() {
             // Log startup summary
             let video_backends = video_out::get_available_backends();
             log::info!(
-                "[App] Initialized: MIDI, OSC, Audio, HID, Modulation, Video, WindowManager ({})",
+                "[App] Initialized: MIDI, OSC, Audio, HID, Modulation, WindowManager, Video ({})",
                 if video_backends.is_empty() {
                     "no backends".to_string()
                 } else {

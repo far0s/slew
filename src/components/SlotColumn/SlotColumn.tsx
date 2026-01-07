@@ -475,10 +475,6 @@ export function SlotColumn({
   );
 }
 
-/**
- * SlotPreview - Renders either streamed preview or local sketch.
- * Automatically falls back to local rendering if streaming is unavailable.
- */
 function SlotPreview({
   slotIndex,
   SketchComponent,
@@ -494,32 +490,21 @@ function SlotPreview({
 }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingEnabled, setStreamingEnabled] = useState(false);
-
   const source = useMemo(() => `slot-${slotIndex}` as const, [slotIndex]);
 
-  // Check if slot streaming is enabled in backend config
   useEffect(() => {
     let mounted = true;
-
     const checkConfig = async () => {
       try {
         const config = await invoke<{
           enabled: boolean;
           stream_slots: boolean;
         }>("get_frame_distribution_config");
-        if (mounted) {
-          setStreamingEnabled(config.enabled && config.stream_slots);
-        }
-      } catch {
-        // Config not available
-      }
+        if (mounted) setStreamingEnabled(config.enabled && config.stream_slots);
+      } catch {}
     };
-
     checkConfig();
-
-    // Re-check periodically (config may change via dev tools)
     const interval = setInterval(checkConfig, 2000);
-
     return () => {
       mounted = false;
       clearInterval(interval);
@@ -534,35 +519,31 @@ function SlotPreview({
     [onStreamingChange],
   );
 
-  // When streaming is enabled, render StreamedPreview (with local fallback inside canvas)
-  // When not enabled or not streaming, render local sketch
   const useStreamedPreview = streamingEnabled && isStreaming;
 
   return (
-    <>
-      <WebGPUCanvas
-        camera={{ position: [0, 0, 4], fov: 50 }}
-        frameloop="always"
-        dpr={1}
-        fallback={<div className={styles.fallback}>Initializing…</div>}
-      >
-        {streamingEnabled && (
-          <StreamedPreview
-            source={source}
-            onStreamingStatusChange={handleStreamingStatusChange}
-          />
-        )}
-        {!useStreamedPreview && (
-          <>
-            <color attach="background" args={["#020617"]} />
-            <ambientLight intensity={0.4} />
-            <directionalLight position={[4, 6, 3]} intensity={1.1} />
-            <directionalLight position={[-4, -4, -2]} intensity={0.4} />
-            <SketchComponent opacity={1} params={params} colors={colors} />
-          </>
-        )}
-      </WebGPUCanvas>
-    </>
+    <WebGPUCanvas
+      camera={{ position: [0, 0, 4], fov: 50 }}
+      frameloop="always"
+      dpr={1}
+      fallback={<div className={styles.fallback}>Initializing…</div>}
+    >
+      {streamingEnabled && (
+        <StreamedPreview
+          source={source}
+          onStreamingStatusChange={handleStreamingStatusChange}
+        />
+      )}
+      {!useStreamedPreview && (
+        <>
+          <color attach="background" args={["#020617"]} />
+          <ambientLight intensity={0.4} />
+          <directionalLight position={[4, 6, 3]} intensity={1.1} />
+          <directionalLight position={[-4, -4, -2]} intensity={0.4} />
+          <SketchComponent opacity={1} params={params} colors={colors} />
+        </>
+      )}
+    </WebGPUCanvas>
   );
 }
 

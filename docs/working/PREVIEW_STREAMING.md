@@ -504,8 +504,7 @@ Added discrete visual indicators to show streaming status:
 - **Slot badge**: Small 5px dot inside the slot number badge (top-left)
   - 🟢 Green with glow when streaming from Renderer
   - ⚪ Dim gray when rendering locally
-- **Live Preview label**: `● Live` with same dot pattern
-- Tooltip on hover shows "Streamed from Renderer" or "Local preview"
+- **Live Preview label**: Shows `"Live Preview"` when streaming, `"Local Preview"` when local, with same dot pattern
 
 **Acceptance Criteria:**
 
@@ -707,52 +706,15 @@ Exposed in Settings panel or sidebar.
 
 ---
 
-## Debugging & Logging
+## Debugging
 
-To verify the streaming pipeline is working correctly, structured console logs are emitted at each stage. When reporting issues, copy these logs to share the current state.
+Verbose logging has been removed for production. To debug streaming issues:
 
-### Log Format
+1. Check the streaming status indicators (green dot = streaming, gray = local)
+2. Use `invoke("get_frame_distribution_stats")` in the console to get frame counts and FPS
+3. Use `invoke("get_frame_distribution_config")` to verify configuration
 
-All preview streaming logs use the `[PreviewStream]` prefix for easy filtering.
-
-#### Renderer Window (Frame Capture)
-
-```
-[PreviewStream:Capture] Composited frame 1234 @ 1920x1080, readback: 2.3ms
-[PreviewStream:Capture] Slot 0 frame 1234 @ 1920x1080, readback: 1.1ms
-[PreviewStream:Capture] Slot 2 frame 1234 @ 1920x1080, readback: 1.0ms
-```
-
-#### Backend (Distribution)
-
-```
-[PreviewStream:Distribute] Frame 1234 (composited) → Controls, size: 8294400 bytes, took: 3.2ms
-[PreviewStream:Distribute] Frame 1234 (slot-0) → Controls, size: 8294400 bytes, took: 2.8ms
-[PreviewStream:Distribute] Stats: 60 fps, avg distribute: 3.1ms, dropped: 0
-```
-
-#### Controls Window (Reception)
-
-```
-[PreviewStream:Receive] Composited frame 1234, latency: 12ms, texture updated
-[PreviewStream:Receive] Slot 0 frame 1234, latency: 14ms, texture updated
-[PreviewStream:Receive] Stats: 58 fps received, 2 frames dropped, avg latency: 13ms
-```
-
-### Enabling Verbose Logs
-
-Set environment variable or add to settings:
-
-```bash
-# Environment variable
-SLEW_PREVIEW_STREAM_DEBUG=1 npm run tauri dev
-
-# Or in browser console
-localStorage.setItem('previewStreamDebug', 'true');
-location.reload();
-```
-
-### Key Metrics to Watch
+### Key Metrics
 
 | Metric             | Healthy | Warning | Problem |
 | ------------------ | ------- | ------- | ------- |
@@ -762,33 +724,28 @@ location.reload();
 | Frames dropped     | 0       | 1-5/sec | > 5/sec |
 | FPS received       | 55-60   | 45-55   | < 45    |
 
-### Troubleshooting Commands
+### Console Commands
 
-Run these in browser console to diagnose issues:
+Run these in the Controls window console to diagnose issues:
 
 ```javascript
-// Check streaming status
-window.__previewStreamStatus?.();
+// Get frame distribution stats (frames sent, FPS, dropped frames)
+await invoke("get_frame_distribution_stats");
 
-// Get recent frame stats
-window.__previewStreamStats?.();
+// Get current config
+await invoke("get_frame_distribution_config");
 
-// Force disable streaming (fallback to local render)
-window.__previewStreamDisable?.();
-
-// Re-enable streaming
-window.__previewStreamEnable?.();
+// Disable slot streaming temporarily
+await invoke("set_frame_distribution_config", {
+  config: {
+    enabled: true,
+    stream_composited: true,
+    stream_slots: false,
+    resolution_scale: 0.5,
+    target_fps: 30,
+  },
+});
 ```
-
-### Sharing Logs for Debugging
-
-When reporting issues:
-
-1. Open DevTools in both windows (Cmd+Option+I)
-2. Filter console by `[PreviewStream]`
-3. Reproduce the issue
-4. Copy logs from both windows
-5. Include the streaming status output
 
 ---
 

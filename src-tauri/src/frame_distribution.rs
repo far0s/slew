@@ -1,7 +1,4 @@
-//! Frame Distribution Module
-//!
-//! Distributes captured frames from the Renderer window to the Controls window
-//! for pixel-perfect preview consistency with Syphon/NDI output.
+//! Frame distribution from Renderer to Controls window for preview streaming.
 
 use base64::Engine;
 use once_cell::sync::Lazy;
@@ -10,9 +7,6 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::RwLock;
 use std::time::Instant;
 use tauri::{AppHandle, Emitter};
-
-const STATS_LOG_INTERVAL: u64 = 300;
-const VERBOSE_LOGGING: bool = false;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -154,17 +148,11 @@ impl FrameDistributor {
     pub fn set_app_handle(&self, app: AppHandle) {
         if let Ok(mut handle) = self.app_handle.write() {
             *handle = Some(app);
-            log::debug!("[PreviewStream:Distribute] App handle set");
         }
     }
 
     pub fn set_config(&self, config: DistributionConfig) {
         if let Ok(mut cfg) = self.config.write() {
-            log::info!(
-                "[PreviewStream:Distribute] Config: enabled={}, composited={}, slots={}, scale={}, fps={}",
-                config.enabled, config.stream_composited, config.stream_slots,
-                config.resolution_scale, config.target_fps
-            );
             *cfg = config;
         }
     }
@@ -175,10 +163,6 @@ impl FrameDistributor {
 
     pub fn set_enabled(&self, enabled: bool) {
         self.active.store(enabled, Ordering::SeqCst);
-        log::info!(
-            "[PreviewStream:Distribute] Distribution {}",
-            if enabled { "enabled" } else { "disabled" }
-        );
     }
 
     pub fn is_enabled(&self) -> bool {
@@ -232,11 +216,6 @@ impl FrameDistributor {
         };
 
         if let Err(e) = app.emit(&event_name, &metadata) {
-            log::warn!(
-                "[PreviewStream:Distribute] Emit failed for {}: {}",
-                source,
-                e
-            );
             if let Ok(mut stats) = self.stats.write() {
                 stats.record_dropped();
             }
@@ -244,40 +223,11 @@ impl FrameDistributor {
         }
 
         let distribute_ms = start.elapsed().as_secs_f64() * 1000.0;
-
         if let Ok(mut stats) = self.stats.write() {
             stats.record_distributed(distribute_ms);
         }
 
-        if VERBOSE_LOGGING {
-            log::debug!(
-                "[PreviewStream:Distribute] Frame {} ({}) @ {}x{}, {} bytes, {:.2}ms",
-                frame_number,
-                source,
-                width,
-                height,
-                data.len(),
-                distribute_ms
-            );
-        }
-
-        if frame_number % STATS_LOG_INTERVAL == 0 && frame_number > 0 {
-            self.log_stats();
-        }
-
         Ok(true)
-    }
-
-    fn log_stats(&self) {
-        if let Ok(stats) = self.stats.read() {
-            log::info!(
-                "[PreviewStream:Distribute] Stats: {} fps, avg: {:.1}ms, total: {}, dropped: {}",
-                stats.current_fps as u32,
-                stats.avg_distribute_ms(),
-                stats.frames_distributed,
-                stats.frames_dropped
-            );
-        }
     }
 
     pub fn get_stats(&self) -> DistributionStats {
@@ -298,7 +248,6 @@ pub static FRAME_DISTRIBUTOR: Lazy<FrameDistributor> = Lazy::new(FrameDistributo
 
 pub fn init_frame_distribution(app: AppHandle) {
     FRAME_DISTRIBUTOR.set_app_handle(app);
-    log::info!("[PreviewStream:Distribute] Frame distribution initialized");
 }
 
 #[tauri::command]

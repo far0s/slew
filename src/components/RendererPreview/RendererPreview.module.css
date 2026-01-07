@@ -1,24 +1,12 @@
-/* ==========================================================================
-   RendererPreview.module.css
-
-   Styles for the global renderer preview that mirrors the actual
-   Renderer window output with crossfade blending.
-
-   The aspect ratio is controlled by a CSS custom property --renderer-aspect-ratio
-   which defaults to 16/9 but can be overridden dynamically.
-   ========================================================================== */
-
 .container {
   position: relative;
   width: 100%;
-  /* Use CSS custom property for aspect ratio, defaulting to 16/9 */
   aspect-ratio: var(--renderer-aspect-ratio, 16 / 9);
   border-radius: 0.5rem;
   overflow: hidden;
   background: var(--bg-panel);
   border: 1.5px solid var(--border-default);
   transition: background-color 0.2s ease;
-  /* Flex-shrink to allow container to shrink if needed */
   flex-shrink: 0;
 }
 
@@ -58,10 +46,6 @@
   pointer-events: none;
   user-select: none;
 }
-
-/* ==========================================================================
-   Streaming Status Indicator
-   ========================================================================== */
 
 .streamDotActive,
 .streamDotInactive {
