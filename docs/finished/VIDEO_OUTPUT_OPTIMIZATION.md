@@ -128,7 +128,6 @@ WebGL2 Fallback:
    - Receives raw pixel data directly (no base64)
    - Parses width/height/format from query parameters
    - Publishes directly to video backends
-   - Logs timing every 300 frames: `[VideoOut:Binary] Frame N @ WxH: X.XXms`
 
 ### How to Use
 

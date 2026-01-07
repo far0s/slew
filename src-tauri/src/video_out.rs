@@ -1126,10 +1126,6 @@ pub fn publish_video_frame(
 /// ```
 #[tauri::command]
 pub fn publish_video_frame_binary(request: tauri::ipc::Request<'_>) -> Result<(), String> {
-    use std::time::Instant;
-
-    let total_start = Instant::now();
-
     // Extract dimensions from headers
     let headers = request.headers();
 
@@ -1174,36 +1170,11 @@ pub fn publish_video_frame_binary(request: tauri::ipc::Request<'_>) -> Result<()
     }
 
     // Publish directly from the slice to avoid cloning ~1.7MB per frame
-    let publish_start = Instant::now();
     let manager = VIDEO_OUTPUT_MANAGER
         .read()
         .map_err(|e| format!("Failed to read video output manager: {}", e))?;
 
     let result = manager.publish_frame_data(pixel_data, width, height, pixel_format);
-    let publish_time = publish_start.elapsed();
-
-    let total_time = total_start.elapsed();
-
-    // Log timing every ~5 seconds at 60fps (every 300 frames)
-    thread_local! {
-        static BINARY_FRAME_COUNTER: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
-    }
-
-    BINARY_FRAME_COUNTER.with(|counter| {
-        let count = counter.get() + 1;
-        counter.set(count);
-
-        if count % 300 == 0 {
-            log::info!(
-                "[VideoOut:Binary] Frame {} @ {}x{}: publish={:.2}ms, total={:.2}ms",
-                count,
-                width,
-                height,
-                publish_time.as_secs_f64() * 1000.0,
-                total_time.as_secs_f64() * 1000.0,
-            );
-        }
-    });
 
     result
 }
