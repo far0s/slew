@@ -475,6 +475,15 @@ export function SlotColumn({
   );
 }
 
+/**
+ * SlotPreview - Displays either streamed frames from Renderer or local rendering.
+ *
+ * Simplified streaming logic:
+ * - Check config to see if streaming is enabled
+ * - Once first frame is received, commit to streaming mode permanently
+ * - No timeout-based fallback - if frames stop, show last valid frame
+ * - Click to refresh: user can click to force reconnection if stuck
+ */
 function SlotPreview({
   slotIndex,
   SketchComponent,
@@ -488,10 +497,23 @@ function SlotPreview({
   colors?: SketchProps["colors"];
   onStreamingChange?: (isStreaming: boolean) => void;
 }) {
-  const [isStreaming, setIsStreaming] = useState(false);
+  // Whether streaming is enabled in backend config
   const [streamingEnabled, setStreamingEnabled] = useState(false);
+  // Whether we've received at least one frame (commit to streaming)
+  const [hasReceivedFrame, setHasReceivedFrame] = useState(false);
+  // Key to force StreamedPreview remount (for manual refresh)
+  const [refreshKey, setRefreshKey] = useState(0);
+
   const source = useMemo(() => `slot-${slotIndex}` as const, [slotIndex]);
 
+  // Handle click to refresh - remount StreamedPreview to reconnect
+  const handleRefreshClick = useCallback(() => {
+    setHasReceivedFrame(false);
+    onStreamingChange?.(false);
+    setRefreshKey((k) => k + 1);
+  }, [onStreamingChange]);
+
+  // Check backend config periodically
   useEffect(() => {
     let mounted = true;
     const checkConfig = async () => {
@@ -500,50 +522,69 @@ function SlotPreview({
           enabled: boolean;
           stream_slots: boolean;
         }>("get_frame_distribution_config");
-        if (mounted) setStreamingEnabled(config.enabled && config.stream_slots);
-      } catch {}
+        const shouldEnable = config.enabled && config.stream_slots;
+        if (mounted) setStreamingEnabled(shouldEnable);
+      } catch {
+        // Config fetch failed - streaming will remain disabled
+      }
     };
     checkConfig();
-    const interval = setInterval(checkConfig, 2000);
+    // Check less frequently - config doesn't change often
+    const interval = setInterval(checkConfig, 5000);
     return () => {
       mounted = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [slotIndex]);
 
-  const handleStreamingStatusChange = useCallback(
-    (streaming: boolean) => {
-      setIsStreaming(streaming);
-      onStreamingChange?.(streaming);
-    },
-    [onStreamingChange],
-  );
+  // Called when StreamedPreview receives its first frame
+  const handleFirstFrame = useCallback(() => {
+    setHasReceivedFrame(true);
+    onStreamingChange?.(true);
+  }, [onStreamingChange]);
 
-  const useStreamedPreview = streamingEnabled && isStreaming;
+  // Use streamed preview once we've received a frame and streaming is enabled
+  const useStreamedPreview = streamingEnabled && hasReceivedFrame;
 
   return (
-    <WebGPUCanvas
-      camera={{ position: [0, 0, 4], fov: 50 }}
-      frameloop="always"
-      dpr={1}
-      fallback={<div className={styles.fallback}>Initializing…</div>}
+    <div
+      className={styles.slotPreviewWrapper}
+      onClick={handleRefreshClick}
+      title="Click to refresh preview"
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          handleRefreshClick();
+        }
+      }}
     >
-      {streamingEnabled && (
-        <StreamedPreview
-          source={source}
-          onStreamingStatusChange={handleStreamingStatusChange}
-        />
-      )}
-      {!useStreamedPreview && (
-        <>
-          <color attach="background" args={["#020617"]} />
-          <ambientLight intensity={0.4} />
-          <directionalLight position={[4, 6, 3]} intensity={1.1} />
-          <directionalLight position={[-4, -4, -2]} intensity={0.4} />
-          <SketchComponent opacity={1} params={params} colors={colors} />
-        </>
-      )}
-    </WebGPUCanvas>
+      <WebGPUCanvas
+        camera={{ position: [0, 0, 4], fov: 50 }}
+        frameloop="always"
+        dpr={1}
+        fallback={<div className={styles.fallback}>Initializing…</div>}
+      >
+        {/* Always render StreamedPreview when enabled - it will show last valid frame */}
+        {streamingEnabled && (
+          <StreamedPreview
+            key={refreshKey}
+            source={source}
+            onFirstFrame={handleFirstFrame}
+          />
+        )}
+        {/* Only render local sketch if we haven't received any streamed frames yet */}
+        {!useStreamedPreview && (
+          <>
+            <color attach="background" args={["#020617"]} />
+            <ambientLight intensity={0.4} />
+            <directionalLight position={[4, 6, 3]} intensity={1.1} />
+            <directionalLight position={[-4, -4, -2]} intensity={0.4} />
+            <SketchComponent opacity={1} params={params} colors={colors} />
+          </>
+        )}
+      </WebGPUCanvas>
+    </div>
   );
 }
 

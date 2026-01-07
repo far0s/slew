@@ -201,9 +201,11 @@ impl FrameDistributor {
 
         let frame_number = self.frame_counter.fetch_add(1, Ordering::SeqCst);
 
+        // Use a single event name for all slot frames to avoid listener issues
+        // The slot index is included in the payload for filtering
         let event_name = match source {
             FrameSource::Composited => "preview-frame-composited".to_string(),
-            FrameSource::Slot(idx) => format!("preview-frame-slot-{}", idx),
+            FrameSource::Slot(_) => "preview-frame-slot".to_string(),
         };
 
         let metadata = FrameMetadata {
@@ -215,7 +217,12 @@ impl FrameDistributor {
             data: base64::engine::general_purpose::STANDARD.encode(data),
         };
 
-        if let Err(e) = app.emit(&event_name, &metadata) {
+        // Use broadcast emit for all frame types
+        // Previously we tried window-specific emission for slots, but it stopped working after resize
+        let emit_result = app.emit(&event_name, &metadata);
+
+        if let Err(e) = emit_result {
+            log::error!("Failed to emit frame to {}: {}", event_name, e);
             if let Ok(mut stats) = self.stats.write() {
                 stats.record_dropped();
             }

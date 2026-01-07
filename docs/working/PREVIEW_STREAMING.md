@@ -777,6 +777,33 @@ For multi-display setups:
 
 ---
 
+## Known Issues and Fixes
+
+### Streaming Reconnection After Resize (2025-01) ✅ FIXED
+
+**Problem**: When the Renderer window was resized, slot previews stopped receiving streamed frames and showed a frozen image. Composited preview continued working, but individual slot previews never recovered.
+
+**Root Cause**: Slot frames used window-specific Tauri event emission (`controls_window.emit()`) while composited frames used broadcast emission (`app.emit()`). After window resize, the window-specific emission stopped working reliably.
+
+**Solution**: Changed slot frame emission to use broadcast (`app.emit()`) like composited frames.
+
+**Files Modified**:
+
+- `src-tauri/src/frame_distribution.rs`: Use `app.emit()` for all frame types instead of window-specific emission for slots
+
+**Additional Improvements**:
+
+- `src/components/StreamedPreview/StreamedPreview.tsx`:
+  - Debounce dimension changes (100ms) to avoid rapid texture recreation during resize
+  - Use stable material binding with `useFrame` to ensure texture stays bound
+  - Simplified streaming status to just track "first frame received"
+
+- `src/components/SlotColumn/SlotColumn.tsx`:
+  - Added click-to-refresh fallback (click preview to force reconnection if stuck)
+  - Simplified streaming logic with `onFirstFrame` callback
+
+---
+
 ## Open Questions (Resolved)
 
 1. **Resolution for slot previews**: Should each slot stream match main resolution, or use fixed thumbnail size?
@@ -789,7 +816,7 @@ For multi-display setups:
 
 3. **Frame dropping**: If Controls can't keep up, should we drop frames or buffer?
 
-   **Answer**: Frames are dropped implicitly. Each new frame replaces the previous texture data. The `StreamedPreview` component has a 2-second timeout to detect stream loss and fall back to local rendering.
+   **Answer**: Frames are dropped implicitly. Each new frame replaces the previous texture data. If frames stop arriving, the last valid frame remains visible (frozen preview is acceptable).
 
 4. **Slot isolation**: Do we need true render isolation (separate scenes) or can we mask from composited output?
 
@@ -809,4 +836,4 @@ For multi-display setups:
 
 ---
 
-_Last updated: 2025-01-07 — All phases complete. Preview streaming fully functional for both composited and per-slot previews._
+_Last updated: 2026-01-07 — All phases complete. Resize reconnection issue fixed via broadcast event emission._

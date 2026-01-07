@@ -222,6 +222,15 @@ function RendererPreviewContent({
   );
 }
 
+/**
+ * RendererPreview - Displays either streamed composited frames or local rendering.
+ *
+ * Simplified streaming logic:
+ * - Check if streaming is enabled via prop
+ * - Once first frame is received, commit to streaming mode permanently
+ * - No timeout-based fallback after streaming starts - show last valid frame
+ * - Only fall back to local rendering if no frames received within initial timeout
+ */
 export function RendererPreview({
   allSlots,
   activeSlotIndex,
@@ -232,36 +241,34 @@ export function RendererPreview({
   aspectRatio = 16 / 9,
 }: RendererPreviewProps) {
   const streamingEnabled = useStreaming ?? USE_STREAMING_BY_DEFAULT;
-  const [isStreamActive, setIsStreamActive] = useState(false);
-  const [streamingFailed, setStreamingFailed] = useState(false);
+  // Whether we've received at least one frame (commit to streaming)
   const [hasReceivedFrame, setHasReceivedFrame] = useState(false);
+  // Whether initial connection failed (fall back to local rendering)
+  const [initialConnectionFailed, setInitialConnectionFailed] = useState(false);
 
-  const handleStreamingStatusChange = useCallback((isActive: boolean) => {
-    setIsStreamActive(isActive);
-    if (isActive) {
-      setHasReceivedFrame(true);
-      setStreamingFailed(false);
-    }
+  // Called when StreamedPreview receives its first frame
+  const handleFirstFrame = useCallback(() => {
+    setHasReceivedFrame(true);
+    setInitialConnectionFailed(false);
   }, []);
 
-  const handleFrameReceived = useCallback(() => {
-    if (!hasReceivedFrame) setHasReceivedFrame(true);
-  }, [hasReceivedFrame]);
-
+  // Initial connection timeout - only applies before first frame received
   useEffect(() => {
     if (!streamingEnabled || hasReceivedFrame) {
       return;
     }
 
     const timeout = setTimeout(() => {
-      if (!hasReceivedFrame) setStreamingFailed(true);
+      if (!hasReceivedFrame) setInitialConnectionFailed(true);
     }, STREAMING_FALLBACK_TIMEOUT_MS);
 
     return () => clearTimeout(timeout);
   }, [streamingEnabled, hasReceivedFrame]);
 
-  const shouldStream = streamingEnabled && !streamingFailed;
-  const isStreaming = shouldStream && isStreamActive;
+  // Use streaming if enabled and either we've received frames OR we're still waiting
+  const shouldStream = streamingEnabled && !initialConnectionFailed;
+  // Visual indicator: streaming is active if we've received at least one frame
+  const isStreaming = shouldStream && hasReceivedFrame;
 
   const containerStyle = {
     "--renderer-aspect-ratio": aspectRatio,
@@ -276,11 +283,11 @@ export function RendererPreview({
           dpr={1}
           fallback={<div className={styles.fallback}>Initializing…</div>}
         >
+          {/* Always render StreamedPreview when should stream - it shows last valid frame */}
           {shouldStream ? (
             <StreamedPreview
               source="composited"
-              onFrameReceived={handleFrameReceived}
-              onStreamingStatusChange={handleStreamingStatusChange}
+              onFirstFrame={handleFirstFrame}
             />
           ) : (
             <RendererPreviewContent

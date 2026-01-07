@@ -78,6 +78,25 @@
   display: block;
 }
 
+/* Wrapper for SlotPreview to enable click-to-refresh */
+.slotPreviewWrapper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.slotPreviewWrapper:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.slotPreviewWrapper > div {
+  width: 100%;
+  height: 100%;
+}
+
 .fallback {
   position: absolute;
   inset: 0;
