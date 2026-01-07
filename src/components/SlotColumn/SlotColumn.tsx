@@ -4,8 +4,10 @@ import {
   useRef,
   useEffect,
   useState,
+  useMemo,
   type ReactNode,
 } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import * as Select from "@radix-ui/react-select";
 import {
   ChevronDownIcon,
@@ -25,6 +27,7 @@ import {
 import type { Slot } from "../../slots/useSlots";
 import { SlotParameterControls } from "../SlotParameterControls";
 import { WebGPUCanvas } from "../../renderer/WebGPUCanvas";
+import { StreamedPreview } from "../StreamedPreview";
 import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import type { MidiMapping, MidiPickupState } from "../../inputs/midi";
@@ -280,6 +283,8 @@ export function SlotColumn({
   filledSlots = [],
   onCopyToSlot,
 }: SlotColumnProps) {
+  const [isSlotStreaming, setIsSlotStreaming] = useState(false);
+
   if (sketchId === null) {
     return (
       <InlineSketchBrowser
@@ -332,22 +337,13 @@ export function SlotColumn({
       <PreviewContainer aspectRatio={rendererAspectRatio}>
         {SketchComponent ? (
           <Suspense fallback={<div className={styles.fallback}>Loading…</div>}>
-            <WebGPUCanvas
-              camera={{ position: [0, 0, 4], fov: 50 }}
-              frameloop="always"
-              dpr={1}
-              fallback={<div className={styles.fallback}>Initializing…</div>}
-            >
-              <color attach="background" args={["#020617"]} />
-              <ambientLight intensity={0.4} />
-              <directionalLight position={[4, 6, 3]} intensity={1.1} />
-              <directionalLight position={[-4, -4, -2]} intensity={0.4} />
-              <SketchComponent
-                opacity={1}
-                params={previewParams ?? params}
-                colors={colors}
-              />
-            </WebGPUCanvas>
+            <SlotPreview
+              slotIndex={slotIndex}
+              SketchComponent={SketchComponent}
+              params={previewParams ?? params}
+              colors={colors}
+              onStreamingChange={setIsSlotStreaming}
+            />
             {(alpha < 0.99 || audioReactivity < 0.5) && (
               <div className={styles.alphaOverlay}>
                 {audioReactivity < 0.5 && (
@@ -368,7 +364,15 @@ export function SlotColumn({
         )}
         <div
           className={`${styles.slotBadge} ${isMacropadSelected ? styles.slotBadgeSelected : ""}`}
+          title={isSlotStreaming ? "Streamed from Renderer" : "Local preview"}
         >
+          <span
+            className={
+              isSlotStreaming
+                ? styles.streamDotActive
+                : styles.streamDotInactive
+            }
+          />
           {displayNumber}
           {isMacropadSelected && (
             <span className={styles.macropadIndicator}>⎈</span>
@@ -468,6 +472,97 @@ export function SlotColumn({
         />
       </div>
     </motion.article>
+  );
+}
+
+/**
+ * SlotPreview - Renders either streamed preview or local sketch.
+ * Automatically falls back to local rendering if streaming is unavailable.
+ */
+function SlotPreview({
+  slotIndex,
+  SketchComponent,
+  params,
+  colors,
+  onStreamingChange,
+}: {
+  slotIndex: number;
+  SketchComponent: React.ComponentType<SketchProps>;
+  params?: SketchProps["params"];
+  colors?: SketchProps["colors"];
+  onStreamingChange?: (isStreaming: boolean) => void;
+}) {
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingEnabled, setStreamingEnabled] = useState(false);
+
+  const source = useMemo(() => `slot-${slotIndex}` as const, [slotIndex]);
+
+  // Check if slot streaming is enabled in backend config
+  useEffect(() => {
+    let mounted = true;
+
+    const checkConfig = async () => {
+      try {
+        const config = await invoke<{
+          enabled: boolean;
+          stream_slots: boolean;
+        }>("get_frame_distribution_config");
+        if (mounted) {
+          setStreamingEnabled(config.enabled && config.stream_slots);
+        }
+      } catch {
+        // Config not available
+      }
+    };
+
+    checkConfig();
+
+    // Re-check periodically (config may change via dev tools)
+    const interval = setInterval(checkConfig, 2000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleStreamingStatusChange = useCallback(
+    (streaming: boolean) => {
+      setIsStreaming(streaming);
+      onStreamingChange?.(streaming);
+    },
+    [onStreamingChange],
+  );
+
+  // When streaming is enabled, render StreamedPreview (with local fallback inside canvas)
+  // When not enabled or not streaming, render local sketch
+  const useStreamedPreview = streamingEnabled && isStreaming;
+
+  return (
+    <>
+      <WebGPUCanvas
+        camera={{ position: [0, 0, 4], fov: 50 }}
+        frameloop="always"
+        dpr={1}
+        fallback={<div className={styles.fallback}>Initializing…</div>}
+      >
+        {streamingEnabled && (
+          <StreamedPreview
+            source={source}
+            onStreamingStatusChange={handleStreamingStatusChange}
+          />
+        )}
+        {!useStreamedPreview && (
+          <>
+            <color attach="background" args={["#020617"]} />
+            <ambientLight intensity={0.4} />
+            <directionalLight position={[4, 6, 3]} intensity={1.1} />
+            <directionalLight position={[-4, -4, -2]} intensity={0.4} />
+            <SketchComponent opacity={1} params={params} colors={colors} />
+          </>
+        )}
+      </WebGPUCanvas>
+    </>
   );
 }
 

@@ -11,8 +11,8 @@ Stream the Renderer window output to Controls window previews in real-time, ensu
 | Phase 1 | Architecture Design       | ✅ Complete |
 | Phase 2 | Binary Frame Distribution | ✅ Complete |
 | Phase 3 | Live Preview Streaming    | ✅ Complete |
-| Phase 4 | Per-Slot Render Targets   | 🔲 Pending  |
-| Phase 5 | Slot Preview Streaming    | 🔲 Pending  |
+| Phase 4 | Per-Slot Render Targets   | ✅ Complete |
+| Phase 5 | Slot Preview Streaming    | ✅ Complete |
 
 ---
 
@@ -401,101 +401,119 @@ export function RendererPreview(/* props */) {
 
 ---
 
-### Phase 4: Per-Slot Render Targets
+### Phase 4: Per-Slot Render Targets ✅
 
 Render each slot to its own offscreen target in the Renderer, enabling individual streaming.
 
-#### 4.1 Modify RendererRoot for Per-Slot Targets
+#### Implementation: Visibility Toggling Approach
 
-Update `src/renderer/RendererRoot.tsx`:
+We implemented **approach #2** (visibility toggling) via a dedicated `SlotPreviewCapture` component (`src/renderer/SlotPreviewCapture.tsx`):
 
 ```tsx
-// Create render targets for each active slot
-const slotRenderTargets = useRef<Map<number, THREE.WebGLRenderTarget>>(
-  new Map(),
-);
+// SlotPreviewCapture runs in useFrame at priority 0 (pre-render)
+// It captures one slot per frame using round-robin scheduling
 
-// In render loop, render each slot to its target before compositing
-for (const slot of visibleSlots) {
-  const target = getOrCreateSlotTarget(slot.index);
+useFrame(() => {
+  // 1. Find the next slot that needs capturing
+  const slotIndex = getNextSlotToCapture();
+
+  // 2. Hide all slot groups except the target
+  for (const [index, group] of slotGroups) {
+    group.visible = index === slotIndex;
+  }
+
+  // 3. Render to offscreen target
   renderer.setRenderTarget(target);
   renderer.clear();
-  // Render just this slot's scene
-  renderer.render(slotScene, camera);
+  renderer.render(scene, camera);
   renderer.setRenderTarget(null);
-}
 
-// Then composite all slots for main output (existing behavior)
-```
-
-#### 4.2 Capture Per-Slot Frames
-
-Extend VideoOutputCapture to read from slot targets:
-
-```tsx
-// After main frame capture, also capture visible slots
-for (const slot of visibleSlots) {
-  const slotTarget = slotRenderTargets.get(slot.index);
-  if (slotTarget) {
-    const slotPixels = await captureRenderTarget(slotTarget);
-    await invoke("distribute_frame", slotPixels, {
-      headers: {
-        "X-Source": `slot-${slot.index}`,
-        // ... dimensions
-      },
-    });
+  // 4. IMMEDIATELY restore visibility before main render
+  for (const [index, visible] of originalVisibility) {
+    slotGroups.get(index).visible = visible;
   }
-}
+
+  // 5. Read pixels and distribute
+  // WebGPU: async readback via readRenderTargetPixelsAsync
+  // WebGL: sync readback via readRenderTargetPixels
+});
 ```
+
+**Key Implementation Details:**
+
+- **Priority 0 (pre-render)**: Critical! Priority > 0 (post-render) breaks WebGPU rendering in r3f
+- **Round-robin capture**: One slot per frame to minimize GPU overhead
+- **100ms initialization delay**: New slots wait before first capture to allow shader compilation
+- **SRGB color space**: Render targets use `THREE.SRGBColorSpace` for correct colors
+- **Async readback for WebGPU**: Uses `readRenderTargetPixelsAsync` to avoid blocking
+- **Vertical flip**: Pixels are flipped in-place before sending (WebGL/WebGPU read from bottom-left)
 
 **Acceptance Criteria:**
 
-- [ ] Each active slot has its own render target
-- [ ] Slot targets are captured after main output
-- [ ] Slot frames distributed via same mechanism
-- [ ] Minimal impact on main render performance
+- [x] Each active slot has its own render target
+- [x] Slot targets are captured without breaking main render
+- [x] Slot frames distributed via same mechanism as composited
+- [x] Minimal impact on main render performance (visibility restored before main render)
+- [x] Works with both WebGL and WebGPU renderers
 
 ---
 
-### Phase 5: Slot Preview Streaming
+### Phase 5: Slot Preview Streaming ✅
 
 Replace SlotColumn individual rendering with streamed slot frames.
 
-#### 5.1 Update SlotColumn
+#### 5.1 SlotPreview Component
 
-Modify `src/components/SlotColumn/SlotColumn.tsx`:
-
-```tsx
-// Replace local WebGPUCanvas with StreamedPreview
-<PreviewContainer>
-  <WebGPUCanvas camera={{ position: [0, 0, 10] }}>
-    <StreamedPreview source={`slot-${slotIndex}`} />
-  </WebGPUCanvas>
-  {/* Alpha overlay, slot badge, etc. remain */}
-</PreviewContainer>
-```
-
-#### 5.2 Handle Missing Streams
-
-If a slot isn't streaming (e.g., slot inactive), fall back to local render:
+The `SlotPreview` component in `src/components/SlotColumn/SlotColumn.tsx` handles streaming with automatic fallback:
 
 ```tsx
-const [isStreaming, setIsStreaming] = useState(false);
+function SlotPreview({ slotIndex, SketchComponent, params, colors }) {
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingEnabled, setStreamingEnabled] = useState(false);
 
-// Use streaming if receiving frames, otherwise local render
-if (isStreaming) {
-  return <StreamedPreview source={`slot-${slotIndex}`} />;
-} else {
-  return <SketchComponent /* existing props */ />;
+  // Check backend config for stream_slots setting
+  useEffect(() => {
+    const config = await invoke("get_frame_distribution_config");
+    setStreamingEnabled(config.enabled && config.stream_slots);
+  }, []);
+
+  const useStreamedPreview = streamingEnabled && isStreaming;
+
+  return (
+    <WebGPUCanvas>
+      {/* Always render StreamedPreview when enabled - it reports streaming status */}
+      {streamingEnabled && (
+        <StreamedPreview
+          source={`slot-${slotIndex}`}
+          onStreamingStatusChange={setIsStreaming}
+        />
+      )}
+      {/* Fall back to local render when not streaming */}
+      {!useStreamedPreview && (
+        <SketchComponent opacity={1} params={params} colors={colors} />
+      )}
+    </WebGPUCanvas>
+  );
 }
 ```
 
+#### 5.2 Streaming Status Indicator
+
+Added discrete visual indicators to show streaming status:
+
+- **Slot badge**: Small 5px dot inside the slot number badge (top-left)
+  - 🟢 Green with glow when streaming from Renderer
+  - ⚪ Dim gray when rendering locally
+- **Live Preview label**: `● Live` with same dot pattern
+- Tooltip on hover shows "Streamed from Renderer" or "Local preview"
+
 **Acceptance Criteria:**
 
-- [ ] SlotColumn uses streamed frames when available
-- [ ] Falls back to local rendering gracefully
-- [ ] Alpha overlay still works over streamed content
-- [ ] All 8 slots can stream independently
+- [x] SlotColumn uses streamed frames when available
+- [x] Falls back to local rendering gracefully
+- [x] Alpha overlay still works over streamed content
+- [x] All 8 slots can stream independently
+- [x] Visual indicator shows streaming vs local status
 
 ---
 
@@ -561,23 +579,89 @@ Exposed in Settings panel or sidebar.
 
 ### New Files
 
-| File                                                        | Purpose                          |
-| ----------------------------------------------------------- | -------------------------------- |
-| `src-tauri/src/frame_distribution.rs`                       | Backend frame distribution logic |
-| `src/components/StreamedPreview/StreamedPreview.tsx`        | Streamed frame display component |
-| `src/components/StreamedPreview/StreamedPreview.module.css` | Styles                           |
-| `src/components/StreamedPreview/index.ts`                   | Barrel export                    |
+| File                                                        | Purpose                                  |
+| ----------------------------------------------------------- | ---------------------------------------- |
+| `src-tauri/src/frame_distribution.rs`                       | Backend frame distribution logic         |
+| `src/components/StreamedPreview/StreamedPreview.tsx`        | Streamed frame display component         |
+| `src/components/StreamedPreview/StreamedPreview.module.css` | Styles                                   |
+| `src/components/StreamedPreview/index.ts`                   | Barrel export                            |
+| `src/renderer/SlotPreviewCapture.tsx`                       | Per-slot capture via visibility toggling |
 
 ### Modified Files
 
-| File                                                 | Changes                                               |
-| ---------------------------------------------------- | ----------------------------------------------------- |
-| `src-tauri/src/lib.rs`                               | Register `distribute_frame` command, init distributor |
-| `src-tauri/src/video_out.rs`                         | Integrate with frame distribution                     |
-| `src/renderer/VideoOutputCapture.tsx`                | Emit frames for distribution                          |
-| `src/renderer/RendererRoot.tsx`                      | Add per-slot render targets                           |
-| `src/components/RendererPreview/RendererPreview.tsx` | Use StreamedPreview                                   |
-| `src/components/SlotColumn/SlotColumn.tsx`           | Use StreamedPreview                                   |
+| File                                                        | Changes                                                      |
+| ----------------------------------------------------------- | ------------------------------------------------------------ |
+| `src-tauri/src/lib.rs`                                      | Register `distribute_frame` command, init distributor        |
+| `src-tauri/src/video_out.rs`                                | Integrate with frame distribution                            |
+| `src/renderer/VideoOutputCapture.tsx`                       | Emit composited frames for distribution                      |
+| `src/renderer/RendererRoot.tsx`                             | Integrate SlotPreviewCapture, track slot groups via refs     |
+| `src/components/RendererPreview/RendererPreview.tsx`        | Use StreamedPreview, add streaming status indicator          |
+| `src/components/RendererPreview/RendererPreview.module.css` | Add streaming dot styles                                     |
+| `src/components/SlotColumn/SlotColumn.tsx`                  | Add SlotPreview with streaming/fallback, streaming indicator |
+| `src/components/SlotColumn/SlotColumn.module.css`           | Add streaming dot styles in slot badge                       |
+
+---
+
+## Quick Test Guide
+
+### Testing Slot Streaming (Phase 4 + 5)
+
+1. **Start the app**:
+
+   ```bash
+   npm run tauri dev
+   ```
+
+2. **Enable debug logging** (in both Renderer and Controls window consoles):
+
+   ```javascript
+   localStorage.setItem("previewStreamDebug", "true");
+   location.reload();
+   ```
+
+3. **Enable slot streaming** (in Renderer window console):
+
+   ```javascript
+   // Import invoke if needed
+   const { invoke } = await import("@tauri-apps/api/core");
+
+   // Enable slot streaming
+   await invoke("set_frame_distribution_config", {
+     config: {
+       enabled: true,
+       stream_composited: true,
+       stream_slots: true,
+       resolution_scale: 0.5,
+       target_fps: 30,
+     },
+   });
+   ```
+
+4. **Verify it's working**:
+   - Check Renderer console for `[SlotPreviewCapture]` logs
+   - Check Controls console for `[PreviewStream]` logs
+   - Slot previews in Controls should now show streamed content
+
+5. **Disable slot streaming** (to compare):
+   ```javascript
+   await invoke("set_frame_distribution_config", {
+     config: {
+       enabled: true,
+       stream_composited: true,
+       stream_slots: false, // <-- disabled
+       resolution_scale: 0.5,
+       target_fps: 30,
+     },
+   });
+   ```
+
+### Expected Behavior
+
+| State                                  | Slot Previews                                        |
+| -------------------------------------- | ---------------------------------------------------- |
+| `stream_slots: false`                  | Local rendering (each slot renders independently)    |
+| `stream_slots: true`, no frames yet    | Local rendering (fallback)                           |
+| `stream_slots: true`, receiving frames | Streamed preview (pixel-perfect match with Renderer) |
 
 ---
 
@@ -585,24 +669,30 @@ Exposed in Settings panel or sidebar.
 
 ### Visual Consistency
 
-- [ ] Live Preview matches Renderer window exactly
-- [ ] Slot Previews match their portion of Renderer output
-- [ ] No timing/animation phase differences
-- [ ] Random/procedural effects are identical
+- [x] Live Preview matches Renderer window exactly
+- [x] Slot Previews match their portion of Renderer output
+- [x] No timing/animation phase differences
+- [x] Random/procedural effects are identical
 
 ### Performance
 
-- [ ] Renderer maintains 60fps with streaming enabled
-- [ ] Controls window updates smoothly
-- [ ] No memory leaks from texture updates
-- [ ] CPU usage acceptable
+- [x] Renderer maintains 60fps with streaming enabled
+- [x] Controls window updates smoothly
+- [ ] No memory leaks from texture updates (needs long-running test)
+- [x] CPU usage acceptable
 
 ### Edge Cases
 
-- [ ] Streaming works after window restart
-- [ ] Handles rapid slot changes
-- [ ] Handles resolution changes
-- [ ] Graceful fallback when streaming unavailable
+- [x] Streaming works after window restart
+- [x] Handles rapid slot changes
+- [ ] Handles resolution changes (needs testing)
+- [x] Graceful fallback when streaming unavailable
+
+### Known Constraints
+
+- **WebGPU useFrame priority**: Slot capture MUST use priority 0 or negative. Priority > 0 (post-render) breaks WebGPU rendering in r3f.
+- **Initialization delay**: New slots wait 100ms before first capture to allow shader compilation and uniform initialization.
+- **Round-robin capture**: Only one slot is captured per frame to minimize GPU overhead. With 2 slots at 30fps target, each slot updates at ~15fps.
 
 ---
 
@@ -730,15 +820,23 @@ For multi-display setups:
 
 ---
 
-## Open Questions
+## Open Questions (Resolved)
 
 1. **Resolution for slot previews**: Should each slot stream match main resolution, or use fixed thumbnail size?
 
+   **Answer**: Slot previews use 50% of the Renderer resolution (`PREVIEW_SCALE = 0.5`). This provides good visual quality while reducing bandwidth and GPU overhead.
+
 2. **Compression**: Is LZ4 or simple RLE worth the CPU cost for bandwidth savings?
+
+   **Answer**: Currently using uncompressed RGBA with base64 encoding for IPC. Compression was not needed—the binary protocol handles the data efficiently. If bandwidth becomes an issue, this can be revisited.
 
 3. **Frame dropping**: If Controls can't keep up, should we drop frames or buffer?
 
+   **Answer**: Frames are dropped implicitly. Each new frame replaces the previous texture data. The `StreamedPreview` component has a 2-second timeout to detect stream loss and fall back to local rendering.
+
 4. **Slot isolation**: Do we need true render isolation (separate scenes) or can we mask from composited output?
+
+   **Answer**: We use visibility toggling within the main scene. Before capturing a slot, all other slot groups are hidden, the scene is rendered to an offscreen target, then visibility is restored. This works because sketches share the same lighting and camera setup, and the capture happens in `useFrame` priority 0 (pre-render) so the main render sees the restored visibility.
 
 ---
 
@@ -747,8 +845,11 @@ For multi-display setups:
 - `docs/finished/VIDEO_OUTPUT_OPTIMIZATION.md` - Binary IPC protocol details
 - `docs/finished/IOSURFACE_FEASIBILITY.md` - Future zero-copy potential
 - `docs/finished/WEBGPU_MIGRATION.md` - WebGPU renderer architecture
-- `src/renderer/VideoOutputCapture.tsx` - Existing frame capture implementation
+- `src/renderer/VideoOutputCapture.tsx` - Composited frame capture implementation
+- `src/renderer/SlotPreviewCapture.tsx` - Per-slot capture via visibility toggling
+- `src/components/StreamedPreview/StreamedPreview.tsx` - Streamed frame display component
+- `src-tauri/src/frame_distribution.rs` - Backend frame distribution logic
 
 ---
 
-_Last updated: Preview streaming implementation plan for Slew_
+_Last updated: 2025-01-07 — All phases complete. Preview streaming fully functional for both composited and per-slot previews._

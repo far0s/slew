@@ -245,6 +245,7 @@ export interface VideoOutputCaptureProps {
 }
 
 export function VideoOutputCapture({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   enabled: enabledProp,
   targetFps = DEFAULT_CAPTURE_FPS,
   scale = 0.5,

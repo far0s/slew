@@ -63,7 +63,7 @@ impl Default for DistributionConfig {
         Self {
             enabled: true,
             stream_composited: true,
-            stream_slots: false,
+            stream_slots: true,
             resolution_scale: 0.5,
             target_fps: 30,
         }
@@ -386,7 +386,7 @@ mod tests {
         let config = DistributionConfig::default();
         assert!(config.enabled);
         assert!(config.stream_composited);
-        assert!(!config.stream_slots);
+        assert!(config.stream_slots);
         assert_eq!(config.resolution_scale, 0.5);
         assert_eq!(config.target_fps, 30);
     }

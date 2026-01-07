@@ -261,11 +261,12 @@ export function RendererPreview({
   }, [streamingEnabled, hasReceivedFrame]);
 
   const shouldStream = streamingEnabled && !streamingFailed;
-  const labelText = shouldStream
-    ? isStreamActive
-      ? "Live Preview (Streamed)"
-      : "Live Preview (Waiting…)"
-    : "Live Preview (Local)";
+  const isStreaming = shouldStream && isStreamActive;
+  const labelTitle = isStreaming
+    ? "Streamed from Renderer"
+    : shouldStream
+      ? "Waiting for stream…"
+      : "Local preview";
 
   const containerStyle = {
     "--renderer-aspect-ratio": aspectRatio,
@@ -297,7 +298,14 @@ export function RendererPreview({
           )}
         </WebGPUCanvas>
       </Suspense>
-      <div className={styles.label}>{labelText}</div>
+      <div className={styles.label} title={labelTitle}>
+        <span
+          className={
+            isStreaming ? styles.streamDotActive : styles.streamDotInactive
+          }
+        />
+        Live
+      </div>
     </div>
   );
 }
