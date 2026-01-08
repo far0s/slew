@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import RendererRoot from "./renderer/RendererRoot";
 import "./reset.css";
-import "./tailwind.css";
+import "./globals.css";
 
 const pathname = window.location.pathname;
 

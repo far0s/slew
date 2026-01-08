@@ -21,6 +21,7 @@ The Rust backend handles input processing (OSC, MIDI, Audio, HID), state managem
 | ----------------- | -------------------------------------------------------------- |
 | Application Shell | Tauri v2 (Rust + WebView)                                      |
 | Frontend          | React + TypeScript + Vite                                      |
+| Styling           | CSS Modules + CSS Variables                                    |
 | 3D Rendering      | Three.js via react-three-fiber                                 |
 | Shaders           | TSL (Three.js Shading Language) for WebGPU                     |
 | GPU Backend       | WebGPU (Metal on macOS), WebGL2 fallback                       |

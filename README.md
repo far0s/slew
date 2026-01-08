@@ -121,7 +121,7 @@ npm run tauri:no-ndi
 
 ## Tech Stack
 
-- **Frontend**: React + TypeScript + Vite
+- **Frontend**: React + TypeScript + Vite + CSS Modules
 - **3D Rendering**: Three.js via react-three-fiber
 - **Backend**: Tauri v2 (Rust)
 - **Video Output**: Syphon, NDI
