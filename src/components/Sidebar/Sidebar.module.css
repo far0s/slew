@@ -75,7 +75,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  /*gap: 0.5rem;*/
   border: 1.5px solid var(--border-accent);
   border-top: 1.5px solid var(--border-accent);
   border-radius: 0 0 0.5rem 0.5rem;
@@ -93,6 +93,12 @@
   flex-direction: column;
   outline: none;
   overflow-y: auto;
+
+  &[data-state="inactive"] {
+    height: 0;
+    flex: 0 0 auto;
+    visibility: hidden;
+  }
 }
 
 /* ==========================================================================

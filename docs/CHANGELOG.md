@@ -31,6 +31,18 @@ Status overview and key decisions for Slew.
 
 ## Recent Changes
 
+### Tailwind Removal
+
+Removed Tailwind CSS from the project in favor of plain CSS:
+
+- **CSS Modules**: All component styles use CSS Modules (`.module.css` files)
+- **CSS Variables**: Theme colors, spacing, and design tokens defined in `globals.css`
+- **Smaller Bundle**: CSS output reduced by ~55% (15.85 KB → 7.07 KB for index CSS)
+- **No Build Dependencies**: Removed `tailwindcss` and `@tailwindcss/vite` packages
+- **Tailwind Reference**: Theme variables inspired by Tailwind design tokens; see `globals.css` header for docs link
+
+---
+
 ### Preview Streaming
 
 Stream rendered frames from the Renderer window to Controls window previews, ensuring pixel-perfect consistency between what the operator sees and what goes out to Syphon/NDI:
