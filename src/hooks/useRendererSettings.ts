@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { emit, listen } from "@tauri-apps/api/event";
+import { logger } from "../lib/logger";
 
 /**
  * Renderer settings that can be configured from the Controls window
@@ -77,7 +78,7 @@ function loadSettings(): RendererSettings {
       };
     }
   } catch (e) {
-    console.warn("[RendererSettings] Failed to load settings:", e);
+    logger.warn("RendererSettings", "Failed to load settings:", e);
   }
 
   return DEFAULT_SETTINGS;
@@ -92,7 +93,7 @@ function saveSettings(settings: RendererSettings): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch (e) {
-    console.warn("[RendererSettings] Failed to save settings:", e);
+    logger.warn("RendererSettings", "Failed to save settings:", e);
   }
 }
 
@@ -131,7 +132,7 @@ export function useRendererSettings(): UseRendererSettingsResult {
   // Broadcast settings to all windows
   const broadcastSettings = useCallback(() => {
     emit(SETTINGS_EVENT, settings).catch((e) => {
-      console.warn("[RendererSettings] Failed to emit settings:", e);
+      logger.warn("RendererSettings", "Failed to emit settings:", e);
     });
   }, [settings]);
 
@@ -143,7 +144,7 @@ export function useRendererSettings(): UseRendererSettingsResult {
       saveSettings(next);
       // Broadcast after state update
       emit(SETTINGS_EVENT, next).catch((e) => {
-        console.warn("[RendererSettings] Failed to emit settings:", e);
+        logger.warn("RendererSettings", "Failed to emit settings:", e);
       });
       return next;
     });
@@ -158,7 +159,7 @@ export function useRendererSettings(): UseRendererSettingsResult {
       saveSettings(next);
       // Broadcast after state update
       emit(SETTINGS_EVENT, next).catch((e) => {
-        console.warn("[RendererSettings] Failed to emit settings:", e);
+        logger.warn("RendererSettings", "Failed to emit settings:", e);
       });
       return next;
     });
@@ -174,7 +175,7 @@ export function useRendererSettings(): UseRendererSettingsResult {
     lastEmitTimeRef.current = now;
 
     emit(INFO_EVENT, newInfo).catch((e) => {
-      console.warn("[RendererSettings] Failed to emit info:", e);
+      logger.warn("RendererSettings", "Failed to emit info:", e);
     });
   }, []);
 

@@ -164,8 +164,8 @@ function DeviceControls() {
       } else {
         await start(selectedDevice);
       }
-    } catch (e) {
-      console.error("[Audio] Capture toggle error:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
@@ -557,24 +557,24 @@ function MappingsSection({ slots }: MappingsSectionProps) {
     try {
       await add(mapping);
       setEditingMapping(null);
-    } catch (e) {
-      console.error("[Audio] Failed to save mapping:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await remove(id);
-    } catch (e) {
-      console.error("[Audio] Failed to remove mapping:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
   const handleToggle = async (id: string, enabled: boolean) => {
     try {
       await setEnabled(id, enabled);
-    } catch (e) {
-      console.error("[Audio] Failed to toggle mapping:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
@@ -645,8 +645,8 @@ export function AudioPanel({ className, slots = [] }: AudioPanelProps) {
     if (!window.confirm("Clear all audio mappings?")) return;
     try {
       await clear();
-    } catch (e) {
-      console.error("[Audio] Failed to clear mappings:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
@@ -654,8 +654,8 @@ export function AudioPanel({ className, slots = [] }: AudioPanelProps) {
     try {
       await add(mapping);
       setShowAddForm(false);
-    } catch (e) {
-      console.error("[Audio] Failed to add mapping:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 

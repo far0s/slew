@@ -134,14 +134,10 @@ export function useSlots(config: Partial<SlotsConfig> = {}): SlotsState {
         setActiveIndex(backendState.active_slot_index);
         setCrossfadeTargetIndex(backendState.crossfade_target_index);
         setIsHydrated(true);
-
-        console.log(
-          `[useSlots] Hydrated ${hydratedSlots.length} slots from backend, active: ${backendState.active_slot_index}`,
-        );
         return true;
       }
-    } catch (e) {
-      console.warn("[useSlots] Failed to hydrate from backend:", e);
+    } catch {
+      // Hydration failure is non-critical - app will use defaults
     }
 
     setIsHydrated(true);

@@ -248,8 +248,8 @@ function SettingsSliders({
         id,
         value,
         app: undefined,
-      }).catch((error) => {
-        console.error(`[Settings] Failed to set ${id}:`, error);
+      }).catch(() => {
+        // UI state already reflects failure
       });
     },
     [setValue],

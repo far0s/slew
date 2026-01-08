@@ -6,6 +6,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { WebGPUCanvas } from "./WebGPUCanvas";
 import { VideoOutputCapture } from "./VideoOutputCapture";
 import { SlotPreviewCapture } from "./SlotPreviewCapture";
+import { logger } from "../lib/logger";
 import {
   SKETCH_COMPONENT_REGISTRY,
   type SketchProps,
@@ -525,13 +526,13 @@ export function RendererRoot() {
   useEffect(() => {
     // Send initial heartbeat
     invoke("window_heartbeat", { label: "renderer" }).catch((e) =>
-      console.warn("[Renderer] Initial heartbeat failed:", e),
+      logger.warn("Renderer", "Initial heartbeat failed:", e),
     );
 
     // Set up interval
     heartbeatRef.current = setInterval(() => {
       invoke("window_heartbeat", { label: "renderer" }).catch((e) =>
-        console.warn("[Renderer] Heartbeat failed:", e),
+        logger.warn("Renderer", "Heartbeat failed:", e),
       );
     }, HEARTBEAT_INTERVAL_MS);
 
@@ -564,15 +565,6 @@ export function RendererRoot() {
 
   // Handle all slots changed event (new multi-layer format)
   const handleAllSlotsChanged = useCallback((payload: AllSlotsPayload) => {
-    console.log(
-      "[Renderer] All slots changed:",
-      payload.slots.length,
-      "slots, active:",
-      payload.active_slot_index,
-      "target:",
-      payload.crossfade_target_index,
-    );
-
     setAllSlots(
       payload.slots.map((s) => ({
         index: s.index,
@@ -640,15 +632,6 @@ export function RendererRoot() {
   // Handle slot pairing change (legacy format, still used for crossfade)
   const handleSlotPairingChanged = useCallback(
     (payload: SlotPairingPayload) => {
-      console.log(
-        "[Renderer] Slot pairing: slot",
-        payload.active_slot_index,
-        "(" + payload.active_scene_id + ") ->",
-        "slot",
-        payload.next_slot_index,
-        "(" + payload.next_scene_id + ")",
-      );
-
       setActiveSlotIndex(payload.active_slot_index);
 
       // Set crossfade target if different from active
@@ -689,12 +672,6 @@ export function RendererRoot() {
   // Legacy handler for scene_pairing_changed (backwards compatibility)
   const handleLegacyScenePairingChanged = useCallback(
     (payload: { active_scene_id: SketchId; next_scene_id: SketchId }) => {
-      console.log(
-        "[Renderer] Legacy scene pairing:",
-        payload.active_scene_id,
-        "->",
-        payload.next_scene_id,
-      );
       // Map legacy scene IDs to slot 0 for backwards compatibility
       setAllSlots([{ index: 0, sketchId: payload.active_scene_id }]);
       setActiveSlotIndex(0);
@@ -723,13 +700,6 @@ export function RendererRoot() {
           );
           setActiveSlotIndex(slotState.active_slot_index);
           setCrossfadeTargetIndex(slotState.crossfade_target_index);
-
-          console.log(
-            "[Renderer] Hydrated",
-            slotState.slots.length,
-            "slots from backend, active:",
-            slotState.active_slot_index,
-          );
         }
 
         // Then hydrate parameters
@@ -742,14 +712,8 @@ export function RendererRoot() {
         for (const param of backendParams) {
           handleParameterChanged(param);
         }
-
-        console.log(
-          "[Renderer] Hydrated",
-          backendParams.length,
-          "parameters from backend",
-        );
       } catch (error) {
-        console.error("[Renderer] Failed to hydrate from backend:", error);
+        logger.error("Renderer", "Failed to hydrate from backend:", error);
       }
     }
 
@@ -774,10 +738,10 @@ export function RendererRoot() {
             }
           },
         );
-        console.log("[Renderer] Subscribed to all_slots_changed events");
       } catch (error) {
-        console.error(
-          "[Renderer] Failed to subscribe to all_slots_changed:",
+        logger.error(
+          "Renderer",
+          "Failed to subscribe to all_slots_changed:",
           error,
         );
       }
@@ -804,10 +768,10 @@ export function RendererRoot() {
             }
           },
         );
-        console.log("[Renderer] Subscribed to slot_pairing_changed events");
       } catch (error) {
-        console.error(
-          "[Renderer] Failed to subscribe to slot_pairing_changed:",
+        logger.error(
+          "Renderer",
+          "Failed to subscribe to slot_pairing_changed:",
           error,
         );
       }
@@ -834,12 +798,10 @@ export function RendererRoot() {
             handleLegacyScenePairingChanged(event.payload);
           }
         });
-        console.log(
-          "[Renderer] Subscribed to scene_pairing_changed events (legacy)",
-        );
       } catch (error) {
-        console.error(
-          "[Renderer] Failed to subscribe to scene_pairing_changed:",
+        logger.error(
+          "Renderer",
+          "Failed to subscribe to scene_pairing_changed:",
           error,
         );
       }
@@ -866,10 +828,10 @@ export function RendererRoot() {
             }
           },
         );
-        console.log("[Renderer] Subscribed to parameter_changed events");
       } catch (error) {
-        console.error(
-          "[Renderer] Failed to subscribe to parameter_changed:",
+        logger.error(
+          "Renderer",
+          "Failed to subscribe to parameter_changed:",
           error,
         );
       }
@@ -929,19 +891,18 @@ export function RendererRoot() {
                 return next;
               });
             } catch (error) {
-              console.error(
-                "[Renderer] Failed to parse color change event:",
+              logger.error(
+                "Renderer",
+                "Failed to parse color change event:",
                 error,
               );
             }
           },
         );
-        console.log(
-          "[Renderer] Subscribed to renderer:sketch-color-changed events",
-        );
       } catch (error) {
-        console.error(
-          "[Renderer] Failed to subscribe to renderer:sketch-color-changed:",
+        logger.error(
+          "Renderer",
+          "Failed to subscribe to renderer:sketch-color-changed:",
           error,
         );
       }

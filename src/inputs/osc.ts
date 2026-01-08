@@ -13,6 +13,7 @@ import {
   useMessageActivity,
   useMessageHistory,
 } from "./shared";
+import { logger } from "../lib/logger";
 
 // ============================================================================
 // Types (matching Rust structs)
@@ -255,7 +256,7 @@ export function useOscServer() {
       const newStatus = await getOscStatus();
       setStatus(newStatus);
     } catch (e) {
-      console.error("[OSC] Failed to stop server:", e);
+      logger.error("OSC", "Failed to stop server:", e);
       throw e;
     } finally {
       setIsOperating(false);

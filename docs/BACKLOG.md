@@ -227,22 +227,6 @@ Extend MIDI mappings to support note velocity.
 
 ---
 
-### 🟡 Console Logging Cleanup `chore`
-
-Clean up debug console logs for production.
-
-**Context**: 124 console.log calls found - affects performance, exposes debug info.
-
-**Subtasks**:
-
-- [ ] Implement logging levels (debug, info, warn, error)
-- [ ] Add `DEBUG` environment variable check
-- [ ] Remove or gate debug logs
-- [ ] Keep error/warning logs in production
-- [ ] Analyze and clean up console logs (ones that are not necessary or can be replaced with more efficient alternatives)
-
----
-
 ### 🟡 Component Test Coverage `chore`
 
 Expand test coverage for React components.

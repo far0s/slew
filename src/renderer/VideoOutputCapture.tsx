@@ -26,6 +26,7 @@ import * as THREE from "three";
 import * as THREEWebGPU from "three/webgpu";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { logger } from "../lib/logger";
 
 // ============================================================================
 // Types
@@ -75,9 +76,6 @@ interface PBOState {
 /** Default target capture rate (captures per second) */
 const DEFAULT_CAPTURE_FPS = 60;
 
-/** How often to log stats (in frames) - 300 = ~5s at 60fps */
-const STATS_LOG_INTERVAL = 300;
-
 /** Maximum scale factor (1.0 = full resolution) */
 const MAX_SCALE = 1.0;
 
@@ -87,13 +85,6 @@ const MIN_SCALE = 0.25;
 /** Default target resolution for video output (1080p) */
 const DEFAULT_TARGET_WIDTH = 1920;
 const DEFAULT_TARGET_HEIGHT = 1080;
-
-// ============================================================================
-// Debug Flags (for performance profiling - keep disabled in production)
-// ============================================================================
-
-/** Enable detailed per-frame timing logs (verbose, set true for debugging) */
-const ENABLE_TIMING_LOGS = false;
 
 /** [DEBUG] Skip IPC call entirely to isolate frontend timing */
 const DRY_RUN_MODE = false;
@@ -137,10 +128,6 @@ const PREVIEW_STREAM_SCALE = 0.5;
 const DEFAULT_PREVIEW_STREAM_FPS = 30;
 
 const SETTINGS_EVENT = "renderer-settings-changed";
-
-const PREVIEW_STREAM_DEBUG =
-  typeof localStorage !== "undefined" &&
-  localStorage.getItem("previewStreamDebug") === "true";
 
 // ============================================================================
 // Helper Functions
@@ -257,22 +244,6 @@ export function VideoOutputCapture({
 
   // Detect renderer type
   const isWebGPU = isWebGPURenderer(gl);
-
-  // Log renderer type and preview streaming status on mount
-  useEffect(() => {
-    if (isWebGPU) {
-      console.log(
-        "[VideoOutputCapture] Using WebGPU renderer with async readback",
-      );
-    } else {
-      console.log(
-        `[VideoOutputCapture] Using WebGL renderer (PBO async: ${USE_PBO_ASYNC_READBACK})`,
-      );
-    }
-    console.log(
-      `[VideoOutputCapture] Preview streaming: ${USE_PREVIEW_STREAMING ? "enabled" : "disabled"}`,
-    );
-  }, [isWebGPU]);
 
   // Render target for capturing frames
   // Use separate refs for WebGL and WebGPU to maintain proper types
@@ -408,9 +379,6 @@ export function VideoOutputCapture({
             type: THREE.UnsignedByteType,
           },
         );
-        console.log(
-          `[VideoOutputCapture] Created WebGPU RenderTarget: ${width}x${height}`,
-        );
       } else {
         webglRenderTargetRef.current = new THREE.WebGLRenderTarget(
           width,
@@ -448,13 +416,6 @@ export function VideoOutputCapture({
       // Check if PBO is supported
       if (pboSupported.current === null) {
         pboSupported.current = supportsPBO(gl2);
-        if (pboSupported.current) {
-          console.log("[VideoCapture] PBO async readback supported");
-        } else {
-          console.log(
-            "[VideoCapture] PBO not supported, using sync readPixels",
-          );
-        }
       }
 
       if (!pboSupported.current || !USE_PBO_ASYNC_READBACK) {
@@ -480,7 +441,7 @@ export function VideoOutputCapture({
         if (!pboStateRef.current[i]) {
           const buffer = gl2.createBuffer();
           if (!buffer) {
-            console.error("[VideoCapture] Failed to create PBO");
+            logger.error("VideoCapture", "Failed to create PBO");
             pboSupported.current = false;
             return;
           }
@@ -500,9 +461,6 @@ export function VideoOutputCapture({
       }
 
       pboInitialized.current = true;
-      console.log(
-        `[VideoCapture] PBOs initialized: ${width}x${height} (${bufferSize} bytes each)`,
-      );
     },
     [],
   );
@@ -541,7 +499,7 @@ export function VideoOutputCapture({
         const anyActive = backends.some((b) => b.active);
         setHasActiveBackend(anyActive);
       } catch (e) {
-        console.error("[VideoCapture] Failed to list backends:", e);
+        logger.error("VideoCapture", "Failed to list backends:", e);
       }
     }
 
@@ -717,50 +675,10 @@ export function VideoOutputCapture({
             });
           }
         }
-
-        // Log periodic stats with timing breakdown
-        if (frameCount.current % STATS_LOG_INTERVAL === 0) {
-          const avgTiming = getAverageTiming();
-          const modeFlags = [
-            USE_BINARY_PROTOCOL ? "BINARY" : null,
-            USE_PBO_ASYNC_READBACK && pboSupported.current ? "PBO" : null,
-            DRY_RUN_MODE ? "DRY_RUN" : null,
-            SKIP_ENCODE ? "SKIP_ENCODE" : null,
-          ]
-            .filter(Boolean)
-            .join(",");
-          const modeStr = modeFlags ? ` [${modeFlags}]` : "";
-
-          console.log(
-            `[VideoCapture]${modeStr} ${frameCount.current} frames @ ${width}x${height}, ` +
-              `avg: ${avgTiming.totalMs.toFixed(1)}ms ` +
-              `(render: ${avgTiming.renderMs.toFixed(1)}, ` +
-              `read: ${avgTiming.readPixelsMs.toFixed(1)}, ` +
-              `flip: ${avgTiming.flipMs.toFixed(1)}, ` +
-              `encode: ${avgTiming.encodeMs.toFixed(1)}, ` +
-              `ipc: ${avgTiming.ipcMs.toFixed(1)}), ` +
-              `skipped: ${skippedFrames.current}`,
-          );
-        }
-
-        // Detailed per-frame timing logs (when enabled)
-        if (
-          (ENABLE_TIMING_LOGS || DRY_RUN_MODE || SKIP_ENCODE) &&
-          frameCount.current % 60 === 0
-        ) {
-          console.log(
-            `[VideoCapture:Timing] render=${timing.renderMs.toFixed(2)}ms ` +
-              `readPx=${timing.readPixelsMs.toFixed(2)}ms ` +
-              `flip=${timing.flipMs.toFixed(2)}ms ` +
-              `encode=${timing.encodeMs.toFixed(2)}ms ` +
-              `ipc=${timing.ipcMs.toFixed(2)}ms ` +
-              `TOTAL=${timing.totalMs.toFixed(2)}ms`,
-          );
-        }
       } catch (e) {
         // Only log errors occasionally to avoid spam
         if (frameCount.current % 300 === 0) {
-          console.error("[VideoCapture] Send error:", e);
+          logger.error("VideoCapture", "Send error:", e);
         }
       } finally {
         sendInProgress.current = false;
@@ -820,18 +738,9 @@ export function VideoOutputCapture({
           readPixelsMs,
           flipMs,
         });
-
-        // Log WebGPU-specific stats occasionally
-        if (ENABLE_TIMING_LOGS && frameCount.current % 60 === 0) {
-          console.log(
-            `[VideoCapture:WebGPU] render=${renderMs.toFixed(2)}ms ` +
-              `readAsync=${readPixelsMs.toFixed(2)}ms ` +
-              `flip=${flipMs.toFixed(2)}ms`,
-          );
-        }
       } catch (e) {
         if (frameCount.current % 300 === 0) {
-          console.error("[VideoCapture:WebGPU] Async readback error:", e);
+          logger.error("VideoCapture:WebGPU", "Async readback error:", e);
         }
       } finally {
         webgpuReadbackPending.current = false;
@@ -976,12 +885,6 @@ export function VideoOutputCapture({
         "X-Source": "composited",
       },
     }).catch(() => {});
-
-    if (PREVIEW_STREAM_DEBUG && frameCount.current % 300 === 0) {
-      console.log(
-        `[PreviewStream] ${previewWidth}x${previewHeight} from ${nativeWidth}x${nativeHeight}`,
-      );
-    }
   });
 
   // Video output capture
@@ -1175,7 +1078,7 @@ export function VideoOutputCapture({
         flipMs,
       });
     } catch (e) {
-      console.error("[VideoCapture] Capture error:", e);
+      logger.error("VideoCapture", "Capture error:", e);
     }
   });
 

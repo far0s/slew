@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useEventListener } from "./useEventListener";
 import type { MappingHookConfig, MappingHookResult } from "./types";
+import { logger } from "../../lib/logger";
 
 export interface UseMappingsOptions<TMapping> {
   initialValue?: TMapping[];
@@ -42,7 +43,7 @@ export function useMappings<TMapping, TId = string>(
       setMappings(result);
       return result;
     } catch (e) {
-      console.error(`[useMappings] Failed to fetch mappings:`, e);
+      logger.error("useMappings", "Failed to fetch mappings:", e);
       throw e;
     }
   }, [getMappingsCommand]);
@@ -91,7 +92,7 @@ export function useMappings<TMapping, TId = string>(
         await fetchMappings();
         return result;
       } catch (e) {
-        console.error(`[useMappings] Failed to add mapping:`, e);
+        logger.error("useMappings", "Failed to add mapping:", e);
         throw e;
       } finally {
         setIsLoading(false);
@@ -110,7 +111,7 @@ export function useMappings<TMapping, TId = string>(
         await fetchMappings();
         return result;
       } catch (e) {
-        console.error(`[useMappings] Failed to remove mapping:`, e);
+        logger.error("useMappings", "Failed to remove mapping:", e);
         throw e;
       } finally {
         setIsLoading(false);
@@ -121,7 +122,7 @@ export function useMappings<TMapping, TId = string>(
 
   const clear = useCallback(async (): Promise<void> => {
     if (!clearMappingsCommand) {
-      console.warn(`[useMappings] No clear command configured`);
+      logger.warn("useMappings", "No clear command configured");
       return;
     }
 
@@ -130,7 +131,7 @@ export function useMappings<TMapping, TId = string>(
       await invoke(clearMappingsCommand);
       setMappings([]);
     } catch (e) {
-      console.error(`[useMappings] Failed to clear mappings:`, e);
+      logger.error("useMappings", "Failed to clear mappings:", e);
       throw e;
     } finally {
       setIsLoading(false);

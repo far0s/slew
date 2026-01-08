@@ -58,8 +58,8 @@ function ServerControls() {
         }
         await start(portNum);
       }
-    } catch (e) {
-      console.error("[OSC] Server toggle error:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
@@ -140,8 +140,8 @@ function AddMappingForm({
       });
       setAddress("");
       setParameterId("");
-    } catch (e) {
-      console.error("[OSC] Failed to add mapping:", e);
+    } catch {
+      // UI state already reflects failure
     } finally {
       setIsAdding(false);
     }
@@ -192,8 +192,8 @@ function MappingsList() {
     setRemoving(address);
     try {
       await removeMapping(address);
-    } catch (e) {
-      console.error("[OSC] Failed to remove mapping:", e);
+    } catch {
+      // UI state already reflects failure
     } finally {
       setRemoving(null);
     }
@@ -205,8 +205,8 @@ function MappingsList() {
       await setupDefaultMappings();
       // Force refresh by fetching mappings again
       window.location.reload();
-    } catch (e) {
-      console.error("[OSC] Failed to setup default mappings:", e);
+    } catch {
+      // UI state already reflects failure
     } finally {
       setIsSettingUp(false);
     }

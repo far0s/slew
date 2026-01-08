@@ -14,6 +14,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useMessageActivityWithHistory, useMessageHistory } from "./shared";
+import { logger } from "../lib/logger";
 
 // ============================================================================
 // Types (matching Rust structs)
@@ -257,7 +258,7 @@ export function useHidDevice() {
           setAutoConnectEnabled(autoConnect);
         }
       } catch (e) {
-        console.error("[HID] Failed to initialize:", e);
+        logger.error("HID", "Failed to initialize:", e);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -317,7 +318,7 @@ export function useHidDevice() {
       const newStatus = await getHidStatus();
       setStatus(newStatus);
     } catch (e) {
-      console.error("[HID] Failed to disconnect:", e);
+      logger.error("HID", "Failed to disconnect:", e);
       throw e;
     } finally {
       setIsLoading(false);
@@ -329,7 +330,7 @@ export function useHidDevice() {
       const devicesResult = await listSupportedHidDevices();
       setDevices(devicesResult);
     } catch (e) {
-      console.error("[HID] Failed to refresh devices:", e);
+      logger.error("HID", "Failed to refresh devices:", e);
     }
   }, []);
 
@@ -338,7 +339,7 @@ export function useHidDevice() {
       await setHidAutoConnect(enabled);
       setAutoConnectEnabled(enabled);
     } catch (e) {
-      console.error("[HID] Failed to set auto-connect:", e);
+      logger.error("HID", "Failed to set auto-connect:", e);
     }
   }, []);
 
@@ -570,7 +571,7 @@ export function useMacropad(
           isSearching: status.is_searching,
         }));
       } catch (e) {
-        console.error("[Macropad] Failed to get initial status:", e);
+        logger.error("Macropad", "Failed to get initial status:", e);
       }
 
       // Subscribe to status changes

@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { logger } from "./lib/logger";
 import { LayoutGroup, motion } from "motion/react";
 import { useSlots } from "./slots/useSlots";
 import {
@@ -161,7 +162,7 @@ function App() {
           payload: JSON.stringify({ value: 1 }),
         });
       } catch (error) {
-        console.error("[Controls] Failed to start crossfade", error);
+        logger.error("Controls", "Failed to start crossfade", error);
         slotState.cancelCrossfade();
       }
     },
@@ -261,7 +262,7 @@ function App() {
           color,
         }),
       }).catch((err) => {
-        console.error("[Controls] Failed to forward color change:", err);
+        logger.error("Controls", "Failed to forward color change:", err);
       });
     };
 
@@ -365,7 +366,7 @@ function App() {
         value: stepped,
         app: undefined,
       }).catch((error) => {
-        console.error(`[Macropad] Failed to set ${param.parameterId}:`, error);
+        logger.error("Macropad", `Failed to set ${param.parameterId}:`, error);
       });
     },
     [getTargetSceneParameters, paramStore],
@@ -402,7 +403,7 @@ function App() {
         sketchId,
       });
     } catch (error) {
-      console.error("[Controls] Failed to reset slot parameters", error);
+      logger.error("Controls", "Failed to reset slot parameters", error);
     }
 
     // Update backend slot pairing if this affects the active/target pair
@@ -427,7 +428,7 @@ function App() {
         });
       }
     } catch (error) {
-      console.error("[Controls] Failed to update slot pairing", error);
+      logger.error("Controls", "Failed to update slot pairing", error);
     }
   }
 
@@ -459,7 +460,7 @@ function App() {
         app: undefined,
       });
     } catch (error) {
-      console.error("[Controls] Failed to reset slot parameters", error);
+      logger.error("Controls", "Failed to reset slot parameters", error);
     }
   }
 
@@ -490,8 +491,9 @@ function App() {
         });
       }
     } catch (error) {
-      console.error(
-        "[Controls] Failed to copy slot parameters to backend",
+      logger.error(
+        "Controls",
+        "Failed to copy slot parameters to backend",
         error,
       );
     }
@@ -536,7 +538,7 @@ function App() {
       }
     } catch (error) {
       paramStore.setError("Failed to load parameters from backend");
-      console.error("[Controls] get_parameters failed", error);
+      logger.error("Controls", "get_parameters failed", error);
     } finally {
       paramStore.setIsLoading(false);
       setIsInitialized(true);
@@ -598,7 +600,7 @@ function App() {
               app: undefined,
             });
           } catch (error) {
-            console.error("[Controls] Failed to complete crossfade", error);
+            logger.error("Controls", "Failed to complete crossfade", error);
           }
         })();
       }
@@ -624,7 +626,7 @@ function App() {
         nextSlotIndex: slotState.activeIndex,
         nextSceneId: activeSketchId,
       }).catch((error) => {
-        console.error("[Controls] Failed to sync initial slot pairing", error);
+        logger.error("Controls", "Failed to sync initial slot pairing", error);
       });
     }
   }, [isInitialized, slotState.isHydrated]);
@@ -648,7 +650,7 @@ function App() {
       activeSlotIndex: slotState.activeIndex,
       crossfadeTargetIndex: slotState.crossfadeTargetIndex,
     }).catch((error) => {
-      console.error("[Controls] Failed to sync all slots to renderer", error);
+      logger.error("Controls", "Failed to sync all slots to renderer", error);
     });
   }, [
     isInitialized,
@@ -698,7 +700,7 @@ function App() {
           },
         );
       } catch (error) {
-        console.error("[Controls] subscribe parameter_changed failed", error);
+        logger.error("Controls", "subscribe parameter_changed failed", error);
       }
     })();
 

@@ -43,6 +43,19 @@ Removed Tailwind CSS from the project in favor of plain CSS:
 
 ---
 
+### Console Logging Cleanup
+
+Aggressively reduced console logging from 124 calls to 65 essential logs:
+
+- **Logger Utility**: New `src/lib/logger.ts` with level-based logging (debug, info, warn, error)
+- **Aggressive Reduction**: 124 → 65 logs (51 errors, 14 warnings, 0 debug/info)
+- **Removed Entirely**: Subscription confirmations, hydration success, state changes, periodic stats, UI panel errors
+- **Kept Only**: Errors invisible to users, warnings for unexpected conditions
+- **Zero Debug Noise**: All debug/info logs removed (not just hidden)
+- **Silent Production**: Only actual failures produce console output
+
+---
+
 ### Preview Streaming
 
 Stream rendered frames from the Renderer window to Controls window previews, ensuring pixel-perfect consistency between what the operator sees and what goes out to Syphon/NDI:

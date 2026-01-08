@@ -138,8 +138,8 @@ function DeviceList() {
       } else {
         await connect(deviceName);
       }
-    } catch (e) {
-      console.error("[MIDI] Connection error:", e);
+    } catch {
+      // UI state already reflects failure
     } finally {
       setConnectingDevice(null);
     }
@@ -225,8 +225,8 @@ function MappingsList() {
     setRemoving(parameterId);
     try {
       await removeMapping(parameterId);
-    } catch (e) {
-      console.error("[MIDI] Failed to remove mapping:", e);
+    } catch {
+      // UI state already reflects failure
     } finally {
       setRemoving(null);
     }
@@ -294,8 +294,8 @@ export function MidiPanel({ className }: MidiPanelProps) {
     if (!window.confirm("Clear all MIDI mappings?")) return;
     try {
       await clearAll();
-    } catch (e) {
-      console.error("[MIDI] Failed to clear mappings:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
