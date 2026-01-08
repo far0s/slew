@@ -11,7 +11,7 @@ Status overview and key decisions for Slew.
 | Tauri + React app  | ✅     | Dual-window (Renderer + Controls)                                |
 | Parameter Server   | ✅     | Rust backend with ~60Hz transitions                              |
 | Sketch/Slot System | ✅     | Slot-based (1-8), multi-instance, auto-generated controls        |
-| Sketch Browser UI  | ✅     | Inline browser in empty slots, no extra click needed             |
+| Sketch Browser UI  | ✅     | Inline browser in empty slots, search/filter, grouped sections   |
 | Crossfade          | ✅     | Smooth blending with correct scene pairing                       |
 | Preview Streaming  | ✅     | Pixel-perfect previews streamed from Renderer to Controls        |
 | MIDI Input         | ✅     | Hot-plug detection, auto-reconnect, Learn workflow               |
@@ -30,6 +30,20 @@ Status overview and key decisions for Slew.
 ---
 
 ## Recent Changes
+
+### Sketch Search/Filter
+
+Added search functionality to the inline sketch browser for finding sketches quickly:
+
+- **Search Input**: Magnifying glass icon, placeholder text, clear button
+- **Filtering**: Case-insensitive matching against label, shortLabel, and description
+- **Group Feedback**: Shows match count as "X/Y" in group headers when filtering
+- **Auto-Expand**: Groups automatically expand when searching to show all matches
+- **No Results State**: Friendly message with "Clear search" link when no matches
+- **Session Persistence**: Search query persists via sessionStorage across empty slots
+- **Accessibility**: Proper ARIA labels, live region for result counts
+
+---
 
 ### Tailwind Removal
 
