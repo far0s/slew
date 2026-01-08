@@ -65,21 +65,6 @@ Add in-app keyboard shortcuts reference.
 
 ---
 
-### 🔴 Sketch Search/Filter `feature`
-
-Add search functionality to sketch browser.
-
-**Context**: 13 sketches now, will grow. Current grouped browser works but no search capability makes browsing unwieldy.
-
-**Subtasks**:
-
-- [ ] Add search input to inline sketch browser
-- [ ] Filter by name/description (fuzzy match)
-- [ ] Show matching count per group
-- [ ] Persist search state during session
-
----
-
 ## Medium Priority
 
 ### 🟡 External Texture Input `feature`

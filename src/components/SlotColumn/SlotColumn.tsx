@@ -13,6 +13,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   Cross2Icon,
+  MagnifyingGlassIcon,
   PlusIcon,
   CopyIcon,
   SpeakerOffIcon,
@@ -32,6 +33,75 @@ import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import type { MidiMapping, MidiPickupState } from "../../inputs/midi";
 import styles from "./SlotColumn.module.css";
+
+// Session storage key for persisting search across slot browsers
+const SKETCH_SEARCH_STORAGE_KEY = "slew-sketch-search";
+
+/**
+ * Hook for managing sketch search state with session persistence.
+ * Search query is shared across all slot browsers via sessionStorage.
+ */
+function useSketchSearch() {
+  const [query, setQueryState] = useState(() => {
+    try {
+      return sessionStorage.getItem(SKETCH_SEARCH_STORAGE_KEY) ?? "";
+    } catch {
+      return "";
+    }
+  });
+
+  const setQuery = useCallback((newQuery: string) => {
+    setQueryState(newQuery);
+    try {
+      if (newQuery) {
+        sessionStorage.setItem(SKETCH_SEARCH_STORAGE_KEY, newQuery);
+      } else {
+        sessionStorage.removeItem(SKETCH_SEARCH_STORAGE_KEY);
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
+  return { query, setQuery };
+}
+
+/**
+ * Check if a sketch matches the search query.
+ * Matches against label, shortLabel, and description (case-insensitive).
+ */
+function sketchMatchesQuery(
+  sketch: { label: string; shortLabel: string; description?: string },
+  query: string,
+): boolean {
+  if (!query.trim()) return true;
+  const lowerQuery = query.toLowerCase().trim();
+  return (
+    sketch.label.toLowerCase().includes(lowerQuery) ||
+    sketch.shortLabel.toLowerCase().includes(lowerQuery) ||
+    (sketch.description?.toLowerCase().includes(lowerQuery) ?? false)
+  );
+}
+
+/**
+ * Filter sketch groups based on search query.
+ * Returns groups with only matching sketches, excluding empty groups.
+ */
+function filterSketchGroups(
+  groups: SketchGroup[],
+  query: string,
+): SketchGroup[] {
+  if (!query.trim()) return groups;
+
+  return groups
+    .map((group) => ({
+      ...group,
+      sketches: group.sketches.filter((sketch) =>
+        sketchMatchesQuery(sketch, query),
+      ),
+    }))
+    .filter((group) => group.sketches.length > 0);
+}
 
 export interface SlotColumnProps {
   slotIndex: number;
@@ -77,14 +147,28 @@ function SketchGroupSection({
   slotIndex,
   onSelectSketch,
   defaultExpanded = true,
+  isSearching = false,
+  totalCount,
 }: {
   group: SketchGroup;
   slotIndex: number;
   onSelectSketch: (sketchId: SketchId) => void;
   defaultExpanded?: boolean;
+  isSearching?: boolean;
+  totalCount?: number;
 }) {
+  // Auto-expand when searching, otherwise use default
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const displayNumber = slotIndex + 1;
+
+  // Auto-expand groups when searching
+  const effectiveExpanded = isSearching ? true : isExpanded;
+
+  // Show "X of Y" when searching, otherwise just show count
+  const countDisplay =
+    isSearching && totalCount !== undefined
+      ? `${group.sketches.length}/${totalCount}`
+      : group.sketches.length;
 
   return (
     <div className={styles.sketchGroup}>
@@ -92,19 +176,19 @@ function SketchGroupSection({
         type="button"
         className={styles.sketchGroupHeader}
         onClick={() => setIsExpanded(!isExpanded)}
-        aria-expanded={isExpanded}
+        aria-expanded={effectiveExpanded}
         aria-controls={`group-${group.id}-sketches`}
       >
         <span
-          className={`${styles.sketchGroupChevron} ${isExpanded ? styles.sketchGroupChevronExpanded : ""}`}
+          className={`${styles.sketchGroupChevron} ${effectiveExpanded ? styles.sketchGroupChevronExpanded : ""}`}
         >
           <ChevronRightIcon />
         </span>
         <span className={styles.sketchGroupLabel}>{group.label}</span>
-        <span className={styles.sketchGroupCount}>{group.sketches.length}</span>
+        <span className={styles.sketchGroupCount}>{countDisplay}</span>
       </button>
       <AnimatePresence initial={false}>
-        {isExpanded && (
+        {effectiveExpanded && (
           <motion.div
             id={`group-${group.id}-sketches`}
             className={styles.sketchGroupItems}
@@ -146,12 +230,44 @@ function InlineSketchBrowser({
   onCopySlot?: (sourceSlotIndex: number) => void;
 }) {
   const displayNumber = slotIndex + 1;
+  const { query, setQuery } = useSketchSearch();
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const handleSelectSketch = useCallback(
     (sketchId: SketchId) => {
       onSelectSketch(sketchId);
     },
     [onSelectSketch],
+  );
+
+  const handleClearSearch = useCallback(() => {
+    setQuery("");
+    searchInputRef.current?.focus();
+  }, [setQuery]);
+
+  // Filter groups based on search query
+  const filteredGroups = useMemo(
+    () => filterSketchGroups(SKETCH_GROUPS, query),
+    [query],
+  );
+
+  // Create a map of original group sizes for "X of Y" display
+  const originalGroupCounts = useMemo(
+    () =>
+      SKETCH_GROUPS.reduce(
+        (acc, group) => {
+          acc[group.id] = group.sketches.length;
+          return acc;
+        },
+        {} as Record<string, number>,
+      ),
+    [],
+  );
+
+  const isSearching = query.trim().length > 0;
+  const totalMatches = filteredGroups.reduce(
+    (sum, group) => sum + group.sketches.length,
+    0,
   );
 
   return (
@@ -169,17 +285,63 @@ function InlineSketchBrowser({
         <span className={styles.inlineBrowserTitle}>Choose a sketch</span>
       </div>
 
-      <div className={styles.inlineSketchList}>
-        {SKETCH_GROUPS.map((group) => (
-          <SketchGroupSection
-            key={group.id}
-            group={group}
-            slotIndex={slotIndex}
-            onSelectSketch={handleSelectSketch}
-            defaultExpanded={true}
-          />
-        ))}
+      <div className={styles.searchContainer}>
+        <MagnifyingGlassIcon className={styles.searchIcon} />
+        <input
+          ref={searchInputRef}
+          type="text"
+          className={styles.searchInput}
+          placeholder="Search sketches…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search sketches"
+        />
+        {isSearching && (
+          <button
+            type="button"
+            className={styles.searchClear}
+            onClick={handleClearSearch}
+            aria-label="Clear search"
+          >
+            <Cross2Icon />
+          </button>
+        )}
       </div>
+
+      <div className={styles.inlineSketchList}>
+        {filteredGroups.length > 0 ? (
+          filteredGroups.map((group) => (
+            <SketchGroupSection
+              key={group.id}
+              group={group}
+              slotIndex={slotIndex}
+              onSelectSketch={handleSelectSketch}
+              defaultExpanded={true}
+              isSearching={isSearching}
+              totalCount={originalGroupCounts[group.id]}
+            />
+          ))
+        ) : (
+          <div className={styles.noResults}>
+            <span className={styles.noResultsText}>
+              No sketches match "{query}"
+            </span>
+            <button
+              type="button"
+              className={styles.noResultsClear}
+              onClick={handleClearSearch}
+            >
+              Clear search
+            </button>
+          </div>
+        )}
+      </div>
+
+      {isSearching && filteredGroups.length > 0 && (
+        <div className={styles.searchResultsCount} aria-live="polite">
+          {totalMatches} {totalMatches === 1 ? "sketch" : "sketches"} found
+        </div>
+      )}
 
       {filledSlots.length > 0 && onCopySlot && (
         <div className={styles.inlineCopySection}>

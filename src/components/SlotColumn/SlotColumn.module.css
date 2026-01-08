@@ -528,6 +528,139 @@
   color: var(--text-secondary);
 }
 
+/* ==========================================================================
+   Search Input
+   ========================================================================== */
+
+.searchContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.5rem;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.4rem 0.5rem 0.4rem 1.75rem;
+  font-size: 0.75rem;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
+  border-radius: 0.3rem;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+.searchInput:hover {
+  background: var(--bg-active);
+}
+
+.searchInput:focus {
+  border-color: rgb(99 102 241 / 0.5);
+  background: var(--bg-active);
+}
+
+.searchClear {
+  position: absolute;
+  right: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0.2rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background 0.1s ease,
+    color 0.1s ease;
+}
+
+.searchClear:hover {
+  background: var(--bg-active);
+  color: var(--text-secondary);
+}
+
+.searchClear:focus-visible {
+  outline: 2px solid rgb(99 102 241 / 0.6);
+  outline-offset: 1px;
+}
+
+.searchClear svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.searchResultsCount {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.25rem 0;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   No Results State
+   ========================================================================== */
+
+.noResults {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.5rem 1rem;
+  text-align: center;
+}
+
+.noResultsText {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.noResultsClear {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: rgb(99 102 241);
+  background: transparent;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition:
+    background 0.1s ease,
+    color 0.1s ease;
+}
+
+.noResultsClear:hover {
+  background: rgb(99 102 241 / 0.1);
+  color: rgb(129 140 248);
+}
+
+.noResultsClear:focus-visible {
+  outline: 2px solid rgb(99 102 241 / 0.6);
+  outline-offset: 1px;
+}
+
 .inlineSketchList {
   display: flex;
   flex-direction: column;
