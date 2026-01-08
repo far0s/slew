@@ -431,24 +431,24 @@ function LfosSection() {
       }
       setEditingLfo(null);
       setShowForm(false);
-    } catch (e) {
-      console.error("[Modulation] Failed to save LFO:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await remove(id);
-    } catch (e) {
-      console.error("[Modulation] Failed to delete LFO:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
   const handleToggle = async (lfo: LfoSource) => {
     try {
       await update({ ...lfo, enabled: !lfo.enabled });
-    } catch (e) {
-      console.error("[Modulation] Failed to toggle LFO:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
@@ -713,24 +713,24 @@ function TargetsSection({ slots }: TargetsSectionProps) {
       await add(target);
       setShowForm(false);
       setEditingTarget(null);
-    } catch (e) {
-      console.error("[Modulation] Failed to save target:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await remove(id);
-    } catch (e) {
-      console.error("[Modulation] Failed to delete target:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
   const handleToggle = async (target: ModulationTarget) => {
     try {
       await add({ ...target, enabled: !target.enabled });
-    } catch (e) {
-      console.error("[Modulation] Failed to toggle target:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
@@ -1034,7 +1034,6 @@ function AudioModulationsSection() {
       setShowForm(false);
       setEditingMod(null);
     } catch (e) {
-      console.error("[Modulation] Failed to save audio modulation:", e);
       alert(`Failed to save: ${e}`);
     }
   };
@@ -1042,16 +1041,16 @@ function AudioModulationsSection() {
   const handleDelete = async (id: string) => {
     try {
       await remove(id);
-    } catch (e) {
-      console.error("[Modulation] Failed to delete audio modulation:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
   const handleToggle = async (mod: AudioModulation) => {
     try {
       await add({ ...mod, enabled: !mod.enabled });
-    } catch (e) {
-      console.error("[Modulation] Failed to toggle audio modulation:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
@@ -1141,8 +1140,8 @@ export function ModulationPanel({
     try {
       await addLfo(lfo.id ? lfo : createLfo(lfo));
       setShowAddLfo(false);
-    } catch (e) {
-      console.error("[Modulation] Failed to add LFO:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
@@ -1150,8 +1149,8 @@ export function ModulationPanel({
     try {
       await addTarget(target);
       setShowAddTarget(false);
-    } catch (e) {
-      console.error("[Modulation] Failed to add target:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 
@@ -1159,8 +1158,8 @@ export function ModulationPanel({
     try {
       await addAudioMod(mod);
       setShowAddAudioMod(false);
-    } catch (e) {
-      console.error("[Modulation] Failed to add audio mod:", e);
+    } catch {
+      // UI state already reflects failure
     }
   };
 

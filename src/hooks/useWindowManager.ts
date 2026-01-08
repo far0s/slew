@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { logger } from "../lib/logger";
 
 // =============================================================================
 // Types
@@ -204,7 +205,7 @@ export function useWindowManager(
       const s = await getWindowStatus();
       setStatus(s);
     } catch (e) {
-      console.error("[WindowManager] Failed to fetch status:", e);
+      logger.error("WindowManager", "Failed to fetch status:", e);
     }
   }, []);
 
@@ -215,7 +216,7 @@ export function useWindowManager(
     try {
       await restartControlsWindow();
     } catch (e) {
-      console.error("[WindowManager] Failed to restart controls:", e);
+      logger.error("WindowManager", "Failed to restart controls:", e);
     } finally {
       // Reset after a delay to account for window recreation
       setTimeout(() => setIsRestarting(false), 1000);
@@ -229,7 +230,7 @@ export function useWindowManager(
     try {
       await restartRendererWindow();
     } catch (e) {
-      console.error("[WindowManager] Failed to restart renderer:", e);
+      logger.error("WindowManager", "Failed to restart renderer:", e);
     } finally {
       setTimeout(() => setIsRestarting(false), 1000);
     }
@@ -240,7 +241,7 @@ export function useWindowManager(
     try {
       await focusWindow("controls");
     } catch (e) {
-      console.error("[WindowManager] Failed to focus controls:", e);
+      logger.error("WindowManager", "Failed to focus controls:", e);
     }
   }, []);
 
@@ -249,7 +250,7 @@ export function useWindowManager(
     try {
       await focusWindow("renderer");
     } catch (e) {
-      console.error("[WindowManager] Failed to focus renderer:", e);
+      logger.error("WindowManager", "Failed to focus renderer:", e);
     }
   }, []);
 
@@ -258,7 +259,7 @@ export function useWindowManager(
     try {
       return await toggleFullscreen("controls");
     } catch (e) {
-      console.error("[WindowManager] Failed to toggle fullscreen controls:", e);
+      logger.error("WindowManager", "Failed to toggle fullscreen controls:", e);
       return false;
     }
   }, []);
@@ -268,7 +269,7 @@ export function useWindowManager(
     try {
       return await toggleFullscreen("renderer");
     } catch (e) {
-      console.error("[WindowManager] Failed to toggle fullscreen renderer:", e);
+      logger.error("WindowManager", "Failed to toggle fullscreen renderer:", e);
       return false;
     }
   }, []);
@@ -279,13 +280,13 @@ export function useWindowManager(
 
     // Send initial heartbeat
     sendWindowHeartbeat(windowLabel).catch((e) =>
-      console.warn("[WindowManager] Initial heartbeat failed:", e),
+      logger.warn("WindowManager", "Initial heartbeat failed:", e),
     );
 
     // Set up interval
     heartbeatRef.current = setInterval(() => {
       sendWindowHeartbeat(windowLabel).catch((e) =>
-        console.warn("[WindowManager] Heartbeat failed:", e),
+        logger.warn("WindowManager", "Heartbeat failed:", e),
       );
     }, HEARTBEAT_INTERVAL_MS);
 
@@ -323,10 +324,7 @@ export function useWindowManager(
     async function setupListeners() {
       unlistenRestarted = await listen<WindowRestartedEvent>(
         "window_restarted",
-        (event) => {
-          console.log(
-            `[WindowManager] Window '${event.payload.label}' restarted at ${event.payload.timestamp}`,
-          );
+        () => {
           // Refresh status after restart
           fetchStatus();
         },
@@ -335,8 +333,9 @@ export function useWindowManager(
       unlistenUnresponsive = await listen<WindowUnresponsiveEvent>(
         "window_unresponsive",
         (event) => {
-          console.warn(
-            `[WindowManager] Window '${event.payload.label}' is unresponsive`,
+          logger.warn(
+            "WindowManager",
+            `Window '${event.payload.label}' is unresponsive`,
           );
           // Refresh status
           fetchStatus();

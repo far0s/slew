@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useMessageActivity } from "./shared";
+import { logger } from "../lib/logger";
 
 // ============================================================================
 // Types (matching Rust structs)
@@ -404,7 +405,7 @@ export function useMidiDevices() {
       await setMidiAutoReconnect(enabled);
       setAutoReconnectState(enabled);
     } catch (e) {
-      console.error("[MIDI] Failed to set auto-reconnect:", e);
+      logger.error("MIDI", "Failed to set auto-reconnect:", e);
     }
   }, []);
 
@@ -412,7 +413,7 @@ export function useMidiDevices() {
     try {
       await clearMidiAutoReconnectDevices();
     } catch (e) {
-      console.error("[MIDI] Failed to clear auto-reconnect list:", e);
+      logger.error("MIDI", "Failed to clear auto-reconnect list:", e);
     }
   }, []);
 
@@ -760,7 +761,7 @@ export function useMidiCombinedDevices() {
       await setMidiAutoReconnect(enabled);
       setAutoReconnectState(enabled);
     } catch (e) {
-      console.error("[MIDI] Failed to set auto-reconnect:", e);
+      logger.error("MIDI", "Failed to set auto-reconnect:", e);
     }
   }, []);
 
@@ -1044,7 +1045,7 @@ export function useMidiPickupStates(): {
           setPickupStates(stateMap);
         }
       } catch (e) {
-        console.error("[MIDI] Failed to fetch initial pickup states:", e);
+        logger.error("MIDI", "Failed to fetch initial pickup states:", e);
       }
     }
 

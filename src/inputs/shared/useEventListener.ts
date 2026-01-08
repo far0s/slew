@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { listen, type UnlistenFn, type Event } from "@tauri-apps/api/event";
+import { logger } from "../../lib/logger";
 
 export interface UseEventListenerOptions {
   enabled?: boolean;
@@ -32,8 +33,9 @@ export function useEventListener<T>(
           }
         });
       } catch (e) {
-        console.error(
-          `[useEventListener] Failed to listen to ${eventName}:`,
+        logger.error(
+          "useEventListener",
+          `Failed to listen to ${eventName}:`,
           e,
         );
       }
@@ -76,8 +78,9 @@ export function useEventListeners<T extends Record<string, unknown>>(
           });
           unlisteners.push(unlisten);
         } catch (e) {
-          console.error(
-            `[useEventListeners] Failed to listen to ${eventName}:`,
+          logger.error(
+            "useEventListeners",
+            `Failed to listen to ${eventName}:`,
             e,
           );
         }

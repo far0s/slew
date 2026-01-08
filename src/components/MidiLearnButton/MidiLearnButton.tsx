@@ -83,8 +83,8 @@ export function MidiLearnButton({
       } else {
         await startLearn(parameterId, min, max);
       }
-    } catch (e) {
-      console.error("[MidiLearnButton] Action failed:", e);
+    } catch {
+      // UI state already reflects failure
     } finally {
       setIsProcessing(false);
     }

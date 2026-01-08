@@ -80,16 +80,10 @@ export function WebGPUCanvas({
       if (cancelled) return;
 
       if (webgpuSupported) {
-        console.log(
-          "[WebGPUCanvas] Native WebGPU supported, using WebGPU backend",
-        );
         setForceWebGL(false);
         setBackend("webgpu");
         onRendererReady?.("webgpu");
       } else {
-        console.log(
-          "[WebGPUCanvas] WebGPU not available, using WebGL2 backend (forceWebGL)",
-        );
         setForceWebGL(true);
         setBackend("webgl2");
         onRendererReady?.("webgl2");
@@ -120,11 +114,6 @@ export function WebGPUCanvas({
       });
 
       await renderer.init();
-
-      const backendName = forceWebGL ? "WebGL2" : "WebGPU";
-      console.log(
-        `[WebGPUCanvas] WebGPURenderer initialized with ${backendName} backend`,
-      );
 
       return renderer;
     },

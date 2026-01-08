@@ -4,6 +4,7 @@ import * as THREE from "three";
 import * as THREEWebGPU from "three/webgpu";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { logger } from "../lib/logger";
 
 const PREVIEW_SCALE = 0.5;
 const DEFAULT_FPS = 30;
@@ -119,8 +120,9 @@ export function SlotPreviewCapture({
 
       // Validate buffer size matches expected dimensions
       if (pixels.length !== expectedSize) {
-        console.warn(
-          `[SlotPreviewCapture] Slot ${slotIndex}: buffer size mismatch - got ${pixels.length}, expected ${expectedSize}`,
+        logger.warn(
+          "SlotPreviewCapture",
+          `Slot ${slotIndex}: buffer size mismatch - got ${pixels.length}, expected ${expectedSize}`,
         );
         return;
       }
@@ -208,7 +210,7 @@ export function SlotPreviewCapture({
 
     const slotGroup = groups.get(slotIndex);
     if (!slotGroup) {
-      console.warn(`[SlotPreviewCapture] No group found for slot ${slotIndex}`);
+      logger.warn("SlotPreviewCapture", `No group found for slot ${slotIndex}`);
       return;
     }
 

@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useEventListener, useFetchOnMount } from "./shared";
+import { logger } from "../lib/logger";
 
 // ============================================================================
 // Types (matching Rust structs)
@@ -269,7 +270,7 @@ export function useAudioCapture() {
           setAutoReconnectState(autoReconnectEnabled);
         }
       } catch (e) {
-        console.error("[Audio] Failed to fetch initial data:", e);
+        logger.error("Audio", "Failed to fetch initial data:", e);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -325,7 +326,7 @@ export function useAudioCapture() {
       const deviceList = await listAudioDevices();
       setDevices(deviceList);
     } catch (e) {
-      console.error("[Audio] Failed to refresh devices:", e);
+      logger.error("Audio", "Failed to refresh devices:", e);
     } finally {
       setIsLoading(false);
     }
@@ -361,7 +362,7 @@ export function useAudioCapture() {
       const deviceList = await listAudioDevices();
       setDevices(deviceList);
     } catch (e) {
-      console.error("[Audio] Failed to stop capture:", e);
+      logger.error("Audio", "Failed to stop capture:", e);
       throw e;
     } finally {
       setIsLoading(false);
@@ -373,7 +374,7 @@ export function useAudioCapture() {
       await setAudioAutoReconnect(enabled);
       setAutoReconnectState(enabled);
     } catch (e) {
-      console.error("[Audio] Failed to set auto-reconnect:", e);
+      logger.error("Audio", "Failed to set auto-reconnect:", e);
     }
   }, []);
 

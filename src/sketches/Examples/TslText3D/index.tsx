@@ -83,16 +83,9 @@ export function TslText3D({ opacity, params }: SketchProps) {
   // Load font on mount
   useEffect(() => {
     const loader = new FontLoader();
-    loader.load(
-      "/fonts/helvetiker_bold.typeface.json",
-      (loadedFont) => {
-        setFont(loadedFont);
-      },
-      undefined,
-      (error) => {
-        console.error("[TslText3D] Failed to load font:", error);
-      },
-    );
+    loader.load("/fonts/helvetiker_bold.typeface.json", (loadedFont) => {
+      setFont(loadedFont);
+    });
   }, []);
 
   // Create geometry when font is loaded

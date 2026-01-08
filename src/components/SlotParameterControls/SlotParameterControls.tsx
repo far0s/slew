@@ -63,8 +63,8 @@ function createChangeHandler(
         if (template.templateId === "brightness") {
           await forwardControlsEvent(paramId, value);
         }
-      } catch (error) {
-        console.error(`[Controls] Failed to set ${paramId} parameter`, error);
+      } catch {
+        // UI state already reflects failure
       }
     })();
   };
@@ -184,8 +184,8 @@ export function SlotParameterControls({
     void (async () => {
       try {
         await forwardControlsEvent(`sketch_color_changed`, slotIndex);
-      } catch (error) {
-        console.error(`[Controls] Failed to forward color change`, error);
+      } catch {
+        // UI state already reflects failure
       }
     })();
   };
@@ -224,8 +224,8 @@ export function SlotParameterControls({
     void (async () => {
       try {
         await forwardControlsEvent(`sketch_color_changed`, slotIndex);
-      } catch (error) {
-        console.error(`[Controls] Failed to forward color reset`, error);
+      } catch {
+        // UI state already reflects failure
       }
     })();
   };
@@ -256,8 +256,8 @@ export function SlotParameterControls({
     void (async () => {
       try {
         await forwardControlsEvent(`sketch_color_changed`, slotIndex);
-      } catch (error) {
-        console.error(`[Controls] Failed to forward background reset`, error);
+      } catch {
+        // UI state already reflects failure
       }
     })();
   };
