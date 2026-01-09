@@ -31,6 +31,21 @@ Status overview and key decisions for Slew.
 
 ## Recent Changes
 
+### Component Test Coverage
+
+Added comprehensive test coverage for React components:
+
+- **374 tests** across 10 test files, all passing
+- **SlotColumn**: 85.95% coverage (46 tests) - core UI component
+- **ColorPicker**: 81.73% coverage (34 tests) - complex interaction patterns
+- **MidiPanel**: 51 tests - input configuration and device management
+- **AudioPanel**: 62 tests - audio device selection and mapping
+- **StreamedPreview**: 11 tests - frame distribution display
+- **Sidebar + Tabs**: 25 tests - navigation system
+- **Supporting components**: Button (100%), ParameterSlider (70.83%), useSlots (93.28%)
+
+---
+
 ### Sketch Search/Filter
 
 Added search functionality to the inline sketch browser for finding sketches quickly:

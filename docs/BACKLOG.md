@@ -212,34 +212,6 @@ Extend MIDI mappings to support note velocity.
 
 ---
 
-### 🟡 Component Test Coverage `chore`
-
-Expand test coverage for React components.
-
-**Context**: Only 3 components tested (Button, ParameterSlider, useSlots). High regression risk.
-
-**Priority Components** (order by criticality):
-
-1. SlotColumn (core UI)
-2. ColorPicker (complex interaction)
-3. StreamedPreview (frame distribution)
-4. Sidebar + Tab system
-5. MidiPanel, AudioPanel (input configuration)
-
-**Target**: 10+ component test files, 80%+ coverage
-
-**Subtasks**:
-
-- [ ] Test SlotColumn component
-- [ ] Test ColorPicker component
-- [ ] Test StreamedPreview component
-- [ ] Test Sidebar and Tab system
-- [ ] Test MidiPanel component
-- [ ] Test AudioPanel component
-- [ ] Achieve 80%+ coverage
-
----
-
 ### 🟡 Duplicate Template ID Mapping Refactor `chore`
 
 Extract duplicate parameter template mappings to shared module.
