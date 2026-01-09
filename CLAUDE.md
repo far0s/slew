@@ -49,11 +49,64 @@ npm run package
 npm run package:release
 ```
 
+## mgrep – your code search tool
+
+**mgrep** is your main codebase exploration tool. It will help you navigate it using natural language queries.
+
+### Basic usage
+
+```bash
+mgrep "query in natural language" --store "slew" -a -m <number>
+```
+
+### Essential parameters
+
+| Parameter        | Description                              |
+| ---------------- | ---------------------------------------- |
+| `--store "slew"` | **Mandatory** - Specify the project name |
+| `-a`             | enable natural language search           |
+| `-m <n>`         | Results total (min 10)                   |
+
+### Adjust `-m` according to complexity
+
+| Request type                           | suggested `-m` |
+| -------------------------------------- | -------------- |
+| Simple question (1-2 files)            | 10             |
+| Average question (flow, feature)       | 20-30          |
+| Complex question (debug, architecture) | 30-50          |
+
+## Strategy for complex queries
+
+If the query touches **multiple parts of the codebase**, launch several mgrep in parallel rather than a single overloaded query:
+
+```bash
+# Example: understand the complete authentication system
+mgrep "how does LinkedIn frontend authentication work" --store "project-name" -a -m <n>
+mgrep "how is the LinkedIn token managed on Convex" --store "project-name" -a -m <n>
+mgrep "how does the background script manage sessions" --store "project-name" -a -m <n>
+```
+
+## Rules
+
+- **MANDATORY** : Use mgrep for ALL code search. NEVER use grep, Grep tool, or Glob.
+- **Natural Language** : mgrep is an AI agent like you. Talk to it like a colleague, not like a search engine.
+  - ❌ `"architecture block icon color complete status"` (robotic keywords)
+  - ✅ `"What is the color of the icon for completed architecture blocks?"` (question naturelle)
+
+---
+
+# Subagents (Task tool)
+
+**Subagents DO NOT inherit instructions from this file.**
+
+When you launch an Explore subagent, copy and paste the mgrep instructions from this CLAUDE.md file into the prompt of the subagent.
+
 ## Architecture Overview
 
 ### Dual-Window System
 
 **Renderer Window** (`/renderer`):
+
 - Full-screen high-performance visuals at 60fps
 - Receives parameter updates from backend via Tauri events
 - Renders all active slots (alpha > 0) simultaneously with compositing
@@ -61,6 +114,7 @@ npm run package:release
 - Streams previews back to Controls window via `frame_distribution.rs`
 
 **Controls Window** (`/`):
+
 - VJ dashboard with slot management and parameter controls
 - Receives streamed preview frames from Renderer window
 - Falls back to local rendering when streaming unavailable
@@ -76,6 +130,7 @@ Both windows share the same bundle; `src/main.tsx` dispatches based on path.
 **Parameter Server** (`src-tauri/src/lib.rs`): Rust-based central authority running at ~60Hz. Parameters have `value`, `target`, `transition_speed`, and `curve` for smooth interpolation. All parameters persist to `parameters.json`.
 
 **Input Systems**: MIDI, OSC, Audio (FFT/beat detection), and HID all follow the same pattern:
+
 1. Rust module in `src-tauri/src/{system}/`
 2. Tauri commands for CRUD operations
 3. TypeScript hooks in `src/inputs/{system}.ts`
@@ -123,14 +178,18 @@ Both windows share the same bundle; `src/main.tsx` dispatches based on path.
 ## Recent Important Changes
 
 ### ⚠️ Tailwind Removed (v0.8.0)
+
 **DO NOT suggest or use Tailwind CSS classes.** The project migrated to plain CSS:
+
 - **Use CSS Modules**: All component styles use `.module.css` files
 - **Use CSS Variables**: Theme colors and design tokens in `src/globals.css`
 - **Theme variables inspired by Tailwind** - see `globals.css` header for reference link
 - Bundle size reduced 55% (15.85 KB → 7.07 KB)
 
 ### Preview Streaming Architecture
+
 Renderer window streams pixel-perfect frames to Controls window previews:
+
 - **Composited preview**: Shows actual rendered pixels from Renderer
 - **Per-slot previews**: Isolated slot renders via visibility toggling
 - **Binary IPC**: Base64-encoded RGBA frames via Tauri events
@@ -138,7 +197,9 @@ Renderer window streams pixel-perfect frames to Controls window previews:
 - See `docs/finished/PREVIEW_STREAMING.md` for details
 
 ### WebGPU Migration Complete
+
 All sketches now use WebGPU with WebGL2 fallback:
+
 - **TSL shaders**: Three.js Shading Language for WebGPU
 - **Async readback**: Non-blocking GPU→CPU transfer for video output
 - **Metal backend**: Native acceleration on macOS
@@ -165,6 +226,7 @@ All sketches now use WebGPU with WebGL2 fallback:
 ## Common Patterns
 
 ### Adding a New Sketch
+
 1. Create folder in `src/sketches/{GroupName}/{SketchName}/`
 2. Create `index.tsx` with component and `SketchDescriptor`
 3. Add to group in `src/sketches/{GroupName}/index.ts`
@@ -172,6 +234,7 @@ All sketches now use WebGPU with WebGL2 fallback:
 5. Parameters auto-generate UI via `SlotParameterControls`
 
 ### Adding a New Input System
+
 1. Create Rust module in `src-tauri/src/{system}/` with submodules (types, engine, commands, etc.)
 2. Create TypeScript hook in `src/inputs/{system}.ts` using `shared/` infrastructure
 3. Create UI panel in `src/components/{System}Panel/`
@@ -179,6 +242,7 @@ All sketches now use WebGPU with WebGL2 fallback:
 5. Follow existing patterns from MIDI/OSC/Audio/HID
 
 ### Parameter Flow
+
 1. UI/Input → Tauri command → `set_parameter_target()` in `lib.rs`
 2. Parameter Server tick loop (~60Hz) interpolates `value` toward `target`
 3. Backend emits `parameter_changed` event
@@ -188,6 +252,7 @@ All sketches now use WebGPU with WebGL2 fallback:
 ## Feature Status
 
 **All core features are complete (✅):**
+
 - Dual-window architecture (Renderer + Controls)
 - Parameter Server with smooth transitions
 - 8-slot system with inline sketch browser
@@ -205,11 +270,13 @@ All sketches now use WebGPU with WebGL2 fallback:
 - Packaging (macOS/Windows/Linux, automated releases via GitHub Actions)
 
 **Current Priority** (see `docs/BACKLOG.md`):
+
 - 🔴 App icon design and implementation
 
 ## Testing
 
 Tests use Vitest with jsdom environment:
+
 - Test files: `*.test.ts` or `*.test.tsx` in `src/`
 - Setup: `src/test/setup.ts`
 - Run: `npm test` (watch) or `npm run test:run` (single run)
@@ -218,18 +285,18 @@ Tests use Vitest with jsdom environment:
 
 ## Key Files Reference
 
-| File | Purpose |
-|------|---------|
-| `src-tauri/src/lib.rs` | Parameter Server, ~60Hz tick loop, command registration |
-| `src-tauri/src/window_manager.rs` | Window lifecycle, heartbeat monitoring |
-| `src-tauri/src/frame_distribution.rs` | Preview streaming from Renderer to Controls |
-| `src/sketches/types.ts` | SketchDescriptor, ParameterTemplate types |
-| `src/sketches/index.ts` | SKETCH_GROUPS, SKETCH_REGISTRY, lookup functions |
-| `src/slots/slotTypes.ts` | Parameter ID utilities (getSlotParameterId, etc.) |
-| `src/slots/useSlots.ts` | Slot management hook |
-| `src/controls/useParameterStore.ts` | Parameter state management |
-| `src/renderer/RendererRoot.tsx` | Multi-slot rendering with compositing |
-| `src/components/StreamedPreview/` | Streamed frame display in Controls |
+| File                                  | Purpose                                                 |
+| ------------------------------------- | ------------------------------------------------------- |
+| `src-tauri/src/lib.rs`                | Parameter Server, ~60Hz tick loop, command registration |
+| `src-tauri/src/window_manager.rs`     | Window lifecycle, heartbeat monitoring                  |
+| `src-tauri/src/frame_distribution.rs` | Preview streaming from Renderer to Controls             |
+| `src/sketches/types.ts`               | SketchDescriptor, ParameterTemplate types               |
+| `src/sketches/index.ts`               | SKETCH_GROUPS, SKETCH_REGISTRY, lookup functions        |
+| `src/slots/slotTypes.ts`              | Parameter ID utilities (getSlotParameterId, etc.)       |
+| `src/slots/useSlots.ts`               | Slot management hook                                    |
+| `src/controls/useParameterStore.ts`   | Parameter state management                              |
+| `src/renderer/RendererRoot.tsx`       | Multi-slot rendering with compositing                   |
+| `src/components/StreamedPreview/`     | Streamed frame display in Controls                      |
 
 ## Important Constraints
 
@@ -244,6 +311,7 @@ Tests use Vitest with jsdom environment:
 ## Implementation Reference
 
 The `docs/finished/` folder contains detailed documentation of completed features:
+
 - `PREVIEW_STREAMING.md` - Frame distribution architecture
 - `VIDEO_OUTPUT_OPTIMIZATION.md` - WebGPU async readback, binary IPC protocol
 - `WEBGPU_MIGRATION.md` - TSL shader migration details
@@ -257,11 +325,13 @@ The `docs/finished/` folder contains detailed documentation of completed feature
 ## Platform-Specific Notes
 
 **macOS**:
+
 - Syphon framework required: `./scripts/install-syphon.sh`
 - Uses Metal via WebGPU backend
 - Native Syphon bindings via objc2
 
 **NDI (optional)**:
+
 - Requires NDI SDK installation
 - Cross-platform support
 - Use `npm run tauri:no-ndi` to skip NDI feature
