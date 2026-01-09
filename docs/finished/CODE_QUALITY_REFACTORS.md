@@ -1,9 +1,9 @@
 # Code Quality Refactors
 
-Working document for a batch of code quality and maintenance tasks.
+Batch of code quality and maintenance tasks completed as part of technical debt reduction.
 
 **Branch**: `chore/code-quality-refactors`  
-**Status**: 🚧 In Progress
+**Status**: ✅ Complete
 
 ---
 
@@ -292,15 +292,14 @@ export const SKETCH_COMPONENT_REGISTRY: Record<SketchId, SketchComponent> = {
 
 ## Testing Checklist
 
-Before marking complete:
-
 - [x] All TypeScript tests pass (`npm run test:run`) - 399 tests
 - [x] All Rust tests pass (`cargo test`) - 101 tests (was 97, +4 buffer pool tests)
-- [ ] Manual testing: app starts correctly
-- [ ] Manual testing: sketches render correctly
-- [ ] Manual testing: settings persist across restarts
-- [ ] No console errors or warnings
+- [x] Manual testing: app starts correctly
+- [x] Manual testing: sketches render correctly
+- [x] Manual testing: settings persist across restarts
+- [x] No console errors or warnings
 - [x] Bundle size measured (for lazy loading) - documented in Task 5
+- [x] Buffer pool hit rate displays correctly in Video tab
 
 ---
 
