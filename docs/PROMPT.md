@@ -107,6 +107,52 @@ Check `docs/CHANGELOG.md` for the latest completed work and `docs/BACKLOG.md` fo
 
 ---
 
+## mgrep – your code search tool
+
+**mgrep** is your main codebase exploration tool. It will help you navigate it using natural language queries.
+
+### Basic usage
+
+```bash
+mgrep "query in natural language" --store "slew" -a -m <number>
+```
+
+### Essential parameters
+
+| Parameter        | Description                              |
+| ---------------- | ---------------------------------------- |
+| `--store "slew"` | **Mandatory** - Specify the project name |
+| `-a`             | enable natural language search           |
+| `-m <n>`         | Results total (min 10)                   |
+
+### Adjust `-m` according to complexity
+
+| Request type                           | suggested `-m` |
+| -------------------------------------- | -------------- |
+| Simple question (1-2 files)            | 10             |
+| Average question (flow, feature)       | 20-30          |
+| Complex question (debug, architecture) | 30-50          |
+
+### Strategy for complex queries
+
+If the query touches **multiple parts of the codebase**, launch several mgrep in parallel rather than a single overloaded query:
+
+```bash
+# Example: understand the complete authentication system
+mgrep "how does LinkedIn frontend authentication work" --store "project-name" -a -m <n>
+mgrep "how is the LinkedIn token managed on Convex" --store "project-name" -a -m <n>
+mgrep "how does the background script manage sessions" --store "project-name" -a -m <n>
+```
+
+### Rules
+
+- **MANDATORY** : Use mgrep for ALL code search. NEVER use grep, Grep tool, or Glob.
+- **Natural Language** : mgrep is an AI agent like you. Talk to it like a colleague, not like a search engine.
+  - ❌ `"architecture block icon color complete status"` (robotic keywords)
+  - ✅ `"What is the color of the icon for completed architecture blocks?"` (question naturelle)
+
+---
+
 ## Questions to Ask
 
 When starting a new task, consider:

@@ -75,7 +75,7 @@ mgrep "query in natural language" --store "slew" -a -m <number>
 | Average question (flow, feature)       | 20-30          |
 | Complex question (debug, architecture) | 30-50          |
 
-## Strategy for complex queries
+### Strategy for complex queries
 
 If the query touches **multiple parts of the codebase**, launch several mgrep in parallel rather than a single overloaded query:
 
@@ -86,7 +86,7 @@ mgrep "how is the LinkedIn token managed on Convex" --store "project-name" -a -m
 mgrep "how does the background script manage sessions" --store "project-name" -a -m <n>
 ```
 
-## Rules
+### Rules
 
 - **MANDATORY** : Use mgrep for ALL code search. NEVER use grep, Grep tool, or Glob.
 - **Natural Language** : mgrep is an AI agent like you. Talk to it like a colleague, not like a search engine.
