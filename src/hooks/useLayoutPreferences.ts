@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
+import { createSimpleStorage } from "../lib/storage";
 
 // ==========================================================================
 // Types
@@ -26,14 +27,29 @@ export interface UseLayoutPreferencesResult {
 // Constants
 // ==========================================================================
 
-const STORAGE_KEY_SIDEBAR = "slew-sidebar-position";
-const STORAGE_KEY_ZOOM = "slew-ui-zoom";
-
 const DEFAULT_SIDEBAR_POSITION: SidebarPosition = "right";
 const DEFAULT_UI_ZOOM = 100;
 const MIN_ZOOM = 80;
 const MAX_ZOOM = 150;
 const ZOOM_STEP = 10;
+
+// Validators for type safety
+const isValidSidebar = (v: unknown): v is SidebarPosition =>
+  v === "left" || v === "right";
+const isValidZoom = (v: unknown): v is number =>
+  typeof v === "number" && v >= MIN_ZOOM && v <= MAX_ZOOM;
+
+// Simple storage for layout preferences
+const sidebarStorage = createSimpleStorage(
+  "slew-sidebar-position",
+  DEFAULT_SIDEBAR_POSITION,
+  isValidSidebar,
+);
+const zoomStorage = createSimpleStorage(
+  "slew-ui-zoom",
+  DEFAULT_UI_ZOOM,
+  isValidZoom,
+);
 
 // ==========================================================================
 // External Store for Layout Preferences
@@ -46,20 +62,10 @@ let currentUiZoom: number = DEFAULT_UI_ZOOM;
 // Subscribers for state changes
 const subscribers = new Set<() => void>();
 
-// Initialize from localStorage on module load
+// Initialize from storage on module load
 if (typeof window !== "undefined") {
-  const storedSidebar = localStorage.getItem(STORAGE_KEY_SIDEBAR);
-  if (storedSidebar === "left" || storedSidebar === "right") {
-    currentSidebarPosition = storedSidebar;
-  }
-
-  const storedZoom = localStorage.getItem(STORAGE_KEY_ZOOM);
-  if (storedZoom) {
-    const parsed = parseInt(storedZoom, 10);
-    if (!isNaN(parsed) && parsed >= MIN_ZOOM && parsed <= MAX_ZOOM) {
-      currentUiZoom = parsed;
-    }
-  }
+  currentSidebarPosition = sidebarStorage.load();
+  currentUiZoom = zoomStorage.load();
 
   // Apply initial values to document
   document.documentElement.setAttribute("data-sidebar", currentSidebarPosition);
@@ -110,7 +116,7 @@ function setSidebarPositionInternal(position: SidebarPosition) {
   if (currentSidebarPosition === position) return;
 
   currentSidebarPosition = position;
-  localStorage.setItem(STORAGE_KEY_SIDEBAR, position);
+  sidebarStorage.save(position);
   document.documentElement.setAttribute("data-sidebar", position);
   emitChange();
 }
@@ -120,7 +126,7 @@ function setUiZoomInternal(zoom: number) {
   if (currentUiZoom === clamped) return;
 
   currentUiZoom = clamped;
-  localStorage.setItem(STORAGE_KEY_ZOOM, clamped.toString());
+  zoomStorage.save(clamped);
   document.documentElement.style.setProperty(
     "--ui-zoom",
     (clamped / 100).toString(),

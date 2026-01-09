@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
+import { createSimpleStorage } from "../lib/storage";
 
 // ==========================================================================
 // Types
@@ -25,11 +26,26 @@ export interface UseThemeResult {
 // Constants
 // ==========================================================================
 
-const STORAGE_KEY_MODE = "slew-theme-mode";
-const STORAGE_KEY_ACCENT = "slew-theme-accent";
-
 const DEFAULT_MODE: ThemeMode = "dark";
 const DEFAULT_ACCENT: ThemeAccent = "standard";
+
+// Validators for type safety
+const isValidMode = (v: unknown): v is ThemeMode =>
+  v === "dark" || v === "light";
+const isValidAccent = (v: unknown): v is ThemeAccent =>
+  v === "standard" || v === "amber";
+
+// Simple storage for theme preferences
+const modeStorage = createSimpleStorage(
+  "slew-theme-mode",
+  DEFAULT_MODE,
+  isValidMode,
+);
+const accentStorage = createSimpleStorage(
+  "slew-theme-accent",
+  DEFAULT_ACCENT,
+  isValidAccent,
+);
 
 // ==========================================================================
 // External Store for Theme Preferences
@@ -42,17 +58,10 @@ let currentAccent: ThemeAccent = DEFAULT_ACCENT;
 // Subscribers for state changes
 const subscribers = new Set<() => void>();
 
-// Initialize from localStorage on module load
+// Initialize from storage on module load
 if (typeof window !== "undefined") {
-  const storedMode = localStorage.getItem(STORAGE_KEY_MODE);
-  if (storedMode === "dark" || storedMode === "light") {
-    currentMode = storedMode;
-  }
-
-  const storedAccent = localStorage.getItem(STORAGE_KEY_ACCENT);
-  if (storedAccent === "standard" || storedAccent === "amber") {
-    currentAccent = storedAccent;
-  }
+  currentMode = modeStorage.load();
+  currentAccent = accentStorage.load();
 
   // Apply initial values to document
   document.documentElement.setAttribute("data-theme", currentMode);
@@ -100,7 +109,7 @@ function setModeInternal(mode: ThemeMode) {
   if (currentMode === mode) return;
 
   currentMode = mode;
-  localStorage.setItem(STORAGE_KEY_MODE, mode);
+  modeStorage.save(mode);
   document.documentElement.setAttribute("data-theme", mode);
   emitChange();
 }
@@ -109,7 +118,7 @@ function setAccentInternal(accent: ThemeAccent) {
   if (currentAccent === accent) return;
 
   currentAccent = accent;
-  localStorage.setItem(STORAGE_KEY_ACCENT, accent);
+  accentStorage.save(accent);
   document.documentElement.setAttribute("data-accent", accent);
   emitChange();
 }

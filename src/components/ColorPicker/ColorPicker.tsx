@@ -19,10 +19,28 @@ import {
   parseColor,
   type Color,
 } from "react-aria-components";
+import { createVersionedStorage } from "../../lib/storage";
 import styles from "./ColorPicker.module.css";
 
-const HISTORY_STORAGE_KEY = "slew-color-history";
 const MAX_HISTORY_SIZE = 5;
+
+// Versioned storage for color history
+const colorHistoryStorage = createVersionedStorage<string[]>({
+  key: "slew-color-history",
+  version: 1,
+  defaultValue: [],
+  migrations: {
+    // v1: Migrate from legacy unversioned array format
+    1: (old: unknown) => {
+      if (Array.isArray(old)) {
+        return old
+          .filter((c) => typeof c === "string")
+          .slice(0, MAX_HISTORY_SIZE);
+      }
+      return [];
+    },
+  },
+});
 
 type ColorFormat = "hex" | "rgb" | "hsl";
 
@@ -36,37 +54,15 @@ export interface ColorPickerProps {
 }
 
 function loadColorHistory(): string[] {
-  try {
-    const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) {
-        return parsed.slice(0, MAX_HISTORY_SIZE);
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-  return [];
+  return colorHistoryStorage.load();
 }
 
 function saveColorHistory(history: string[]): void {
-  try {
-    localStorage.setItem(
-      HISTORY_STORAGE_KEY,
-      JSON.stringify(history.slice(0, MAX_HISTORY_SIZE)),
-    );
-  } catch {
-    /* ignore */
-  }
+  colorHistoryStorage.save(history.slice(0, MAX_HISTORY_SIZE));
 }
 
 function clearColorHistory(): void {
-  try {
-    localStorage.removeItem(HISTORY_STORAGE_KEY);
-  } catch {
-    /* ignore */
-  }
+  colorHistoryStorage.clear();
 }
 
 function addToHistory(color: string, history: string[]): string[] {

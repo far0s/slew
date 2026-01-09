@@ -105,7 +105,7 @@ The `useRendererSettings.ts` hook already throttles to 250ms (4fps), but the col
 
 ---
 
-### 4. ⬜ LocalStorage Schema Versioning
+### 4. ✅ LocalStorage Schema Versioning
 
 **Goal**: Add schema versioning to localStorage data to handle format changes gracefully.
 
@@ -132,18 +132,20 @@ The `useRendererSettings.ts` hook already throttles to 250ms (4fps), but the col
 - Add version field to each stored object
 - Each hook handles its own migrations
 
-**Decision**: TBD (Option A preferred for consistency)
+**Decision**: Option A, better for consistency
 
 **Subtasks**:
 
-- [ ] Create `src/lib/storage.ts` with versioned storage utilities
-- [ ] Define schema types with version fields
-- [ ] Implement migration logic for each storage key
-- [ ] Migrate `useTheme.ts`
-- [ ] Migrate `useLayoutPreferences.ts`
-- [ ] Migrate `useRendererSettings.ts`
-- [ ] Migrate `ColorPicker.tsx` color history
-- [ ] Add tests for migration paths
+- [x] Create `src/lib/storage.ts` with versioned storage utilities
+- [x] Define schema types with version fields
+- [x] Implement migration logic for each storage key
+- [x] Migrate `useTheme.ts`
+- [x] Migrate `useLayoutPreferences.ts`
+- [x] Migrate `useRendererSettings.ts`
+- [x] Migrate `ColorPicker.tsx` color history
+- [x] Add tests for migration paths
+
+**Result**: Created `src/lib/storage.ts` (212 lines) with `createVersionedStorage<T>()` and `createSimpleStorage<T>()` factories. Added 19 tests. Migrated 4 hooks/components. Legacy unversioned data auto-migrates to v1.
 
 ---
 
@@ -214,12 +216,13 @@ export const SKETCH_COMPONENT_REGISTRY: Record<SketchId, SketchComponent> = {
 
 ## Progress Log
 
-| Date       | Task                          | Status | Notes                                                                                            |
-| ---------- | ----------------------------- | ------ | ------------------------------------------------------------------------------------------------ |
-| -          | Starting work                 | 🚧     | Created working doc and branch                                                                   |
-| 2026-01-09 | Duplicate Template ID Mapping | ✅     | Created `parameterMappings.ts`, updated 3 consumers, added 6 tests (380 total tests pass)        |
-| 2026-01-09 | Stats Reporting Throttling    | ✅     | Added `STATS_REPORT_INTERVAL_MS` (1000ms), throttle in `RendererInfoReporter`, 98% IPC reduction |
-| 2026-01-09 | Hard-Coded Config Extraction  | ✅     | Created `config.ts` + `config.rs`, updated 6 files, 97 Rust + 380 TS tests pass                  |
+| Date       | Task                           | Status | Notes                                                                                            |
+| ---------- | ------------------------------ | ------ | ------------------------------------------------------------------------------------------------ |
+| -          | Starting work                  | 🚧     | Created working doc and branch                                                                   |
+| 2026-01-09 | Duplicate Template ID Mapping  | ✅     | Created `parameterMappings.ts`, updated 3 consumers, added 6 tests (380 total tests pass)        |
+| 2026-01-09 | Stats Reporting Throttling     | ✅     | Added `STATS_REPORT_INTERVAL_MS` (1000ms), throttle in `RendererInfoReporter`, 98% IPC reduction |
+| 2026-01-09 | Hard-Coded Config Extraction   | ✅     | Created `config.ts` + `config.rs`, updated 6 files, 97 Rust + 380 TS tests pass                  |
+| 2026-01-09 | LocalStorage Schema Versioning | ✅     | Created `storage.ts` with migration framework, 19 new tests, migrated 4 files (399 tests pass)   |
 
 ---
 
@@ -227,7 +230,7 @@ export const SKETCH_COMPONENT_REGISTRY: Record<SketchId, SketchComponent> = {
 
 1. ~~**Config extraction scope**: Should Rust constants be exposed to frontend via Tauri commands for runtime access, or keep them separate?~~ **Resolved**: Keep separate for now; audio constants stay in `audio/constants.rs`.
 
-2. **LocalStorage migration**: What happens if migration fails? Fallback to defaults and log warning?
+2. ~~**LocalStorage migration**: What happens if migration fails? Fallback to defaults and log warning?~~ **Resolved**: Yes, fallback to defaults with logger.warn().
 
 3. **Lazy loading granularity**: Should we lazy-load entire sketch groups, or individual sketches?
 
