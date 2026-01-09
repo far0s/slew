@@ -23,6 +23,7 @@ import type { SketchId, SketchProps, SketchGroup } from "../../sketches";
 import {
   SKETCH_GROUPS,
   SKETCH_COMPONENT_REGISTRY,
+  SketchLoadingFallback,
   getSketchDescriptor,
 } from "../../sketches";
 import type { Slot } from "../../slots/useSlots";
@@ -742,7 +743,9 @@ function SlotPreview({
             <ambientLight intensity={0.4} />
             <directionalLight position={[4, 6, 3]} intensity={1.1} />
             <directionalLight position={[-4, -4, -2]} intensity={0.4} />
-            <SketchComponent opacity={1} params={params} colors={colors} />
+            <Suspense fallback={<SketchLoadingFallback />}>
+              <SketchComponent opacity={1} params={params} colors={colors} />
+            </Suspense>
           </>
         )}
       </WebGPUCanvas>

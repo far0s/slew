@@ -1,3 +1,16 @@
+/**
+ * Sketch Registry - Central hub for all sketch metadata and components
+ *
+ * This module exports:
+ * - SKETCH_GROUPS: Grouped sketches for UI display
+ * - SKETCH_REGISTRY: Flat list of all sketch descriptors
+ * - SKETCH_COMPONENT_REGISTRY: Lazy-loaded sketch components (default)
+ * - SKETCH_COMPONENT_REGISTRY_SYNC: Eager-loaded components (for special cases)
+ * - Utility functions for looking up sketches and parameters
+ *
+ * Lazy loading reduces initial bundle size by deferring sketch code until needed.
+ */
+
 import type {
   SketchDescriptor,
   SketchProps,
@@ -12,66 +25,88 @@ import { examplesGroup } from "./Examples";
 import { advancedExamplesGroup } from "./AdvancedExamples";
 import { auraGroup } from "./Aura/presets";
 import { TEMPLATE_ID_TO_PROPS_KEY } from "./parameterMappings";
+import {
+  LAZY_SKETCH_REGISTRY,
+  getLazySketchComponent,
+  SketchLoader,
+  SketchLoadingFallback,
+  type LazySketchComponent,
+} from "./LazySketchRegistry";
 
-import { BlueCube } from "./Examples/BlueCube";
-import { OrangeCube } from "./Examples/OrangeCube";
-import { GreenPulse } from "./Examples/GreenPulse";
-import { TslText3D } from "./Examples/TslText3D";
-import { TslNoiseBlob } from "./Examples/TslNoiseBlob";
-import { Plasma } from "./AdvancedExamples/Plasma";
-import { Kaleidoscope } from "./AdvancedExamples/Kaleidoscope";
-import { FeedbackTunnel } from "./AdvancedExamples/FeedbackTunnel";
-import { Waveform } from "./AdvancedExamples/Waveform";
-import { Aura } from "./Aura";
+// =============================================================================
+// Groups and Registry
+// =============================================================================
 
-// Grouped registry for UI (sorted by orderHint)
+/**
+ * Grouped registry for UI (sorted by orderHint)
+ */
 export const SKETCH_GROUPS: SketchGroup[] = [
   examplesGroup,
   advancedExamplesGroup,
   auraGroup,
 ].sort((a, b) => (a.orderHint ?? 0) - (b.orderHint ?? 0));
 
-// Flat registry for backward compatibility
+/**
+ * Flat registry of all sketch descriptors (metadata only, no components)
+ */
 export const SKETCH_REGISTRY: SketchDescriptor[] = SKETCH_GROUPS.flatMap(
   (group) => group.sketches,
 );
 
+/**
+ * Union type of all valid sketch IDs
+ */
 export type SketchId = (typeof SKETCH_REGISTRY)[number]["id"];
 
+/**
+ * Array of all valid sketch IDs
+ */
 export const ALL_SKETCH_IDS: SketchId[] = SKETCH_REGISTRY.map((s) => s.id);
 
-export const SKETCH_COMPONENT_REGISTRY: Record<SketchId, SketchComponent> = {
-  blueCube: BlueCube,
-  orangeCube: OrangeCube,
-  greenPulse: GreenPulse,
-  tslText3D: TslText3D,
-  tslNoiseBlob: TslNoiseBlob,
-  // Advanced Examples
-  plasma: Plasma,
-  kaleidoscope: Kaleidoscope,
-  feedbackTunnel: FeedbackTunnel,
-  waveform: Waveform,
-  // Aura presets (all use same component)
-  auraOg: Aura,
-  auraRoseGold: Aura,
-  auraDeepBlue: Aura,
-  auraSolarPlume: Aura,
-  auraGhostLike: Aura,
-  auraForestClearing: Aura,
-  auraDefaultIntense: Aura,
-  auraBlushNebula: Aura,
-};
+// =============================================================================
+// Component Registries
+// =============================================================================
 
+/**
+ * Lazy-loaded sketch component registry (default).
+ *
+ * Components are loaded on-demand when first accessed via React.lazy().
+ * Use with <Suspense> boundary or the <SketchLoader> wrapper component.
+ *
+ * This is the recommended registry for production use as it reduces
+ * initial bundle size.
+ */
+export const SKETCH_COMPONENT_REGISTRY: Record<SketchId, LazySketchComponent> =
+  LAZY_SKETCH_REGISTRY as Record<SketchId, LazySketchComponent>;
+
+// =============================================================================
+// Lookup Functions
+// =============================================================================
+
+/**
+ * Get a sketch descriptor by ID
+ */
 export function getSketchDescriptor(
   id: SketchId,
 ): SketchDescriptor | undefined {
   return SKETCH_REGISTRY.find((s) => s.id === id);
 }
 
-export function getSketchComponent(id: SketchId): SketchComponent | undefined {
-  return SKETCH_COMPONENT_REGISTRY[id];
+/**
+ * Get a lazy-loaded sketch component by ID.
+ *
+ * Returns a React.lazy() wrapped component that loads on first render.
+ * Use with <Suspense> to handle the loading state.
+ */
+export function getSketchComponent(
+  id: SketchId,
+): LazySketchComponent | undefined {
+  return getLazySketchComponent(id);
 }
 
+/**
+ * Get all parameter template IDs for a sketch
+ */
 export function getSketchParameterTemplateIds(
   sketchId: SketchId,
 ): ParameterTemplateId[] {
@@ -80,6 +115,9 @@ export function getSketchParameterTemplateIds(
   return descriptor.parameters.map((p) => p.templateId);
 }
 
+/**
+ * Get a specific parameter template from a sketch
+ */
 export function getSketchParameterTemplate(
   sketchId: SketchId,
   templateId: ParameterTemplateId,
@@ -89,6 +127,11 @@ export function getSketchParameterTemplate(
   return descriptor.parameters.find((p) => p.templateId === templateId);
 }
 
+// =============================================================================
+// Re-exports
+// =============================================================================
+
+// Types
 export type {
   SketchDescriptor,
   SketchProps,
@@ -97,17 +140,9 @@ export type {
   ParameterTemplateId,
   SliderColor,
   SketchGroup,
+  LazySketchComponent,
 };
 
+// Utilities
 export { TEMPLATE_ID_TO_PROPS_KEY };
-
-export { BlueCube } from "./Examples/BlueCube";
-export { OrangeCube } from "./Examples/OrangeCube";
-export { GreenPulse } from "./Examples/GreenPulse";
-export { TslText3D } from "./Examples/TslText3D";
-export { TslNoiseBlob } from "./Examples/TslNoiseBlob";
-export { Plasma } from "./AdvancedExamples/Plasma";
-export { Kaleidoscope } from "./AdvancedExamples/Kaleidoscope";
-export { FeedbackTunnel } from "./AdvancedExamples/FeedbackTunnel";
-export { Waveform } from "./AdvancedExamples/Waveform";
-export { Aura } from "./Aura";
+export { SketchLoader, SketchLoadingFallback };

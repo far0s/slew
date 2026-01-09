@@ -9,6 +9,7 @@ import type { SketchId, SketchProps } from "../../sketches";
 import { STREAMING_FALLBACK_TIMEOUT_MS } from "../../config";
 import {
   SKETCH_COMPONENT_REGISTRY,
+  SketchLoadingFallback,
   getSketchDescriptor,
   TEMPLATE_ID_TO_PROPS_KEY,
 } from "../../sketches";
@@ -186,12 +187,16 @@ function RendererPreviewContent({
         const colors = getSlotColors?.(slot.index);
 
         return (
-          <SketchComponent
+          <Suspense
             key={`slot-${slot.index}`}
-            opacity={opacity}
-            params={sketchParams}
-            colors={colors}
-          />
+            fallback={<SketchLoadingFallback />}
+          >
+            <SketchComponent
+              opacity={opacity}
+              params={sketchParams}
+              colors={colors}
+            />
+          </Suspense>
         );
       })}
     </>

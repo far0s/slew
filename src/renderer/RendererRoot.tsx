@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import * as THREE from "three";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -9,6 +9,7 @@ import { SlotPreviewCapture } from "./SlotPreviewCapture";
 import { logger } from "../lib/logger";
 import {
   SKETCH_COMPONENT_REGISTRY,
+  SketchLoadingFallback,
   type SketchProps,
   type SketchId,
   getSketchDescriptor,
@@ -391,11 +392,13 @@ function RendererContent({
               }
             }}
           >
-            <SketchComponent
-              opacity={opacity}
-              params={sketchParams}
-              colors={colors}
-            />
+            <Suspense fallback={<SketchLoadingFallback />}>
+              <SketchComponent
+                opacity={opacity}
+                params={sketchParams}
+                colors={colors}
+              />
+            </Suspense>
           </group>
         );
       })}

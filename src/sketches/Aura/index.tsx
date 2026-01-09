@@ -26,7 +26,11 @@ import {
   dot,
 } from "three/tsl";
 
-import type { SketchDescriptor, SketchProps } from "../types";
+import type { SketchProps } from "../types";
+import { descriptor } from "./descriptor";
+
+// Re-export descriptor for backward compatibility
+export { descriptor };
 import {
   screenAspectUV,
   tanh,
@@ -38,167 +42,6 @@ import {
   technicolorTonemap,
   cinematicTonemap,
 } from "../../lib/tsl/utils";
-
-/**
- * Aura Sketch Descriptor
- *
- * Volumetric raymarched noise shader with extensive parameter control.
- * Ported from https://seb.cat/sketches/aura
- */
-export const descriptor: SketchDescriptor = {
-  id: "aura",
-  label: "Aura",
-  shortLabel: "Aura",
-  description:
-    "Volumetric raymarched noise with HDR accumulation and tonemapping (WebGPU/TSL).",
-  parameters: [
-    // Top 3 parameters for MIDI Mix (orderHint 10-30)
-    {
-      templateId: "bloom",
-      label: "Bloom",
-      group: "sketch",
-      orderHint: 10,
-      min: 0.1,
-      max: 5,
-      step: 0.1,
-      defaultValue: 3.2,
-      description: "Volumetric bloom/glow radius.",
-    },
-    {
-      templateId: "complexity",
-      label: "Complexity",
-      group: "sketch",
-      orderHint: 20,
-      min: 0.5,
-      max: 5,
-      step: 0.1,
-      defaultValue: 3.3,
-      description: "Noise frequency/detail level.",
-    },
-    {
-      templateId: "sample_offset",
-      label: "Sample Offset",
-      group: "sketch",
-      orderHint: 30,
-      min: 0.0,
-      max: 1.0,
-      step: 0.01,
-      defaultValue: 0.15,
-      description: "Dual-sample offset for color variation.",
-    },
-    // Additional parameters (orderHint 40+)
-    {
-      templateId: "speed",
-      label: "Speed",
-      group: "sketch",
-      orderHint: 40,
-      min: 0.0,
-      max: 2.0,
-      step: 0.05,
-      defaultValue: 0.3,
-      description: "Animation speed multiplier.",
-    },
-    {
-      templateId: "scale_base",
-      label: "Scale",
-      group: "sketch",
-      orderHint: 50,
-      min: 0.1,
-      max: 2.0,
-      step: 0.05,
-      defaultValue: 1.0,
-      description: "Overall zoom/scale.",
-    },
-    {
-      templateId: "distance",
-      label: "Distance",
-      group: "sketch",
-      orderHint: 60,
-      min: 0.5,
-      max: 4.0,
-      step: 0.05,
-      defaultValue: 2.0,
-      description: "Raymarch distance threshold.",
-    },
-    {
-      templateId: "attenuation",
-      label: "Attenuation",
-      group: "sketch",
-      orderHint: 70,
-      min: 0.01,
-      max: 0.5,
-      step: 0.01,
-      defaultValue: 0.15,
-      description: "Volume density/opacity.",
-    },
-    {
-      templateId: "ray_steps",
-      label: "Ray Steps",
-      group: "sketch",
-      orderHint: 80,
-      min: 4,
-      max: 16,
-      step: 1,
-      defaultValue: 8,
-      description: "Raymarch iteration count (quality vs performance).",
-    },
-    {
-      templateId: "seed",
-      label: "Seed",
-      group: "sketch",
-      orderHint: 90,
-      min: 0,
-      max: 10000,
-      step: 1,
-      defaultValue: 0,
-      description: "Random seed for noise variation.",
-    },
-    {
-      templateId: "color_interp",
-      label: "Color Intensity",
-      group: "sketch",
-      orderHint: 100,
-      min: 0.0,
-      max: 2.0,
-      step: 0.05,
-      defaultValue: 0.9,
-      description: "Color gradient interpolation strength.",
-    },
-    {
-      templateId: "grain_intensity",
-      label: "Grain",
-      group: "sketch",
-      orderHint: 110,
-      min: 0.0,
-      max: 0.2,
-      step: 0.01,
-      defaultValue: 0.05,
-      description: "Film grain texture intensity.",
-    },
-    {
-      templateId: "tonemap_mode",
-      label: "Tonemap",
-      group: "sketch",
-      orderHint: 120,
-      min: 0,
-      max: 7,
-      step: 1,
-      inputType: "select",
-      options: [
-        { value: 0, label: "None" },
-        { value: 1, label: "Reinhard" },
-        { value: 2, label: "Uncharted 2" },
-        { value: 3, label: "ACES" },
-        { value: 4, label: "Cross Process" },
-        { value: 5, label: "Bleach Bypass" },
-        { value: 6, label: "Technicolor" },
-        { value: 7, label: "Cinematic" },
-      ],
-      defaultValue: 0,
-      description: "Tonemapping operator for HDR color grading.",
-    },
-  ],
-};
 
 interface AuraUniforms {
   speed: { value: number };

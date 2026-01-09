@@ -19,65 +19,11 @@ import {
   screenSize,
 } from "three/tsl";
 import { useFrame, useThree } from "@react-three/fiber";
-import type { SketchDescriptor, SketchProps } from "../../types";
+import type { SketchProps } from "../../types";
+import { descriptor } from "./descriptor";
 
-export const descriptor: SketchDescriptor = {
-  id: "kaleidoscope",
-  label: "Kaleidoscope",
-  shortLabel: "Kaleid",
-  description:
-    "Mesmerizing mirror/reflection patterns with configurable symmetry and animated source texture (WebGPU/TSL).",
-  parameters: [
-    {
-      templateId: "kaleid_segments",
-      label: "Segments",
-      group: "sketch",
-      orderHint: 10,
-      min: 2,
-      max: 16,
-      step: 1,
-      defaultValue: 6,
-      color: "violet",
-      description: "Number of mirror segments (symmetry order).",
-    },
-    {
-      templateId: "kaleid_zoom",
-      label: "Zoom",
-      group: "sketch",
-      orderHint: 20,
-      min: 0.5,
-      max: 5,
-      step: 0.1,
-      defaultValue: 2,
-      color: "cyan",
-      description: "Zoom level of the pattern.",
-    },
-    {
-      templateId: "kaleid_rotation",
-      label: "Rotation Speed",
-      group: "sketch",
-      orderHint: 30,
-      min: 0,
-      max: 2,
-      step: 0.05,
-      defaultValue: 0.5,
-      color: "amber",
-      description: "Speed of the kaleidoscope rotation.",
-    },
-    {
-      templateId: "kaleid_pattern_speed",
-      label: "Pattern Speed",
-      group: "sketch",
-      orderHint: 40,
-      min: 0,
-      max: 3,
-      step: 0.05,
-      defaultValue: 1,
-      color: "rose",
-      description: "Animation speed of the source pattern.",
-    },
-  ],
-};
+// Re-export descriptor for backward compatibility
+export { descriptor };
 
 interface KaleidoscopeUniforms {
   segments: { value: number };
