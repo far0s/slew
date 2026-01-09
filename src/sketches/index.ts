@@ -11,6 +11,7 @@ import type {
 import { examplesGroup } from "./Examples";
 import { advancedExamplesGroup } from "./AdvancedExamples";
 import { auraGroup } from "./Aura/presets";
+import { TEMPLATE_ID_TO_PROPS_KEY } from "./parameterMappings";
 
 import { BlueCube } from "./Examples/BlueCube";
 import { OrangeCube } from "./Examples/OrangeCube";
@@ -97,6 +98,8 @@ export type {
   SliderColor,
   SketchGroup,
 };
+
+export { TEMPLATE_ID_TO_PROPS_KEY };
 
 export { BlueCube } from "./Examples/BlueCube";
 export { OrangeCube } from "./Examples/OrangeCube";

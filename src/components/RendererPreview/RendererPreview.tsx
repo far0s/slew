@@ -6,7 +6,11 @@
 import { Suspense, useState, useCallback, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { SketchId, SketchProps } from "../../sketches";
-import { SKETCH_COMPONENT_REGISTRY, getSketchDescriptor } from "../../sketches";
+import {
+  SKETCH_COMPONENT_REGISTRY,
+  getSketchDescriptor,
+  TEMPLATE_ID_TO_PROPS_KEY,
+} from "../../sketches";
 import { makeSlotParameterId } from "../../slots/slotTypes";
 import { WebGPUCanvas } from "../../renderer/WebGPUCanvas";
 import { StreamedPreview } from "../StreamedPreview";
@@ -29,34 +33,6 @@ export interface RendererPreviewProps {
   useStreaming?: boolean;
   aspectRatio?: number;
 }
-
-const TEMPLATE_ID_TO_PROPS_KEY: Record<string, string> = {
-  alpha: "alpha",
-  brightness: "brightness",
-  rotation_speed: "rotationSpeed",
-  tint: "tint",
-  wobble: "wobble",
-  tint_lfo_depth: "tintLfoDepth",
-  scale: "scale",
-  pulse_speed: "pulseSpeed",
-  hue_shift: "hueShift",
-  glow_intensity: "glowIntensity",
-  noise_scale: "noiseScale",
-  noise_speed: "noiseSpeed",
-  color_mix: "colorMix",
-  bloom: "bloom",
-  complexity: "complexity",
-  sample_offset: "sampleOffset",
-  speed: "speed",
-  scale_base: "scaleBase",
-  distance: "distance",
-  attenuation: "attenuation",
-  ray_steps: "raySteps",
-  seed: "seed",
-  color_interp: "colorInterp",
-  grain_intensity: "grainIntensity",
-  tonemap_mode: "tonemapMode",
-};
 
 interface TintLfoDriverProps {
   depth: number;

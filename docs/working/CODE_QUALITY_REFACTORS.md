@@ -15,7 +15,7 @@ This document tracks 6 chore tasks from the backlog that improve code quality, r
 
 ## Tasks (in implementation order)
 
-### 1. ⬜ Duplicate Template ID Mapping Refactor
+### 1. ✅ Duplicate Template ID Mapping Refactor
 
 **Goal**: Extract duplicate `TEMPLATE_ID_TO_PROPS_KEY` mappings to a shared module.
 
@@ -29,11 +29,11 @@ This violates DRY and risks inconsistency.
 
 **Subtasks**:
 
-- [ ] Create `src/sketches/parameterMappings.ts` with the canonical mapping
-- [ ] Import in `RendererRoot.tsx`
-- [ ] Import in `useParameterStore.ts`
-- [ ] Import in `RendererPreview.tsx`
-- [ ] Add test to ensure mapping is complete (all ParameterTemplateIds covered)
+- [x] Create `src/sketches/parameterMappings.ts` with the canonical mapping
+- [x] Import in `RendererRoot.tsx`
+- [x] Import in `useParameterStore.ts`
+- [x] Import in `RendererPreview.tsx`
+- [x] Add test to ensure mapping is complete (all ParameterTemplateIds covered)
 
 ---
 
@@ -210,9 +210,10 @@ export const SKETCH_COMPONENT_REGISTRY: Record<SketchId, SketchComponent> = {
 
 ## Progress Log
 
-| Date | Task          | Status | Notes                          |
-| ---- | ------------- | ------ | ------------------------------ |
-| -    | Starting work | 🚧     | Created working doc and branch |
+| Date       | Task                          | Status | Notes                                                                                     |
+| ---------- | ----------------------------- | ------ | ----------------------------------------------------------------------------------------- |
+| -          | Starting work                 | 🚧     | Created working doc and branch                                                            |
+| 2026-01-09 | Duplicate Template ID Mapping | ✅     | Created `parameterMappings.ts`, updated 3 consumers, added 6 tests (380 total tests pass) |
 
 ---
 
