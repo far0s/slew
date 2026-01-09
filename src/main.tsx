@@ -1,11 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import App from "./App";
 import RendererRoot from "./renderer/RendererRoot";
 import "./reset.css";
 import "./globals.css";
-
-const pathname = window.location.pathname;
 
 const rootElement = document.getElementById("root");
 
@@ -16,16 +15,19 @@ if (!rootElement) {
 
 const root = ReactDOM.createRoot(rootElement);
 
-// Route based on pathname. Later we can refine this (e.g. hash, search params)
-// or read the window label from Tauri if needed.
-if (pathname === "/renderer") {
+// Get the window label from Tauri to determine which component to render.
+// This is more reliable than window.location.pathname in production builds
+// where Tauri's asset resolution can change the URL path during fallback.
+const windowLabel = getCurrentWindow().label;
+
+if (windowLabel === "renderer") {
   root.render(
     <React.StrictMode>
       <RendererRoot />
     </React.StrictMode>,
   );
 } else {
-  // Default to the controls UI
+  // Default to the controls UI (label should be "controls")
   root.render(
     <React.StrictMode>
       <App />

@@ -482,6 +482,18 @@ Slot count increased from 6 to 8 to match Midimix columns for 1:1 hardware mappi
 
 ## Version History
 
+### v0.9.0 (Code Quality & Developer Experience)
+
+- **Better Color Picker**: React Aria-based color picker with HSB color area, hue slider, format toggle (Hex/RGB/HSL), copy/paste, eye dropper, preset swatches, color history, and optional alpha support
+- **Preview Streaming**: Pixel-perfect frame streaming from Renderer → Controls window with per-slot isolation, binary IPC protocol, streaming indicators, round-robin capture, and automatic fallback to local rendering
+- **Tailwind Removal**: Migrated to CSS Modules with ~55% smaller CSS bundle (15.85 KB → 7.07 KB); all styles now in `.module.css` files with CSS variables in `globals.css`
+- **Console Logging Cleanup**: Centralized logger utility with level-based logging; reduced from 124 → 65 logs (51 errors, 14 warnings, 0 debug noise)
+- **Sketch Search/Filter**: Search functionality in inline sketch browser with case-insensitive matching, group match counts, auto-expand, and session persistence
+- **Component Test Coverage**: 374 tests across 10 test files covering SlotColumn, ColorPicker, MidiPanel, AudioPanel, StreamedPreview, Sidebar, and more
+- **Code Quality Refactors**: 6 maintenance tasks including centralized config files, localStorage schema versioning with migrations, lazy sketch loading, frame distribution buffer pooling, and stats reporting throttling (98% IPC reduction)
+- **Test Coverage**: 101 Rust tests, 399 TypeScript tests (500 total)
+- **Bug Fixes**: Prevented body scrollbars and weird scroll behavior
+
 ### v0.8.0 (Sidebar & Appearance Update)
 
 - Video tab restructured: Renderer stats, Output backends, Recording placeholder

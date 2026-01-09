@@ -7,15 +7,22 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
   plugins: [react()],
 
+  // Use relative paths for assets - required for Tauri which serves
+  // assets from a custom protocol (tauri://localhost/).
+  // This works in both dev mode (localhost) and production builds.
+  base: "./",
+
   build: {
     // Three.js is inherently large (~1.5 MB), suppress warning for vendor-three chunk
     chunkSizeWarningLimit: 1600,
     rollupOptions: {
       output: {
+        // Chunking strategy optimized for Tauri builds.
+        // IMPORTANT: React and all React-dependent libraries must be in the same chunk
+        // to avoid "createContext is undefined" errors from chunk load order issues.
         manualChunks: (id: string) => {
-          // Vendor chunks - large libraries that rarely change
           if (id.includes("node_modules")) {
-            // Three.js and related 3D libraries (only used by renderer)
+            // Three.js and related 3D libraries - large and only used by renderer window
             if (
               id.includes("three") ||
               id.includes("@react-three") ||
@@ -25,27 +32,20 @@ export default defineConfig(async () => ({
             ) {
               return "vendor-three";
             }
-            // React core (used by both windows)
-            if (id.includes("react-dom") || id.includes("/react/")) {
-              return "vendor-react";
-            }
-            // Tauri APIs
-            if (id.includes("@tauri-apps")) {
-              return "vendor-tauri";
-            }
-            // Other vendor dependencies
+            // All other vendor code (React, Tauri, Radix, react-aria, etc.) stays together
+            // to ensure proper initialization order - DO NOT split React into its own chunk
             return "vendor";
           }
 
-          // App chunks - split by window
+          // App chunks - split by window for better caching
           if (id.includes("/src/")) {
             // Renderer-specific code (3D, sketches)
             if (id.includes("/renderer/") || id.includes("/sketches/")) {
-              return "renderer";
+              return "app-renderer";
             }
             // Controls-specific code
             if (id.includes("/components/") || id.includes("/controls/")) {
-              return "controls";
+              return "app-controls";
             }
             // Shared code (inputs, hooks, lib, slots)
             if (
@@ -54,7 +54,7 @@ export default defineConfig(async () => ({
               id.includes("/lib/") ||
               id.includes("/slots/")
             ) {
-              return "shared";
+              return "app-shared";
             }
           }
 
