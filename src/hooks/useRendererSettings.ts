@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { emit, listen } from "@tauri-apps/api/event";
 import { logger } from "../lib/logger";
+import { DEFAULT_DPR, DEFAULT_PREVIEW_FPS, MIN_DPR, MAX_DPR } from "../config";
 
 /**
  * Renderer settings that can be configured from the Controls window
@@ -58,8 +59,8 @@ const SETTINGS_EVENT = "renderer-settings-changed";
 const INFO_EVENT = "renderer-info-updated";
 
 const DEFAULT_SETTINGS: RendererSettings = {
-  dpr: 1, // Default to 1x for performance
-  previewStreamFps: 30, // Default to 30fps for smooth previews
+  dpr: DEFAULT_DPR,
+  previewStreamFps: DEFAULT_PREVIEW_FPS,
 };
 
 /**
@@ -138,7 +139,7 @@ export function useRendererSettings(): UseRendererSettingsResult {
 
   // Update DPR and broadcast
   const setDpr = useCallback((dpr: number) => {
-    const clampedDpr = Math.max(0.25, Math.min(3, dpr));
+    const clampedDpr = Math.max(MIN_DPR, Math.min(MAX_DPR, dpr));
     setSettings((prev) => {
       const next = { ...prev, dpr: clampedDpr };
       saveSettings(next);

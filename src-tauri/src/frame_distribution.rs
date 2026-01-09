@@ -1,5 +1,6 @@
 //! Frame distribution from Renderer to Controls window for preview streaming.
 
+use crate::config::{DEFAULT_PREVIEW_FPS, DEFAULT_PREVIEW_RESOLUTION_SCALE};
 use base64::Engine;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -58,8 +59,8 @@ impl Default for DistributionConfig {
             enabled: true,
             stream_composited: true,
             stream_slots: true,
-            resolution_scale: 0.5,
-            target_fps: 30,
+            resolution_scale: DEFAULT_PREVIEW_RESOLUTION_SCALE,
+            target_fps: DEFAULT_PREVIEW_FPS,
         }
     }
 }

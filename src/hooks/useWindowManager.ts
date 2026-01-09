@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { logger } from "../lib/logger";
+import { HEARTBEAT_INTERVAL_MS, STATUS_POLL_INTERVAL_MS } from "../config";
 
 // =============================================================================
 // Types
@@ -47,16 +48,6 @@ export interface WindowUnresponsiveEvent {
   label: string;
   timestamp: string;
 }
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-/** Heartbeat interval in milliseconds */
-const HEARTBEAT_INTERVAL_MS = 5000;
-
-/** Status polling interval in milliseconds */
-const STATUS_POLL_INTERVAL_MS = 10000;
 
 // =============================================================================
 // Tauri Commands

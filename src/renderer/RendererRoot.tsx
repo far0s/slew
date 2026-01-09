@@ -17,10 +17,12 @@ import {
 import { makeSlotParameterId } from "../slots/slotTypes";
 import { useRendererSettings } from "../hooks";
 import type { RendererInfo, RendererStats } from "../hooks";
+import {
+  HEARTBEAT_INTERVAL_MS,
+  FPS_SAMPLE_COUNT,
+  STATS_REPORT_INTERVAL_MS,
+} from "../config";
 import styles from "./RendererRoot.module.css";
-
-// Heartbeat interval for health monitoring
-const HEARTBEAT_INTERVAL_MS = 5000;
 
 // =============================================================================
 // Types
@@ -199,14 +201,6 @@ interface RendererInfoReporterProps {
   backend: "webgpu" | "webgl2" | "unknown";
   reportInfo: (info: RendererInfo) => void;
 }
-
-// Number of frame time samples to average for smooth FPS display
-const FPS_SAMPLE_COUNT = 60;
-
-// Interval for reporting stats to Controls window (1fps = 1000ms)
-// Frame timing is still collected every frame for accurate FPS calculation,
-// but the full RendererInfo is only built and reported at this rate.
-const STATS_REPORT_INTERVAL_MS = 1000;
 
 /**
  * Component that reports renderer info (dimensions, DPR, backend, stats) to Controls window.

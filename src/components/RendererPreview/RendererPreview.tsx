@@ -6,6 +6,7 @@
 import { Suspense, useState, useCallback, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { SketchId, SketchProps } from "../../sketches";
+import { STREAMING_FALLBACK_TIMEOUT_MS } from "../../config";
 import {
   SKETCH_COMPONENT_REGISTRY,
   getSketchDescriptor,
@@ -17,7 +18,6 @@ import { StreamedPreview } from "../StreamedPreview";
 import styles from "./RendererPreview.module.css";
 
 const USE_STREAMING_BY_DEFAULT = true;
-const STREAMING_FALLBACK_TIMEOUT_MS = 3000;
 
 export interface SlotInfo {
   index: number;

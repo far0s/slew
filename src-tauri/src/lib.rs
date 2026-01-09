@@ -10,6 +10,7 @@ use tauri::{AppHandle, Emitter, Manager, RunEvent};
 
 pub mod audio;
 pub mod common;
+pub mod config;
 pub mod frame_distribution;
 pub mod hid;
 pub mod midi;

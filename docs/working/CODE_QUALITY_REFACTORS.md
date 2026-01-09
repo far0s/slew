@@ -71,7 +71,7 @@ The `useRendererSettings.ts` hook already throttles to 250ms (4fps), but the col
 
 ---
 
-### 3. ⬜ Hard-Coded Config Extraction
+### 3. ✅ Hard-Coded Config Extraction
 
 **Goal**: Extract magic numbers to centralized configuration files.
 
@@ -94,12 +94,14 @@ The `useRendererSettings.ts` hook already throttles to 250ms (4fps), but the col
 
 **Subtasks**:
 
-- [ ] Create `src/config.ts` for frontend constants
-- [ ] Create `src-tauri/src/config.rs` for backend constants
-- [ ] Group by category (timing, audio, video, etc.)
-- [ ] Document each constant with comments
-- [ ] Replace magic numbers with config imports
-- [ ] Consider future user-configurable settings
+- [x] Create `src/config.ts` for frontend constants
+- [x] Create `src-tauri/src/config.rs` for backend constants
+- [x] Group by category (timing, audio, video, etc.)
+- [x] Document each constant with concise and clear comments
+- [x] Replace magic numbers with config imports
+- [x] Consider future user-configurable settings
+
+**Result**: Created `src/config.ts` (28 lines, 13 constants) and `src-tauri/src/config.rs` (30 lines, 15 constants). Updated 5 frontend files and 1 Rust file to use centralized config. Audio constants remain in `audio/constants.rs` as they're tightly coupled to the DSP pipeline.
 
 ---
 
@@ -217,12 +219,13 @@ export const SKETCH_COMPONENT_REGISTRY: Record<SketchId, SketchComponent> = {
 | -          | Starting work                 | 🚧     | Created working doc and branch                                                                   |
 | 2026-01-09 | Duplicate Template ID Mapping | ✅     | Created `parameterMappings.ts`, updated 3 consumers, added 6 tests (380 total tests pass)        |
 | 2026-01-09 | Stats Reporting Throttling    | ✅     | Added `STATS_REPORT_INTERVAL_MS` (1000ms), throttle in `RendererInfoReporter`, 98% IPC reduction |
+| 2026-01-09 | Hard-Coded Config Extraction  | ✅     | Created `config.ts` + `config.rs`, updated 6 files, 97 Rust + 380 TS tests pass                  |
 
 ---
 
 ## Open Questions
 
-1. **Config extraction scope**: Should Rust constants be exposed to frontend via Tauri commands for runtime access, or keep them separate?
+1. ~~**Config extraction scope**: Should Rust constants be exposed to frontend via Tauri commands for runtime access, or keep them separate?~~ **Resolved**: Keep separate for now; audio constants stay in `audio/constants.rs`.
 
 2. **LocalStorage migration**: What happens if migration fails? Fallback to defaults and log warning?
 
