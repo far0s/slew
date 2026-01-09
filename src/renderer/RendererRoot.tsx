@@ -203,6 +203,11 @@ interface RendererInfoReporterProps {
 // Number of frame time samples to average for smooth FPS display
 const FPS_SAMPLE_COUNT = 60;
 
+// Interval for reporting stats to Controls window (1fps = 1000ms)
+// Frame timing is still collected every frame for accurate FPS calculation,
+// but the full RendererInfo is only built and reported at this rate.
+const STATS_REPORT_INTERVAL_MS = 1000;
+
 /**
  * Component that reports renderer info (dimensions, DPR, backend, stats) to Controls window.
  * Must be inside a Canvas to access useThree.
@@ -215,22 +220,31 @@ function RendererInfoReporter({
 }: RendererInfoReporterProps) {
   const { size, gl } = useThree();
 
-  // FPS tracking
+  // FPS tracking - collected every frame for accuracy
   const frameTimesRef = useRef<number[]>([]);
   const lastTimeRef = useRef<number>(performance.now());
 
-  // Track frame times and report stats
+  // Throttling - only report at STATS_REPORT_INTERVAL_MS
+  const lastReportTimeRef = useRef<number>(0);
+
+  // Track frame times every frame, but only report stats at throttled rate
   useFrame(() => {
     const now = performance.now();
     const deltaMs = now - lastTimeRef.current;
     lastTimeRef.current = now;
 
-    // Add frame time to ring buffer
+    // Add frame time to ring buffer (always, for accurate FPS)
     const frameTimes = frameTimesRef.current;
     frameTimes.push(deltaMs);
     if (frameTimes.length > FPS_SAMPLE_COUNT) {
       frameTimes.shift();
     }
+
+    // Only build and report stats at throttled rate
+    if (now - lastReportTimeRef.current < STATS_REPORT_INTERVAL_MS) {
+      return;
+    }
+    lastReportTimeRef.current = now;
 
     // Calculate average frame time and FPS
     const avgFrameTime =

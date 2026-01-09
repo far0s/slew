@@ -37,7 +37,7 @@ This violates DRY and risks inconsistency.
 
 ---
 
-### 2. ⬜ Stats Reporting Throttling
+### 2. ✅ Stats Reporting Throttling
 
 **Goal**: Throttle renderer stats reporting to reduce event emission overhead.
 
@@ -60,12 +60,14 @@ The `useRendererSettings.ts` hook already throttles to 250ms (4fps), but the col
 
 **Subtasks**:
 
-- [ ] Add `STATS_REPORT_INTERVAL_MS` constant (1000ms = 1fps)
-- [ ] Add throttle logic to `RendererInfoReporter`
-- [ ] Keep frame time collection at full rate
-- [ ] Only build and report `RendererInfo` at throttled rate
-- [ ] Verify stats display still updates smoothly
-- [ ] Measure IPC event reduction
+- [x] Add `STATS_REPORT_INTERVAL_MS` constant (1000ms = 1fps)
+- [x] Add throttle logic to `RendererInfoReporter`
+- [x] Keep frame time collection at full rate
+- [x] Only build and report `RendererInfo` at throttled rate
+- [x] Verify stats display still updates smoothly
+- [x] Measure IPC event reduction
+
+**Result**: Reduced `reportInfo()` calls from 60/sec to 1/sec (98% reduction). Frame timing ring buffer still updated every frame for accurate FPS calculation.
 
 ---
 
@@ -210,10 +212,11 @@ export const SKETCH_COMPONENT_REGISTRY: Record<SketchId, SketchComponent> = {
 
 ## Progress Log
 
-| Date       | Task                          | Status | Notes                                                                                     |
-| ---------- | ----------------------------- | ------ | ----------------------------------------------------------------------------------------- |
-| -          | Starting work                 | 🚧     | Created working doc and branch                                                            |
-| 2026-01-09 | Duplicate Template ID Mapping | ✅     | Created `parameterMappings.ts`, updated 3 consumers, added 6 tests (380 total tests pass) |
+| Date       | Task                          | Status | Notes                                                                                            |
+| ---------- | ----------------------------- | ------ | ------------------------------------------------------------------------------------------------ |
+| -          | Starting work                 | 🚧     | Created working doc and branch                                                                   |
+| 2026-01-09 | Duplicate Template ID Mapping | ✅     | Created `parameterMappings.ts`, updated 3 consumers, added 6 tests (380 total tests pass)        |
+| 2026-01-09 | Stats Reporting Throttling    | ✅     | Added `STATS_REPORT_INTERVAL_MS` (1000ms), throttle in `RendererInfoReporter`, 98% IPC reduction |
 
 ---
 
