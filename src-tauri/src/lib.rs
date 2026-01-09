@@ -896,6 +896,7 @@ pub fn run() {
             frame_distribution::set_frame_distribution_config,
             frame_distribution::set_frame_distribution_enabled,
             frame_distribution::get_frame_distribution_stats,
+            frame_distribution::get_buffer_pool_stats,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

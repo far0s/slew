@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { BUFFER_POOL_STATS_INTERVAL_MS } from "../config";
 
 // ============================================================================
 // Types (matching Rust structs)
@@ -41,6 +42,23 @@ export interface BackendStatus {
   receivers: number | null;
   frames_published: number;
   last_error: string | null;
+}
+
+/**
+ * Buffer pool statistics for frame distribution.
+ * Tracks allocation efficiency for base64 encoding buffers.
+ */
+export interface BufferPoolStats {
+  /** Number of times a buffer was reused from the pool */
+  hits: number;
+  /** Number of times a new buffer had to be allocated */
+  misses: number;
+  /** Total allocations (initial + resizes) */
+  allocations: number;
+  /** Number of buffers currently in the pool */
+  pooled_buffers: number;
+  /** Total capacity of pooled buffers in bytes */
+  pooled_capacity_bytes: number;
 }
 
 // ============================================================================
@@ -79,6 +97,11 @@ export async function shutdownVideoBackend(
   return invoke<BackendStatus>("shutdown_video_backend", {
     backendId,
   });
+}
+
+/** Get buffer pool statistics for frame distribution. */
+export async function getBufferPoolStats(): Promise<BufferPoolStats> {
+  return invoke<BufferPoolStats>("get_buffer_pool_stats");
 }
 
 /**
@@ -489,5 +512,57 @@ export function useVideoBackend(backendId: string) {
     toggle,
     isAvailable: status?.available ?? false,
     isActive: status?.active ?? false,
+  };
+}
+
+/**
+ * Hook to fetch buffer pool statistics for frame distribution.
+ *
+ * Polls the buffer pool stats at a regular interval to display
+ * hit rate and allocation efficiency.
+ */
+export function useBufferPoolStats() {
+  const [stats, setStats] = useState<BufferPoolStats | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchStats = async () => {
+      try {
+        const result = await getBufferPoolStats();
+        if (mounted) {
+          setStats(result);
+          setError(null);
+        }
+      } catch (e) {
+        if (mounted) {
+          setError(e instanceof Error ? e.message : String(e));
+        }
+      }
+    };
+
+    // Initial fetch
+    fetchStats();
+
+    // Poll at configured interval
+    const interval = setInterval(fetchStats, BUFFER_POOL_STATS_INTERVAL_MS);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Compute hit rate (0-100)
+  const hitRate =
+    stats && stats.hits + stats.misses > 0
+      ? Math.round((stats.hits / (stats.hits + stats.misses)) * 100)
+      : null;
+
+  return {
+    stats,
+    hitRate,
+    error,
   };
 }

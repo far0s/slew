@@ -26,3 +26,6 @@ export const MAX_DPR = 3;
 
 // Streaming Fallback
 export const STREAMING_FALLBACK_TIMEOUT_MS = 3000;
+
+// Buffer Pool Stats
+export const BUFFER_POOL_STATS_INTERVAL_MS = 2000; // Poll every 2 seconds
