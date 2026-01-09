@@ -1,12 +1,138 @@
 //! Frame distribution from Renderer to Controls window for preview streaming.
 
+use crate::config::{DEFAULT_PREVIEW_FPS, DEFAULT_PREVIEW_RESOLUTION_SCALE};
+use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::RwLock;
+use std::sync::{Mutex, RwLock};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter};
+
+// Buffer pool size buckets based on common resolutions (RGBA * 4/3 for base64)
+// Each bucket size is the approximate base64 output size for that resolution
+const BUFFER_BUCKET_SIZES: &[(u32, u32, usize)] = &[
+    (512, 512, 512 * 512 * 4 * 4 / 3 + 1024),     // ~1.4 MB
+    (1024, 1024, 1024 * 1024 * 4 * 4 / 3 + 1024), // ~5.6 MB
+    (1920, 1080, 1920 * 1080 * 4 * 4 / 3 + 1024), // ~11 MB
+    (2560, 1440, 2560 * 1440 * 4 * 4 / 3 + 1024), // ~19.7 MB
+    (3840, 2160, 3840 * 2160 * 4 * 4 / 3 + 1024), // ~44 MB
+];
+
+/// Buffer pool for reusing base64 encoding buffers.
+/// Reduces allocations during window resizing by maintaining pre-sized buffers.
+pub struct BufferPool {
+    /// Available buffers keyed by bucket size
+    buckets: Mutex<HashMap<usize, Vec<String>>>,
+    /// Number of times a buffer was reused from the pool
+    hits: AtomicU64,
+    /// Number of times a new buffer had to be allocated
+    misses: AtomicU64,
+    /// Total allocations (initial + resizes)
+    allocations: AtomicU64,
+}
+
+impl BufferPool {
+    pub fn new() -> Self {
+        Self {
+            buckets: Mutex::new(HashMap::new()),
+            hits: AtomicU64::new(0),
+            misses: AtomicU64::new(0),
+            allocations: AtomicU64::new(0),
+        }
+    }
+
+    /// Find the appropriate bucket size for a given data size
+    fn bucket_for_size(required_size: usize) -> usize {
+        for &(_, _, bucket_size) in BUFFER_BUCKET_SIZES {
+            if bucket_size >= required_size {
+                return bucket_size;
+            }
+        }
+        // If larger than all buckets, use the exact size rounded up
+        required_size
+    }
+
+    /// Acquire a buffer from the pool, or allocate a new one if none available.
+    /// The buffer will have capacity >= required_size and will be cleared.
+    pub fn acquire(&self, required_size: usize) -> String {
+        let bucket_size = Self::bucket_for_size(required_size);
+
+        if let Ok(mut buckets) = self.buckets.lock() {
+            if let Some(buffers) = buckets.get_mut(&bucket_size) {
+                if let Some(mut buffer) = buffers.pop() {
+                    self.hits.fetch_add(1, Ordering::Relaxed);
+                    buffer.clear();
+                    return buffer;
+                }
+            }
+        }
+
+        // No buffer available, allocate a new one
+        self.misses.fetch_add(1, Ordering::Relaxed);
+        self.allocations.fetch_add(1, Ordering::Relaxed);
+        String::with_capacity(bucket_size)
+    }
+
+    /// Release a buffer back to the pool for reuse.
+    pub fn release(&self, mut buffer: String) {
+        // Only pool buffers that match our bucket sizes to avoid unbounded growth
+        let capacity = buffer.capacity();
+        let bucket_size = Self::bucket_for_size(capacity);
+
+        // Only keep if it's close to a bucket size (within 2x)
+        if capacity <= bucket_size * 2 {
+            buffer.clear();
+            if let Ok(mut buckets) = self.buckets.lock() {
+                let buffers = buckets.entry(bucket_size).or_insert_with(Vec::new);
+                // Limit pool size per bucket to avoid memory bloat
+                if buffers.len() < 4 {
+                    buffers.push(buffer);
+                }
+            }
+        }
+        // If buffer is too large or pool is full, let it drop
+    }
+
+    /// Get pool statistics
+    pub fn stats(&self) -> BufferPoolStats {
+        let (total_buffers, total_capacity) = if let Ok(buckets) = self.buckets.lock() {
+            buckets.values().fold((0, 0), |(count, cap), buffers| {
+                (
+                    count + buffers.len(),
+                    cap + buffers.iter().map(|b| b.capacity()).sum::<usize>(),
+                )
+            })
+        } else {
+            (0, 0)
+        };
+
+        BufferPoolStats {
+            hits: self.hits.load(Ordering::Relaxed),
+            misses: self.misses.load(Ordering::Relaxed),
+            allocations: self.allocations.load(Ordering::Relaxed),
+            pooled_buffers: total_buffers as u64,
+            pooled_capacity_bytes: total_capacity as u64,
+        }
+    }
+}
+
+impl Default for BufferPool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BufferPoolStats {
+    pub hits: u64,
+    pub misses: u64,
+    pub allocations: u64,
+    pub pooled_buffers: u64,
+    pub pooled_capacity_bytes: u64,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -41,6 +167,8 @@ pub struct DistributionStats {
     pub frames_dropped: u64,
     pub avg_distribute_ms: f64,
     pub fps: f64,
+    #[serde(default)]
+    pub buffer_pool: BufferPoolStats,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,8 +186,8 @@ impl Default for DistributionConfig {
             enabled: true,
             stream_composited: true,
             stream_slots: true,
-            resolution_scale: 0.5,
-            target_fps: 30,
+            resolution_scale: DEFAULT_PREVIEW_RESOLUTION_SCALE,
+            target_fps: DEFAULT_PREVIEW_FPS,
         }
     }
 }
@@ -116,12 +244,13 @@ impl DistributorStats {
         }
     }
 
-    fn to_public_stats(&self) -> DistributionStats {
+    fn to_public_stats(&self, buffer_pool_stats: BufferPoolStats) -> DistributionStats {
         DistributionStats {
             frames_distributed: self.frames_distributed,
             frames_dropped: self.frames_dropped,
             avg_distribute_ms: self.avg_distribute_ms(),
             fps: self.current_fps,
+            buffer_pool: buffer_pool_stats,
         }
     }
 }
@@ -132,6 +261,7 @@ pub struct FrameDistributor {
     frame_counter: AtomicU64,
     active: AtomicBool,
     stats: RwLock<DistributorStats>,
+    buffer_pool: BufferPool,
 }
 
 impl FrameDistributor {
@@ -142,6 +272,7 @@ impl FrameDistributor {
             frame_counter: AtomicU64::new(0),
             active: AtomicBool::new(true),
             stats: RwLock::new(DistributorStats::new()),
+            buffer_pool: BufferPool::new(),
         }
     }
 
@@ -208,13 +339,24 @@ impl FrameDistributor {
             FrameSource::Slot(_) => "preview-frame-slot".to_string(),
         };
 
+        // Use buffer pool for base64 encoding to reduce allocations
+        let required_size = data.len() * 4 / 3 + 4; // base64 output size + padding
+        let mut encode_buffer = self.buffer_pool.acquire(required_size);
+        STANDARD.encode_string(data, &mut encode_buffer);
+
+        // Clone the encoded data for the metadata, keeping the buffer for reuse
+        let encoded_data = encode_buffer.clone();
+
+        // Return the buffer to the pool (still has its capacity)
+        self.buffer_pool.release(encode_buffer);
+
         let metadata = FrameMetadata {
             frame_number,
             width,
             height,
             source,
             capture_timestamp_ms,
-            data: base64::engine::general_purpose::STANDARD.encode(data),
+            data: encoded_data,
         };
 
         // Use broadcast emit for all frame types
@@ -238,10 +380,18 @@ impl FrameDistributor {
     }
 
     pub fn get_stats(&self) -> DistributionStats {
+        let buffer_pool_stats = self.buffer_pool.stats();
         self.stats
             .read()
-            .map(|s| s.to_public_stats())
-            .unwrap_or_default()
+            .map(|s| s.to_public_stats(buffer_pool_stats.clone()))
+            .unwrap_or_else(|_| DistributionStats {
+                buffer_pool: buffer_pool_stats,
+                ..Default::default()
+            })
+    }
+
+    pub fn get_buffer_pool_stats(&self) -> BufferPoolStats {
+        self.buffer_pool.stats()
     }
 }
 
@@ -326,6 +476,11 @@ pub fn get_frame_distribution_stats() -> DistributionStats {
     FRAME_DISTRIBUTOR.get_stats()
 }
 
+#[tauri::command]
+pub fn get_buffer_pool_stats() -> BufferPoolStats {
+    FRAME_DISTRIBUTOR.get_buffer_pool_stats()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -368,5 +523,85 @@ mod tests {
         let retrieved = distributor.get_config();
         assert!(retrieved.stream_slots);
         assert_eq!(retrieved.target_fps, 60);
+    }
+
+    #[test]
+    fn test_buffer_pool_bucket_selection() {
+        // Small size should use smallest bucket
+        let bucket = BufferPool::bucket_for_size(1000);
+        assert_eq!(bucket, BUFFER_BUCKET_SIZES[0].2);
+
+        // 1024x1024 RGBA base64 size should use second bucket
+        let size_1024 = 1024 * 1024 * 4 * 4 / 3;
+        let bucket = BufferPool::bucket_for_size(size_1024);
+        assert_eq!(bucket, BUFFER_BUCKET_SIZES[1].2);
+
+        // 1920x1080 size should use third bucket
+        let size_1080p = 1920 * 1080 * 4 * 4 / 3;
+        let bucket = BufferPool::bucket_for_size(size_1080p);
+        assert_eq!(bucket, BUFFER_BUCKET_SIZES[2].2);
+    }
+
+    #[test]
+    fn test_buffer_pool_acquire_release() {
+        let pool = BufferPool::new();
+
+        // First acquire should be a miss (new allocation)
+        let buffer1 = pool.acquire(1000);
+        assert!(buffer1.capacity() >= BUFFER_BUCKET_SIZES[0].2);
+
+        let stats = pool.stats();
+        assert_eq!(stats.misses, 1);
+        assert_eq!(stats.hits, 0);
+        assert_eq!(stats.allocations, 1);
+
+        // Release the buffer
+        pool.release(buffer1);
+
+        let stats = pool.stats();
+        assert_eq!(stats.pooled_buffers, 1);
+
+        // Second acquire should be a hit (reuse)
+        let buffer2 = pool.acquire(1000);
+        assert!(buffer2.capacity() >= BUFFER_BUCKET_SIZES[0].2);
+
+        let stats = pool.stats();
+        assert_eq!(stats.hits, 1);
+        assert_eq!(stats.misses, 1); // Still 1 miss from before
+    }
+
+    #[test]
+    fn test_buffer_pool_different_sizes() {
+        let pool = BufferPool::new();
+
+        // Acquire small buffer
+        let small = pool.acquire(1000);
+        pool.release(small);
+
+        // Acquire larger buffer - should be a miss (different bucket)
+        let large = pool.acquire(1920 * 1080 * 4 * 4 / 3);
+
+        let stats = pool.stats();
+        assert_eq!(stats.misses, 2); // Both were misses
+        assert_eq!(stats.hits, 0);
+
+        pool.release(large);
+
+        // Now both buckets have buffers
+        let stats = pool.stats();
+        assert_eq!(stats.pooled_buffers, 2);
+    }
+
+    #[test]
+    fn test_buffer_pool_stats_in_distribution_stats() {
+        let distributor = FrameDistributor::new();
+
+        // Acquire and release a buffer to generate some stats
+        let buffer = distributor.buffer_pool.acquire(1000);
+        distributor.buffer_pool.release(buffer);
+
+        let stats = distributor.get_stats();
+        assert_eq!(stats.buffer_pool.misses, 1);
+        assert_eq!(stats.buffer_pool.pooled_buffers, 1);
     }
 }

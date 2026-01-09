@@ -19,6 +19,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import {
   useVideoOutputBackends,
+  useBufferPoolStats,
   type BackendStatus,
 } from "../../inputs/videoOutput";
 import { useRendererSettings } from "../../hooks";
@@ -100,6 +101,7 @@ function Section({
  */
 function RendererSection() {
   const { settings, info, setDpr, setPreviewStreamFps } = useRendererSettings();
+  const { hitRate } = useBufferPoolStats();
   const [showDprInfo, setShowDprInfo] = useState(false);
   const [showPreviewFpsInfo, setShowPreviewFpsInfo] = useState(false);
 
@@ -185,6 +187,20 @@ function RendererSection() {
                       <span className={styles.statUnit}>ms</span>
                     </span>
                   </div>
+                  {hitRate !== null && (
+                    <div className={styles.statRow}>
+                      <span className={styles.statLabel}>Buffer Pool</span>
+                      <span
+                        className={styles.statValue}
+                        data-pool-status={
+                          hitRate >= 90 ? "good" : hitRate >= 50 ? "ok" : "low"
+                        }
+                      >
+                        {hitRate}
+                        <span className={styles.statUnit}>% hit</span>
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
             </div>

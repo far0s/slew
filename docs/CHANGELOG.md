@@ -31,6 +31,21 @@ Status overview and key decisions for Slew.
 
 ## Recent Changes
 
+### Code Quality Refactors
+
+Batch of 6 maintenance tasks to reduce technical debt and improve code quality:
+
+- **Duplicate Template ID Mapping**: Extracted `TEMPLATE_ID_TO_PROPS_KEY` to shared `src/sketches/parameterMappings.ts`, updated 3 consumers, added 6 tests
+- **Stats Reporting Throttling**: Reduced `reportInfo()` calls from 60/sec to 1/sec (98% IPC reduction) while maintaining accurate FPS calculation
+- **Hard-Coded Config Extraction**: Created `src/config.ts` (13 constants) and `src-tauri/src/config.rs` (15 constants) for centralized configuration
+- **LocalStorage Schema Versioning**: Created `src/lib/storage.ts` with `createVersionedStorage<T>()` factory, migration framework, 19 new tests
+- **Lazy Sketch Loading**: Separated descriptor files from components, added `React.lazy()` wrappers and `<Suspense>` fallbacks for on-demand loading
+- **Frame Distribution Buffer Pooling**: Implemented `BufferPool` with size bucketing (512² to 4K), ~100% hit rate after warmup, stats displayed in Video tab
+
+**Test Coverage**: 101 Rust tests (+4), 399 TypeScript tests (+19)
+
+---
+
 ### Component Test Coverage
 
 Added comprehensive test coverage for React components:

@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import type { SketchId, ParameterTemplateId } from "../sketches";
-import { getSketchDescriptor } from "../sketches";
+import { getSketchDescriptor, TEMPLATE_ID_TO_PROPS_KEY } from "../sketches";
 import type { ParameterId, SlotParameterId } from "../slots/slotTypes";
 import {
   buildSlotDefaultParameters,
@@ -606,63 +606,6 @@ export function useParameterStore(): ParameterStoreState {
 
   return storeState;
 }
-
-/**
- * Map from template ID (snake_case) to props key (camelCase).
- */
-const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
-  // Slot-level parameters
-  alpha: "alpha",
-  audio_reactivity: "audioReactivity",
-  // Common parameters
-  brightness: "brightness",
-  rotation_speed: "rotationSpeed",
-  tint: "tint",
-  wobble: "wobble",
-  tint_lfo_depth: "tintLfoDepth",
-  scale: "scale",
-  pulse_speed: "pulseSpeed",
-  // TslText3D specific
-  hue_shift: "hueShift",
-  glow_intensity: "glowIntensity",
-  // TslNoiseBlob specific
-  noise_scale: "noiseScale",
-  noise_speed: "noiseSpeed",
-  color_mix: "colorMix",
-  // Plasma specific
-  plasma_speed: "plasmaSpeed",
-  plasma_scale: "plasmaScale",
-  plasma_complexity: "plasmaComplexity",
-  plasma_color_cycle: "plasmaColorCycle",
-  // Kaleidoscope specific
-  kaleid_segments: "kaleidSegments",
-  kaleid_zoom: "kaleidZoom",
-  kaleid_rotation: "kaleidRotation",
-  kaleid_pattern_speed: "kaleidPatternSpeed",
-  // FeedbackTunnel specific
-  tunnel_speed: "tunnelSpeed",
-  tunnel_twist: "tunnelTwist",
-  tunnel_layers: "tunnelLayers",
-  tunnel_color_speed: "tunnelColorSpeed",
-  // Waveform specific
-  wave_speed: "waveSpeed",
-  wave_amplitude: "waveAmplitude",
-  wave_frequency: "waveFrequency",
-  wave_glow: "waveGlow",
-  // Aura specific
-  bloom: "bloom",
-  complexity: "complexity",
-  sample_offset: "sampleOffset",
-  speed: "speed",
-  scale_base: "scaleBase",
-  distance: "distance",
-  attenuation: "attenuation",
-  ray_steps: "raySteps",
-  seed: "seed",
-  color_interp: "colorInterp",
-  grain_intensity: "grainIntensity",
-  tonemap_mode: "tonemapMode",
-};
 
 /**
  * Build scene props object from parameter store for a slot.

@@ -11,6 +11,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useEventListener, useFetchOnMount } from "./shared";
 import { logger } from "../lib/logger";
+import { BPM_HISTORY_SIZE, MIN_BPM, MAX_BPM } from "../config";
 
 // ============================================================================
 // Types (matching Rust structs)
@@ -394,13 +395,6 @@ export function useAudioCapture() {
 }
 
 /** Hook for audio level monitoring. */
-/** Number of recent beat intervals to keep for BPM calculation */
-const BPM_HISTORY_SIZE = 8;
-/** Minimum BPM we'll report (filters out very slow "beats") */
-const MIN_BPM = 60;
-/** Maximum BPM we'll report (filters out noise) */
-const MAX_BPM = 200;
-
 export function useAudioLevels() {
   const [levels, setLevels] = useState<AudioLevels | null>(null);
   const [beatCount, setBeatCount] = useState(0);

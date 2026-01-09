@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { emit, listen } from "@tauri-apps/api/event";
 import { logger } from "../lib/logger";
+import { createVersionedStorage } from "../lib/storage";
+import { DEFAULT_DPR, DEFAULT_PREVIEW_FPS, MIN_DPR, MAX_DPR } from "../config";
 
 /**
  * Renderer settings that can be configured from the Controls window
@@ -53,49 +55,33 @@ export interface RendererInfo {
   stats?: RendererStats;
 }
 
-const STORAGE_KEY = "slew-renderer-settings";
 const SETTINGS_EVENT = "renderer-settings-changed";
 const INFO_EVENT = "renderer-info-updated";
 
 const DEFAULT_SETTINGS: RendererSettings = {
-  dpr: 1, // Default to 1x for performance
-  previewStreamFps: 30, // Default to 30fps for smooth previews
+  dpr: DEFAULT_DPR,
+  previewStreamFps: DEFAULT_PREVIEW_FPS,
 };
 
-/**
- * Load settings from localStorage
- */
-function loadSettings(): RendererSettings {
-  if (typeof window === "undefined") return DEFAULT_SETTINGS;
-
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
+// Versioned storage for renderer settings
+const settingsStorage = createVersionedStorage<RendererSettings>({
+  key: "slew-renderer-settings",
+  version: 1,
+  defaultValue: DEFAULT_SETTINGS,
+  migrations: {
+    // v1: Initial versioned schema (migrates from legacy unversioned format)
+    1: (old: unknown) => {
+      const prev = old as Partial<RendererSettings>;
       return {
-        ...DEFAULT_SETTINGS,
-        ...parsed,
+        dpr: typeof prev.dpr === "number" ? prev.dpr : DEFAULT_DPR,
+        previewStreamFps:
+          typeof prev.previewStreamFps === "number"
+            ? prev.previewStreamFps
+            : DEFAULT_PREVIEW_FPS,
       };
-    }
-  } catch (e) {
-    logger.warn("RendererSettings", "Failed to load settings:", e);
-  }
-
-  return DEFAULT_SETTINGS;
-}
-
-/**
- * Save settings to localStorage
- */
-function saveSettings(settings: RendererSettings): void {
-  if (typeof window === "undefined") return;
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  } catch (e) {
-    logger.warn("RendererSettings", "Failed to save settings:", e);
-  }
-}
+    },
+  },
+});
 
 export interface UseRendererSettingsResult {
   /** Current renderer settings */
@@ -122,7 +108,9 @@ export interface UseRendererSettingsResult {
  * so both windows stay in sync.
  */
 export function useRendererSettings(): UseRendererSettingsResult {
-  const [settings, setSettings] = useState<RendererSettings>(loadSettings);
+  const [settings, setSettings] = useState<RendererSettings>(() =>
+    settingsStorage.load(),
+  );
   const [info, setInfo] = useState<RendererInfo | null>(null);
 
   // Throttle info updates to avoid excessive IPC
@@ -138,10 +126,10 @@ export function useRendererSettings(): UseRendererSettingsResult {
 
   // Update DPR and broadcast
   const setDpr = useCallback((dpr: number) => {
-    const clampedDpr = Math.max(0.25, Math.min(3, dpr));
+    const clampedDpr = Math.max(MIN_DPR, Math.min(MAX_DPR, dpr));
     setSettings((prev) => {
       const next = { ...prev, dpr: clampedDpr };
-      saveSettings(next);
+      settingsStorage.save(next);
       // Broadcast after state update
       emit(SETTINGS_EVENT, next).catch((e) => {
         logger.warn("RendererSettings", "Failed to emit settings:", e);
@@ -156,7 +144,7 @@ export function useRendererSettings(): UseRendererSettingsResult {
     const validFps = [15, 30, 45, 60].includes(fps) ? fps : 30;
     setSettings((prev) => {
       const next = { ...prev, previewStreamFps: validFps };
-      saveSettings(next);
+      settingsStorage.save(next);
       // Broadcast after state update
       emit(SETTINGS_EVENT, next).catch((e) => {
         logger.warn("RendererSettings", "Failed to emit settings:", e);
@@ -186,7 +174,7 @@ export function useRendererSettings(): UseRendererSettingsResult {
     async function subscribe() {
       unlisten = await listen<RendererSettings>(SETTINGS_EVENT, (event) => {
         setSettings(event.payload);
-        saveSettings(event.payload);
+        settingsStorage.save(event.payload);
       });
     }
 

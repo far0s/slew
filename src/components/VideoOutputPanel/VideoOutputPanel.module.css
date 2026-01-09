@@ -156,6 +156,19 @@
   color: var(--accent-danger);
 }
 
+/* Buffer pool status colors */
+.statValue[data-pool-status="good"] {
+  color: var(--accent-success);
+}
+
+.statValue[data-pool-status="ok"] {
+  color: var(--accent-warning);
+}
+
+.statValue[data-pool-status="low"] {
+  color: var(--accent-danger);
+}
+
 /* DPR Controls */
 .dprControl {
   display: flex;

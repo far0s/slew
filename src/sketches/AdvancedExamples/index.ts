@@ -1,15 +1,17 @@
+/**
+ * AdvancedExamples Sketch Group
+ *
+ * Imports only descriptors (metadata) to enable lazy loading of components.
+ * Components are lazy-loaded via LazySketchRegistry when actually used.
+ */
+
 import type { SketchGroup } from "../types";
 
-import { Plasma, descriptor as plasmaDescriptor } from "./Plasma";
-import {
-  Kaleidoscope,
-  descriptor as kaleidoscopeDescriptor,
-} from "./Kaleidoscope";
-import {
-  FeedbackTunnel,
-  descriptor as feedbackTunnelDescriptor,
-} from "./FeedbackTunnel";
-import { Waveform, descriptor as waveformDescriptor } from "./Waveform";
+// Import descriptors from separate files (no component code included)
+import { descriptor as plasmaDescriptor } from "./Plasma/descriptor";
+import { descriptor as kaleidoscopeDescriptor } from "./Kaleidoscope/descriptor";
+import { descriptor as feedbackTunnelDescriptor } from "./FeedbackTunnel/descriptor";
+import { descriptor as waveformDescriptor } from "./Waveform/descriptor";
 
 export const advancedExamplesGroup: SketchGroup = {
   id: "advancedExamples",
@@ -23,7 +25,8 @@ export const advancedExamplesGroup: SketchGroup = {
   ],
 };
 
-export { Plasma, plasmaDescriptor };
-export { Kaleidoscope, kaleidoscopeDescriptor };
-export { FeedbackTunnel, feedbackTunnelDescriptor };
-export { Waveform, waveformDescriptor };
+// Re-export descriptors for backward compatibility
+export { plasmaDescriptor };
+export { kaleidoscopeDescriptor };
+export { feedbackTunnelDescriptor };
+export { waveformDescriptor };

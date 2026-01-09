@@ -1,13 +1,18 @@
+/**
+ * Examples Sketch Group
+ *
+ * Imports only descriptors (metadata) to enable lazy loading of components.
+ * Components are lazy-loaded via LazySketchRegistry when actually used.
+ */
+
 import type { SketchGroup } from "../types";
 
-import { BlueCube, descriptor as blueCubeDescriptor } from "./BlueCube";
-import { OrangeCube, descriptor as orangeCubeDescriptor } from "./OrangeCube";
-import { GreenPulse, descriptor as greenPulseDescriptor } from "./GreenPulse";
-import { TslText3D, descriptor as tslText3DDescriptor } from "./TslText3D";
-import {
-  TslNoiseBlob,
-  descriptor as tslNoiseBlobDescriptor,
-} from "./TslNoiseBlob";
+// Import descriptors from separate files (no component code included)
+import { descriptor as blueCubeDescriptor } from "./BlueCube/descriptor";
+import { descriptor as orangeCubeDescriptor } from "./OrangeCube/descriptor";
+import { descriptor as greenPulseDescriptor } from "./GreenPulse/descriptor";
+import { descriptor as tslText3DDescriptor } from "./TslText3D/descriptor";
+import { descriptor as tslNoiseBlobDescriptor } from "./TslNoiseBlob/descriptor";
 
 export const examplesGroup: SketchGroup = {
   id: "examples",
@@ -22,8 +27,9 @@ export const examplesGroup: SketchGroup = {
   ],
 };
 
-export { BlueCube, blueCubeDescriptor };
-export { OrangeCube, orangeCubeDescriptor };
-export { GreenPulse, greenPulseDescriptor };
-export { TslText3D, tslText3DDescriptor };
-export { TslNoiseBlob, tslNoiseBlobDescriptor };
+// Re-export descriptors for backward compatibility
+export { blueCubeDescriptor };
+export { orangeCubeDescriptor };
+export { greenPulseDescriptor };
+export { tslText3DDescriptor };
+export { tslNoiseBlobDescriptor };

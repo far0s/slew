@@ -5,10 +5,12 @@
  * with pre-configured default values. All presets share the same Aura component.
  *
  * Values sourced from: seb.cat/components/aura-controls/presets.ts
+ *
+ * Imports descriptor from separate file to enable lazy loading of the Aura component.
  */
 
 import type { SketchGroup, SketchDescriptor } from "../types";
-import { descriptor as baseDescriptor } from "./index";
+import { descriptor as baseDescriptor } from "./descriptor";
 
 /**
  * Helper to create a preset descriptor by overriding default values

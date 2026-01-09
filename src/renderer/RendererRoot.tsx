@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import * as THREE from "three";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -9,18 +9,21 @@ import { SlotPreviewCapture } from "./SlotPreviewCapture";
 import { logger } from "../lib/logger";
 import {
   SKETCH_COMPONENT_REGISTRY,
+  SketchLoadingFallback,
   type SketchProps,
   type SketchId,
   getSketchDescriptor,
+  TEMPLATE_ID_TO_PROPS_KEY,
 } from "../sketches";
-import type { ParameterTemplateId } from "../slots/slotTypes";
 import { makeSlotParameterId } from "../slots/slotTypes";
 import { useRendererSettings } from "../hooks";
 import type { RendererInfo, RendererStats } from "../hooks";
+import {
+  HEARTBEAT_INTERVAL_MS,
+  FPS_SAMPLE_COUNT,
+  STATS_REPORT_INTERVAL_MS,
+} from "../config";
 import styles from "./RendererRoot.module.css";
-
-// Heartbeat interval for health monitoring
-const HEARTBEAT_INTERVAL_MS = 5000;
 
 // =============================================================================
 // Types
@@ -72,67 +75,6 @@ interface SlotInfo {
   index: number;
   sketchId: SketchId;
 }
-
-// =============================================================================
-// Template ID to Props Key Mapping
-// =============================================================================
-
-/**
- * Maps template IDs (snake_case) to SceneProps param keys (camelCase).
- */
-const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
-  // Slot-level parameters
-  alpha: "alpha", // Note: alpha is handled separately, not passed to sketch
-  audio_reactivity: "audioReactivity", // Note: audio_reactivity is slot-level, not passed to sketch
-  // Common parameters
-  brightness: "brightness",
-  rotation_speed: "rotationSpeed",
-  tint: "tint",
-  wobble: "wobble",
-  tint_lfo_depth: "tintLfoDepth",
-  scale: "scale",
-  pulse_speed: "pulseSpeed",
-  // TslText3D specific
-  hue_shift: "hueShift",
-  glow_intensity: "glowIntensity",
-  // TslNoiseBlob specific
-  noise_scale: "noiseScale",
-  noise_speed: "noiseSpeed",
-  color_mix: "colorMix",
-  // Plasma specific
-  plasma_speed: "plasmaSpeed",
-  plasma_scale: "plasmaScale",
-  plasma_complexity: "plasmaComplexity",
-  plasma_color_cycle: "plasmaColorCycle",
-  // Kaleidoscope specific
-  kaleid_segments: "kaleidSegments",
-  kaleid_zoom: "kaleidZoom",
-  kaleid_rotation: "kaleidRotation",
-  kaleid_pattern_speed: "kaleidPatternSpeed",
-  // FeedbackTunnel specific
-  tunnel_speed: "tunnelSpeed",
-  tunnel_twist: "tunnelTwist",
-  tunnel_layers: "tunnelLayers",
-  tunnel_color_speed: "tunnelColorSpeed",
-  // Waveform specific
-  wave_speed: "waveSpeed",
-  wave_amplitude: "waveAmplitude",
-  wave_frequency: "waveFrequency",
-  wave_glow: "waveGlow",
-  // Aura specific
-  bloom: "bloom",
-  complexity: "complexity",
-  sample_offset: "sampleOffset",
-  speed: "speed",
-  scale_base: "scaleBase",
-  distance: "distance",
-  attenuation: "attenuation",
-  ray_steps: "raySteps",
-  seed: "seed",
-  color_interp: "colorInterp",
-  grain_intensity: "grainIntensity",
-  tonemap_mode: "tonemapMode",
-};
 
 // =============================================================================
 // Helper Components
@@ -261,9 +203,6 @@ interface RendererInfoReporterProps {
   reportInfo: (info: RendererInfo) => void;
 }
 
-// Number of frame time samples to average for smooth FPS display
-const FPS_SAMPLE_COUNT = 60;
-
 /**
  * Component that reports renderer info (dimensions, DPR, backend, stats) to Controls window.
  * Must be inside a Canvas to access useThree.
@@ -276,22 +215,31 @@ function RendererInfoReporter({
 }: RendererInfoReporterProps) {
   const { size, gl } = useThree();
 
-  // FPS tracking
+  // FPS tracking - collected every frame for accuracy
   const frameTimesRef = useRef<number[]>([]);
   const lastTimeRef = useRef<number>(performance.now());
 
-  // Track frame times and report stats
+  // Throttling - only report at STATS_REPORT_INTERVAL_MS
+  const lastReportTimeRef = useRef<number>(0);
+
+  // Track frame times every frame, but only report stats at throttled rate
   useFrame(() => {
     const now = performance.now();
     const deltaMs = now - lastTimeRef.current;
     lastTimeRef.current = now;
 
-    // Add frame time to ring buffer
+    // Add frame time to ring buffer (always, for accurate FPS)
     const frameTimes = frameTimesRef.current;
     frameTimes.push(deltaMs);
     if (frameTimes.length > FPS_SAMPLE_COUNT) {
       frameTimes.shift();
     }
+
+    // Only build and report stats at throttled rate
+    if (now - lastReportTimeRef.current < STATS_REPORT_INTERVAL_MS) {
+      return;
+    }
+    lastReportTimeRef.current = now;
 
     // Calculate average frame time and FPS
     const avgFrameTime =
@@ -444,11 +392,13 @@ function RendererContent({
               }
             }}
           >
-            <SketchComponent
-              opacity={opacity}
-              params={sketchParams}
-              colors={colors}
-            />
+            <Suspense fallback={<SketchLoadingFallback />}>
+              <SketchComponent
+                opacity={opacity}
+                params={sketchParams}
+                colors={colors}
+              />
+            </Suspense>
           </group>
         );
       })}
