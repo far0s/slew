@@ -165,20 +165,6 @@ Save/load parameter configurations per sketch.
 
 ---
 
-### 🟡 MIDI Visual Activity Indicator `feature`
-
-Add visual feedback for MIDI activity on parameters.
-
-**Context**: Hard to debug mappings when you can't see which parameters receive input. Pickup indicator exists, but no real-time "this is getting MIDI" signal.
-
-**Subtasks**:
-
-- [ ] Pulse/glow effect on sliders receiving MIDI CC
-- [ ] Throttle visual updates (avoid 60fps flashing)
-- [ ] Respect `prefers-reduced-motion`
-
----
-
 ### 🟡 Tap Tempo for BPM `feature`
 
 Add tap tempo input for modulation BPM sync.
