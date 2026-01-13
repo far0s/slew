@@ -49,23 +49,28 @@ npm run package
 npm run package:release
 ```
 
-## mgrep – your code search tool
+## osgrep – your code search tool
 
-**mgrep** is your main codebase exploration tool. It will help you navigate it using natural language queries.
+**osgrep** is your main codebase exploration tool. It's a local, private semantic search that helps you navigate the codebase using natural language queries.
 
 ### Basic usage
 
 ```bash
-mgrep "query in natural language" --store "slew" -a -m <number>
+osgrep "query in natural language" -m <number>
 ```
+
+No setup required — osgrep auto-detects the repository and creates an isolated index automatically.
 
 ### Essential parameters
 
-| Parameter        | Description                              |
-| ---------------- | ---------------------------------------- |
-| `--store "slew"` | **Mandatory** - Specify the project name |
-| `-a`             | enable natural language search           |
-| `-m <n>`         | Results total (min 10)                   |
+| Parameter        | Description                                   | Default |
+| ---------------- | --------------------------------------------- | ------- |
+| `-m <n>`         | Max total results to return                   | 25      |
+| `--per-file <n>` | Max matches to show per file                  | 1       |
+| `--scores`       | Show relevance scores (0-1) for each result   | false   |
+| `--min-score`    | Filter out results below this score threshold | 0       |
+| `--compact`      | Show file paths only (like `grep -l`)         | false   |
+| `-s`, `--sync`   | Force re-index changed files before searching | false   |
 
 ### Adjust `-m` according to complexity
 
@@ -77,21 +82,31 @@ mgrep "query in natural language" --store "slew" -a -m <number>
 
 ### Strategy for complex queries
 
-If the query touches **multiple parts of the codebase**, launch several mgrep in parallel rather than a single overloaded query:
+If the query touches **multiple parts of the codebase**, launch several osgrep in parallel rather than a single overloaded query:
 
 ```bash
-# Example: understand the complete authentication system
-mgrep "how does LinkedIn frontend authentication work" --store "project-name" -a -m <n>
-mgrep "how is the LinkedIn token managed on Convex" --store "project-name" -a -m <n>
-mgrep "how does the background script manage sessions" --store "project-name" -a -m <n>
+# Example: understand the parameter flow
+osgrep "how does the Parameter Server handle interpolation?" -m 20
+osgrep "how do frontend hooks subscribe to parameter changes?" -m 20
+osgrep "how does the Renderer window receive parameter updates?" -m 20
+```
+
+### Additional commands
+
+```bash
+osgrep index              # Manually index the repository
+osgrep index --verbose    # Watch detailed progress
+osgrep trace "function"   # See call graph (who calls what)
+osgrep skeleton <file>    # Show compressed structure (signatures only)
+osgrep symbols            # List all symbols in the codebase
 ```
 
 ### Rules
 
-- **MANDATORY** : Use mgrep for ALL code search. NEVER use grep, Grep tool, or Glob.
-- **Natural Language** : mgrep is an AI agent like you. Talk to it like a colleague, not like a search engine.
+- **MANDATORY**: Use osgrep for ALL code search. NEVER use grep, Grep tool, or Glob.
+- **Natural Language**: osgrep uses semantic search. Talk to it like a colleague, not like a search engine.
   - ❌ `"architecture block icon color complete status"` (robotic keywords)
-  - ✅ `"What is the color of the icon for completed architecture blocks?"` (question naturelle)
+  - ✅ `"What is the color of the icon for completed architecture blocks?"` (natural question)
 
 ---
 
@@ -99,7 +114,7 @@ mgrep "how does the background script manage sessions" --store "project-name" -a
 
 **Subagents DO NOT inherit instructions from this file.**
 
-When you launch an Explore subagent, copy and paste the mgrep instructions from this CLAUDE.md file into the prompt of the subagent.
+When you launch an Explore subagent, copy and paste the osgrep instructions from this CLAUDE.md file into the prompt of the subagent.
 
 ## Architecture Overview
 

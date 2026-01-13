@@ -65,6 +65,20 @@ Add in-app keyboard shortcuts reference.
 
 ---
 
+### 🔴 Full size Slot editor overlay `feature`
+
+Add a full-size slot editor overlay, allowing users to focus on editing one slot at a time.
+
+**Context**: The slot preview is currently limited to a small area within the UI. If the visual output is key, it would be useful to be able to focus on one slot at a time.
+
+**Subtasks**:
+
+- [ ] Slot preview click handler to open full-size editor
+- [ ] Full-size editor UI design and implementation: slot preview takes as much space as possible, slot parameters are put into a sidebar.
+- [ ] ...Make implementation as comprehensive as possible before starting the work.
+
+---
+
 ## Medium Priority
 
 ### 🟡 External Texture Input `feature`

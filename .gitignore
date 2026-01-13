@@ -28,3 +28,4 @@ src-tauri/frameworks/Syphon.framework/
 
 # Test coverage reports
 coverage/
+.osgrep

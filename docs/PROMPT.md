@@ -107,23 +107,25 @@ Check `docs/CHANGELOG.md` for the latest completed work and `docs/BACKLOG.md` fo
 
 ---
 
-## mgrep – your code search tool
+## osgrep – your code search tool
 
-**mgrep** is your main codebase exploration tool. It will help you navigate it using natural language queries.
+**osgrep** is your main codebase exploration tool. It's a local, private semantic search that helps you navigate the codebase using natural language queries.
 
 ### Basic usage
 
 ```bash
-mgrep "query in natural language" --store "slew" -a -m <number>
+cd /path/to/slew
+osgrep "query in natural language" -m <number>
 ```
 
 ### Essential parameters
 
-| Parameter        | Description                              |
-| ---------------- | ---------------------------------------- |
-| `--store "slew"` | **Mandatory** - Specify the project name |
-| `-a`             | enable natural language search           |
-| `-m <n>`         | Results total (min 10)                   |
+| Parameter        | Description                                   |
+| ---------------- | --------------------------------------------- |
+| `-m <n>`         | Max total results (default: 25)               |
+| `--per-file <n>` | Max matches per file (default: 1)             |
+| `-s, --sync`     | Force re-index changed files before searching |
+| `--scores`       | Show relevance scores (0-1) for each result   |
 
 ### Adjust `-m` according to complexity
 
@@ -135,21 +137,32 @@ mgrep "query in natural language" --store "slew" -a -m <number>
 
 ### Strategy for complex queries
 
-If the query touches **multiple parts of the codebase**, launch several mgrep in parallel rather than a single overloaded query:
+If the query touches **multiple parts of the codebase**, launch several osgrep in parallel rather than a single overloaded query:
 
 ```bash
-# Example: understand the complete authentication system
-mgrep "how does LinkedIn frontend authentication work" --store "project-name" -a -m <n>
-mgrep "how is the LinkedIn token managed on Convex" --store "project-name" -a -m <n>
-mgrep "how does the background script manage sessions" --store "project-name" -a -m <n>
+# Example: understand the parameter system
+osgrep "how does the parameter server interpolate values" -m 20
+osgrep "how do MIDI mappings update parameters" -m 20
+osgrep "how does the frontend subscribe to parameter changes" -m 20
+```
+
+### Additional useful commands
+
+```bash
+osgrep trace "function_name"   # See call graph (who calls what)
+osgrep skeleton src/file.ts    # Show compressed file structure
+osgrep symbols                 # List all symbols in codebase
+osgrep index --sync            # Re-index after major changes
 ```
 
 ### Rules
 
-- **MANDATORY** : Use mgrep for ALL code search. NEVER use grep, Grep tool, or Glob.
-- **Natural Language** : mgrep is an AI agent like you. Talk to it like a colleague, not like a search engine.
+- **MANDATORY**: Use osgrep for ALL code search. NEVER use grep, Grep tool, or Glob.
+- **Local & Private**: 100% local embeddings, no cloud dependency.
+- **Auto-Isolated**: Each repository gets its own index automatically (no `--store` needed).
+- **Natural Language**: osgrep understands concepts, not just strings. Talk to it naturally.
   - ❌ `"architecture block icon color complete status"` (robotic keywords)
-  - ✅ `"What is the color of the icon for completed architecture blocks?"` (question naturelle)
+  - ✅ `"What is the color of the icon for completed architecture blocks?"` (natural question)
 
 ---
 
@@ -161,3 +174,21 @@ When starting a new task, consider:
 2. **What's the plan?** Look in `docs/working/` for task-specific docs.
 3. **What are the constraints?** Review ARCHITECTURE for system design decisions.
 4. **Are there related pieces?** Check BACKLOG for connected work items.
+
+---
+
+## MCP Gemini Design
+
+**Gemini is your frontend developer.** For all UI/design work, use this MCP. Tool descriptions contain all necessary instructions.
+
+### Before writing any UI code, ask yourself:
+
+- Is it a NEW visual component (popup, card, section, etc.)? → `snippet_frontend` or `create_frontend`
+- Is it a REDESIGN of an existing element? → `modify_frontend`
+- Is it just text/logic, or a trivial change? → Do it yourself
+
+### Critical rules:
+
+1. **If UI already exists and you need to redesign/restyle it** → use `modify_frontend`, NOT snippet_frontend.
+
+2. **Tasks can be mixed** (logic + UI). Mentally separate them. Do the logic yourself, delegate the UI to Gemini.
