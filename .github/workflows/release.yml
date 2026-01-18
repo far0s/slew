@@ -6,6 +6,10 @@ on:
       - "*"
   workflow_dispatch: # Manual trigger for testing
 
+env:
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
 jobs:
   # Build macOS separately to fix code signature
   build-macos:
@@ -25,33 +29,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Syphon framework
+        uses: actions/cache@v4
+        id: syphon-cache
+        with:
+          path: src-tauri/frameworks/Syphon.framework
+          key: macos-syphon-v5-${{ matrix.arch }}
+
       - name: Install Syphon (macOS)
-        run: |
-          ./scripts/install-syphon.sh --clean
+        if: steps.syphon-cache.outputs.cache-hit != 'true'
+        run: ./scripts/install-syphon.sh --clean
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
-          cache: "npm"
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        id: npm-cache
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+
+      - name: Install frontend dependencies
+        if: steps.npm-cache.outputs.cache-hit != 'true'
+        run: npm ci
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
           cache-on-failure: true
-          shared-key: "macos-rust"
-
-      - name: Install frontend dependencies
-        run: npm ci
+          shared-key: "macos-${{ matrix.target }}"
 
       - name: Build Tauri app
         run: npm run tauri build -- --target ${{ matrix.target }} -- --no-default-features
+
+      - name: Show sccache stats
+        run: sccache --show-stats
 
       - name: Fix code signature
         run: |
@@ -140,42 +164,49 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies (Ubuntu)
+      - name: Cache apt packages (Ubuntu)
         if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            libasound2-dev \
-            libhidapi-dev \
-            libudev-dev
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev libhidapi-dev libudev-dev
+          version: 1.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
-          cache: "npm"
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        id: npm-cache
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+
+      - name: Install frontend dependencies
+        if: steps.npm-cache.outputs.cache-hit != 'true'
+        run: npm ci
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.rust_targets }}
 
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
           cache-on-failure: true
-          shared-key: "${{ matrix.platform }}-rust"
-
-      - name: Install frontend dependencies
-        run: npm ci
+          shared-key: "${{ matrix.platform }}"
 
       - name: Build Tauri app
         run: npm run tauri build -- ${{ matrix.args }}
+
+      - name: Show sccache stats
+        run: sccache --show-stats
 
       - name: Upload Linux artifacts
         if: matrix.platform == 'ubuntu-22.04'
