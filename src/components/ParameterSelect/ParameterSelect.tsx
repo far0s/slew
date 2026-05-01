@@ -37,6 +37,10 @@ export interface ParameterSelectProps {
   audioMapping?: AudioMappingIndicator | null;
   modulationIndicator?: ModulationIndicator | null;
   isMidiControlled?: boolean;
+  onQuickBeat?: () => void;
+  onQuickLfo?: () => void;
+  onUnlinkBeat?: () => void;
+  onUnlinkLfo?: () => void;
 }
 
 /**
@@ -57,6 +61,10 @@ export function ParameterSelect({
   audioMapping,
   modulationIndicator,
   isMidiControlled = false,
+  onQuickBeat,
+  onQuickLfo,
+  onUnlinkBeat,
+  onUnlinkLfo,
 }: ParameterSelectProps) {
   const [showInfo, setShowInfo] = useState(false);
 
@@ -76,42 +84,98 @@ export function ParameterSelect({
       <div className={styles.labelRow}>
         <div className={styles.labelText}>
           <span className={styles.label}>{label}</span>
+        </div>
 
+        <div className={styles.labelActions}>
           {/* Audio mapping badge */}
           {audioMapping && !isMidiControlled && (
-            <span
-              className={styles.audioMappingBadge}
-              style={{
-                borderColor: `color-mix(in srgb, ${audioMapping.color} 40%, transparent)`,
-                backgroundColor: `color-mix(in srgb, ${audioMapping.color} 20%, transparent)`,
-                color: audioMapping.color,
-              }}
-              title={`Audio-mapped to ${audioMapping.sourceLabel}`}
-            >
+            onUnlinkBeat ? (
+              <button
+                type="button"
+                className={styles.audioMappingBadge}
+                style={{
+                  borderColor: `color-mix(in srgb, ${audioMapping.color} 40%, transparent)`,
+                  backgroundColor: `color-mix(in srgb, ${audioMapping.color} 20%, transparent)`,
+                  color: audioMapping.color,
+                }}
+                title={`Audio-mapped to ${audioMapping.sourceLabel} — click to remove`}
+                onClick={onUnlinkBeat}
+              >
+                <span
+                  className={styles.audioMappingDot}
+                  style={{ backgroundColor: audioMapping.color }}
+                />
+                {audioMapping.sourceLabel}
+              </button>
+            ) : (
               <span
-                className={styles.audioMappingDot}
-                style={{ backgroundColor: audioMapping.color }}
-              />
-              {audioMapping.sourceLabel}
-            </span>
+                className={styles.audioMappingBadge}
+                style={{
+                  borderColor: `color-mix(in srgb, ${audioMapping.color} 40%, transparent)`,
+                  backgroundColor: `color-mix(in srgb, ${audioMapping.color} 20%, transparent)`,
+                  color: audioMapping.color,
+                }}
+                title={`Audio-mapped to ${audioMapping.sourceLabel}`}
+              >
+                <span
+                  className={styles.audioMappingDot}
+                  style={{ backgroundColor: audioMapping.color }}
+                />
+                {audioMapping.sourceLabel}
+              </span>
+            )
           )}
 
           {/* Modulation badge */}
           {modulationIndicator && !audioMapping && !isMidiControlled && (
-            <span
-              className={styles.modulationBadge}
-              title={`Modulated by ${modulationIndicator.lfoName}${modulationIndicator.count && modulationIndicator.count > 1 ? ` (+${modulationIndicator.count - 1} more)` : ""}`}
-            >
+            onUnlinkLfo ? (
+              <button
+                type="button"
+                className={styles.modulationBadge}
+                title={`Modulated by ${modulationIndicator.lfoName}${modulationIndicator.count && modulationIndicator.count > 1 ? ` (+${modulationIndicator.count - 1} more)` : ""} — click to remove`}
+                onClick={onUnlinkLfo}
+              >
+                <span
+                  className={styles.modulationDot}
+                  style={{ backgroundColor: MODULATION_INDICATOR_COLOR }}
+                />
+                LFO
+              </button>
+            ) : (
               <span
-                className={styles.modulationDot}
-                style={{ backgroundColor: MODULATION_INDICATOR_COLOR }}
-              />
-              {modulationIndicator.lfoName}
-            </span>
+                className={styles.modulationBadge}
+                title={`Modulated by ${modulationIndicator.lfoName}${modulationIndicator.count && modulationIndicator.count > 1 ? ` (+${modulationIndicator.count - 1} more)` : ""}`}
+              >
+                <span
+                  className={styles.modulationDot}
+                  style={{ backgroundColor: MODULATION_INDICATOR_COLOR }}
+                />
+                LFO
+              </span>
+            )
           )}
-        </div>
-
-        <div className={styles.labelActions}>
+          {onQuickBeat && !audioMapping && (
+            <button
+              type="button"
+              className={styles.quickBeatButton}
+              onClick={onQuickBeat}
+              title="Quick-wire Beat trigger"
+              aria-label="Quick-wire Beat trigger"
+            >
+              ♩
+            </button>
+          )}
+          {onQuickLfo && !modulationIndicator && (
+            <button
+              type="button"
+              className={styles.quickLfoButton}
+              onClick={onQuickLfo}
+              title="Quick-wire LFO"
+              aria-label="Quick-wire LFO"
+            >
+              ~
+            </button>
+          )}
           {/* Info button with description popover */}
           {description && (
             <div className={styles.infoButtonWrapper}>

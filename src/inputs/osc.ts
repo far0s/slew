@@ -55,6 +55,14 @@ export interface OscMessageInfo {
   timestamp: number;
 }
 
+/** Beat event emitted when /slew/beat is received. */
+export interface OscBeatInfo {
+  /** Timestamp in milliseconds */
+  timestamp: number;
+  /** Current BPM if set via /slew/bpm (null until first /slew/bpm message) */
+  bpm: number | null;
+}
+
 // ============================================================================
 // API Functions (Tauri command wrappers)
 // ============================================================================
@@ -359,4 +367,32 @@ export function useOscRecentMessages() {
   return useMessageHistory<OscMessageInfo>("osc_message", {
     maxHistory: MAX_RECENT_MESSAGES,
   });
+}
+
+// Module-level BPM store — survives component unmount so the OscPanel
+// retains the last received BPM even when you navigate away and back.
+let _lastOscBpm: number | null = null;
+
+/**
+ * Hook for OSC beat input.
+ *
+ * Listens for `osc_beat` events emitted when /slew/beat is received.
+ * Returns a `beat` boolean that is true for one render cycle after each pulse,
+ * and the most recently received BPM (null until /slew/bpm is sent).
+ */
+export function useOscBeat() {
+  const [beat, setBeat] = useState(false);
+  const [bpm, setBpm] = useState<number | null>(_lastOscBpm);
+
+  useEventListener<OscBeatInfo>("osc_beat", (info) => {
+    if (info.bpm !== null) {
+      _lastOscBpm = info.bpm;
+      setBpm(info.bpm);
+    }
+    setBeat(true);
+    // Reset the beat flag after one frame so consumers see a pulse
+    setTimeout(() => setBeat(false), 100);
+  });
+
+  return { beat, bpm };
 }

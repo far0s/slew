@@ -297,6 +297,52 @@
   flex-shrink: 0;
 }
 
+.rangeLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.rangeLabelText {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.rangeInputs {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.rangeInput {
+  width: 0;
+  flex: 1;
+  min-width: 0;
+  padding: 0.3rem 0.4rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
+  border-radius: 0.25rem;
+  color: var(--text-primary);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.rangeInput:focus {
+  outline: none;
+  border-color: rgb(168 85 247 / 0.5);
+}
+
+.rangeSeparator {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
 .addButton {
   width: 28px;
   height: 28px;
@@ -604,4 +650,158 @@
 .clearMessagesButton:focus-visible {
   outline: 2px solid rgb(168 85 247 / 0.8);
   outline-offset: 1px;
+}
+
+/* ==========================================================================
+   Beat Input Section
+   ========================================================================== */
+
+.beatInputSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.beatInputHint {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.inlineCode {
+  font-family: ui-monospace, monospace;
+  font-size: 0.68rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.2rem;
+  padding: 0.05em 0.3em;
+  color: var(--text-primary);
+}
+
+.reservedAddresses {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.reservedAddress {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.3rem 0.4rem;
+  background: rgb(168 85 247 / 0.05);
+  border: 1px solid rgb(168 85 247 / 0.15);
+  border-radius: 0.25rem;
+}
+
+.addressCode {
+  font-family: ui-monospace, monospace;
+  font-size: 0.68rem;
+  color: #9333ea;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .addressCode {
+  color: rgb(192 132 252);
+}
+
+.addressDesc {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+/* Beat indicator (reuses pattern from AudioPanel) */
+
+.oscBeatIndicator {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.4rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.3rem;
+}
+
+.beatVisual {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.beatDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-default);
+  transition: background-color 0.05s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.beatDot.beatActive {
+  background: #a855f7;
+  box-shadow: 0 0 6px rgb(168 85 247 / 0.6);
+  animation: beatPulse 0.3s ease-out;
+}
+
+.beatRing {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  pointer-events: none;
+}
+
+.beatRing.beatRingActive {
+  border-color: rgb(168 85 247 / 0.5);
+  animation: beatRingPulse 0.3s ease-out;
+}
+
+@keyframes beatPulse {
+  0% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+
+@keyframes beatRingPulse {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+.bpmDisplay {
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+}
+
+.bpmValue {
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.bpmUnit {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.bpmWaiting {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* /slew/* messages highlighted in Recent Messages */
+.messageItemSlew {
+  border-color: rgb(168 85 247 / 0.3);
+  background: rgb(168 85 247 / 0.06);
 }

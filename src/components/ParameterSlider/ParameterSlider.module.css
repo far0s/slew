@@ -328,7 +328,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
-  padding: 0.05rem 0.3rem;
+  height: 18px;
+  padding: 0 0.3rem;
   border-radius: 0.2rem;
   border: 1px solid;
   font-size: 0.55rem;
@@ -336,6 +337,20 @@
   text-transform: uppercase;
   letter-spacing: 0.02em;
   flex-shrink: 0;
+  cursor: default;
+  background: none;
+}
+
+button.audioMappingBadge {
+  cursor: pointer;
+  transition:
+    opacity 0.15s ease,
+    filter 0.15s ease;
+}
+
+button.audioMappingBadge:hover {
+  opacity: 0.7;
+  filter: brightness(1.2);
 }
 
 .audioMappingDot {
@@ -350,7 +365,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
-  padding: 0.05rem 0.3rem;
+  height: 18px;
+  padding: 0 0.3rem;
   border-radius: 0.2rem;
   border: 1px solid color-mix(in srgb, rgb(99 102 241) 40%, transparent);
   background-color: color-mix(in srgb, rgb(99 102 241) 20%, transparent);
@@ -360,6 +376,19 @@
   text-transform: uppercase;
   letter-spacing: 0.02em;
   flex-shrink: 0;
+  cursor: default;
+}
+
+button.modulationBadge {
+  cursor: pointer;
+  transition:
+    opacity 0.15s ease,
+    filter 0.15s ease;
+}
+
+button.modulationBadge:hover {
+  opacity: 0.7;
+  filter: brightness(1.2);
 }
 
 .modulationDot {
@@ -380,6 +409,52 @@
     opacity: 1;
     transform: scale(1.1);
   }
+}
+
+/* Quick-wire action buttons (Beat & LFO) */
+.quickBeatButton,
+.quickLfoButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  min-width: 18px;
+  padding: 0 0.3rem;
+  border-radius: 0.2rem;
+  border: 1px solid;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.quickBeatButton {
+  background: color-mix(in srgb, rgb(251 191 36) 10%, transparent);
+  border-color: color-mix(in srgb, rgb(251 191 36) 25%, transparent);
+  color: color-mix(in srgb, rgb(251 191 36) 60%, var(--text-muted));
+}
+
+.quickBeatButton:hover {
+  background: color-mix(in srgb, rgb(251 191 36) 25%, transparent);
+  border-color: color-mix(in srgb, rgb(251 191 36) 50%, transparent);
+  color: rgb(251 191 36);
+}
+
+.quickLfoButton {
+  background: color-mix(in srgb, rgb(99 102 241) 10%, transparent);
+  border-color: color-mix(in srgb, rgb(99 102 241) 25%, transparent);
+  color: color-mix(in srgb, rgb(129 140 248) 60%, var(--text-muted));
+}
+
+.quickLfoButton:hover {
+  background: color-mix(in srgb, rgb(99 102 241) 25%, transparent);
+  border-color: color-mix(in srgb, rgb(99 102 241) 50%, transparent);
+  color: rgb(129 140 248);
 }
 
 /* Disabled state for MIDI-controlled sliders */

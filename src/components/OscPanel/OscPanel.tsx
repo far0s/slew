@@ -5,7 +5,7 @@
  * and mappings overview. Displays in the Debug column or as a tab.
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import {
@@ -13,11 +13,79 @@ import {
   useOscMappings,
   useOscActivity,
   useOscRecentMessages,
+  useOscBeat,
   DEFAULT_OSC_PORT,
   setupDefaultMappings,
   type OscMapping,
 } from "../../inputs/osc";
+import {
+  getAllSlotParameterIds,
+  getParameterDescriptor,
+  getParameterDropdownLabel,
+  type ParameterId,
+} from "../../slots/slotTypes";
+import type { Slot } from "../../slots/useSlots";
 import styles from "./OscPanel.module.css";
+
+/**
+ * Beat indicator for OSC beat input — pulses on each /slew/beat message.
+ */
+function OscBeatIndicator() {
+  const { beat, bpm } = useOscBeat();
+
+  return (
+    <div className={styles.oscBeatIndicator}>
+      <div className={styles.beatVisual}>
+        <span
+          className={`${styles.beatDot} ${beat ? styles.beatActive : ""}`}
+          aria-label={beat ? "Beat received" : "No beat"}
+        />
+        <span
+          className={`${styles.beatRing} ${beat ? styles.beatRingActive : ""}`}
+        />
+      </div>
+      <span className={styles.bpmDisplay}>
+        {bpm !== null ? (
+          <>
+            <span className={styles.bpmValue}>{bpm}</span>
+            <span className={styles.bpmUnit}>BPM</span>
+          </>
+        ) : (
+          <span className={styles.bpmWaiting}>Waiting…</span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Beat Input section: reserved address reference + live beat indicator.
+ */
+function BeatInputSection({ port }: { port: number | null }) {
+  const displayPort = port ?? DEFAULT_OSC_PORT;
+
+  return (
+    <div className={styles.beatInputSection}>
+      <p className={styles.beatInputHint}>
+        Send from Ableton (Max4Live), TouchOSC, or any OSC app to{" "}
+        <code className={styles.inlineCode}>127.0.0.1:{displayPort}</code>.
+      </p>
+
+      <div className={styles.reservedAddresses}>
+        <div className={styles.reservedAddress}>
+          <code className={styles.addressCode}>/slew/beat</code>
+          <span className={styles.addressDesc}>Trigger a beat pulse</span>
+        </div>
+        <div className={styles.reservedAddress}>
+          <code className={styles.addressCode}>/slew/bpm &lt;float&gt;</code>
+          <span className={styles.addressDesc}>Set BPM (20–300)</span>
+        </div>
+      </div>
+
+      <OscBeatIndicator />
+    </div>
+  );
+}
 
 /**
  * Activity indicator that pulses on OSC input.
@@ -115,13 +183,40 @@ function ServerControls() {
  * Form to add a new OSC mapping.
  */
 function AddMappingForm({
+  slots,
   onAdd,
 }: {
+  slots: Slot[];
   onAdd: (mapping: OscMapping) => Promise<void>;
 }) {
   const [address, setAddress] = useState("");
   const [parameterId, setParameterId] = useState("");
+  const [minOutput, setMinOutput] = useState(0);
+  const [maxOutput, setMaxOutput] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
+
+  const allParameterIds = useMemo(
+    () =>
+      getAllSlotParameterIds(
+        slots
+          .filter((s) => s.sketchId !== null)
+          .map((s) => ({ index: s.index, sketchId: s.sketchId as string })),
+      ),
+    [slots],
+  );
+
+  const selectedParamDescriptor = parameterId
+    ? getParameterDescriptor(parameterId as ParameterId)
+    : null;
+
+  const handleParameterChange = (newParamId: string) => {
+    setParameterId(newParamId);
+    const desc = getParameterDescriptor(newParamId as ParameterId);
+    if (desc) {
+      setMinOutput(desc.min);
+      setMaxOutput(desc.max);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,17 +230,21 @@ function AddMappingForm({
         parameter_id: parameterId.trim(),
         min_input: 0,
         max_input: 1,
-        min_output: 0,
-        max_output: 1,
+        min_output: minOutput,
+        max_output: maxOutput,
       });
       setAddress("");
       setParameterId("");
+      setMinOutput(0);
+      setMaxOutput(1);
     } catch {
       // UI state already reflects failure
     } finally {
       setIsAdding(false);
     }
   };
+
+  const hasSlots = allParameterIds.length > 0;
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className={styles.addForm}>
@@ -159,14 +258,30 @@ function AddMappingForm({
           aria-label="OSC address pattern"
         />
         <span className={styles.arrow}>→</span>
-        <input
-          type="text"
-          placeholder="parameter_id"
-          value={parameterId}
-          onChange={(e) => setParameterId(e.target.value)}
-          className={styles.parameterInput}
-          aria-label="Parameter ID"
-        />
+        {hasSlots ? (
+          <select
+            value={parameterId}
+            onChange={(e) => handleParameterChange(e.target.value)}
+            className={styles.parameterInput}
+            aria-label="Parameter"
+          >
+            <option value="">Select parameter…</option>
+            {allParameterIds.map((id) => (
+              <option key={id} value={id}>
+                {getParameterDropdownLabel(id)}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type="text"
+            placeholder="parameter_id"
+            value={parameterId}
+            onChange={(e) => setParameterId(e.target.value)}
+            className={styles.parameterInput}
+            aria-label="Parameter ID"
+          />
+        )}
         <button
           type="submit"
           disabled={isAdding || !address.trim() || !parameterId.trim()}
@@ -175,6 +290,30 @@ function AddMappingForm({
           {isAdding ? "…" : "+"}
         </button>
       </div>
+      <div className={styles.addFormRow}>
+        <label className={styles.rangeLabel}>
+          <span className={styles.rangeLabelText}>Output Range:</span>
+          <div className={styles.rangeInputs}>
+            <input
+              type="number"
+              value={minOutput}
+              onChange={(e) => setMinOutput(parseFloat(e.target.value) || 0)}
+              step={selectedParamDescriptor?.step ?? 0.01}
+              className={styles.rangeInput}
+              aria-label="Minimum output"
+            />
+            <span className={styles.rangeSeparator}>–</span>
+            <input
+              type="number"
+              value={maxOutput}
+              onChange={(e) => setMaxOutput(parseFloat(e.target.value) || 1)}
+              step={selectedParamDescriptor?.step ?? 0.01}
+              className={styles.rangeInput}
+              aria-label="Maximum output"
+            />
+          </div>
+        </label>
+      </div>
     </form>
   );
 }
@@ -182,7 +321,7 @@ function AddMappingForm({
 /**
  * Mappings list showing all current OSC→parameter bindings.
  */
-function MappingsList() {
+function MappingsList({ slots }: { slots: Slot[] }) {
   const { mappings, isLoading, addMapping, removeMapping, clearAll } =
     useOscMappings();
   const [removing, setRemoving] = useState<string | null>(null);
@@ -218,7 +357,7 @@ function MappingsList() {
 
   return (
     <div className={styles.mappingsSection}>
-      <AddMappingForm onAdd={addMapping} />
+      <AddMappingForm slots={slots} onAdd={addMapping} />
 
       {mappings.length === 0 ? (
         <div className={styles.emptyState}>
@@ -297,7 +436,14 @@ function RecentMessages() {
     <div className={styles.recentMessages}>
       <div className={styles.messagesList}>
         {messages.map((msg, idx) => (
-          <div key={`${msg.timestamp}-${idx}`} className={styles.messageItem}>
+          <div
+            key={`${msg.timestamp}-${idx}`}
+            className={`${styles.messageItem} ${
+              msg.address.startsWith("/slew/")
+                ? styles.messageItemSlew
+                : ""
+            }`}
+          >
             <span className={styles.messageAddress}>{msg.address}</span>
             <span className={styles.messageArgs}>
               {msg.args.length > 0 ? msg.args.join(", ") : "(no args)"}
@@ -319,6 +465,8 @@ function RecentMessages() {
 export interface OscPanelProps {
   /** Optional class name for additional styling */
   className?: string;
+  /** Active slots for parameter filtering */
+  slots?: Slot[];
 }
 
 /**
@@ -329,10 +477,12 @@ export interface OscPanelProps {
  * - Server controls (start/stop, port config)
  * - Mappings list with add/remove
  */
-export function OscPanel({ className }: OscPanelProps) {
+export function OscPanel({ className, slots = [] }: OscPanelProps) {
   const [serverOpen, setServerOpen] = useState(true);
+  const [beatInputOpen, setBeatInputOpen] = useState(true);
   const [mappingsOpen, setMappingsOpen] = useState(true);
   const [messagesOpen, setMessagesOpen] = useState(true);
+  const { isRunning, port } = useOscServer();
 
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
@@ -350,6 +500,18 @@ export function OscPanel({ className }: OscPanelProps) {
         </Collapsible.Trigger>
         <Collapsible.Content className={styles.sectionContent}>
           <ServerControls />
+        </Collapsible.Content>
+      </Collapsible.Root>
+
+      <Collapsible.Root open={beatInputOpen} onOpenChange={setBeatInputOpen}>
+        <Collapsible.Trigger asChild>
+          <button type="button" className={styles.sectionHeader}>
+            {beatInputOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
+            <span>Beat Input</span>
+          </button>
+        </Collapsible.Trigger>
+        <Collapsible.Content className={styles.sectionContent}>
+          <BeatInputSection port={isRunning ? port : null} />
         </Collapsible.Content>
       </Collapsible.Root>
 
@@ -373,7 +535,7 @@ export function OscPanel({ className }: OscPanelProps) {
           </button>
         </Collapsible.Trigger>
         <Collapsible.Content className={styles.sectionContent}>
-          <MappingsList />
+          <MappingsList slots={slots} />
         </Collapsible.Content>
       </Collapsible.Root>
     </div>

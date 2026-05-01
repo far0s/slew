@@ -410,8 +410,29 @@ function MappingForm({
     if (!isEditing) {
       const desc = getParameterDescriptor(newParamId as ParameterId);
       if (desc) {
-        setMinOutput(desc.min);
-        setMaxOutput(desc.max);
+        if (source === "beat") {
+          setMode("trigger");
+          setMinOutput(0);
+          setMaxOutput(desc.max);
+        } else {
+          setMinOutput(desc.min);
+          setMaxOutput(desc.max);
+        }
+      }
+    }
+  };
+
+  // Apply smart defaults when switching to "beat" source
+  const handleSourceChange = (newSource: AudioSource) => {
+    setSource(newSource);
+    if (newSource === "beat") {
+      setMode("trigger");
+      if (parameterId) {
+        const desc = getParameterDescriptor(parameterId as ParameterId);
+        if (desc) {
+          setMinOutput(0);
+          setMaxOutput(desc.max);
+        }
       }
     }
   };
@@ -429,7 +450,7 @@ function MappingForm({
             <SourceColorDot source={source} />
             <select
               value={source}
-              onChange={(e) => setSource(e.target.value as AudioSource)}
+              onChange={(e) => handleSourceChange(e.target.value as AudioSource)}
               className={styles.formSelect}
             >
               {AUDIO_SOURCES.map((s) => (

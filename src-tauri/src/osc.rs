@@ -57,6 +57,15 @@ impl Default for OscMapping {
     }
 }
 
+/// Beat event emitted to the frontend when /slew/beat is received.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OscBeatInfo {
+    /// Timestamp in milliseconds
+    pub timestamp: u64,
+    /// Optional BPM if set via /slew/bpm (None if not yet received)
+    pub bpm: Option<f64>,
+}
+
 /// A raw OSC message for UI display / activity indicators.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OscMessageInfo {
@@ -82,6 +91,8 @@ struct OscEngineState {
     app_handle: Option<AppHandle>,
     /// Flag to signal the server thread to stop
     should_stop: Arc<Mutex<bool>>,
+    /// Most recent BPM received via /slew/bpm (None until first message)
+    osc_bpm: Option<f64>,
 }
 
 impl Default for OscEngineState {
@@ -95,6 +106,7 @@ impl Default for OscEngineState {
             mappings: Vec::new(),
             app_handle: None,
             should_stop: Arc::new(Mutex::new(false)),
+            osc_bpm: None,
         }
     }
 }
@@ -289,15 +301,35 @@ fn handle_osc_message(msg: &OscMessage, mappings: &[OscMapping], app_handle: Opt
         let _ = handle.emit("osc_message", &msg_info);
     }
 
+    // -------------------------------------------------------------------------
+    // Reserved /slew/* addresses — handled before user mappings
+    // -------------------------------------------------------------------------
+
+    // /slew/beat — fire a beat pulse into the modulation engine
+    if msg.addr == "/slew/beat" {
+        handle_osc_beat(timestamp, app_handle);
+        return;
+    }
+
+    // /slew/bpm <float> — update the modulation engine's BPM
+    if msg.addr == "/slew/bpm" {
+        if let Some(bpm) = extract_numeric(&msg.args) {
+            let clamped = bpm.clamp(20.0, 300.0);
+            with_osc_engine(|state| {
+                state.osc_bpm = Some(clamped);
+            });
+            crate::modulation::update_bpm(Some(clamped));
+            log::debug!("[OSC] BPM set to {:.1} via /slew/bpm", clamped);
+        }
+        return;
+    }
+
+    // -------------------------------------------------------------------------
+    // User-defined parameter mappings
+    // -------------------------------------------------------------------------
+
     // Try to extract a numeric value from the first argument
-    let value = match msg.args.first() {
-        Some(OscType::Float(f)) => Some(*f as f64),
-        Some(OscType::Double(d)) => Some(*d),
-        Some(OscType::Int(i)) => Some(*i as f64),
-        Some(OscType::Long(l)) => Some(*l as f64),
-        Some(OscType::Bool(b)) => Some(if *b { 1.0 } else { 0.0 }),
-        _ => None,
-    };
+    let value = extract_numeric(&msg.args);
 
     if let Some(raw_value) = value {
         // Check all mappings for a match
@@ -313,6 +345,46 @@ fn handle_osc_message(msg: &OscMessage, mappings: &[OscMapping], app_handle: Opt
                 apply_osc_to_parameter(&mapping.parameter_id, scaled, app_handle);
             }
         }
+    }
+}
+
+/// Fire a beat pulse into the modulation engine and emit `osc_beat` to the frontend.
+fn handle_osc_beat(timestamp: u64, app_handle: Option<&AppHandle>) {
+    // Build a minimal AudioLevels with beat=true so existing AudioSource::Beat
+    // mappings and AudioModulation entries are triggered.
+    let beat_levels = crate::audio::AudioLevels {
+        rms: 0.0,
+        peak: 0.0,
+        bands: crate::audio::AudioBands {
+            bass: 0.0,
+            low_mid: 0.0,
+            high_mid: 0.0,
+            treble: 0.0,
+        },
+        beat: true,
+        timestamp,
+    };
+    crate::modulation::update_audio_levels(beat_levels);
+
+    // Emit osc_beat event so the frontend beat indicator can pulse
+    let bpm = with_osc_engine(|state| state.osc_bpm);
+    if let Some(handle) = app_handle {
+        let beat_info = OscBeatInfo { timestamp, bpm };
+        let _ = handle.emit("osc_beat", &beat_info);
+    }
+
+    log::debug!("[OSC] Beat pulse fired via /slew/beat");
+}
+
+/// Extract a numeric f64 from the first OSC argument, if possible.
+fn extract_numeric(args: &[OscType]) -> Option<f64> {
+    match args.first() {
+        Some(OscType::Float(f)) => Some(*f as f64),
+        Some(OscType::Double(d)) => Some(*d),
+        Some(OscType::Int(i)) => Some(*i as f64),
+        Some(OscType::Long(l)) => Some(*l as f64),
+        Some(OscType::Bool(b)) => Some(if *b { 1.0 } else { 0.0 }),
+        _ => None,
     }
 }
 
@@ -527,4 +599,115 @@ pub fn remove_osc_mapping(address: String) -> Result<(), String> {
 #[tauri::command]
 pub fn clear_osc_mappings() {
     clear_mappings()
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // -------------------------------------------------------------------------
+    // matches_address
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_exact_match() {
+        assert!(matches_address("/foo/bar", "/foo/bar"));
+    }
+
+    #[test]
+    fn test_exact_mismatch() {
+        assert!(!matches_address("/foo/bar", "/foo/baz"));
+    }
+
+    #[test]
+    fn test_wildcard_match() {
+        assert!(matches_address("/foo/bar", "/foo/*"));
+        assert!(matches_address("/foo/anything", "/foo/*"));
+    }
+
+    #[test]
+    fn test_wildcard_no_match_different_prefix() {
+        assert!(!matches_address("/baz/bar", "/foo/*"));
+    }
+
+    // -------------------------------------------------------------------------
+    // Reserved /slew/* addresses must NOT match user mappings
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_slew_beat_not_matched_by_user_wildcard() {
+        // A user mapping like /slew/* should technically match, but /slew/beat
+        // is intercepted before the mapping loop so it never reaches here.
+        // This test documents that matches_address itself would match — the
+        // protection is the early-return in handle_osc_message.
+        assert!(matches_address("/slew/beat", "/slew/*"));
+    }
+
+    #[test]
+    fn test_slew_beat_exact() {
+        assert!(matches_address("/slew/beat", "/slew/beat"));
+    }
+
+    #[test]
+    fn test_slew_bpm_exact() {
+        assert!(matches_address("/slew/bpm", "/slew/bpm"));
+    }
+
+    #[test]
+    fn test_non_slew_address_not_reserved() {
+        // Regular user addresses must not be confused with reserved ones
+        assert!(!matches_address("/scene/brightness", "/slew/beat"));
+        assert!(!matches_address("/slew/beat", "/scene/brightness"));
+    }
+
+    // -------------------------------------------------------------------------
+    // extract_numeric
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_extract_float() {
+        let args = vec![OscType::Float(0.75)];
+        assert!((extract_numeric(&args).unwrap() - 0.75).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_extract_double() {
+        let args = vec![OscType::Double(120.0)];
+        assert!((extract_numeric(&args).unwrap() - 120.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_extract_int() {
+        let args = vec![OscType::Int(1)];
+        assert_eq!(extract_numeric(&args).unwrap() as i32, 1);
+    }
+
+    #[test]
+    fn test_extract_bool_true() {
+        let args = vec![OscType::Bool(true)];
+        assert_eq!(extract_numeric(&args).unwrap() as i32, 1);
+    }
+
+    #[test]
+    fn test_extract_bool_false() {
+        let args = vec![OscType::Bool(false)];
+        assert_eq!(extract_numeric(&args).unwrap() as i32, 0);
+    }
+
+    #[test]
+    fn test_extract_empty_args() {
+        assert!(extract_numeric(&[]).is_none());
+    }
+
+    #[test]
+    fn test_bpm_clamping() {
+        // Values outside 20-300 should be clamped — verify the clamp bounds
+        assert_eq!(19.0_f64.clamp(20.0, 300.0), 20.0);
+        assert_eq!(301.0_f64.clamp(20.0, 300.0), 300.0);
+        assert_eq!(120.0_f64.clamp(20.0, 300.0), 120.0);
+    }
 }

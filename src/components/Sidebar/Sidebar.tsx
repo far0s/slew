@@ -448,7 +448,7 @@ export function Sidebar({
         </Tabs.Content>
 
         <Tabs.Content value="osc" className={styles.tabContent}>
-          <OscPanel />
+          <OscPanel slots={slots} />
         </Tabs.Content>
 
         <Tabs.Content value="audio" className={styles.tabContent}>

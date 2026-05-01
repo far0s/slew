@@ -133,6 +133,10 @@ export interface SlotColumnProps {
   onCrossfade: () => void;
   onRemove: () => void;
   onCopyToSlot?: (sourceSlotIndex: number) => void;
+  onQuickBeat?: (parameterId: string, paramMax: number) => void;
+  onQuickLfo?: (parameterId: string) => void;
+  onUnlinkBeat?: (parameterId: string) => void;
+  onUnlinkLfo?: (parameterId: string) => void;
 }
 
 function getSketchLabel(sketchId: SketchId): string {
@@ -445,6 +449,10 @@ export function SlotColumn({
   onRemove,
   filledSlots = [],
   onCopyToSlot,
+  onQuickBeat,
+  onQuickLfo,
+  onUnlinkBeat,
+  onUnlinkLfo,
 }: SlotColumnProps) {
   const [isSlotStreaming, setIsSlotStreaming] = useState(false);
 
@@ -632,6 +640,10 @@ export function SlotColumn({
           lfos={lfos}
           midiMappings={midiMappings}
           midiPickupStates={midiPickupStates}
+          onQuickBeat={onQuickBeat}
+          onQuickLfo={onQuickLfo}
+          onUnlinkBeat={onUnlinkBeat}
+          onUnlinkLfo={onUnlinkLfo}
         />
       </div>
     </motion.article>

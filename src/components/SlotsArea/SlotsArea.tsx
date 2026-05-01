@@ -40,6 +40,10 @@ export interface SlotsAreaProps {
   onClearSlot: (slotIndex: number) => void;
   onSetSketch: (slotIndex: number, sketchId: SketchId) => void;
   onCopyToSlot: (sourceSlotIndex: number, targetSlotIndex: number) => void;
+  onQuickBeat?: (parameterId: string, paramMax: number) => void;
+  onQuickLfo?: (parameterId: string) => void;
+  onUnlinkBeat?: (parameterId: string) => void;
+  onUnlinkLfo?: (parameterId: string) => void;
 }
 
 // Horizontally scrollable container for slot columns.
@@ -67,6 +71,10 @@ export function SlotsArea({
   onClearSlot,
   onSetSketch,
   onCopyToSlot,
+  onQuickBeat,
+  onQuickLfo,
+  onUnlinkBeat,
+  onUnlinkLfo,
 }: SlotsAreaProps) {
   const filledSlots = slots.filter(
     (s): s is Slot & { sketchId: SketchId } => s.sketchId !== null,
@@ -190,6 +198,10 @@ export function SlotsArea({
                     onCopyToSlot={(sourceSlotIndex) =>
                       onCopyToSlot(sourceSlotIndex, slot.index)
                     }
+                    onQuickBeat={onQuickBeat}
+                    onQuickLfo={onQuickLfo}
+                    onUnlinkBeat={onUnlinkBeat}
+                    onUnlinkLfo={onUnlinkLfo}
                   />
                 );
               })}

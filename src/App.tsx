@@ -16,8 +16,8 @@ import { getSketchDescriptor } from "./sketches";
 import { makeSlotParameterId } from "./slots/slotTypes";
 import { SlotsArea, RendererPreview, Sidebar } from "./components";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
-import { useAudioMappings } from "./inputs/audio";
-import { useLfos, useModulationTargets } from "./inputs/modulation";
+import { useAudioMappings, generateMappingId, type AudioMapping } from "./inputs/audio";
+import { useLfos, useModulationTargets, createLfo, createTarget } from "./inputs/modulation";
 import {
   useMidiMappings,
   useMidiDevices,
@@ -64,7 +64,7 @@ function App() {
   }, [paramStore]);
 
   // Audio mappings for parameter indicators
-  const { mappings: audioMappings } = useAudioMappings();
+  const { mappings: audioMappings, add: addAudioMapping, remove: removeAudioMapping } = useAudioMappings();
 
   // MIDI mappings and device state (to disable direct input for MIDI-controlled parameters)
   const { mappings: midiMappings } = useMidiMappings();
@@ -75,8 +75,8 @@ function App() {
   const isMidiDeviceConnected = midiDevices.some((d) => d.is_connected);
 
   // Modulation state for parameter indicators
-  const { lfos } = useLfos();
-  const { targets: modulationTargets } = useModulationTargets();
+  const { lfos, add: addLfo } = useLfos();
+  const { targets: modulationTargets, add: addModulationTarget, remove: removeModulationTarget } = useModulationTargets();
 
   // Renderer settings (for aspect ratio sync)
   const { info: rendererInfo } = useRendererSettings();
@@ -118,6 +118,57 @@ function App() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [toggleFullscreenControls]);
+
+  // Quick-wire handlers for Beat and LFO buttons on parameter sliders
+  const handleQuickBeat = useCallback(
+    async (parameterId: string, paramMax: number) => {
+      const mapping: AudioMapping = {
+        id: generateMappingId(),
+        source: "beat",
+        parameter_id: parameterId,
+        min_input: 0,
+        max_input: 1,
+        min_output: 0,
+        max_output: paramMax,
+        mode: "trigger",
+        smoothing: 0,
+        enabled: true,
+      };
+      await addAudioMapping(mapping);
+    },
+    [addAudioMapping],
+  );
+
+  const handleQuickLfo = useCallback(
+    async (parameterId: string) => {
+      const lfo = createLfo({ name: "LFO" });
+      const savedLfo = await addLfo(lfo);
+      const target = createTarget(savedLfo.id, parameterId, {
+        depth: 0.5,
+        bipolar: true,
+      });
+      await addModulationTarget(target);
+    },
+    [addLfo, addModulationTarget],
+  );
+
+  const handleUnlinkBeat = useCallback(
+    async (parameterId: string) => {
+      const mapping = audioMappings.find((m) => m.parameter_id === parameterId);
+      if (mapping) await removeAudioMapping(mapping.id);
+    },
+    [audioMappings, removeAudioMapping],
+  );
+
+  const handleUnlinkLfo = useCallback(
+    async (parameterId: string) => {
+      const targets = modulationTargets.filter(
+        (t) => t.parameter_id === parameterId,
+      );
+      await Promise.all(targets.map((t) => removeModulationTarget(t.id)));
+    },
+    [modulationTargets, removeModulationTarget],
+  );
 
   // Handle crossfade to a slot
   const handleCrossfade = useCallback(
@@ -791,6 +842,10 @@ function App() {
               onClearSlot={handleClearSlot}
               onSetSketch={handleSetSketch}
               onCopyToSlot={handleCopyToSlot}
+              onQuickBeat={handleQuickBeat}
+              onQuickLfo={handleQuickLfo}
+              onUnlinkBeat={handleUnlinkBeat}
+              onUnlinkLfo={handleUnlinkLfo}
             />
           </motion.div>
 

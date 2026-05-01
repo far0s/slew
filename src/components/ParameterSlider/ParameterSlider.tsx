@@ -77,6 +77,10 @@ export interface ParameterSliderProps {
   modulationIndicator?: ModulationIndicator | null;
   isMidiControlled?: boolean;
   pickupState?: MidiPickupState | null;
+  onQuickBeat?: () => void;
+  onQuickLfo?: () => void;
+  onUnlinkBeat?: () => void;
+  onUnlinkLfo?: () => void;
 }
 
 /**
@@ -104,6 +108,10 @@ export function ParameterSlider({
   modulationIndicator,
   isMidiControlled = false,
   pickupState,
+  onQuickBeat,
+  onQuickLfo,
+  onUnlinkBeat,
+  onUnlinkLfo,
 }: ParameterSliderProps) {
   const [showInfo, setShowInfo] = useState(false);
   const [showPickupFlash, setShowPickupFlash] = useState(false);
@@ -146,39 +154,6 @@ export function ParameterSlider({
       <div className={styles.labelRow}>
         <label htmlFor={id} className={styles.labelText}>
           <span className={styles.label}>{label}</span>
-          {audioMapping && (
-            <span
-              className={styles.audioMappingBadge}
-              style={{
-                backgroundColor: `color-mix(in srgb, ${audioMapping.color} 20%, transparent)`,
-                borderColor: `color-mix(in srgb, ${audioMapping.color} 40%, transparent)`,
-                color: audioMapping.color,
-              }}
-              title={`Audio mapped: ${audioMapping.sourceLabel}`}
-            >
-              <span
-                className={styles.audioMappingDot}
-                style={{ backgroundColor: audioMapping.color }}
-              />
-              {audioMapping.sourceLabel}
-            </span>
-          )}
-          {modulationIndicator && (
-            <span
-              className={styles.modulationBadge}
-              title={
-                modulationIndicator.count && modulationIndicator.count > 1
-                  ? `Modulated by ${modulationIndicator.count} LFOs including ${modulationIndicator.lfoName}`
-                  : `Modulated by ${modulationIndicator.lfoName}`
-              }
-            >
-              <span
-                className={styles.modulationDot}
-                style={{ backgroundColor: MODULATION_INDICATOR_COLOR }}
-              />
-              LFO
-            </span>
-          )}
           {showGhostMarker && pickupState.direction && (
             <span
               className={styles.pickupBadge}
@@ -193,6 +168,78 @@ export function ParameterSlider({
           <span className={styles.value}>{formatValue(value)}</span>
         </label>
         <div className={styles.labelActions}>
+          {audioMapping && (
+            onUnlinkBeat ? (
+              <button
+                type="button"
+                className={styles.audioMappingBadge}
+                style={{
+                  backgroundColor: `color-mix(in srgb, ${audioMapping.color} 20%, transparent)`,
+                  borderColor: `color-mix(in srgb, ${audioMapping.color} 40%, transparent)`,
+                  color: audioMapping.color,
+                }}
+                title={`Audio mapped: ${audioMapping.sourceLabel} — click to remove`}
+                onClick={onUnlinkBeat}
+              >
+                <span
+                  className={styles.audioMappingDot}
+                  style={{ backgroundColor: audioMapping.color }}
+                />
+                {audioMapping.sourceLabel}
+              </button>
+            ) : (
+              <span
+                className={styles.audioMappingBadge}
+                style={{
+                  backgroundColor: `color-mix(in srgb, ${audioMapping.color} 20%, transparent)`,
+                  borderColor: `color-mix(in srgb, ${audioMapping.color} 40%, transparent)`,
+                  color: audioMapping.color,
+                }}
+                title={`Audio mapped: ${audioMapping.sourceLabel}`}
+              >
+                <span
+                  className={styles.audioMappingDot}
+                  style={{ backgroundColor: audioMapping.color }}
+                />
+                {audioMapping.sourceLabel}
+              </span>
+            )
+          )}
+          {modulationIndicator && (
+            onUnlinkLfo ? (
+              <button
+                type="button"
+                className={styles.modulationBadge}
+                title={
+                  modulationIndicator.count && modulationIndicator.count > 1
+                    ? `Modulated by ${modulationIndicator.count} LFOs — click to remove`
+                    : `Modulated by ${modulationIndicator.lfoName} — click to remove`
+                }
+                onClick={onUnlinkLfo}
+              >
+                <span
+                  className={styles.modulationDot}
+                  style={{ backgroundColor: MODULATION_INDICATOR_COLOR }}
+                />
+                LFO
+              </button>
+            ) : (
+              <span
+                className={styles.modulationBadge}
+                title={
+                  modulationIndicator.count && modulationIndicator.count > 1
+                    ? `Modulated by ${modulationIndicator.count} LFOs including ${modulationIndicator.lfoName}`
+                    : `Modulated by ${modulationIndicator.lfoName}`
+                }
+              >
+                <span
+                  className={styles.modulationDot}
+                  style={{ backgroundColor: MODULATION_INDICATOR_COLOR }}
+                />
+                LFO
+              </span>
+            )
+          )}
           {description && (
             <div
               className={styles.infoButtonWrapper}
@@ -212,6 +259,28 @@ export function ParameterSlider({
                 </div>
               )}
             </div>
+          )}
+          {onQuickBeat && !audioMapping && (
+            <button
+              type="button"
+              className={styles.quickBeatButton}
+              onClick={onQuickBeat}
+              title="Quick-wire Beat trigger"
+              aria-label="Quick-wire Beat trigger"
+            >
+              ♩
+            </button>
+          )}
+          {onQuickLfo && !modulationIndicator && (
+            <button
+              type="button"
+              className={styles.quickLfoButton}
+              onClick={onQuickLfo}
+              title="Quick-wire LFO"
+              aria-label="Quick-wire LFO"
+            >
+              ~
+            </button>
           )}
           {midiParameterId && (
             <MidiLearnButton

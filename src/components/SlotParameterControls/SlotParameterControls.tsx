@@ -32,6 +32,10 @@ export interface SlotParameterControlsProps {
   lfos?: LfoSource[];
   midiMappings?: MidiMapping[];
   midiPickupStates?: Map<string, MidiPickupState>;
+  onQuickBeat?: (parameterId: string, paramMax: number) => void;
+  onQuickLfo?: (parameterId: string) => void;
+  onUnlinkBeat?: (parameterId: string) => void;
+  onUnlinkLfo?: (parameterId: string) => void;
 }
 
 async function setParameter(id: string, value: number): Promise<void> {
@@ -124,6 +128,10 @@ export function SlotParameterControls({
   lfos,
   midiMappings,
   midiPickupStates,
+  onQuickBeat,
+  onQuickLfo,
+  onUnlinkBeat,
+  onUnlinkLfo,
 }: SlotParameterControlsProps) {
   const descriptor = getSketchDescriptor(sketchId);
 
@@ -308,6 +316,18 @@ export function SlotParameterControls({
                   lfos,
                 )}
                 isMidiControlled={hasMidiMapping}
+                onQuickBeat={
+                  onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined
+                }
+                onQuickLfo={
+                  onQuickLfo ? () => onQuickLfo(paramId) : undefined
+                }
+                onUnlinkBeat={
+                  onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined
+                }
+                onUnlinkLfo={
+                  onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined
+                }
               />
             );
           }
@@ -326,7 +346,6 @@ export function SlotParameterControls({
               showSpacing={index > 0}
               description={template.description}
               onChange={createChangeHandler(slotIndex, template, setValue)}
-              midiParameterId={paramId}
               audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
               modulationIndicator={getModulationIndicator(
                 paramId,
@@ -335,6 +354,19 @@ export function SlotParameterControls({
               )}
               isMidiControlled={hasMidiMapping}
               pickupState={midiPickupStates?.get(paramId)}
+              midiParameterId={paramId}
+              onQuickBeat={
+                onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined
+              }
+              onQuickLfo={
+                onQuickLfo ? () => onQuickLfo(paramId) : undefined
+              }
+              onUnlinkBeat={
+                onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined
+              }
+              onUnlinkLfo={
+                onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined
+              }
             />
           );
         })}
