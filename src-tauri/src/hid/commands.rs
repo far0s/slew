@@ -1,8 +1,9 @@
 //! Tauri command wrappers for HID functionality.
 
-use super::connections::{connect_device, connect_megalodon, disconnect_device, get_status};
+use super::connections::{connect_device, connect_supported_device, disconnect_device, get_status};
 use super::devices::{list_devices, list_supported_devices};
 use super::engine::{is_auto_connect_enabled, set_auto_connect};
+#[allow(deprecated)]
 use super::mappings::{
     add_mapping, clear_mappings, get_mappings, remove_mapping, setup_default_mappings,
 };
@@ -25,7 +26,7 @@ pub fn connect_hid_device(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn connect_hid_megalodon() -> Result<(), String> {
-    connect_megalodon()
+    connect_supported_device()
 }
 
 #[tauri::command]
@@ -59,6 +60,7 @@ pub fn clear_hid_mappings() -> Result<(), String> {
 }
 
 #[tauri::command]
+#[allow(deprecated)]
 pub fn setup_default_hid_mappings() -> Result<(), String> {
     setup_default_mappings()
 }

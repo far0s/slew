@@ -6,7 +6,7 @@ use std::thread;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 
-use super::connections::connect_megalodon;
+use super::connections::connect_supported_device;
 use super::constants::AUTO_CONNECT_INTERVAL_MS;
 use super::devices::list_supported_devices;
 use super::mappings::load_mappings_from_disk;
@@ -106,7 +106,7 @@ fn start_auto_connect_thread() {
                             devices.len()
                         );
 
-                        if let Err(e) = connect_megalodon() {
+                        if let Err(e) = connect_supported_device() {
                             log::debug!("[HID] Auto-connect failed: {}", e);
                         } else {
                             log::debug!("[HID] Auto-connect successful");

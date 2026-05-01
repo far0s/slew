@@ -2,7 +2,7 @@
 
 use hidapi::HidApi;
 
-use super::constants::{MEGALODON_PRODUCT_ID, MEGALODON_VENDOR_ID};
+use super::constants::{get_known_device_name, MEGALODON_PRODUCT_ID, MEGALODON_VENDOR_ID};
 use super::types::HidDeviceInfo;
 
 fn describe_usage(usage_page: u16, usage: u16) -> String {
@@ -29,8 +29,9 @@ pub fn list_devices() -> Result<Vec<HidDeviceInfo>, String> {
     let devices: Vec<HidDeviceInfo> = api
         .device_list()
             .map(|dev| {
-                let is_supported = dev.vendor_id() == MEGALODON_VENDOR_ID
-                    && dev.product_id() == MEGALODON_PRODUCT_ID;
+                let is_supported = (dev.vendor_id() == MEGALODON_VENDOR_ID
+                    && dev.product_id() == MEGALODON_PRODUCT_ID)
+                    || get_known_device_name(dev.vendor_id(), dev.product_id()).is_some();
 
                 let usage_page = dev.usage_page();
                 let usage = dev.usage();
@@ -41,7 +42,9 @@ pub fn list_devices() -> Result<Vec<HidDeviceInfo>, String> {
                 product_id: dev.product_id(),
                 path: dev.path().to_string_lossy().to_string(),
                 manufacturer: dev.manufacturer_string().map(|s| s.to_string()),
-                product: dev.product_string().map(|s| s.to_string()),
+                product: dev.product_string().map(|s| s.to_string()).or_else(|| {
+                    get_known_device_name(dev.vendor_id(), dev.product_id()).map(|s| s.to_string())
+                }),
                 serial: dev.serial_number().map(|s| s.to_string()),
                 is_supported,
                 usage_page,

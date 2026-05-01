@@ -78,15 +78,11 @@ impl Default for MidiOutputConfig {
 // Internal types (not serializable)
 
 pub(crate) struct ActiveInputConnection {
-    #[allow(dead_code)]
-    pub device_id: String,
     pub device_name: String,
     pub connection: Option<MidiInputConnection<()>>,
 }
 
 pub(crate) struct ActiveOutputConnection {
-    #[allow(dead_code)]
-    pub device_id: String,
     pub device_name: String,
     pub connection: Option<MidiOutputConnection>,
 }
@@ -94,7 +90,6 @@ pub(crate) struct ActiveOutputConnection {
 #[derive(Debug, Clone)]
 pub(crate) struct SlotState {
     pub index: usize,
-    #[allow(dead_code)]
     pub exists: bool,
     pub sketch_id: Option<String>,
 }

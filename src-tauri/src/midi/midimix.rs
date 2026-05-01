@@ -579,43 +579,13 @@ fn update_midimix_knob_mappings() {
 }
 
 /// Setup default Midimix mappings (faders 1-8 to slot 0-7 alpha)
+/// Set up default Midimix mappings on first connect.
+///
+/// Maps faders 1-8 (CC 19,23,27,31,49,53,57,61) to slot_0_alpha..slot_7_alpha.
+/// Skips any slot that already has a mapping.
 pub fn setup_midimix_default_mappings() {
-    log::debug!("[MIDI] Setting up Midimix default mappings for slot alphas");
-
-    // Check if we already have mappings for these parameters (don't override user mappings)
-    let existing_mappings = with_midi_engine(|state| state.mappings.clone());
-
-    for slot in 0..8 {
-        let param_id = format!("slot_{}_alpha", slot);
-
-        // Skip if there's already a mapping for this parameter
-        if existing_mappings.iter().any(|m| m.parameter_id == param_id) {
-            log::debug!("[MIDI] Skipping {} - already has a mapping", param_id);
-            continue;
-        }
-
-        let mapping = MidiMapping {
-            parameter_id: param_id.clone(),
-            channel: Some(0),
-            cc_number: MIDIMIX_FADER_CCS[slot],
-            min_value: 0.0,
-            max_value: 1.0,
-            device_id: None, // Accept from any device
-        };
-
-        with_midi_engine(|state| {
-            state.mappings.push(mapping);
-        });
-
-        log::debug!(
-            "[MIDI] Added default mapping: fader {} (CC {}) -> {}",
-            slot + 1,
-            MIDIMIX_FADER_CCS[slot],
-            param_id
-        );
-    }
-
-    save_mappings_to_disk();
+    log::debug!("[MIDI] Setting up Midimix default mappings");
+    super::mappings::install_default_cc_mappings(&MIDIMIX_FADER_CCS);
 }
 
 /// Get the first 3 parameter IDs for a sketch (excluding alpha which is slot-level).

@@ -21,13 +21,17 @@ pub fn connect_device(path: &str) -> Result<(), String> {
     connect_device_internal(path, true)
 }
 
-/// Connect to the first available Megalodon device.
-/// Connects to BOTH keyboard and consumer control interfaces for full encoder support.
-pub fn connect_megalodon() -> Result<(), String> {
+/// Connect to the first available supported HID device.
+/// For DOIO/Megalodon, connects BOTH the Consumer Control and Keyboard
+/// interfaces to enable full encoder and key support.
+///
+/// This function will need to grow device-specific branching as more
+/// supported HID devices are added with their own connection logic.
+pub fn connect_supported_device() -> Result<(), String> {
     let supported = list_supported_devices()?;
 
     if supported.is_empty() {
-        return Err("No Megalodon device found. Make sure it's connected.".to_string());
+        return Err("No supported HID device found. Make sure it's connected.".to_string());
     }
 
     // For DOIO/Megalodon, we need multiple interfaces:
@@ -67,7 +71,7 @@ pub fn connect_megalodon() -> Result<(), String> {
     }
 
     if !connected_any {
-        return Err("Failed to connect to any DOIO interface".to_string());
+        return Err("Failed to connect to any supported HID interface".to_string());
     }
 
     with_hid_engine(|state| {

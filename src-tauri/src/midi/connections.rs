@@ -6,13 +6,10 @@ use midir::{Ignore, MidiInput, MidiOutput};
 use std::collections::HashMap;
 
 use super::devices::find_paired_output_device;
-use super::engine::{is_midimix_device, with_midi_engine, MIDI_ENGINE};
+use super::engine::{find_controller, is_midimix_device, with_midi_engine, MIDI_ENGINE};
 use super::events::{emit_devices_changed, emit_output_devices_changed};
 use super::message_handler::handle_midi_message;
-use super::midimix::{
-    reset_all_pickup, send_midimix_shutdown_animation_sync, send_midimix_startup_animation,
-    setup_midimix_default_mappings,
-};
+use super::midimix::{reset_all_pickup, send_midimix_shutdown_animation_sync, send_midimix_startup_animation};
 use super::types::{ActiveInputConnection, ActiveOutputConnection};
 
 // ============================================================================
@@ -77,7 +74,6 @@ pub fn open_device(device_id: String) -> Result<(), String> {
         state.connections.insert(
             device_id.clone(),
             ActiveInputConnection {
-                device_id: device_id.clone(),
                 device_name: port_name.clone(),
                 connection: Some(connection),
             },
@@ -91,28 +87,33 @@ pub fn open_device(device_id: String) -> Result<(), String> {
     // Emit device change event
     emit_devices_changed();
 
-    // For Midimix: auto-connect paired output and setup default mappings
+    // For Midimix: handle pickup reset (registry handles setup + LEDs)
     if is_midimix {
-        log::debug!("[MIDI] Midimix detected, setting up paired output and default mappings");
+        reset_all_pickup(&MIDI_ENGINE);
+    }
 
-        // Try to connect the paired output device
-        if let Some(output) = find_paired_output_device(&port_name) {
-            if !output.is_connected {
-                if let Err(e) = open_output_device(output.id.clone()) {
-                    log::warn!("[MIDI] Failed to auto-connect Midimix output: {}", e);
-                } else {
-                    log::debug!("[MIDI] Auto-connected Midimix output: {}", output.name);
-                    // Send LED startup animation
-                    send_midimix_startup_animation(&output.id);
+    // Dispatch to the matching controller profile for output pairing, LEDs, and mappings
+    if let Some(profile) = find_controller(&port_name) {
+        if profile.has_output {
+            if let Some(output) = find_paired_output_device(&port_name) {
+                if !output.is_connected {
+                    if let Err(e) = open_output_device(output.id.clone()) {
+                        log::warn!("[MIDI] Failed to auto-connect {} output: {}", profile.label, e);
+                    } else {
+                        log::debug!("[MIDI] Auto-connected {} output: {}", profile.label, output.name);
+                        if let Some(leds_fn) = profile.startup_leds {
+                            // Midimix startup animation is handled separately (includes pickup reset)
+                            if !is_midimix {
+                                leds_fn(&output.id);
+                            } else {
+                                send_midimix_startup_animation(&output.id);
+                            }
+                        }
+                    }
                 }
             }
         }
-
-        // Setup default alpha mappings for slots 0-7
-        setup_midimix_default_mappings();
-
-        // Reset all pickup state on connect (ignore first CC from each control)
-        reset_all_pickup(&MIDI_ENGINE);
+        (profile.setup)();
     }
 
     Ok(())
@@ -212,7 +213,6 @@ pub fn open_output_device(device_id: String) -> Result<(), String> {
         state.output_connections.insert(
             device_id.clone(),
             ActiveOutputConnection {
-                device_id: device_id.clone(),
                 device_name: port_name.clone(),
                 connection: Some(connection),
             },

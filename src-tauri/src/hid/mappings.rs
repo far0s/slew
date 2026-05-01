@@ -51,8 +51,14 @@ pub fn clear_mappings() -> Result<(), String> {
 
 /// Set up default mappings for the Megalodon.
 ///
-/// NOTE: Legacy mappings. Encoder mappings are now handled dynamically
-/// based on selected slot.
+/// # Deprecated
+/// These are legacy mappings from before encoder routing became slot-aware.
+/// Encoder-to-parameter routing is now handled dynamically based on the
+/// selected slot. This function is retained only because it is exposed as a
+/// Tauri command; do not rely on it for new device setup.
+#[deprecated(note = "Encoder mappings are now handled dynamically per slot. \
+                      This function exists only for legacy Tauri command compatibility.")]
+#[allow(deprecated)]
 pub fn setup_default_mappings() -> Result<(), String> {
     let defaults = vec![
         HidMapping {

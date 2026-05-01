@@ -3,6 +3,10 @@
 //! Handles incoming MIDI messages, routing them to the appropriate handlers
 //! for learn mode, button presses, and parameter mapping.
 
+// Utility functions (normalize_cc_value, map_to_range, calculate_pitch_bend)
+// are referenced by future features (MIDI Learn display, pickup HUD).
+#![allow(dead_code)]
+
 use std::sync::{Arc, Mutex};
 use tauri::Emitter;
 

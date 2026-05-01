@@ -18,6 +18,95 @@ pub(crate) fn with_midi_engine<T, F: FnOnce(&mut MidiEngineState) -> T>(f: F) ->
     f(&mut state)
 }
 
+// ============================================================================
+// Controller registry
+// ============================================================================
+
+/// Describes a known MIDI controller and how Slew should treat it on connect.
+pub(crate) struct ControllerProfile {
+    /// Human-readable label used in log messages.
+    pub label: &'static str,
+    /// Returns true if a port name belongs to this controller.
+    pub matches: fn(&str) -> bool,
+    /// Whether this controller has a paired MIDI output port (for LED feedback).
+    pub has_output: bool,
+    /// Called once after the input port opens to install default parameter mappings.
+    pub setup: fn(),
+    /// Called with the output device ID once the paired output is connected.
+    /// `None` means no LED startup sequence is needed.
+    pub startup_leds: Option<fn(&str)>,
+}
+
+/// All recognised MIDI controllers, in priority order.
+/// Add a new entry here to fully register a new controller — no other files need changing.
+pub(crate) static CONTROLLERS: &[ControllerProfile] = &[
+    ControllerProfile {
+        label: "Midimix",
+        matches: |name| name.contains(MIDIMIX_NAME_PATTERN),
+        has_output: true,
+        setup: || super::midimix::setup_midimix_default_mappings(),
+        startup_leds: Some(|id| super::midimix::send_midimix_startup_animation(id)),
+    },
+    ControllerProfile {
+        label: "APC Mini mk2",
+        // mk2 must come before mk1 — its port name is a superset of mk1's
+        matches: |name| name.to_ascii_lowercase().contains(APC_MINI_MK2_NAME_PATTERN),
+        has_output: true,
+        setup: || super::apc_mini::setup_apc_mini_default_mappings(),
+        startup_leds: Some(|id| super::apc_mini::send_apc_mini_mk2_startup_leds(id)),
+    },
+    ControllerProfile {
+        label: "APC Mini mk1",
+        matches: |name| name.to_ascii_uppercase().contains(APC_MINI_MK1_NAME_PATTERN)
+            && !name.to_ascii_lowercase().contains(APC_MINI_MK2_NAME_PATTERN),
+        has_output: true,
+        setup: || super::apc_mini::setup_apc_mini_default_mappings(),
+        startup_leds: Some(|id| super::apc_mini::send_apc_mini_mk1_startup_leds(id)),
+    },
+    ControllerProfile {
+        label: "MPD218",
+        matches: |name| name.contains(MPD218_NAME_PATTERN),
+        has_output: false,
+        setup: || super::mpd218::setup_mpd218_default_mappings(),
+        startup_leds: None,
+    },
+];
+
+/// Find the controller profile matching a port name, if any.
+pub(crate) fn find_controller(name: &str) -> Option<&'static ControllerProfile> {
+    CONTROLLERS.iter().find(|p| (p.matches)(name))
+}
+
+// ============================================================================
+// Legacy detection helpers
+// ============================================================================
+// Kept for back-compat with any call sites not yet using the registry directly.
+
+pub fn is_midimix_device(name: &str) -> bool {
+    (CONTROLLERS[0].matches)(name)
+}
+
+pub fn is_apc_mini_device(name: &str) -> bool {
+    // mk2 check (index 1) or mk1 check (index 2)
+    (CONTROLLERS[1].matches)(name) || (CONTROLLERS[2].matches)(name)
+}
+
+pub fn is_apc_mini_mk1_device(name: &str) -> bool {
+    (CONTROLLERS[2].matches)(name)
+}
+
+pub fn is_apc_mini_mk2_device(name: &str) -> bool {
+    (CONTROLLERS[1].matches)(name)
+}
+
+pub fn is_mpd218_device(name: &str) -> bool {
+    (CONTROLLERS[3].matches)(name)
+}
+
+// ============================================================================
+// Initialisation
+// ============================================================================
+
 pub fn init_midi_engine(app_handle: AppHandle) {
     with_midi_engine(|state| {
         state.app_handle = Some(app_handle);
@@ -25,12 +114,21 @@ pub fn init_midi_engine(app_handle: AppHandle) {
 
     super::mappings::load_mappings_from_disk();
 
-    let mut midimix_input: Option<MidiDeviceInfo> = None;
+    // Find the first device matching each known controller profile at startup
+    let mut found: Vec<(&'static ControllerProfile, MidiDeviceInfo)> = Vec::new();
+
     if let Ok(devices) = list_devices() {
         with_midi_engine(|state| {
             state.known_device_names = devices.iter().map(|d| d.name.clone()).collect();
         });
-        midimix_input = devices.into_iter().find(|d| is_midimix_device(&d.name));
+        for d in &devices {
+            if let Some(profile) = find_controller(&d.name) {
+                // Only take the first device per profile
+                if !found.iter().any(|(p, _)| p.label == profile.label) {
+                    found.push((profile, d.clone()));
+                }
+            }
+        }
     }
 
     if let Ok(devices) = super::devices::list_output_devices() {
@@ -41,16 +139,18 @@ pub fn init_midi_engine(app_handle: AppHandle) {
 
     start_device_watcher_thread();
 
-    if let Some(midimix) = midimix_input {
+    for (profile, device) in found {
         log::info!(
-            "[MIDI] Midimix found at startup, auto-connecting: {}",
-            midimix.name
+            "[MIDI] {} found at startup, auto-connecting: {}",
+            profile.label,
+            device.name
         );
-        let device_id = midimix.id;
+        let device_id = device.id;
+        let label = profile.label;
         std::thread::spawn(move || {
             std::thread::sleep(Duration::from_millis(500));
             if let Err(e) = super::connections::open_device(device_id) {
-                log::warn!("[MIDI] Failed to auto-connect Midimix at startup: {}", e);
+                log::warn!("[MIDI] Failed to auto-connect {} at startup: {}", label, e);
             }
         });
     }
@@ -245,8 +345,8 @@ fn start_device_watcher_thread() {
 
             if auto_reconnect_enabled && !added.is_empty() {
                 for name in &added {
-                    let should_connect =
-                        auto_reconnect_devices.contains(name) || is_midimix_device(name);
+                    let should_connect = auto_reconnect_devices.contains(name)
+                        || find_controller(name).is_some();
 
                     if should_connect {
                         if let Ok(devices) = list_devices() {
@@ -267,7 +367,9 @@ fn start_device_watcher_thread() {
 
             if auto_reconnect_enabled && !output_added.is_empty() {
                 for name in &output_added {
-                    if is_midimix_device(name) {
+                    // Skip output auto-reconnect for controllers that manage
+                    // their own output pairing inside open_device via the registry
+                    if find_controller(name).map(|p| p.has_output).unwrap_or(false) {
                         continue;
                     }
 
@@ -291,8 +393,4 @@ fn start_device_watcher_thread() {
             }
         }
     });
-}
-
-pub fn is_midimix_device(name: &str) -> bool {
-    name.contains(MIDIMIX_NAME_PATTERN)
 }

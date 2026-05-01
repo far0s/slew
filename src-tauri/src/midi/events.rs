@@ -1,4 +1,8 @@
 //! MIDI event emission.
+//
+// emit_learn_complete and emit_midi_message are part of the planned MIDI
+// activity display; suppressed until that feature is wired up.
+#![allow(dead_code)]
 
 use tauri::Emitter;
 
