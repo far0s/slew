@@ -6,7 +6,7 @@ import { createSimpleStorage } from "../lib/storage";
 // ==========================================================================
 
 export type ThemeMode = "dark" | "light";
-export type ThemeAccent = "standard" | "amber";
+export type ThemeAccent = "standard" | "neutral" | "amber";
 
 export interface ThemePreferences {
   mode: ThemeMode;
@@ -33,7 +33,7 @@ const DEFAULT_ACCENT: ThemeAccent = "standard";
 const isValidMode = (v: unknown): v is ThemeMode =>
   v === "dark" || v === "light";
 const isValidAccent = (v: unknown): v is ThemeAccent =>
-  v === "standard" || v === "amber";
+  v === "standard" || v === "neutral" || v === "amber";
 
 // Simple storage for theme preferences
 const modeStorage = createSimpleStorage(
@@ -187,7 +187,9 @@ export function useTheme(): UseThemeResult {
   }, []);
 
   const toggleAccent = useCallback(() => {
-    setAccentInternal(currentAccent === "standard" ? "amber" : "standard");
+    const cycle: ThemeAccent[] = ["standard", "neutral", "amber"];
+    const idx = cycle.indexOf(currentAccent);
+    setAccentInternal(cycle[(idx + 1) % cycle.length]);
   }, []);
 
   // ---------------------------------------------------------------------------

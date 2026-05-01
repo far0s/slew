@@ -128,27 +128,36 @@ function ThemeControls() {
       {/* Theme Warmth */}
       <div className={styles.layoutRow}>
         <span className={styles.layoutLabel}>Warmth</span>
-        <button
-          type="button"
+        <div
           className={styles.toggleGroup}
-          onClick={() =>
-            setAccent(accent === "standard" ? "amber" : "standard")
-          }
-          aria-label={`Theme warmth: ${accent === "standard" ? "cool" : "warm"}. Click to switch`}
+          role="group"
+          aria-label="Theme warmth"
         >
-          <span
+          <button
+            type="button"
             className={`${styles.toggleSegment} ${accent === "standard" ? styles.toggleSegmentActive : ""}`}
-            aria-hidden="true"
+            onClick={() => setAccent("standard")}
+            aria-pressed={accent === "standard"}
           >
             Cool
-          </span>
-          <span
+          </button>
+          <button
+            type="button"
+            className={`${styles.toggleSegment} ${accent === "neutral" ? styles.toggleSegmentActive : ""}`}
+            onClick={() => setAccent("neutral")}
+            aria-pressed={accent === "neutral"}
+          >
+            Neutral
+          </button>
+          <button
+            type="button"
             className={`${styles.toggleSegment} ${accent === "amber" ? styles.toggleSegmentActive : ""}`}
-            aria-hidden="true"
+            onClick={() => setAccent("amber")}
+            aria-pressed={accent === "amber"}
           >
             Warm
-          </span>
-        </button>
+          </button>
+        </div>
       </div>
     </div>
   );

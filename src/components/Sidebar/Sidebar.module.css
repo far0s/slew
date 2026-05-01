@@ -318,6 +318,10 @@
   transition:
     background-color 0.15s ease,
     color 0.15s ease;
+  background: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .toggleIcon {
@@ -326,7 +330,7 @@
   flex-shrink: 0;
 }
 
-.toggleSegment:first-child {
+.toggleSegment:not(:last-child) {
   border-right: 1px solid var(--border-default);
 }
 

@@ -140,6 +140,88 @@
 }
 
 /* ==========================================================================
+   Neutral Theme (Dark Mode)
+   Pure greyscale — removes all blue/warm tints for a clean black/grey/white look.
+   ========================================================================== */
+
+[data-accent="neutral"] {
+  /* Background colors - pure dark greys */
+  --bg-primary: #080808;
+  --bg-elevated: #101010;
+  --bg-panel: #060606;
+  --bg-surface: #181818;
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-active: rgba(255, 255, 255, 0.1);
+
+  /* Text colors - pure whites/greys */
+  --text-primary: #f5f5f5;
+  --text-secondary: #9e9e9e;
+  --text-muted: rgba(158, 158, 158, 0.6);
+
+  /* Border colors - neutral greys */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-accent: rgba(120, 120, 120, 0.6);
+
+  /* Accent colors - neutral grey */
+  --accent-primary: #9e9e9e;
+  --accent-primary-hover: #bdbdbd;
+  --accent-success: #66bb6a;
+  --accent-warning: #ffa726;
+  --accent-danger: #ef5350;
+
+  /* Status colors */
+  --status-active: #66bb6a;
+  --status-inactive: #616161;
+  --status-error: #ef5350;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* ==========================================================================
+   Neutral Theme (Light Mode)
+   Pure greyscale on light backgrounds.
+   ========================================================================== */
+
+[data-theme="light"][data-accent="neutral"] {
+  /* Background colors - pure light greys */
+  --bg-primary: #fafafa;
+  --bg-elevated: #ffffff;
+  --bg-panel: #f0f0f0;
+  --bg-surface: #e0e0e0;
+  --bg-hover: rgba(0, 0, 0, 0.04);
+  --bg-active: rgba(0, 0, 0, 0.08);
+
+  /* Text colors - pure blacks/greys */
+  --text-primary: #121212;
+  --text-secondary: #616161;
+  --text-muted: rgba(97, 97, 97, 0.6);
+
+  /* Border colors - neutral greys */
+  --border-subtle: rgba(0, 0, 0, 0.1);
+  --border-default: rgba(0, 0, 0, 0.16);
+  --border-accent: rgba(80, 80, 80, 0.5);
+
+  /* Accent colors - neutral grey for light backgrounds */
+  --accent-primary: #424242;
+  --accent-primary-hover: #212121;
+  --accent-success: #388e3c;
+  --accent-warning: #f57c00;
+  --accent-danger: #d32f2f;
+
+  /* Status colors */
+  --status-active: #388e3c;
+  --status-inactive: #9e9e9e;
+  --status-error: #d32f2f;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* ==========================================================================
    Amber Theme (Dark Mode)
    Full warm color shift for night use and reduced eye strain.
    All colors shifted from blue/cool tones to orange/warm tones.
