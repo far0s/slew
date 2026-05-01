@@ -20,61 +20,6 @@ Prioritized list of potential work items for Slew.
 
 ## Active / High Priority
 
-### 🔴 OSC Output / Beat Forwarding `feature`
-
-Add an OSC output client to Slew so it can forward beat pulses and BPM — and optionally arbitrary parameter values — to other apps or devices on the same machine or local network.
-
-**Context**: With OSC beat input in place, Slew becomes a beat hub: receive from a DAW, drive its own visuals, and fan-out to other gear (lighting, another instance of Slew on a second machine, TouchOSC, etc.). OSC output is also useful independently — e.g. map a parameter to send its value to a lighting console.
-
-**Architecture**: A lightweight OSC output client lives alongside the existing server in `osc.rs`. It holds a `UdpSocket` (bound to `0.0.0.0:0` — OS picks ephemeral port) and a target `host:port`. Sending is fire-and-forget; no acknowledgement expected.
-
-**Config struct** (persisted to disk like mappings):
-```
-OscOutputConfig {
-  enabled: bool,
-  host: String,        // default "127.0.0.1"
-  port: u16,           // default 9001
-  forward_beat: bool,  // send /slew/beat on every detected beat
-  forward_bpm: bool,   // send /slew/bpm <float> when BPM changes
-}
-```
-
-**Beat sources for forwarding**: Both the internal audio analyser beat *and* an OSC beat received on `/slew/beat` should be forwarded — Slew acts as a relay.
-
-**Implementation plan**:
-
-*Rust — `src-tauri/src/osc.rs`*:
-- Add `OscOutputConfig` struct + `output_socket: Option<UdpSocket>` to `OscEngineState`
-- `fn send_osc_message(address: &str, args: Vec<OscType>)` — builds `OscPacket`, serialises with `rosc::encoder::encode`, sends via `output_socket` to configured target
-- `pub fn set_output_config(config: OscOutputConfig)` — stores config, (re)creates socket if enabled, persists to disk
-- `pub fn get_output_config() -> OscOutputConfig`
-- `pub fn send_osc_beat()` — called from the beat paths (audio analyser callback + OSC beat handler); sends `/slew/beat 1` if `forward_beat` enabled
-- `pub fn send_osc_bpm(bpm: f64)` — sends `/slew/bpm <bpm>` if `forward_bpm` enabled
-- Register new Tauri commands: `set_osc_output_config`, `get_osc_output_config`, `send_osc_message` (manual trigger for advanced use)
-
-*Rust — `src-tauri/src/audio/`*:
-- In the beat detection path (after emitting `audio_beat` / `audio_levels` with `beat: true`), call `osc::send_osc_beat()`
-
-*Frontend — `src/inputs/osc.ts`*:
-- Add `OscOutputConfig` type + `getOscOutputConfig` / `setOscOutputConfig` Tauri invoke wrappers
-- Add `useOscOutput()` hook (reads config, provides `update(config)` callback)
-
-*Frontend — `src/components/OscPanel/OscPanel.tsx`*:
-- Add **Output** section (see OscPanel UI task): host/port fields, enable toggle, forward-beat and forward-bpm checkboxes, activity dot that pulses on each sent message.
-
-**Subtasks**:
-- [ ] `OscOutputConfig` struct + persistence
-- [ ] `UdpSocket` output client in `OscEngineState`
-- [ ] `send_osc_message` / `send_osc_beat` / `send_osc_bpm` helpers
-- [ ] Hook into audio beat path to call `send_osc_beat()`
-- [ ] Hook into BPM update path to call `send_osc_bpm()`
-- [ ] Tauri commands: `set_osc_output_config`, `get_osc_output_config`
-- [ ] `useOscOutput()` hook + TS types
-- [ ] Output section in OscPanel UI (see OscPanel UI task)
-- [ ] Tests: unit test encode/send roundtrip
-
----
-
 ### 🔴 OscPanel UI — Beat Input, Output & UX Improvements `feature`
 
 Update the OscPanel to surface the new beat/BPM OSC features and make the overall panel clearer for users who are new to OSC.

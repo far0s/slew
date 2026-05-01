@@ -805,3 +805,129 @@
   border-color: rgb(168 85 247 / 0.3);
   background: rgb(168 85 247 / 0.06);
 }
+
+/* ============================================================
+   OSC Output Section
+   ============================================================ */
+
+.outputSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.outputEnableRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.outputEnableLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.outputDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgb(168 85 247 / 0.25);
+  transition: background 0.1s;
+  flex-shrink: 0;
+}
+
+.outputDot.outputDotActive {
+  background: rgb(168 85 247 / 0.9);
+  box-shadow: 0 0 6px rgb(168 85 247 / 0.6);
+}
+
+.outputFields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  transition: opacity 0.15s;
+}
+
+.outputFields.outputFieldsDisabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.outputFieldRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fieldLabel {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  width: 2.8rem;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.outputInput {
+  flex: 1;
+  background: var(--input-bg, rgb(255 255 255 / 0.06));
+  border: 1px solid var(--border-subtle, rgb(255 255 255 / 0.1));
+  border-radius: 4px;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.73rem;
+  color: var(--text-primary);
+  font-family: var(--font-mono, monospace);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.outputInput:focus {
+  border-color: rgb(168 85 247 / 0.5);
+}
+
+.outputInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.outputInputPort {
+  max-width: 5rem;
+}
+
+.outputCheckboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary, var(--text-muted));
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkboxLabel:has(input:disabled) {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.checkbox {
+  accent-color: rgb(168 85 247);
+  cursor: pointer;
+}
+
+.outputHint {
+  font-size: 0.67rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+  padding-top: 0.1rem;
+}

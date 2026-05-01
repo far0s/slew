@@ -5,7 +5,7 @@
  * and mappings overview. Displays in the Debug column or as a tab.
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import {
@@ -14,10 +14,12 @@ import {
   useOscActivity,
   useOscRecentMessages,
   useOscBeat,
+  useOscOutput,
   DEFAULT_OSC_PORT,
   setupDefaultMappings,
   type OscMapping,
 } from "../../inputs/osc";
+import { useEventListener } from "../../inputs/shared";
 import {
   getAllSlotParameterIds,
   getParameterDescriptor,
@@ -83,6 +85,138 @@ function BeatInputSection({ port }: { port: number | null }) {
       </div>
 
       <OscBeatIndicator />
+    </div>
+  );
+}
+
+/**
+ * Activity dot for OSC output — pulses when a message is sent.
+ * Uses the osc_output_sent event emitted by the backend.
+ */
+function OscOutputActivityDot() {
+  const [active, setActive] = useState(false);
+
+  useEventListener("osc_output_sent", () => {
+    setActive(true);
+    setTimeout(() => setActive(false), 120);
+  });
+
+  return (
+    <span
+      className={`${styles.outputDot} ${active ? styles.outputDotActive : ""}`}
+      aria-label={active ? "Message sent" : "Idle"}
+    />
+  );
+}
+
+/**
+ * Output section: enable/disable OSC forwarding, configure target.
+ */
+function OutputSection() {
+  const { config, isLoading, update } = useOscOutput();
+  const [hostInput, setHostInput] = useState(config.host);
+  const [portInput, setPortInput] = useState(String(config.port));
+
+  // Sync local inputs when config loads
+  useEffect(() => {
+    setHostInput(config.host);
+    setPortInput(String(config.port));
+  }, [config.host, config.port]);
+
+  const handleHostBlur = () => {
+    const trimmed = hostInput.trim();
+    if (trimmed && trimmed !== config.host) {
+      void update({ host: trimmed });
+    }
+  };
+
+  const handlePortBlur = () => {
+    const num = parseInt(portInput, 10);
+    if (!isNaN(num) && num > 0 && num <= 65535 && num !== config.port) {
+      void update({ port: num });
+    } else {
+      setPortInput(String(config.port)); // revert invalid
+    }
+  };
+
+  if (isLoading) {
+    return <p className={styles.emptyText}>Loading…</p>;
+  }
+
+  return (
+    <div className={styles.outputSection}>
+      <div className={styles.outputEnableRow}>
+        <label className={styles.outputEnableLabel}>
+          <input
+            type="checkbox"
+            checked={config.enabled}
+            onChange={(e) => void update({ enabled: e.target.checked })}
+            className={styles.checkbox}
+          />
+          <span>Enable output</span>
+        </label>
+        <OscOutputActivityDot />
+      </div>
+
+      <div className={`${styles.outputFields} ${!config.enabled ? styles.outputFieldsDisabled : ""}`}>
+        <div className={styles.outputFieldRow}>
+          <label className={styles.fieldLabel} htmlFor="osc-out-host">Host</label>
+          <input
+            id="osc-out-host"
+            type="text"
+            value={hostInput}
+            onChange={(e) => setHostInput(e.target.value)}
+            onBlur={handleHostBlur}
+            disabled={!config.enabled}
+            className={styles.outputInput}
+            placeholder="127.0.0.1"
+            spellCheck={false}
+          />
+        </div>
+        <div className={styles.outputFieldRow}>
+          <label className={styles.fieldLabel} htmlFor="osc-out-port">Port</label>
+          <input
+            id="osc-out-port"
+            type="text"
+            inputMode="numeric"
+            value={portInput}
+            onChange={(e) => setPortInput(e.target.value)}
+            onBlur={handlePortBlur}
+            disabled={!config.enabled}
+            className={`${styles.outputInput} ${styles.outputInputPort}`}
+            placeholder="9001"
+          />
+        </div>
+      </div>
+
+      <div className={styles.outputCheckboxes}>
+        <label className={styles.checkboxLabel}>
+          <input
+            type="checkbox"
+            checked={config.forward_beat}
+            onChange={(e) => void update({ forward_beat: e.target.checked })}
+            disabled={!config.enabled}
+            className={styles.checkbox}
+          />
+          <span>Forward beat</span>
+          <code className={styles.inlineCode}>/slew/beat</code>
+        </label>
+        <label className={styles.checkboxLabel}>
+          <input
+            type="checkbox"
+            checked={config.forward_bpm}
+            onChange={(e) => void update({ forward_bpm: e.target.checked })}
+            disabled={!config.enabled}
+            className={styles.checkbox}
+          />
+          <span>Forward BPM</span>
+          <code className={styles.inlineCode}>/slew/bpm</code>
+        </label>
+      </div>
+
+      <p className={styles.outputHint}>
+        Forward beat to other apps or devices on the network.
+      </p>
     </div>
   );
 }
@@ -480,6 +614,7 @@ export interface OscPanelProps {
 export function OscPanel({ className, slots = [] }: OscPanelProps) {
   const [serverOpen, setServerOpen] = useState(true);
   const [beatInputOpen, setBeatInputOpen] = useState(true);
+  const [outputOpen, setOutputOpen] = useState(false);
   const [mappingsOpen, setMappingsOpen] = useState(true);
   const [messagesOpen, setMessagesOpen] = useState(true);
   const { isRunning, port } = useOscServer();
@@ -512,6 +647,18 @@ export function OscPanel({ className, slots = [] }: OscPanelProps) {
         </Collapsible.Trigger>
         <Collapsible.Content className={styles.sectionContent}>
           <BeatInputSection port={isRunning ? port : null} />
+        </Collapsible.Content>
+      </Collapsible.Root>
+
+      <Collapsible.Root open={outputOpen} onOpenChange={setOutputOpen}>
+        <Collapsible.Trigger asChild>
+          <button type="button" className={styles.sectionHeader}>
+            {outputOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
+            <span>Output</span>
+          </button>
+        </Collapsible.Trigger>
+        <Collapsible.Content className={styles.sectionContent}>
+          <OutputSection />
         </Collapsible.Content>
       </Collapsible.Root>
 

@@ -839,6 +839,9 @@ pub fn run() {
             osc::add_osc_mapping,
             osc::remove_osc_mapping,
             osc::clear_osc_mappings,
+            osc::get_osc_output_config,
+            osc::set_osc_output_config,
+            osc::send_osc_message_cmd,
             // Audio
             audio::commands::list_audio_devices,
             audio::commands::start_audio_capture,

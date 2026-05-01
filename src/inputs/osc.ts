@@ -5,7 +5,7 @@
  * React hooks for managing the OSC server, mappings, and activity.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   useEventListener,
@@ -395,4 +395,79 @@ export function useOscBeat() {
   });
 
   return { beat, bpm };
+}
+
+// ============================================================================
+// OSC Output
+// ============================================================================
+
+/** Configuration for the OSC output client. */
+export interface OscOutputConfig {
+  /** Whether the output client is enabled */
+  enabled: boolean;
+  /** Target hostname or IP */
+  host: string;
+  /** Target port */
+  port: number;
+  /** Forward /slew/beat on every detected beat */
+  forward_beat: boolean;
+  /** Forward /slew/bpm when BPM changes */
+  forward_bpm: boolean;
+}
+
+const DEFAULT_OUTPUT_CONFIG: OscOutputConfig = {
+  enabled: false,
+  host: "127.0.0.1",
+  port: 9001,
+  forward_beat: true,
+  forward_bpm: true,
+};
+
+/** Fetch the current OSC output config from the backend. */
+export async function getOscOutputConfig(): Promise<OscOutputConfig> {
+  return invoke<OscOutputConfig>("get_osc_output_config");
+}
+
+/** Save a new OSC output config to the backend. */
+export async function setOscOutputConfig(
+  config: OscOutputConfig,
+): Promise<void> {
+  return invoke<void>("set_osc_output_config", { config });
+}
+
+/**
+ * Hook for OSC output configuration.
+ *
+ * Loads the current config on mount and provides an `update` callback
+ * that persists changes to the backend immediately.
+ */
+export function useOscOutput() {
+  const [config, setConfig] = useState<OscOutputConfig>(DEFAULT_OUTPUT_CONFIG);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    void getOscOutputConfig()
+      .then(setConfig)
+      .catch(() => {
+        /* backend not ready — keep defaults */
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const update = useCallback(
+    async (partial: Partial<OscOutputConfig>) => {
+      const next = { ...config, ...partial };
+      setConfig(next);
+      try {
+        await setOscOutputConfig(next);
+      } catch (e) {
+        // revert on error
+        setConfig(config);
+        throw e;
+      }
+    },
+    [config],
+  );
+
+  return { config, isLoading, update };
 }

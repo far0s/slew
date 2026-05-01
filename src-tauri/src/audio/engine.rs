@@ -139,6 +139,10 @@ fn start_analysis_loop() {
                         use tauri::Emitter;
                         let _ = handle.emit("audio_levels", &levels);
                     }
+                    // Forward beat to OSC output if enabled
+                    if levels.beat {
+                        crate::osc::send_osc_beat();
+                    }
                 }
             }
         }
