@@ -72,6 +72,9 @@ jobs:
           shared-key: "macos-${{ matrix.target }}"
 
       - name: Build Tauri app
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build -- --target ${{ matrix.target }} -- --no-default-features
 
       - name: Show sccache stats
@@ -138,11 +141,19 @@ jobs:
           echo "DMG recreated with properly signed app: $DMG_FILE"
           ls -la "$DMG_FILE"
 
-      - name: Upload artifacts
+      - name: Upload DMG artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-${{ matrix.arch }}
           path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+
+      - name: Upload updater artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-macos-${{ matrix.arch }}
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
 
   # Build Linux and Windows with tauri-action (no signature issues)
   build-linux-windows:
@@ -203,6 +214,9 @@ jobs:
           shared-key: "${{ matrix.platform }}"
 
       - name: Build Tauri app
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build -- ${{ matrix.args }}
 
       - name: Show sccache stats
@@ -218,6 +232,15 @@ jobs:
             src-tauri/target/release/bundle/rpm/*.rpm
             src-tauri/target/release/bundle/appimage/*.AppImage
 
+      - name: Upload Linux updater artifacts
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-linux
+          path: |
+            src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz
+            src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz.sig
+
       - name: Upload Windows artifacts
         if: matrix.platform == 'windows-latest'
         uses: actions/upload-artifact@v4
@@ -226,6 +249,15 @@ jobs:
           path: |
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/msi/*.msi
+
+      - name: Upload Windows updater artifacts
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-windows
+          path: |
+            src-tauri/target/release/bundle/nsis/*.nsis.zip
+            src-tauri/target/release/bundle/nsis/*.nsis.zip.sig
 
   # Create release and upload all artifacts
   release:
@@ -237,6 +269,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
       - name: Get version from tag
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
@@ -247,7 +284,56 @@ jobs:
           path: artifacts
 
       - name: List artifacts
-        run: find artifacts -type f -name "*" | head -50
+        run: find artifacts -type f -name "*" | sort
+
+      - name: Generate latest.json
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          REPO="${{ github.repository }}"
+          BASE_URL="https://github.com/${REPO}/releases/download/${VERSION}"
+
+          # Read signatures
+          read_sig() { cat "$1" 2>/dev/null || echo ""; }
+
+          SIG_MACOS_AARCH64=$(read_sig artifacts/updater-macos-aarch64/*.app.tar.gz.sig)
+          SIG_MACOS_X64=$(read_sig artifacts/updater-macos-x64/*.app.tar.gz.sig)
+          SIG_LINUX=$(read_sig artifacts/updater-linux/*.AppImage.tar.gz.sig)
+          SIG_WINDOWS=$(read_sig artifacts/updater-windows/*.nsis.zip.sig)
+
+          FILENAME_MACOS_AARCH64=$(basename artifacts/updater-macos-aarch64/*.app.tar.gz 2>/dev/null || echo "Slew.app.tar.gz")
+          FILENAME_MACOS_X64=$(basename artifacts/updater-macos-x64/*.app.tar.gz 2>/dev/null || echo "Slew.app.tar.gz")
+          FILENAME_LINUX=$(basename artifacts/updater-linux/*.AppImage.tar.gz 2>/dev/null || echo "Slew.AppImage.tar.gz")
+          FILENAME_WINDOWS=$(basename artifacts/updater-windows/*.nsis.zip 2>/dev/null || echo "Slew.nsis.zip")
+
+          cat > latest.json <<EOF
+          {
+            "version": "${VERSION}",
+            "notes": "See the release page for details: https://github.com/${REPO}/releases/tag/${VERSION}",
+            "pub_date": "${PUB_DATE}",
+            "platforms": {
+              "darwin-aarch64": {
+                "url": "${BASE_URL}/${FILENAME_MACOS_AARCH64}",
+                "signature": "${SIG_MACOS_AARCH64}"
+              },
+              "darwin-x86_64": {
+                "url": "${BASE_URL}/${FILENAME_MACOS_X64}",
+                "signature": "${SIG_MACOS_X64}"
+              },
+              "linux-x86_64": {
+                "url": "${BASE_URL}/${FILENAME_LINUX}",
+                "signature": "${SIG_LINUX}"
+              },
+              "windows-x86_64": {
+                "url": "${BASE_URL}/${FILENAME_WINDOWS}",
+                "signature": "${SIG_WINDOWS}"
+              }
+            }
+          }
+          EOF
+
+          echo "Generated latest.json:"
+          cat latest.json
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -277,11 +363,20 @@ jobs:
           files: |
             artifacts/macos-aarch64/*.dmg
             artifacts/macos-x64/*.dmg
+            artifacts/updater-macos-aarch64/*.app.tar.gz
+            artifacts/updater-macos-aarch64/*.app.tar.gz.sig
+            artifacts/updater-macos-x64/*.app.tar.gz
+            artifacts/updater-macos-x64/*.app.tar.gz.sig
             artifacts/linux/deb/*.deb
             artifacts/linux/rpm/*.rpm
             artifacts/linux/appimage/*.AppImage
+            artifacts/updater-linux/*.AppImage.tar.gz
+            artifacts/updater-linux/*.AppImage.tar.gz.sig
             artifacts/windows/nsis/*.exe
             artifacts/windows/msi/*.msi
+            artifacts/updater-windows/*.nsis.zip
+            artifacts/updater-windows/*.nsis.zip.sig
+            latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

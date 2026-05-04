@@ -61,21 +61,6 @@ Update the OscPanel to surface the new beat/BPM OSC features and make the overal
 
 ---
 
-### 🔴 App Icon `chore`
-
-Design and implement proper app icon for Slew.
-
-**Context**: App name is now "Slew" with tagline "VJ software for creative coders". Currently using 🎛️ emoji as a placeholder symbol. Need a proper icon before public release.
-
-**Subtasks**:
-
-- [ ] Design app icon concept
-- [ ] Export all required sizes (32x32, 128x128, 128x128@2x, .icns, .ico)
-- [ ] Replace placeholder icons in `src-tauri/icons/`
-- [ ] Test icon appearance on all platforms
-
----
-
 ### 🔴 Spout Video Output (Windows) `feature`
 
 Implement Spout backend for Windows video output.
@@ -288,6 +273,23 @@ Create troubleshooting guide for video output setup.
 
 ## Low Priority / Future
 
+---
+
+### 🟢 App Icon `chore`
+
+Design and implement proper app icon for Slew.
+
+**Context**: App name is now "Slew" with tagline "VJ software for creative coders". Currently using 🎛️ emoji as a placeholder symbol. Need a proper icon before public release.
+
+**Subtasks**:
+
+- [ ] Design app icon concept
+- [ ] Export all required sizes (32x32, 128x128, 128x128@2x, .icns, .ico)
+- [ ] Replace placeholder icons in `src-tauri/icons/`
+- [ ] Test icon appearance on all platforms
+
+---
+
 ### 🟢 Accessibility Audit `a11y` `chore`
 
 Comprehensive accessibility improvements.
@@ -328,11 +330,11 @@ Add in-app update notifications.
 
 **Subtasks**:
 
-- [ ] Integrate Tauri updater plugin
-- [ ] Check for updates on startup (background)
-- [ ] Notification when update available
-- [ ] One-click download & install
-- [ ] Release notes display
+- [x] Integrate Tauri updater plugin
+- [x] Check for updates on startup (background)
+- [x] Notification when update available
+- [x] One-click download & install
+- [x] Release notes display (first line of body shown in banner)
 
 ---
 

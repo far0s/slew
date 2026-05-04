@@ -36,3 +36,6 @@ export { VideoOutputPanel } from "./VideoOutputPanel";
 
 // Sidebar Component
 export { Sidebar, type SidebarProps } from "./Sidebar";
+
+// Update
+export { UpdateBanner } from "./UpdateBanner";

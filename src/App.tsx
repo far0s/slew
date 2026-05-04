@@ -14,7 +14,7 @@ import {
 import type { SketchId, SketchProps } from "./sketches";
 import { getSketchDescriptor } from "./sketches";
 import { makeSlotParameterId } from "./slots/slotTypes";
-import { SlotsArea, RendererPreview, Sidebar } from "./components";
+import { SlotsArea, RendererPreview, Sidebar, UpdateBanner } from "./components";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings, generateMappingId, type AudioMapping } from "./inputs/audio";
 import { useLfos, useModulationTargets, createLfo, createTarget } from "./inputs/modulation";
@@ -28,6 +28,7 @@ import {
   useLayoutPreferences,
   useRendererSettings,
 } from "./hooks";
+import { useUpdater } from "./hooks/useUpdater";
 import styles from "./App.module.css";
 
 function App() {
@@ -805,9 +806,11 @@ function App() {
 
   // Layout preferences for sidebar position
   const { sidebarPosition } = useLayoutPreferences();
+  const { state: updateState, installUpdate, dismiss: dismissUpdate } = useUpdater();
 
   return (
     <div className={styles.root}>
+      <UpdateBanner state={updateState} onInstall={installUpdate} onDismiss={dismissUpdate} />
       <LayoutGroup>
         <main className={styles.main}>
           {/* Scenes Area (4/5 width) */}

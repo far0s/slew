@@ -419,7 +419,12 @@ pub fn build_app_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, 
         .build()?;
 
     // Help menu
+    let check_for_updates = MenuItemBuilder::with_id("check_for_updates", "Check for Updates…")
+        .build(app)?;
+
     let help_menu = SubmenuBuilder::new(app, "Help")
+        .item(&check_for_updates)
+        .separator()
         .item(&PredefinedMenuItem::about(app, Some("About Slew"), None)?)
         .build()?;
 
@@ -458,6 +463,12 @@ pub fn handle_menu_event(app: &AppHandle, event_id: &str) {
         }
         "focus_renderer" => {
             let _ = focus_window(app.clone(), "renderer".to_string());
+        }
+        "check_for_updates" => {
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                crate::updater::init_updater(app);
+            });
         }
         _ => {}
     }

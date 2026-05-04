@@ -18,6 +18,7 @@ pub mod modulation;
 pub mod osc;
 #[cfg(target_os = "macos")]
 pub mod syphon;
+pub mod updater;
 pub mod video_out;
 pub mod window_manager;
 
@@ -719,6 +720,7 @@ pub fn run() {
     log::info!("[App] Starting Slew");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .setup(|app| {
@@ -769,6 +771,7 @@ pub fn run() {
                 }
             );
 
+            updater::init_updater(app.handle().clone());
             start_parameter_tick_loop(app.handle().clone());
 
             // Window placement - spawn with delay to ensure windows are ready
@@ -787,6 +790,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             greet,
+            updater::check_for_update,
+            updater::install_update,
             forward_controls_event,
             get_parameters,
             get_parameter,
