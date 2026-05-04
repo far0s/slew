@@ -1,6 +1,6 @@
 [package]
 name = "slew"
-version = "0.9.1"
+version = "0.9.2"
 description = "VJ software for creative coders"
 authors = ["Seb"]
 license = "MIT"
