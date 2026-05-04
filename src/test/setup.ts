@@ -10,7 +10,7 @@ class MockResizeObserver {
   unobserve = vi.fn();
   disconnect = vi.fn();
 }
-global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
 
 // Mock PointerEvent (not fully available in jsdom, required by Radix UI)
 class MockPointerEvent extends MouseEvent {
@@ -23,7 +23,7 @@ class MockPointerEvent extends MouseEvent {
     });
   }
 }
-global.PointerEvent = MockPointerEvent as unknown as typeof PointerEvent;
+globalThis.PointerEvent = MockPointerEvent as unknown as typeof PointerEvent;
 
 // Mock Element.prototype methods required by Radix UI
 Element.prototype.scrollIntoView = vi.fn();

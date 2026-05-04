@@ -12,7 +12,7 @@ import {
   sin,
   cos,
   mod,
-  atan2,
+  atan,
   sqrt,
   time,
   floor,
@@ -64,7 +64,7 @@ function createKaleidoscopeMaterial(): {
     const radius = sqrt(
       centeredUV.x.mul(centeredUV.x).add(centeredUV.y.mul(centeredUV.y)),
     );
-    const angle = atan2(centeredUV.y, centeredUV.x);
+    const angle = atan(centeredUV.y, centeredUV.x);
 
     // Add rotation over time
     const rotatedAngle = angle.add(t.mul(uRotation));

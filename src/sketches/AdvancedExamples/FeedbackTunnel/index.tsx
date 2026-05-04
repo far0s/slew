@@ -11,7 +11,7 @@ import {
   float,
   sin,
   sqrt,
-  atan2,
+  atan,
   log2,
   mod,
   time,
@@ -62,7 +62,7 @@ function createTunnelMaterial(): {
     const radius = sqrt(
       centeredUV.x.mul(centeredUV.x).add(centeredUV.y.mul(centeredUV.y)),
     );
-    const angle = atan2(centeredUV.y, centeredUV.x);
+    const angle = atan(centeredUV.y, centeredUV.x);
 
     // Create infinite zoom effect using log of radius
     // This maps the distance from center to a repeating pattern

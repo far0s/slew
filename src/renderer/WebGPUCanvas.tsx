@@ -1,3 +1,4 @@
+/// <reference types="@webgpu/types" />
 import { ReactNode, useState, useEffect, useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three/webgpu";
