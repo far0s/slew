@@ -613,7 +613,7 @@ export interface OscPanelProps {
  */
 export function OscPanel({ className, slots = [] }: OscPanelProps) {
   const [serverOpen, setServerOpen] = useState(true);
-  const [beatInputOpen, setBeatInputOpen] = useState(true);
+  const [beatInputOpen, setBeatInputOpen] = useState(false);
   const [outputOpen, setOutputOpen] = useState(false);
   const [mappingsOpen, setMappingsOpen] = useState(true);
   const [messagesOpen, setMessagesOpen] = useState(true);
@@ -634,6 +634,12 @@ export function OscPanel({ className, slots = [] }: OscPanelProps) {
           </button>
         </Collapsible.Trigger>
         <Collapsible.Content className={styles.sectionContent}>
+          {isRunning && port && (
+            <p className={styles.serverInfoLine}>
+              Send OSC UDP to{" "}
+              <code className={styles.inlineCode}>127.0.0.1:{port}</code>
+            </p>
+          )}
           <ServerControls />
         </Collapsible.Content>
       </Collapsible.Root>
@@ -682,6 +688,11 @@ export function OscPanel({ className, slots = [] }: OscPanelProps) {
           </button>
         </Collapsible.Trigger>
         <Collapsible.Content className={styles.sectionContent}>
+          <p className={styles.mappingsNote}>
+            Map any OSC address to a parameter. Reserved{" "}
+            <code className={styles.inlineCode}>/slew/*</code> addresses are
+            handled automatically.
+          </p>
           <MappingsList slots={slots} />
         </Collapsible.Content>
       </Collapsible.Root>

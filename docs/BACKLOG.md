@@ -20,47 +20,6 @@ Prioritized list of potential work items for Slew.
 
 ## Active / High Priority
 
-### 🔴 OscPanel UI — Beat Input, Output & UX Improvements `feature`
-
-Update the OscPanel to surface the new beat/BPM OSC features and make the overall panel clearer for users who are new to OSC.
-
-**Context**: The current panel is functional but assumes OSC knowledge. With beat input and output added, the panel needs new sections and better orientation copy. Goal: a user who has never used OSC should understand within 30 seconds what port to send to and what addresses to use.
-
-**Sections to add / change**:
-
-1. **Server section** — add a small info line: *"Send OSC UDP to `127.0.0.1:<port>`"* when running. Existing start/stop + port controls stay.
-
-2. **Beat Input section** (new, collapsed by default):
-   - Read-only reference card showing the reserved addresses:
-     - `/slew/beat` — trigger a beat pulse
-     - `/slew/bpm <float>` — set BPM (20–300)
-   - Live beat indicator dot (pulses on each received `/slew/beat`) — reuses existing `BeatIndicator`-style component from AudioPanel
-   - Current BPM readout (sourced from `useOscBeat()`)
-   - Small copy: *"Send from Ableton (Max4Live), TouchOSC, or any OSC app."*
-
-3. **Output section** (new, collapsed by default):
-   - Enable toggle
-   - Host input (default `127.0.0.1`)
-   - Port input (default `9001`)
-   - "Forward beat" checkbox → sends `/slew/beat` on each detected beat
-   - "Forward BPM" checkbox → sends `/slew/bpm` on BPM change
-   - Activity dot (pulses on each sent message)
-   - Small copy: *"Forward beat to other apps or devices on the network."*
-
-4. **Mappings section** — add a subtle header note: *"Map any OSC address to a parameter. Reserved `/slew/*` addresses are handled automatically."*
-
-5. **Recent Messages section** — no structural change, but add a note when a `/slew/*` message is received: tag it visually (e.g. dim purple highlight) so users can confirm their beat sender is working.
-
-**Subtasks**:
-- [ ] Add info line to Server section
-- [ ] `BeatInputSection` component with reserved address reference + live beat indicator
-- [ ] `OutputSection` component with config form + activity dot (driven by `useOscOutput()`)
-- [ ] Highlight `/slew/*` messages in Recent Messages list
-- [ ] Mappings section header note about reserved addresses
-- [ ] CSS additions to `OscPanel.module.css`
-
----
-
 ### 🔴 Spout Video Output (Windows) `feature`
 
 Implement Spout backend for Windows video output.
