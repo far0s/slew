@@ -134,21 +134,6 @@ Save/load parameter configurations per sketch.
 
 ---
 
-### 🟡 Tap Tempo for BPM `feature`
-
-Add tap tempo input for modulation BPM sync.
-
-**Context**: Modulation engine supports BPM sync but manual input is cumbersome.
-
-**Subtasks**:
-
-- [x] "Tap Tempo" button in Modulation Panel
-- [x] Calculate BPM from tap intervals (use weighted average of last 4-8 taps)
-- [x] Visual feedback (metronome pulse)
-- [x] Auto-detect if tapping stops (reset after 3 seconds)
-
----
-
 ### 🟡 New Sketch Group: "Effects" `feature`
 
 Create post-processing/effects sketch group.

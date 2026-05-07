@@ -7,10 +7,9 @@
  * - Audio modulation (audio → LFO property routing)
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
-import { motion } from "motion/react";
 import {
   useLfos,
   useModulationTargets,
@@ -53,6 +52,7 @@ interface WaveformDisplayProps {
   value: number;
   color: string;
   size?: number;
+  rate?: number; // Hz — used to animate phase
 }
 
 function WaveformDisplay({
@@ -60,10 +60,33 @@ function WaveformDisplay({
   value = 0,
   color,
   size = 32,
+  rate = 1,
 }: WaveformDisplayProps) {
   // Ensure value is a valid number to prevent undefined cx/cy errors
   const safeValue =
     typeof value === "number" && !Number.isNaN(value) ? value : 0;
+
+  // Track phase locally via rAF so the dot travels left→right along the waveform
+  const phaseRef = useRef(0);
+  const lastTimeRef = useRef<number | null>(null);
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    let animId: number;
+    const tick = (t: number) => {
+      if (lastTimeRef.current !== null) {
+        const dt = (t - lastTimeRef.current) / 1000;
+        phaseRef.current = (phaseRef.current + rate * dt) % 1;
+        setPhase(phaseRef.current);
+      }
+      lastTimeRef.current = t;
+      animId = requestAnimationFrame(tick);
+    };
+    animId = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(animId);
+      lastTimeRef.current = null;
+    };
+  }, [rate]);
   // Generate waveform path
   const points = useMemo(() => {
     const numPoints = 40;
@@ -91,6 +114,15 @@ function WaveformDisplay({
         case "random":
           y = Math.sin(phase * 8 + i * 0.5) * 0.7;
           break;
+        case "smooth_random": {
+          // Fake smooth-random preview: sine eased between pseudo-random anchors
+          const seg = Math.floor(phase * 3);
+          const t = (phase * 3) % 1;
+          const ease = (1 - Math.cos(t * Math.PI)) / 2;
+          const anchors = [0.6, -0.8, 0.3, -0.5];
+          y = anchors[seg % 4] + (anchors[(seg + 1) % 4] - anchors[seg % 4]) * ease;
+          break;
+        }
         default:
           y = 0;
       }
@@ -103,8 +135,8 @@ function WaveformDisplay({
     return pts.join(" ");
   }, [shape, size]);
 
-  // Value indicator position (use safeValue to prevent NaN)
-  const indicatorX = Math.abs(safeValue) * size;
+  // Dot position: x from local phase (left→right scan), y from actual backend value
+  const indicatorX = phase * size;
   const indicatorY = size / 2 - (safeValue * size) / 2.5;
 
   return (
@@ -133,14 +165,12 @@ function WaveformDisplay({
         strokeLinejoin="round"
         opacity={0.8}
       />
-      {/* Current value indicator */}
-      <motion.circle
+      {/* Current position indicator */}
+      <circle
         cx={indicatorX}
         cy={indicatorY}
         r={3}
         fill={color}
-        animate={{ cx: indicatorX, cy: indicatorY }}
-        transition={{ type: "spring", stiffness: 500, damping: 30 }}
       />
     </svg>
   );
@@ -187,14 +217,17 @@ function LfoRow({
         value={value}
         color={color}
         size={28}
+        rate={lfo.rate}
       />
 
       <button type="button" className={styles.lfoInfo} onClick={onEdit}>
         <span className={styles.lfoName}>{lfo.name}</span>
         <span className={styles.lfoRate}>
           {lfo.sync_to_bpm
-            ? `1/${lfo.bpm_division} beat`
-            : `${lfo.rate.toFixed(2)} Hz`}
+            ? lfo.bpm_division >= 4
+              ? `${lfo.bpm_division / 4} bar${lfo.bpm_division >= 8 ? "s" : ""}`
+              : `${lfo.bpm_division} beat${lfo.bpm_division !== 1 ? "s" : ""}`
+            : formatPeriod(lfo.rate)}
         </span>
         {targetCount > 0 && (
           <span className={styles.lfoTargetCount}>{targetCount} targets</span>
@@ -214,6 +247,40 @@ function LfoRow({
 }
 
 // ============================================================================
+// Rate Helpers
+// ============================================================================
+
+const RATE_MIN_HZ = 0.001; // ~17 min cycle
+const RATE_MAX_HZ = 20;
+
+function hzToSlider(hz: number): number {
+  const lo = Math.log(RATE_MIN_HZ);
+  const hi = Math.log(RATE_MAX_HZ);
+  return (Math.log(Math.max(hz, RATE_MIN_HZ)) - lo) / (hi - lo);
+}
+
+function sliderToHz(pos: number): number {
+  const lo = Math.log(RATE_MIN_HZ);
+  const hi = Math.log(RATE_MAX_HZ);
+  return Math.exp(lo + pos * (hi - lo));
+}
+
+function formatPeriod(hz: number): string {
+  const period = 1 / hz;
+  if (period >= 3600) {
+    return `${(period / 3600).toFixed(1)}h`;
+  }
+  if (period >= 60) {
+    const mins = Math.floor(period / 60);
+    const secs = Math.round(period % 60);
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+  }
+  if (period >= 10) return `${period.toFixed(0)}s`;
+  if (period >= 1) return `${period.toFixed(1)}s`;
+  return `${hz.toFixed(2)} Hz`;
+}
+
+// ============================================================================
 // LFO Form
 // ============================================================================
 
@@ -228,7 +295,7 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
 
   const [name, setName] = useState(editingLfo?.name ?? "LFO");
   const [shape, setShape] = useState<LfoShape>(editingLfo?.shape ?? "sine");
-  const [rate, setRate] = useState(editingLfo?.rate ?? 1.0);
+  const [rate, setRate] = useState(editingLfo?.rate ?? 0.5);
   const [depth, setDepth] = useState(editingLfo?.depth ?? 1.0);
   const [offset, setOffset] = useState(editingLfo?.offset ?? 0.0);
   const [phase, setPhase] = useState(editingLfo?.phase ?? 0.0);
@@ -300,17 +367,18 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
       <div className={styles.formRow}>
         <label className={styles.formLabel}>
           <span className={styles.formLabelText}>
-            Rate {syncToBpm ? "(BPM sync)" : `(${rate.toFixed(2)} Hz)`}
+            Rate{" "}
+            {syncToBpm ? "(BPM sync)" : `(${formatPeriod(rate)})`}
           </span>
           <div className={styles.rateControls}>
             <input
               type="range"
               className={styles.formRange}
-              min={0.01}
-              max={10}
-              step={0.01}
-              value={rate}
-              onChange={(e) => setRate(parseFloat(e.target.value))}
+              min={0}
+              max={1}
+              step={0.001}
+              value={hzToSlider(rate)}
+              onChange={(e) => setRate(sliderToHz(parseFloat(e.target.value)))}
               disabled={syncToBpm}
             />
             <label className={styles.syncCheckbox}>
@@ -334,6 +402,9 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
               <option value={2}>2 beats</option>
               <option value={4}>4 beats (1 bar)</option>
               <option value={8}>8 beats (2 bars)</option>
+              <option value={16}>16 beats (4 bars)</option>
+              <option value={32}>32 beats (8 bars)</option>
+              <option value={64}>64 beats (16 bars)</option>
             </select>
           )}
         </label>

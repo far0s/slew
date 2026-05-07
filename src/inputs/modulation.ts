@@ -16,7 +16,7 @@ import { useEventListener, useFetchOnMount } from "./shared";
 // ============================================================================
 
 /** LFO waveform shapes */
-export type LfoShape = "sine" | "triangle" | "saw" | "square" | "random";
+export type LfoShape = "sine" | "triangle" | "saw" | "square" | "random" | "smooth_random";
 
 /** All available LFO shapes for UI iteration */
 export const LFO_SHAPES: LfoShape[] = [
@@ -25,6 +25,7 @@ export const LFO_SHAPES: LfoShape[] = [
   "saw",
   "square",
   "random",
+  "smooth_random",
 ];
 
 /** Human-readable labels for LFO shapes */
@@ -33,7 +34,8 @@ export const LFO_SHAPE_LABELS: Record<LfoShape, string> = {
   triangle: "Triangle",
   saw: "Saw",
   square: "Square",
-  random: "Random",
+  random: "Random (stepped)",
+  smooth_random: "Random (smooth)",
 };
 
 /** An LFO source that generates a periodic signal */
@@ -169,6 +171,7 @@ export const LFO_SHAPE_COLORS: Record<LfoShape, string> = {
   saw: "rgb(251 191 36)", // amber
   square: "rgb(168 85 247)", // purple
   random: "rgb(239 68 68)", // red
+  smooth_random: "rgb(249 115 22)", // orange
 };
 
 /** Colors for modulation depth indicators */

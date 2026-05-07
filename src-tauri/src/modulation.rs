@@ -31,6 +31,7 @@ pub enum LfoShape {
     Saw,
     Square,
     Random,
+    SmoothRandom,
 }
 
 impl Default for LfoShape {
@@ -74,6 +75,9 @@ pub struct LfoSource {
     /// Phase at which to generate next random value
     #[serde(skip)]
     pub next_random_phase: f64,
+    /// Target value for SmoothRandom interpolation
+    #[serde(skip)]
+    pub smooth_target: f64,
 }
 
 impl Default for LfoSource {
@@ -93,6 +97,7 @@ impl Default for LfoSource {
             current_value: 0.0,
             last_random: 0.0,
             next_random_phase: 0.0,
+            smooth_target: 0.0,
         }
     }
 }
@@ -166,6 +171,24 @@ impl LfoSource {
                     self.next_random_phase = self.current_phase;
                 }
                 self.last_random
+            }
+            LfoShape::SmoothRandom => {
+                // Initialize on first use
+                if self.smooth_target == 0.0 && self.last_random == 0.0 && self.next_random_phase == 0.0 {
+                    let mut rng = rand::thread_rng();
+                    self.last_random = rng.gen_range(-1.0..1.0);
+                    self.smooth_target = rng.gen_range(-1.0..1.0);
+                }
+                // Detect phase wrap and advance to new target
+                if self.current_phase < self.next_random_phase {
+                    self.last_random = self.smooth_target;
+                    let mut rng = rand::thread_rng();
+                    self.smooth_target = rng.gen_range(-1.0..1.0);
+                }
+                self.next_random_phase = self.current_phase;
+                // Cosine ease interpolation over the cycle
+                let t = (1.0 - (phase_with_offset * 2.0 * PI).cos()) / 2.0;
+                self.last_random + (self.smooth_target - self.last_random) * t
             }
         };
 
