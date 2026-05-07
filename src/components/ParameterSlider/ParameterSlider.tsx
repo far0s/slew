@@ -71,12 +71,14 @@ export interface ParameterSliderProps {
   showSpacing?: boolean;
   formatValue?: (value: number) => string;
   onChange: (value: number) => void;
+  onCommit?: (after: number, before: number) => void;
   "aria-label"?: string;
   midiParameterId?: string;
   audioMapping?: AudioMappingIndicator | null;
   modulationIndicator?: ModulationIndicator | null;
   isMidiControlled?: boolean;
   pickupState?: MidiPickupState | null;
+
   onQuickBeat?: () => void;
   onQuickLfo?: () => void;
   onUnlinkBeat?: () => void;
@@ -108,11 +110,19 @@ export function ParameterSlider({
   modulationIndicator,
   isMidiControlled = false,
   pickupState,
+  onCommit,
   onQuickBeat,
   onQuickLfo,
   onUnlinkBeat,
   onUnlinkLfo,
 }: ParameterSliderProps) {
+  // Track value at the start of an interaction so onCommit can provide before/after
+  const beforeRef = useRef<number>(value);
+
+  const handleInteractionStart = () => {
+    beforeRef.current = value;
+  };
+
   const [showInfo, setShowInfo] = useState(false);
   const [showPickupFlash, setShowPickupFlash] = useState(false);
   const prevPickedUpRef = useRef<boolean | undefined>(undefined);
@@ -300,6 +310,9 @@ export function ParameterSlider({
         step={step}
         value={[value]}
         onValueChange={handleValueChange}
+        onPointerDown={handleInteractionStart}
+        onFocus={handleInteractionStart}
+        onValueCommit={onCommit ? ([v]) => onCommit(Number.isFinite(v) ? v : value, beforeRef.current) : undefined}
         className={`${styles.sliderRoot} ${showPickupFlash ? styles.pickupFlash : ""}`}
         aria-label={ariaLabel ?? label}
         disabled={isMidiControlled}

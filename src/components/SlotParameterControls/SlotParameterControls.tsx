@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useState, useEffect } from "react";
+import { pushUndoEntry } from "../../controls/useUndoHistory";
 import type { SketchId, ParameterTemplate } from "../../sketches";
 import { getSketchDescriptor } from "../../sketches";
 import {
@@ -56,10 +57,10 @@ function createChangeHandler(
   slotIndex: number,
   template: ParameterTemplate,
   setValue: (id: string, value: number) => void,
-) {
+): { onChange: (value: number) => void; onCommit: (after: number, before: number) => void } {
   const paramId = makeSlotParameterId(slotIndex, template.templateId);
 
-  return (value: number) => {
+  const onChange = (value: number) => {
     setValue(paramId, value);
     void (async () => {
       try {
@@ -72,6 +73,14 @@ function createChangeHandler(
       }
     })();
   };
+
+  const onCommit = (after: number, before: number) => {
+    if (after !== before) {
+      pushUndoEntry(paramId, before, after);
+    }
+  };
+
+  return { onChange, onCommit };
 }
 
 function getAudioMappingIndicator(
@@ -299,6 +308,7 @@ export function SlotParameterControls({
 
           // Render select input for parameters with inputType: "select"
           if (template.inputType === "select" && template.options) {
+            const selectBefore = getValue(paramId);
             return (
               <ParameterSelect
                 key={paramId}
@@ -308,7 +318,10 @@ export function SlotParameterControls({
                 options={template.options}
                 showSpacing={index > 0}
                 description={template.description}
-                onChange={createChangeHandler(slotIndex, template, setValue)}
+                onChange={(value: number) => {
+                  createChangeHandler(slotIndex, template, setValue).onChange(value);
+                  pushUndoEntry(paramId, selectBefore, value);
+                }}
                 audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
                 modulationIndicator={getModulationIndicator(
                   paramId,
@@ -333,6 +346,9 @@ export function SlotParameterControls({
           }
 
           // Default to slider input
+          const { onChange: sliderOnChange, onCommit: sliderOnCommit } = createChangeHandler(
+            slotIndex, template, setValue,
+          );
           return (
             <ParameterSlider
               key={paramId}
@@ -345,7 +361,8 @@ export function SlotParameterControls({
               color={template.color ?? "emerald"}
               showSpacing={index > 0}
               description={template.description}
-              onChange={createChangeHandler(slotIndex, template, setValue)}
+              onChange={sliderOnChange}
+              onCommit={sliderOnCommit}
               audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
               modulationIndicator={getModulationIndicator(
                 paramId,

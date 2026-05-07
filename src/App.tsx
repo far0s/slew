@@ -15,6 +15,7 @@ import type { SketchId, SketchProps } from "./sketches";
 import { getSketchDescriptor } from "./sketches";
 import { makeSlotParameterId } from "./slots/slotTypes";
 import { SlotsArea, RendererPreview, Sidebar, UpdateBanner } from "./components";
+import { useUndoHistory, applyUndo, applyRedo } from "./controls/useUndoHistory";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings, generateMappingId, type AudioMapping } from "./inputs/audio";
 import { useLfos, useModulationTargets, createLfo, createTarget } from "./inputs/modulation";
@@ -95,12 +96,30 @@ function App() {
     number | null
   >(null);
 
+  const undoHistory = useUndoHistory();
+
   // Window manager for heartbeat and recovery
   const { toggleFullscreenControls } = useWindowManager({
     windowLabel: "controls",
     enableHeartbeat: true,
     enableStatusPolling: false,
   });
+
+  const handleUndo = useCallback(() => {
+    const entry = applyUndo();
+    if (entry) {
+      paramStore.set(entry.id, entry.value);
+      void invoke("set_parameter", { id: entry.id, value: entry.value, app: undefined });
+    }
+  }, [paramStore]);
+
+  const handleRedo = useCallback(() => {
+    const entry = applyRedo();
+    if (entry) {
+      paramStore.set(entry.id, entry.value);
+      void invoke("set_parameter", { id: entry.id, value: entry.value, app: undefined });
+    }
+  }, [paramStore]);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -114,11 +133,21 @@ function App() {
         e.preventDefault();
         toggleFullscreenControls();
       }
+      // Cmd+Z / Ctrl+Z — undo
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        handleUndo();
+      }
+      // Cmd+Shift+Z / Ctrl+Shift+Z — redo
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        handleRedo();
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toggleFullscreenControls]);
+  }, [toggleFullscreenControls, handleUndo, handleRedo]);
 
   // Quick-wire handlers for Beat and LFO buttons on parameter sliders
   const handleQuickBeat = useCallback(
@@ -811,6 +840,26 @@ function App() {
   return (
     <div className={styles.root}>
       <UpdateBanner state={updateState} onInstall={installUpdate} onDismiss={dismissUpdate} />
+      <div className={styles.toolbar}>
+        <button
+          className={styles.toolbarButton}
+          onClick={handleUndo}
+          disabled={!undoHistory.canUndo}
+          title="Undo (Cmd+Z)"
+          aria-label="Undo"
+        >
+          ↩ Undo
+        </button>
+        <button
+          className={styles.toolbarButton}
+          onClick={handleRedo}
+          disabled={!undoHistory.canRedo}
+          title="Redo (Cmd+Shift+Z)"
+          aria-label="Redo"
+        >
+          ↪ Redo
+        </button>
+      </div>
       <LayoutGroup>
         <main className={styles.main}>
           {/* Scenes Area (4/5 width) */}
@@ -878,6 +927,8 @@ function App() {
               slots={slotState.slots}
               getValue={getValue}
               setValue={setValue}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
             />
           </motion.aside>
         </main>

@@ -114,22 +114,6 @@ Add parameter randomization for experimentation.
 
 ---
 
-### 🟡 Undo/Redo for Parameter Changes `feature`
-
-Add undo/redo capability for parameter changes.
-
-**Context**: Creative workflows benefit from experimentation without fear. Currently no way to revert parameter changes during setup.
-
-**Subtasks**:
-
-- [ ] Implement command pattern for reversible actions
-- [ ] History stack (limit to N entries, e.g., 50)
-- [ ] Undo/redo buttons in UI
-- [ ] Keyboard shortcuts (Cmd+Z, Cmd+Shift+Z)
-- [ ] Scope: limit to "setup" actions (not realtime parameter changes during performance)
-
----
-
 ### 🟡 Sketch Presets `feature`
 
 Save/load parameter configurations per sketch.

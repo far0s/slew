@@ -26,6 +26,7 @@ import {
   MAX_ZOOM,
 } from "../../hooks";
 import styles from "./Sidebar.module.css";
+import { useUndoHistory } from "../../controls/useUndoHistory";
 
 /**
  * Collapsible section wrapper (matches VideoOutputPanel pattern)
@@ -89,6 +90,9 @@ export interface SidebarProps {
   // Parameter store access for settings
   getValue?: (id: string) => number;
   setValue?: (id: string, value: number) => void;
+  // Undo/redo callbacks
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 /**
@@ -320,7 +324,10 @@ export function Sidebar({
   slots = [],
   getValue,
   setValue,
+  onUndo,
+  onRedo,
 }: SidebarProps) {
+  const { canUndo, canRedo } = useUndoHistory();
   // Window manager for restart and fullscreen functionality
   const {
     isRestarting,
@@ -393,6 +400,24 @@ export function Sidebar({
             <div className={styles.settingsSection}>
               <h4 className={styles.settingsHeader}>Actions</h4>
               <div className={styles.actionsList}>
+                <button
+                  type="button"
+                  onClick={onUndo}
+                  disabled={!canUndo}
+                  className={styles.actionButton}
+                >
+                  <span className={styles.actionLabel}>Undo</span>
+                  <kbd className={styles.actionShortcut}>⌘Z</kbd>
+                </button>
+                <button
+                  type="button"
+                  onClick={onRedo}
+                  disabled={!canRedo}
+                  className={styles.actionButton}
+                >
+                  <span className={styles.actionLabel}>Redo</span>
+                  <kbd className={styles.actionShortcut}>⌘⇧Z</kbd>
+                </button>
                 <button
                   type="button"
                   onClick={() => toggleFullscreenControls()}
