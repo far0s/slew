@@ -413,6 +413,8 @@ export interface OscOutputConfig {
   forward_beat: boolean;
   /** Forward /slew/bpm when BPM changes */
   forward_bpm: boolean;
+  /** Forward /slew/slot/{n}/color/{template_id} when a color param changes */
+  forward_colors: boolean;
 }
 
 const DEFAULT_OUTPUT_CONFIG: OscOutputConfig = {
@@ -421,6 +423,7 @@ const DEFAULT_OUTPUT_CONFIG: OscOutputConfig = {
   port: 9001,
   forward_beat: true,
   forward_bpm: true,
+  forward_colors: false,
 };
 
 /** Fetch the current OSC output config from the backend. */
@@ -433,6 +436,17 @@ export async function setOscOutputConfig(
   config: OscOutputConfig,
 ): Promise<void> {
   return invoke<void>("set_osc_output_config", { config });
+}
+
+/** Send a color OSC message via the backend if forward_colors is enabled. */
+export async function sendColorOsc(
+  slot: number,
+  templateId: string,
+  r: number,
+  g: number,
+  b: number,
+): Promise<void> {
+  return invoke<void>("send_color_osc", { slot, templateId, r, g, b });
 }
 
 /**

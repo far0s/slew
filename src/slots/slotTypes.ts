@@ -159,8 +159,17 @@ export function buildSlotDefaultParameters(
   const sketch = getSketchDescriptor(sketchId);
   if (sketch) {
     for (const param of sketch.parameters) {
-      const id = makeSlotParameterId(slotIndex, param.templateId);
-      map.set(id, param.defaultValue);
+      if (param.inputType === "color") {
+        // Expand to 3 numeric sub-params
+        const baseId = makeSlotParameterId(slotIndex, param.templateId);
+        const [dr, dg, db] = param.defaultColorValue ?? [0, 0, 0];
+        map.set(`${baseId}_r` as SlotParameterId, dr);
+        map.set(`${baseId}_g` as SlotParameterId, dg);
+        map.set(`${baseId}_b` as SlotParameterId, db);
+      } else {
+        const id = makeSlotParameterId(slotIndex, param.templateId);
+        map.set(id, param.defaultValue);
+      }
     }
   }
 
@@ -223,7 +232,15 @@ export function getSlotParameterIds(
   // Add sketch-specific parameters
   const templateIds = getSketchParameterTemplateIds(sketchId);
   for (const templateId of templateIds) {
-    ids.push(makeSlotParameterId(slotIndex, templateId));
+    const template = getSketchParameterTemplate(sketchId, templateId);
+    if (template?.inputType === "color") {
+      const baseId = makeSlotParameterId(slotIndex, templateId);
+      ids.push(`${baseId}_r` as SlotParameterId);
+      ids.push(`${baseId}_g` as SlotParameterId);
+      ids.push(`${baseId}_b` as SlotParameterId);
+    } else {
+      ids.push(makeSlotParameterId(slotIndex, templateId));
+    }
   }
 
   return ids;
@@ -283,6 +300,9 @@ export interface SlotParameterDescriptor {
   defaultValue: number;
   color?: SliderColor;
   description?: string;
+  inputType?: "slider" | "select" | "color";
+  colorChannel?: "r" | "g" | "b"; // set only on color sub-param descriptors
+  colorGroup?: string;             // templateId of the parent color param (e.g. "color_primary")
 }
 
 export function buildSlotParameterDescriptors(
@@ -311,18 +331,40 @@ export function buildSlotParameterDescriptors(
   const sketch = getSketchDescriptor(sketchId);
   if (sketch) {
     for (const template of sketch.parameters) {
-      descriptors.push({
-        id: makeSlotParameterId(slotIndex, template.templateId),
-        label: template.label,
-        group: template.group,
-        orderHint: template.orderHint,
-        min: template.min,
-        max: template.max,
-        step: template.step,
-        defaultValue: template.defaultValue,
-        color: template.color,
-        description: template.description,
-      });
+      if (template.inputType === "color") {
+        const baseId = makeSlotParameterId(slotIndex, template.templateId);
+        const [dr, dg, db] = template.defaultColorValue ?? [0, 0, 0];
+        const channels: Array<["r" | "g" | "b", number]> = [["r", dr], ["g", dg], ["b", db]];
+        for (const [ch, defaultVal] of channels) {
+          descriptors.push({
+            id: `${baseId}_${ch}` as ParameterId,
+            label: `${template.label} (${ch.toUpperCase()})`,
+            group: template.group,
+            orderHint: template.orderHint,
+            min: 0,
+            max: 255,
+            step: 1,
+            defaultValue: defaultVal,
+            description: template.description,
+            inputType: "color",
+            colorChannel: ch,
+            colorGroup: template.templateId,
+          });
+        }
+      } else {
+        descriptors.push({
+          id: makeSlotParameterId(slotIndex, template.templateId),
+          label: template.label,
+          group: template.group,
+          orderHint: template.orderHint,
+          min: template.min,
+          max: template.max,
+          step: template.step,
+          defaultValue: template.defaultValue,
+          color: template.color,
+          description: template.description,
+        });
+      }
     }
   }
 

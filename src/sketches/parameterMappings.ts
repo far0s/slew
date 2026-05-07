@@ -76,4 +76,8 @@ export const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
   color_interp: "colorInterp",
   grain_intensity: "grainIntensity",
   tonemap_mode: "tonemapMode",
+  // Color parameters — logical IDs mapped to their camelCase prefix (sub-channels use suffix R/G/B)
+  color_primary: "colorPrimary",
+  color_secondary: "colorSecondary",
+  color_bg: "colorBg",
 };

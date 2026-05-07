@@ -90,6 +90,8 @@ pub struct OscOutputConfig {
     pub forward_beat: bool,
     /// Forward a /slew/bpm message when BPM changes
     pub forward_bpm: bool,
+    /// Forward a /slew/slot/{n}/color/{template_id} message when a color param changes
+    pub forward_colors: bool,
 }
 
 impl Default for OscOutputConfig {
@@ -100,6 +102,7 @@ impl Default for OscOutputConfig {
             port: 9001,
             forward_beat: true,
             forward_bpm: true,
+            forward_colors: false,
         }
     }
 }
@@ -570,6 +573,24 @@ pub fn send_osc_bpm(bpm: f64) {
     });
     if should_send {
         send_osc_message("/slew/bpm", vec![OscType::Float(bpm as f32)]);
+    }
+}
+
+/// Send /slew/slot/{slot}/color/{template_id}  r g b  if forward_colors is enabled.
+pub fn send_osc_color(slot: usize, template_id: &str, r: u8, g: u8, b: u8) {
+    let should_send = with_osc_engine(|state| {
+        state.output_config.enabled && state.output_config.forward_colors
+    });
+    if should_send {
+        let address = format!("/slew/slot/{}/color/{}", slot, template_id);
+        send_osc_message(
+            &address,
+            vec![
+                OscType::Int(r as i32),
+                OscType::Int(g as i32),
+                OscType::Int(b as i32),
+            ],
+        );
     }
 }
 

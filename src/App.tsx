@@ -13,7 +13,7 @@ import {
 } from "./controls/useParameterStore";
 import type { SketchId, SketchProps } from "./sketches";
 import { getSketchDescriptor } from "./sketches";
-import { makeSlotParameterId } from "./slots/slotTypes";
+import { makeSlotParameterId, buildSlotDefaultParameters } from "./slots/slotTypes";
 import { SlotsArea, RendererPreview, Sidebar, UpdateBanner } from "./components";
 import { BpmPulseOverlay } from "./components/BpmPulseOverlay/BpmPulseOverlay";
 import { useUndoHistory, applyUndo, applyRedo } from "./controls/useUndoHistory";
@@ -498,6 +498,12 @@ function App() {
         slotIndex,
         sketchId,
       });
+      // Push color sub-params (backend doesn't know about these)
+      for (const [id, value] of initParams.parameters) {
+        if (/color_[a-z_]+_[rgb]$/.test(String(id))) {
+          await invoke("set_parameter", { id, value, app: undefined });
+        }
+      }
     } catch (error) {
       logger.error("Controls", "Failed to reset slot parameters", error);
     }
@@ -555,6 +561,12 @@ function App() {
         value: 0,
         app: undefined,
       });
+      // Push color sub-params (backend doesn't know about these)
+      for (const [id, value] of parameters) {
+        if (/color_[a-z_]+_[rgb]$/.test(String(id))) {
+          await invoke("set_parameter", { id, value, app: undefined });
+        }
+      }
     } catch (error) {
       logger.error("Controls", "Failed to reset slot parameters", error);
     }
@@ -627,9 +639,19 @@ function App() {
       paramStore.applyBackendParams(response);
 
       // Initialize any missing slot parameters (only for filled slots)
+      // Also push color sub-params to backend so the renderer window gets them
+      // (backend doesn't auto-create color sub-params since they're new)
+      const backendParamIds = new Set(response.map((p) => p.id));
       for (const slot of slotState.slots) {
         if (slot.sketchId !== null) {
           paramStore.initializeSlot(slot.index, slot.sketchId);
+          // Push any color sub-params that aren't in the backend yet
+          const defaults = buildSlotDefaultParameters(slot.index, slot.sketchId);
+          for (const [id, value] of defaults) {
+            if (/color_[a-z_]+_[rgb]$/.test(String(id)) && !backendParamIds.has(String(id))) {
+              await invoke("set_parameter", { id, value, app: undefined });
+            }
+          }
         }
       }
     } catch (error) {

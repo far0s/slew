@@ -60,6 +60,10 @@ const ALL_PARAMETER_TEMPLATE_IDS: ParameterTemplateId[] = [
   "color_interp",
   "grain_intensity",
   "tonemap_mode",
+  // Color parameters
+  "color_primary",
+  "color_secondary",
+  "color_bg",
 ];
 
 describe("TEMPLATE_ID_TO_PROPS_KEY", () => {

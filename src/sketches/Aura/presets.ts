@@ -20,12 +20,7 @@ function createPresetDescriptor(
   name: string,
   shortLabel: string,
   overrides: Record<string, number>,
-  colorPalette?: {
-    startColor: [number, number, number];
-    midColor: [number, number, number];
-    endColor: [number, number, number];
-    background: [number, number, number, number];
-  },
+  colorOverrides?: Record<string, [number, number, number]>,
 ): SketchDescriptor {
   return {
     ...baseDescriptor,
@@ -34,6 +29,14 @@ function createPresetDescriptor(
     shortLabel,
     description: `${name} preset - ${baseDescriptor.description}`,
     parameters: baseDescriptor.parameters.map((param) => {
+      // Handle color param overrides
+      if (param.inputType === "color" && colorOverrides?.[param.templateId]) {
+        return {
+          ...param,
+          defaultColorValue: colorOverrides[param.templateId],
+        };
+      }
+      // Handle numeric param overrides
       const override = overrides[param.templateId];
       if (override !== undefined) {
         return {
@@ -43,7 +46,6 @@ function createPresetDescriptor(
       }
       return param;
     }),
-    colorPalette,
   };
 }
 
@@ -70,12 +72,9 @@ export const auraOgDescriptor = createPresetDescriptor(
     tonemap_mode: 7, // Cinematic
   },
   {
-    startColor: [0.09803921568627451, 0.2980392156862745, 0.4],
-    midColor: [0.41568627450980394, 0.07450980392156863, 0.6431372549019608],
-    endColor: [0.4980392156862745, 0.24705882352941178, 0.2980392156862745],
-    background: [
-      0.043137254901960784, 0.00784313725490196, 0.08627450980392157, 1,
-    ],
+    color_primary: [25, 76, 102],
+    color_secondary: [106, 19, 164],
+    color_bg: [127, 63, 76],
   },
 );
 
@@ -102,12 +101,9 @@ export const auraRoseGoldDescriptor = createPresetDescriptor(
     tonemap_mode: 4, // Cross-process
   },
   {
-    startColor: [0.9176470588235294, 0.5333333333333333, 0.1607843137254902],
-    midColor: [0.5607843137254902, 0.592156862745098, 0.7843137254901961],
-    endColor: [0.5882352941176471, 0.17647058823529413, 0.611764705882353],
-    background: [
-      0.043137254901960784, 0.00784313725490196, 0.08627450980392157, 1,
-    ],
+    color_primary: [234, 136, 41],
+    color_secondary: [143, 151, 200],
+    color_bg: [150, 45, 156],
   },
 );
 
@@ -134,12 +130,9 @@ export const auraDeepBlueDescriptor = createPresetDescriptor(
     tonemap_mode: 0, // None
   },
   {
-    startColor: [0.11372549019607843, 0.20784313725490197, 0.7411764705882353],
-    midColor: [0.1411764705882353, 0.6549019607843137, 0.33725490196078434],
-    endColor: [0.34901960784313724, 0.2235294117647059, 0.7372549019607844],
-    background: [
-      0.043137254901960784, 0.00784313725490196, 0.08627450980392157, 1.0,
-    ],
+    color_primary: [29, 53, 189],
+    color_secondary: [36, 167, 86],
+    color_bg: [89, 57, 188],
   },
 );
 
@@ -166,10 +159,9 @@ export const auraSolarPlumeDescriptor = createPresetDescriptor(
     tonemap_mode: 4, // Cross-process
   },
   {
-    startColor: [0.8705882352941177, 0.16862745098039217, 0.043137254901960784],
-    midColor: [1.0, 0.8666666666666667, 0.5882352941176471],
-    endColor: [0.12941176470588237, 0.06274509803921569, 0.09803921568627451],
-    background: [0.023529411764705882, 0.0, 0.06274509803921569, 1.0],
+    color_primary: [222, 43, 11],
+    color_secondary: [255, 221, 150],
+    color_bg: [33, 16, 25],
   },
 );
 
@@ -196,12 +188,9 @@ export const auraGhostLikeDescriptor = createPresetDescriptor(
     tonemap_mode: 7, // Cinematic
   },
   {
-    startColor: [0.8509803921568627, 0.984313725490196, 0.9568627450980393],
-    midColor: [0.1607843137254902, 0.2980392156862745, 0.19215686274509805],
-    endColor: [0.5607843137254902, 0.6470588235294118, 0.5607843137254902],
-    background: [
-      0.12941176470588237, 0.09803921568627451, 0.09411764705882353, 1.0,
-    ],
+    color_primary: [217, 251, 244],
+    color_secondary: [41, 76, 49],
+    color_bg: [143, 165, 143],
   },
 );
 
@@ -228,12 +217,9 @@ export const auraForestClearingDescriptor = createPresetDescriptor(
     tonemap_mode: 7, // Cinematic
   },
   {
-    startColor: [0.027450980392156862, 0.6392156862745098, 0.4588235294117647],
-    midColor: [0.13333333333333333, 0.5098039215686274, 0.16862745098039217],
-    endColor: [0.8117647058823529, 0.12549019607843137, 0.9098039215686274],
-    background: [
-      0.0196078431372549, 0.1450980392156863, 0.15294117647058825, 1.0,
-    ],
+    color_primary: [7, 163, 117],
+    color_secondary: [34, 130, 43],
+    color_bg: [207, 32, 232],
   },
 );
 
@@ -260,12 +246,9 @@ export const auraDefaultIntenseDescriptor = createPresetDescriptor(
     tonemap_mode: 7, // Cinematic
   },
   {
-    startColor: [0.09803921568627451, 0.2980392156862745, 0.4],
-    midColor: [0.41568627450980394, 0.07450980392156863, 0.6431372549019608],
-    endColor: [0.4980392156862745, 0.24705882352941178, 0.2980392156862745],
-    background: [
-      0.043137254901960784, 0.00784313725490196, 0.08627450980392157, 1.0,
-    ],
+    color_primary: [25, 76, 102],
+    color_secondary: [106, 19, 164],
+    color_bg: [127, 63, 76],
   },
 );
 
@@ -292,12 +275,9 @@ export const auraBlushNebulaDescriptor = createPresetDescriptor(
     tonemap_mode: 5, // Bleach bypass
   },
   {
-    startColor: [0.5647058823529412, 0.28627450980392155, 0.5882352941176471],
-    midColor: [1.0, 0.7333333333333333, 0.06274509803921569],
-    endColor: [0.7568627450980392, 0.027450980392156862, 0.050980392156862744],
-    background: [
-      0.01568627450980392, 0.058823529411764705, 0.4745098039215686, 1.0,
-    ],
+    color_primary: [144, 73, 150],
+    color_secondary: [255, 187, 16],
+    color_bg: [193, 7, 13],
   },
 );
 

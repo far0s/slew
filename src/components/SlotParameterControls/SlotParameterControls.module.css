@@ -5,6 +5,32 @@
   padding-top: 0.5rem;
 }
 
+.colorParamRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.colorParamRowSpaced {
+  padding-top: 0.5rem;
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.colorParamHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.1rem 0 0.2rem 0;
+}
+
+.colorParamLabel {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+
 .controls {
   display: flex;
   flex-direction: column;

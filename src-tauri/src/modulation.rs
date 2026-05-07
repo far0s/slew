@@ -528,8 +528,13 @@ fn tick_modulation(engine: &Arc<Mutex<ModulationEngineState>>) {
                     current
                 };
 
-                // Calculate modulated value
-                let modulation = lfo_value * depth;
+                // Calculate modulated value.
+                // For color channel params (0-255), scale depth by the full range so
+                // depth=1.0 covers the whole range and depth=0.5 covers half.
+                // All other params keep depth as an absolute offset (existing behaviour).
+                let param_range = color_sub_param_range(&parameter_id);
+                let scale = param_range.unwrap_or(1.0);
+                let modulation = lfo_value * depth * scale;
                 let modulated = base_value + modulation;
 
                 modulations.push((parameter_id, modulated));
@@ -546,17 +551,41 @@ fn tick_modulation(engine: &Arc<Mutex<ModulationEngineState>>) {
     }
 }
 
+/// Returns the value range for colour channel sub-params (slot_N_color_*_r/g/b).
+/// Returns None for all other parameters so existing code is unaffected.
+fn color_sub_param_range(parameter_id: &str) -> Option<f64> {
+    // Pattern: ends with _r, _g, or _b AND contains _color_
+    if parameter_id.contains("_color_")
+        && (parameter_id.ends_with("_r")
+            || parameter_id.ends_with("_g")
+            || parameter_id.ends_with("_b"))
+    {
+        Some(255.0)
+    } else {
+        None
+    }
+}
+
 /// Apply a modulated value to a parameter
 fn apply_modulation_to_parameter(parameter_id: &str, value: f64, app_handle: Option<&AppHandle>) {
     // Don't use set_target as it would override our modulation
     // Instead, directly set the value (not target) for immediate effect
     crate::with_parameter_store(|store| {
         if let Some(param) = store.parameters.get_mut(parameter_id) {
-            // Clamp based on known parameter ranges (simplified)
-            let clamped = value.clamp(0.0, 2.0);
-            param.value = clamped;
+            let (param_min, param_max) = match color_sub_param_range(parameter_id) {
+                Some(max) => (0.0, max),   // colour channel: 0–255
+                None => (0.0, 2.0),        // default range (legacy)
+            };
+            let clamped = value.clamp(param_min, param_max);
+            // Round to nearest integer for colour channels (they are 0–255 byte values)
+            let final_value = if color_sub_param_range(parameter_id).is_some() {
+                clamped.round()
+            } else {
+                clamped
+            };
+            param.value = final_value;
             // Also set target to prevent the tick loop from fighting us
-            param.target = clamped;
+            param.target = final_value;
         }
     });
 

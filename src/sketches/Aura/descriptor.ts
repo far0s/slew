@@ -13,6 +13,46 @@ export const descriptor: SketchDescriptor = {
   description:
     "Volumetric raymarched noise with HDR accumulation and tonemapping (WebGPU/TSL).",
   parameters: [
+    // Color parameters — gradient stops for the volumetric shader (top of list for live control)
+    {
+      templateId: "color_primary",
+      label: "Start Color",
+      group: "sketch",
+      orderHint: 5,
+      min: 0,
+      max: 255,
+      step: 1,
+      defaultValue: 0,
+      inputType: "color",
+      defaultColorValue: [25, 76, 102],
+      description: "Gradient start color (inner glow).",
+    },
+    {
+      templateId: "color_secondary",
+      label: "Mid Color",
+      group: "sketch",
+      orderHint: 6,
+      min: 0,
+      max: 255,
+      step: 1,
+      defaultValue: 0,
+      inputType: "color",
+      defaultColorValue: [106, 19, 164],
+      description: "Gradient mid color (body).",
+    },
+    {
+      templateId: "color_bg",
+      label: "End Color",
+      group: "sketch",
+      orderHint: 7,
+      min: 0,
+      max: 255,
+      step: 1,
+      defaultValue: 0,
+      inputType: "color",
+      defaultColorValue: [127, 63, 76],
+      description: "Gradient end color (outer edge).",
+    },
     // Top 3 parameters for MIDI Mix (orderHint 10-30)
     {
       templateId: "bloom",

@@ -16,6 +16,7 @@ pub mod hid;
 pub mod midi;
 pub mod modulation;
 pub mod osc;
+pub mod wled;
 #[cfg(target_os = "macos")]
 pub mod syphon;
 pub mod updater;
@@ -339,6 +340,11 @@ fn start_parameter_tick_loop(app: AppHandle) {
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+#[tauri::command]
+fn send_color_osc(slot: usize, template_id: String, r: u8, g: u8, b: u8) {
+    osc::send_osc_color(slot, &template_id, r, g, b);
 }
 
 /// Forward an event from Controls to Renderer (prefixed with "renderer:").
@@ -759,6 +765,7 @@ pub fn run() {
             modulation::init_modulation_engine(app.handle().clone());
             video_out::init_video_output(app.handle().clone());
             frame_distribution::init_frame_distribution(app.handle().clone());
+            wled::init();
 
             // Log startup summary
             let video_backends = video_out::get_available_backends();
@@ -847,6 +854,7 @@ pub fn run() {
             osc::get_osc_output_config,
             osc::set_osc_output_config,
             osc::send_osc_message_cmd,
+            send_color_osc,
             // Audio
             audio::commands::list_audio_devices,
             audio::commands::start_audio_capture,
@@ -906,6 +914,11 @@ pub fn run() {
             frame_distribution::set_frame_distribution_enabled,
             frame_distribution::get_frame_distribution_stats,
             frame_distribution::get_buffer_pool_stats,
+            // WLED
+            wled::get_wled_config,
+            wled::set_wled_config,
+            wled::test_wled_connection,
+            wled::push_wled_color,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { MeshBasicNodeMaterial } from "three/webgpu";
@@ -413,15 +413,39 @@ export function Aura({ opacity, params, colors }: SketchProps) {
   const grainIntensity = params?.grainIntensity ?? 0.05;
   const tonemapMode = Math.round(params?.tonemapMode ?? 0);
 
-  // Use ref to capture current colors for material creation
-  // This ensures material is created with correct colors without adding colors to dependencies
-  const colorsRef = useRef(colors);
-  colorsRef.current = colors;
+  // Resolve colors from params (0-255 → 0-1 floats for the shader).
+  // buildSlotSceneParams / buildSlotParams guarantee these are populated
+  // with the preset's defaultColorValue when the store is not yet initialised.
+  const startColor: [number, number, number] = [
+    (params?.colorPrimaryR ?? 25) / 255,
+    (params?.colorPrimaryG ?? 76) / 255,
+    (params?.colorPrimaryB ?? 102) / 255,
+  ];
 
-  // Create material (recreate when raySteps or tonemapMode changes)
-  // Uses colorsRef.current to get current colors without triggering recreation on color changes
+  const midColor: [number, number, number] = [
+    (params?.colorSecondaryR ?? 106) / 255,
+    (params?.colorSecondaryG ?? 19) / 255,
+    (params?.colorSecondaryB ?? 164) / 255,
+  ];
+
+  const endColor: [number, number, number] = [
+    (params?.colorBgR ?? 127) / 255,
+    (params?.colorBgG ?? 63) / 255,
+    (params?.colorBgB ?? 76) / 255,
+  ];
+
+  // Background kept from legacy colors prop (not a live param yet)
+  const background = colors?.background ?? [0.043, 0.008, 0.086, 1.0];
+
+  // Create material (recreate when raySteps or tonemapMode changes).
+  // Pass current resolved colors so initial shader state is correct.
   const { material, uniforms } = useMemo(() => {
-    return createAuraMaterial(raySteps, tonemapMode, colorsRef.current);
+    return createAuraMaterial(raySteps, tonemapMode, {
+      startColor,
+      midColor,
+      endColor,
+      background: background as [number, number, number, number],
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [raySteps, tonemapMode]);
 
@@ -470,42 +494,19 @@ export function Aura({ opacity, params, colors }: SketchProps) {
     uniforms.opacity.value = opacity;
   }, [opacity, uniforms]);
 
-  // Update color uniforms when colors prop changes
-  // Use JSON.stringify for reliable deep comparison of color arrays
-  // Colors are also initialized in createAuraMaterial for correct initial values,
-  // but this effect handles updates after initial creation (e.g., preset change, user edits)
-  const colorsKey = JSON.stringify(colors);
+  // Update color uniforms when any resolved color changes
+  const colorsKey = JSON.stringify([startColor, midColor, endColor, background]);
   useEffect(() => {
-    if (colors?.startColor) {
-      uniforms.startColor.value.set(
-        colors.startColor[0],
-        colors.startColor[1],
-        colors.startColor[2],
-      );
-    }
-    if (colors?.midColor) {
-      uniforms.midColor.value.set(
-        colors.midColor[0],
-        colors.midColor[1],
-        colors.midColor[2],
-      );
-    }
-    if (colors?.endColor) {
-      uniforms.endColor.value.set(
-        colors.endColor[0],
-        colors.endColor[1],
-        colors.endColor[2],
-      );
-    }
-    if (colors?.background) {
-      uniforms.background.value.set(
-        colors.background[0],
-        colors.background[1],
-        colors.background[2],
-        colors.background[3],
-      );
-    }
-  }, [colorsKey, uniforms]);
+    uniforms.startColor.value.set(startColor[0], startColor[1], startColor[2]);
+    uniforms.midColor.value.set(midColor[0], midColor[1], midColor[2]);
+    uniforms.endColor.value.set(endColor[0], endColor[1], endColor[2]);
+    uniforms.background.value.set(
+      background[0],
+      background[1],
+      background[2],
+      background[3] ?? 1.0,
+    );
+  }, [colorsKey, uniforms]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <mesh>

@@ -21,6 +21,8 @@ import {
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import type { MidiMapping, MidiPickupState } from "../../inputs/midi";
 import { ColorPalette } from "../ColorPalette";
+import { ColorPicker } from "../ColorPicker";
+import { sendColorOsc } from "../../inputs/osc";
 import styles from "./SlotParameterControls.module.css";
 
 export interface SlotParameterControlsProps {
@@ -38,6 +40,72 @@ export interface SlotParameterControlsProps {
   onUnlinkBeat?: (parameterId: string) => void;
   onUnlinkLfo?: (parameterId: string) => void;
 }
+
+// ---------------------------------------------------------------------------
+// Color utilities (0-255 raw values, unlike ColorPalette which uses 0-1)
+// ---------------------------------------------------------------------------
+
+function rgbToHex(r: number, g: number, b: number): string {
+  return (
+    "#" +
+    [r, g, b]
+      .map((v) => Math.round(v).toString(16).padStart(2, "0"))
+      .join("")
+  );
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.replace("#", ""), 16);
+  return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
+}
+
+function handleColorParamChange(
+  slotIndex: number,
+  templateId: string,
+  hex: string,
+  setValue: (id: string, value: number) => void,
+): void {
+  const [r, g, b] = hexToRgb(hex);
+  const baseId = `slot_${slotIndex}_${templateId}`;
+
+  setValue(`${baseId}_r`, r);
+  setValue(`${baseId}_g`, g);
+  setValue(`${baseId}_b`, b);
+
+  void (async () => {
+    try {
+      await setParameter(`${baseId}_r`, r);
+      await setParameter(`${baseId}_g`, g);
+      await setParameter(`${baseId}_b`, b);
+
+      // Forward color over OSC if enabled
+      await sendColorOsc(slotIndex, templateId, r, g, b);
+    } catch {
+      // best-effort
+    }
+  })();
+
+  // Dispatch legacy sketch-color-changed event for renderer compatibility
+  const colorTypeMap: Record<string, "startColor" | "midColor" | "endColor"> = {
+    color_primary: "startColor",
+    color_secondary: "midColor",
+    color_bg: "endColor",
+  };
+  const colorType = colorTypeMap[templateId];
+  if (colorType) {
+    window.dispatchEvent(
+      new CustomEvent("sketch-color-changed", {
+        detail: {
+          slotIndex,
+          colorType,
+          color: [r, g, b] as [number, number, number],
+        },
+      }),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 
 async function setParameter(id: string, value: number): Promise<void> {
   await invoke("set_parameter", { id, value, app: undefined });
@@ -156,6 +224,12 @@ export function SlotParameterControls({
   const allParameters = [...SLOT_PARAMETER_TEMPLATES, ...descriptor.parameters];
   const sortedParameters = allParameters.sort(
     (a, b) => (a.orderHint ?? 0) - (b.orderHint ?? 0),
+  );
+
+  // Show the legacy ColorPalette section only for sketches that have colorPalette
+  // but haven't yet migrated to the new color param system.
+  const hasColorParams = descriptor.parameters.some(
+    (p) => p.inputType === "color",
   );
 
   // State for color palette
@@ -281,7 +355,7 @@ export function SlotParameterControls({
 
   return (
     <div className={styles.container}>
-      {descriptor.colorPalette && colors && (
+      {descriptor.colorPalette && colors && !hasColorParams && (
         <ColorPalette
           startColor={colors.startColor}
           midColor={colors.midColor}
@@ -305,6 +379,94 @@ export function SlotParameterControls({
           const hasMidiMapping = midiMappings?.some(
             (m) => m.parameter_id === paramId,
           );
+
+          // Render color picker group for parameters with inputType: "color"
+          // Shows a visual ColorPicker swatch + R/G/B sliders each with
+          // beat / LFO / MIDI-learn controls identical to regular sliders.
+          if (template.inputType === "color") {
+            const baseId = `slot_${slotIndex}_${template.templateId}`;
+            const r = getValue(`${baseId}_r`);
+            const g = getValue(`${baseId}_g`);
+            const b = getValue(`${baseId}_b`);
+            const hexValue = rgbToHex(r, g, b);
+
+            const channels = [
+              { ch: "r" as const, label: "R", value: r, color: "rose" as const },
+              { ch: "g" as const, label: "G", value: g, color: "emerald" as const },
+              { ch: "b" as const, label: "B", value: b, color: "sky" as const },
+            ];
+
+            return (
+              <div key={baseId} className={`${styles.colorParamRow} ${index > 0 ? styles.colorParamRowSpaced : ""}`}>
+                {/* Color label + swatch button */}
+                <div className={styles.colorParamHeader}>
+                  <span className={styles.colorParamLabel}>{template.label}</span>
+                  <ColorPicker
+                    label={template.label}
+                    value={hexValue}
+                    onChange={(hex) =>
+                      handleColorParamChange(slotIndex, template.templateId, hex, setValue)
+                    }
+                  />
+                </div>
+                {/* Per-channel sliders with full controls */}
+                {channels.map(({ ch, label, value: chVal, color: chColor }) => {
+                  const chId = `${baseId}_${ch}`;
+                  const hasMidiMappingCh = midiMappings?.some(
+                    (m) => m.parameter_id === chId,
+                  );
+                  return (
+                    <ParameterSlider
+                      key={chId}
+                      id={`slot-${slotIndex}-${template.templateId}-${ch}`}
+                      label={label}
+                      value={chVal}
+                      min={0}
+                      max={255}
+                      step={1}
+                      color={chColor}
+                      showSpacing
+                      onChange={(val) => {
+                        const newR = ch === "r" ? val : r;
+                        const newG = ch === "g" ? val : g;
+                        const newB = ch === "b" ? val : b;
+                        handleColorParamChange(
+                          slotIndex,
+                          template.templateId,
+                          rgbToHex(newR, newG, newB),
+                          setValue,
+                        );
+                      }}
+                      onCommit={(after, before) => {
+                        if (after !== before) pushUndoEntry(chId, before, after);
+                      }}
+                      audioMapping={getAudioMappingIndicator(chId, audioMappings)}
+                      modulationIndicator={getModulationIndicator(
+                        chId,
+                        modulationTargets,
+                        lfos,
+                      )}
+                      isMidiControlled={hasMidiMappingCh}
+                      pickupState={midiPickupStates?.get(chId)}
+                      midiParameterId={chId}
+                      onQuickBeat={
+                        onQuickBeat ? () => onQuickBeat(chId, 255) : undefined
+                      }
+                      onQuickLfo={
+                        onQuickLfo ? () => onQuickLfo(chId) : undefined
+                      }
+                      onUnlinkBeat={
+                        onUnlinkBeat ? () => onUnlinkBeat(chId) : undefined
+                      }
+                      onUnlinkLfo={
+                        onUnlinkLfo ? () => onUnlinkLfo(chId) : undefined
+                      }
+                    />
+                  );
+                })}
+              </div>
+            );
+          }
 
           // Render select input for parameters with inputType: "select"
           if (template.inputType === "select" && template.options) {

@@ -16,6 +16,7 @@ import { AudioPanel } from "../AudioPanel";
 import { HidPanel } from "../HidPanel";
 import { ModulationPanel } from "../ModulationPanel";
 import { VideoOutputPanel } from "../VideoOutputPanel";
+import { WledPanel } from "../WledPanel";
 import { ParameterSlider } from "../ParameterSlider";
 import type { Slot } from "../../slots/useSlots";
 import {
@@ -375,6 +376,9 @@ export function Sidebar({
         <Tabs.Trigger value="mod" className={styles.tabTrigger}>
           Mod
         </Tabs.Trigger>
+        <Tabs.Trigger value="wled" className={styles.tabTrigger}>
+          WLED
+        </Tabs.Trigger>
         <Tabs.Trigger value="appearance" className={styles.tabTrigger}>
           Appearance
         </Tabs.Trigger>
@@ -486,6 +490,10 @@ export function Sidebar({
 
         <Tabs.Content value="mod" className={styles.tabContent}>
           <ModulationPanel slots={slots} />
+        </Tabs.Content>
+
+        <Tabs.Content value="wled" className={styles.tabContent}>
+          <WledPanel />
         </Tabs.Content>
 
         <Tabs.Content value="appearance" className={styles.tabContent}>

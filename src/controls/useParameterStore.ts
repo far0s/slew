@@ -135,6 +135,11 @@ function getParameterRange(
   // Handle slot parameters
   const parsed = parseSlotParameterId(id);
   if (parsed) {
+    // Color channel sub-params (e.g. "color_primary_r") are always 0–255
+    if (/^color_[a-z_]+_[rgb]$/.test(parsed.templateId)) {
+      return { min: 0, max: 255 };
+    }
+
     const slot = slots.find((s) => s.index === parsed.slotIndex);
     if (slot) {
       const sketch = getSketchDescriptor(slot.sketchId);
@@ -623,7 +628,20 @@ export function buildSlotSceneParams(
 
   for (const template of sketch.parameters) {
     const propsKey = TEMPLATE_ID_TO_PROPS_KEY[template.templateId];
-    if (propsKey) {
+    if (!propsKey) continue;
+
+    if (template.inputType === "color") {
+      const baseId = makeSlotParameterId(slotIndex, template.templateId);
+      const [dr, dg, db] = template.defaultColorValue ?? [0, 0, 0];
+      // store.get returns 0 for unknown params; fall back to defaultColorValue
+      // so the preset's palette shows correctly before backend push completes.
+      const r = store.get(`${baseId}_r`);
+      const g = store.get(`${baseId}_g`);
+      const b = store.get(`${baseId}_b`);
+      params[propsKey + "R"] = r !== 0 || g !== 0 || b !== 0 ? r : dr;
+      params[propsKey + "G"] = r !== 0 || g !== 0 || b !== 0 ? g : dg;
+      params[propsKey + "B"] = r !== 0 || g !== 0 || b !== 0 ? b : db;
+    } else {
       const paramId = makeSlotParameterId(slotIndex, template.templateId);
       params[propsKey] = store.get(paramId);
     }
@@ -647,7 +665,18 @@ export function buildSlotSceneParamsInterpolated(
 
   for (const template of sketch.parameters) {
     const propsKey = TEMPLATE_ID_TO_PROPS_KEY[template.templateId];
-    if (propsKey) {
+    if (!propsKey) continue;
+
+    if (template.inputType === "color") {
+      const baseId = makeSlotParameterId(slotIndex, template.templateId);
+      const [dr, dg, db] = template.defaultColorValue ?? [0, 0, 0];
+      const r = store.getInterpolated(`${baseId}_r`);
+      const g = store.getInterpolated(`${baseId}_g`);
+      const b = store.getInterpolated(`${baseId}_b`);
+      params[propsKey + "R"] = r !== 0 || g !== 0 || b !== 0 ? r : dr;
+      params[propsKey + "G"] = r !== 0 || g !== 0 || b !== 0 ? g : dg;
+      params[propsKey + "B"] = r !== 0 || g !== 0 || b !== 0 ? b : db;
+    } else {
       const paramId = makeSlotParameterId(slotIndex, template.templateId);
       params[propsKey] = store.getInterpolated(paramId);
     }

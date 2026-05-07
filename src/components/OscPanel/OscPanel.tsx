@@ -212,6 +212,17 @@ function OutputSection() {
           <span>Forward BPM</span>
           <code className={styles.inlineCode}>/slew/bpm</code>
         </label>
+        <label className={styles.checkboxLabel}>
+          <input
+            type="checkbox"
+            checked={config.forward_colors}
+            onChange={(e) => void update({ forward_colors: e.target.checked })}
+            disabled={!config.enabled}
+            className={styles.checkbox}
+          />
+          <span>Forward colors</span>
+          <code className={styles.inlineCode}>/slew/slot/{`{n}`}/color/{`{id}`}</code>
+        </label>
       </div>
 
       <p className={styles.outputHint}>

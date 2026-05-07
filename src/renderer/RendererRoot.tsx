@@ -122,7 +122,15 @@ function buildSlotParams(
     const paramId = makeSlotParameterId(slotIndex, template.templateId);
     const propsKey = TEMPLATE_ID_TO_PROPS_KEY[template.templateId];
 
-    if (propsKey) {
+    if (!propsKey) continue;
+
+    if (template.inputType === "color") {
+      // Color params are stored as _r/_g/_b sub-IDs; use defaultColorValue as fallback
+      const [dr, dg, db] = template.defaultColorValue ?? [0, 0, 0];
+      params[propsKey + "R"] = paramStore.get(`${paramId}_r`) ?? dr;
+      params[propsKey + "G"] = paramStore.get(`${paramId}_g`) ?? dg;
+      params[propsKey + "B"] = paramStore.get(`${paramId}_b`) ?? db;
+    } else if (propsKey) {
       const value = paramStore.get(paramId);
       params[propsKey] = value !== undefined ? value : template.defaultValue;
     }

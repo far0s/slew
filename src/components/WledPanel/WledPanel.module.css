@@ -1,0 +1,325 @@
+/* ==========================================================================
+   WledPanel.module.css
+   Styles for the WLED LED control panel.
+   Follows the same visual patterns as OscPanel / AudioPanel.
+   ========================================================================== */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+/* ==========================================================================
+   Header
+   ========================================================================== */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--bg-active);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.statusActive {
+  background: rgb(52 211 153);
+  box-shadow: 0 0 6px rgb(52 211 153 / 0.5);
+}
+
+/* ==========================================================================
+   Section
+   ========================================================================== */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.sectionDisabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.sectionHeader {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.sectionHint {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Checkbox
+   ========================================================================== */
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox {
+  accent-color: rgb(52 211 153);
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   Output fields (IP / Port) — mirrors OscPanel
+   ========================================================================== */
+
+.outputFields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  transition: opacity 0.15s ease;
+}
+
+.outputFieldsDisabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.outputFieldRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fieldLabel {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  min-width: 3.5rem;
+  flex-shrink: 0;
+}
+
+.outputInput {
+  flex: 1;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.73rem;
+  color: var(--text-primary);
+  font-family: var(--font-mono, monospace);
+  outline: none;
+  transition: border-color 0.15s ease;
+  min-width: 0;
+}
+
+.outputInput:focus {
+  border-color: rgb(52 211 153 / 0.7);
+}
+
+.outputInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.outputInputPort {
+  max-width: 5rem;
+}
+
+/* ==========================================================================
+   Test Connection
+   ========================================================================== */
+
+.testRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.testButton {
+  padding: 0.3rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  background: rgb(52 211 153 / 0.12);
+  border: 1px solid rgb(52 211 153 / 0.3);
+  color: rgb(52 211 153);
+}
+
+.testButton:hover:not(:disabled) {
+  background: rgb(52 211 153 / 0.2);
+  border-color: rgb(52 211 153 / 0.5);
+}
+
+.testButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.testResult {
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+.testOk {
+  color: rgb(52 211 153);
+}
+
+.testError {
+  color: rgb(248 113 113);
+}
+
+/* ==========================================================================
+   Segment Mappings
+   ========================================================================== */
+
+.mappingRow {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr 1fr 1fr 1.5rem;
+  gap: 0.35rem;
+  align-items: end;
+  padding: 0.45rem 0.5rem;
+  background: var(--bg-subtle, var(--bg-surface));
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+}
+
+.mappingCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.cellLabel {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.segInput {
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.7rem;
+  color: var(--text-primary);
+  text-align: center;
+  outline: none;
+}
+
+.mappingSelect {
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  outline: none;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.segInput:focus,
+.mappingSelect:focus {
+  border-color: rgb(52 211 153 / 0.6);
+}
+
+.removeButton {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+  align-self: center;
+}
+
+.removeButton:hover:not(:disabled) {
+  color: rgb(248 113 113);
+}
+
+.removeButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.addButton {
+  width: 100%;
+  padding: 0.35rem;
+  background: none;
+  border: 1px dashed var(--border-default);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.addButton:hover:not(:disabled) {
+  border-color: rgb(52 211 153 / 0.5);
+  color: var(--text-secondary);
+}
+
+.addButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Hint / Empty
+   ========================================================================== */
+
+.hint {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.emptyText {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+}

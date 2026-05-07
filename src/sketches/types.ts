@@ -66,7 +66,11 @@ export type ParameterTemplateId =
   | "seed"
   | "color_interp"
   | "grain_intensity"
-  | "tonemap_mode";
+  | "tonemap_mode"
+  // Color parameters (logical IDs — expand to _r/_g/_b sub-params in the store)
+  | "color_primary"
+  | "color_secondary"
+  | "color_bg";
 
 export interface ParameterTemplate {
   templateId: ParameterTemplateId;
@@ -79,7 +83,8 @@ export interface ParameterTemplate {
   defaultValue: number;
   color?: SliderColor;
   description?: string;
-  inputType?: "slider" | "select";
+  inputType?: "slider" | "select" | "color";
+  defaultColorValue?: [number, number, number]; // for inputType: "color", RGB 0-255
   options?: Array<{ value: number; label: string }>;
 }
 
@@ -158,6 +163,16 @@ export interface SketchProps {
     colorInterp: number;
     grainIntensity: number;
     tonemapMode: number;
+    // Color parameters — individual channels produced from color-type ParameterTemplates
+    colorPrimaryR?: number;
+    colorPrimaryG?: number;
+    colorPrimaryB?: number;
+    colorSecondaryR?: number;
+    colorSecondaryG?: number;
+    colorSecondaryB?: number;
+    colorBgR?: number;
+    colorBgG?: number;
+    colorBgB?: number;
   }>;
   colors?: {
     startColor?: [number, number, number];
