@@ -167,6 +167,9 @@ function buildSlotParams(
  * @param crossfade - Current crossfade value (0 = fully active, 1 = fully target)
  * @param alpha - The slot's master opacity (0-1)
  */
+// Debug: track last logged state to detect flash transitions
+let _dbgLastOpacity: Record<number, number> = {};
+
 function calculateSlotOpacity(
   slotIndex: number,
   activeSlotIndex: number,
@@ -181,24 +184,30 @@ function calculateSlotOpacity(
   const isTarget =
     crossfadeTargetIndex !== null && slotIndex === crossfadeTargetIndex;
 
+  let opacity: number;
+
   // If this slot is both active and target (same slot), just use alpha
   if (isActive && isTarget) {
-    return clampedAlpha;
+    opacity = clampedAlpha;
+  } else if (isActive && crossfadeTargetIndex !== null && clampedCrossfade > 0.001) {
+    // If this is the active slot and we're crossfading, fade out
+    opacity = (1 - clampedCrossfade) * clampedAlpha;
+  } else if (isTarget && clampedCrossfade > 0.001) {
+    // If this is the target slot, fade in
+    opacity = clampedCrossfade * clampedAlpha;
+  } else {
+    // For all other slots (not in crossfade), just use their alpha directly
+    opacity = clampedAlpha;
   }
 
-  // If this is the active slot and we're crossfading, fade out
-  if (isActive && crossfadeTargetIndex !== null && clampedCrossfade > 0.001) {
-    return (1 - clampedCrossfade) * clampedAlpha;
+  // Debug: log when opacity jumps up significantly (potential flash)
+  const prev = _dbgLastOpacity[slotIndex] ?? 0;
+  if (opacity > prev + 0.1 && prev < 0.1) {
+    console.log(`[RENDERER FLASH DBG] slot=${slotIndex} opacity ${prev.toFixed(3)}->${opacity.toFixed(3)} | active=${activeSlotIndex} target=${crossfadeTargetIndex} crossfade=${crossfade.toFixed(3)} alpha=${alpha.toFixed(3)} isActive=${isActive} isTarget=${isTarget}`);
   }
+  _dbgLastOpacity[slotIndex] = opacity;
 
-  // If this is the target slot, fade in
-  if (isTarget && clampedCrossfade > 0.001) {
-    return clampedCrossfade * clampedAlpha;
-  }
-
-  // For all other slots (not in crossfade), just use their alpha directly
-  // This enables multi-layer rendering where any slot with alpha > 0 is visible
-  return clampedAlpha;
+  return opacity;
 }
 
 // =============================================================================
@@ -322,7 +331,7 @@ function RendererContent({
   let maxTintLfoDepth = 0;
   for (const slot of allSlots) {
     const alphaParamId = makeSlotParameterId(slot.index, "alpha");
-    const alpha = paramStore.get(alphaParamId) ?? 1;
+    const alpha = paramStore.get(alphaParamId) ?? 0;
     if (alpha > 0.001) {
       const tintLfoDepthParamId = makeSlotParameterId(
         slot.index,
@@ -337,7 +346,7 @@ function RendererContent({
   const slotsToRender = allSlots
     .filter((slot) => {
       const alphaParamId = makeSlotParameterId(slot.index, "alpha");
-      const alpha = paramStore.get(alphaParamId) ?? 1;
+      const alpha = paramStore.get(alphaParamId) ?? 0;
       const opacity = calculateSlotOpacity(
         slot.index,
         activeSlotIndex,
@@ -370,7 +379,7 @@ function RendererContent({
 
         // Get the slot's alpha (master opacity) parameter
         const alphaParamId = makeSlotParameterId(slot.index, "alpha");
-        const alpha = paramStore.get(alphaParamId) ?? 1;
+        const alpha = paramStore.get(alphaParamId) ?? 0;
 
         const opacity = calculateSlotOpacity(
           slot.index,

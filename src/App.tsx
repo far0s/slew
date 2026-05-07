@@ -536,39 +536,44 @@ function App() {
 
   // Handle setting a sketch in a specific slot
   async function handleSetSketch(slotIndex: number, sketchId: SketchId) {
+    const alphaParamId = makeSlotParameterId(slotIndex, "alpha");
+
+    // Reset backend parameters FIRST (with alpha=0), before updating React slot state.
+    // This ensures that by the time the slots useEffect fires set_all_slots and the
+    // renderer learns about the new slot, alpha=0 is already in the backend param store.
+    // Without this ordering, there's a flash frame where the sketch renders at alpha=1.
+    try {
+      await invoke("reset_slot_parameters", {
+        slotIndex,
+        sketchId,
+        initialAlpha: 0,
+      });
+    } catch (error) {
+      logger.error("Controls", "Failed to reset slot parameters", error);
+      return;
+    }
+
     const initParams = slotState.setSketch(slotIndex, sketchId);
     if (!initParams) return;
 
     const { parameters } = initParams;
 
     // Override alpha to 0 for newly filled slots (start hidden)
-    const alphaParamId = makeSlotParameterId(slotIndex, "alpha");
     parameters.set(alphaParamId, 0);
 
     // Clear any stale parameters first, then initialize with new defaults
     paramStore.removeSlotParameters(slotIndex);
     paramStore.initializeSlotWithValues(slotIndex, parameters);
 
-    // Reset parameters in backend (clears all slot params and reinitializes from sketch defaults)
+    // Push color sub-params (backend doesn't know about these)
     try {
-      await invoke("reset_slot_parameters", {
-        slotIndex,
-        sketchId,
-      });
-      // Set alpha to 0 in backend (override the default of 1)
-      await invoke("set_parameter", {
-        id: alphaParamId,
-        value: 0,
-        app: undefined,
-      });
-      // Push color sub-params (backend doesn't know about these)
       for (const [id, value] of parameters) {
         if (/color_[a-z_]+_[rgb]$/.test(String(id))) {
           await invoke("set_parameter", { id, value, app: undefined });
         }
       }
     } catch (error) {
-      logger.error("Controls", "Failed to reset slot parameters", error);
+      logger.error("Controls", "Failed to push color sub-params", error);
     }
   }
 
@@ -677,13 +682,42 @@ function App() {
         const newActiveSlotIndex = slotState.crossfadeTargetIndex;
         const newActiveSketchId = slotState.getSketchId(newActiveSlotIndex);
 
-        // Complete the crossfade in local state
-        slotState.completeCrossfade();
-
-        // Update Renderer and reset crossfade
+        // Update Renderer and reset crossfade.
+        // IMPORTANT: completeCrossfade() is called INSIDE the async block, after alpha=0
+        // is confirmed in the backend. Calling it earlier would update slotState, triggering
+        // the set_all_slots useEffect which sends crossfade_target_index=null to the renderer
+        // before alpha=0 has landed — causing the old slot to flash at full alpha.
         void (async () => {
           try {
-            // CRITICAL: Tell Renderer the new active slot BEFORE resetting crossfade
+            // Set old active slot alpha to 0 FIRST, before set_slot_pairing.
+            // The renderer clears crossfadeTargetIndex when it receives slot_pairing_changed,
+            // after which the old slot renders at plain alpha. By sending alpha=0 first,
+            // the parameter_changed event arrives in the renderer before slot_pairing_changed,
+            // so the old slot is already invisible when crossfadeTargetIndex clears.
+            const oldAlphaId = makeSlotParameterId(oldActiveSlotIndex, "alpha");
+            await invoke("set_parameter", {
+              id: oldAlphaId,
+              value: 0,
+              app: undefined,
+            });
+            paramStore.set(oldAlphaId, 0);
+
+            // Reset crossfade to 0 locally NOW so the renderer never sees the
+            // combination of (target=null, crossfade≈1) which causes both slots
+            // to render at plain alpha simultaneously.
+            paramStore.set("crossfade", 0);
+            await invoke("set_parameter", {
+              id: "crossfade",
+              value: 0,
+              app: undefined,
+            });
+
+            // NOW complete the crossfade in local state.
+            // This triggers the set_all_slots useEffect, but by this point alpha=0
+            // is already in the backend, so the renderer will see it correctly.
+            slotState.completeCrossfade();
+
+            // NOW tell the renderer the new active slot (clears crossfadeTargetIndex)
             if (newActiveSketchId) {
               await invoke("set_slot_pairing", {
                 activeSlotIndex: newActiveSlotIndex,
@@ -693,15 +727,6 @@ function App() {
               });
             }
 
-            // Set old active slot alpha to 0 (it faded out)
-            const oldAlphaId = makeSlotParameterId(oldActiveSlotIndex, "alpha");
-            await invoke("set_parameter", {
-              id: oldAlphaId,
-              value: 0,
-              app: undefined,
-            });
-            paramStore.set(oldAlphaId, 0);
-
             // Ensure new active slot alpha is 1 (it faded in)
             const newAlphaId = makeSlotParameterId(newActiveSlotIndex, "alpha");
             await invoke("set_parameter", {
@@ -710,13 +735,6 @@ function App() {
               app: undefined,
             });
             paramStore.set(newAlphaId, 1);
-
-            // Now reset crossfade to 0 for next transition
-            await invoke("set_parameter", {
-              id: "crossfade",
-              value: 0,
-              app: undefined,
-            });
           } catch (error) {
             logger.error("Controls", "Failed to complete crossfade", error);
           }

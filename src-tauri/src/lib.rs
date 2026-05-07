@@ -581,10 +581,11 @@ fn initialize_slot_parameters(
 /// This first clears ALL existing parameters for the slot, then reinitializes from defaults.
 /// This ensures a clean slate when switching between sketches.
 #[tauri::command]
-fn reset_slot_parameters(app: AppHandle, slot_index: usize, sketch_id: String) -> Vec<Parameter> {
+fn reset_slot_parameters(app: AppHandle, slot_index: usize, sketch_id: String, initial_alpha: Option<f64>) -> Vec<Parameter> {
     let prefix = format!("slot_{}_", slot_index);
     let defaults = get_sketch_defaults(&sketch_id);
     let mut result: Vec<Parameter> = Vec::new();
+    let alpha_value = initial_alpha.unwrap_or(1.0);
 
     with_parameter_store(|store| {
         // First, remove ALL existing parameters for this slot
@@ -599,9 +600,9 @@ fn reset_slot_parameters(app: AppHandle, slot_index: usize, sketch_id: String) -
             store.parameters.remove(&key);
         }
 
-        // Always add alpha parameter with default value of 1
+        // Add alpha parameter with the requested initial value
         let alpha_id = format!("slot_{}_alpha", slot_index);
-        let alpha_param = default_parameter_for_id(alpha_id.clone(), 1.0);
+        let alpha_param = default_parameter_for_id(alpha_id.clone(), alpha_value);
         store.parameters.insert(alpha_id, alpha_param.clone());
         result.push(alpha_param);
 
