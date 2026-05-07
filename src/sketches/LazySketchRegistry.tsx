@@ -87,6 +87,11 @@ const LazyPrismLines = lazy(() =>
   import("./PrismLines").then((m) => ({ default: m.PrismLines })),
 );
 
+// VortexBeam
+const LazyVortexBeam = lazy(() =>
+  import("./VortexBeam").then((m) => ({ default: m.VortexBeam })),
+);
+
 // =============================================================================
 // Registry
 // =============================================================================
@@ -124,6 +129,8 @@ export const LAZY_SKETCH_REGISTRY: Record<string, LazySketchComponent> = {
   prismLines: LazyPrismLines,
   // StarTrails
   starTrails: LazyStarTrails,
+  // VortexBeam
+  vortexBeam: LazyVortexBeam,
 };
 
 /**

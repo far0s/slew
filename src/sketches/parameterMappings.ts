@@ -107,6 +107,17 @@ export const TEMPLATE_ID_TO_PROPS_KEY: Record<ParameterTemplateId, string> = {
   trail_steps: "trailSteps",
   trail_blend: "trailBlend",
   three_body: "threeBody",
+  // VortexBeam specific
+  vb_speed: "vbSpeed",
+  vb_glow: "vbGlow",
+  vb_brightness: "vbBrightness",
+  vb_tightness: "vbTightness",
+  vb_reach: "vbReach",
+  vb_trail: "vbTrail",
+  vb_smoke: "vbSmoke",
+  vb_chroma: "vbChroma",
+  vb_pulse: "vbPulse",
+  vb_arms: "vbArms",
   // Color parameters — logical IDs mapped to their camelCase prefix (sub-channels use suffix R/G/B)
   color_primary: "colorPrimary",
   color_secondary: "colorSecondary",

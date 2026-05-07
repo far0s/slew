@@ -98,6 +98,17 @@ export type ParameterTemplateId =
   | "trail_steps"
   | "trail_blend"
   | "three_body"
+  // VortexBeam specific
+  | "vb_speed"
+  | "vb_glow"
+  | "vb_brightness"
+  | "vb_tightness"
+  | "vb_reach"
+  | "vb_trail"
+  | "vb_smoke"
+  | "vb_chroma"
+  | "vb_pulse"
+  | "vb_arms"
   // Color parameters (logical IDs — expand to _r/_g/_b sub-params in the store)
   | "color_primary"
   | "color_secondary"
@@ -225,6 +236,17 @@ export interface SketchProps {
     threeBody: number;
     starCount: number;
     trailSteps: number;
+    // VortexBeam specific
+    vbSpeed: number;
+    vbGlow: number;
+    vbBrightness: number;
+    vbTightness: number;
+    vbReach: number;
+    vbTrail: number;
+    vbSmoke: number;
+    vbChroma: number;
+    vbPulse: number;
+    vbArms: number;
     // Color parameters — individual channels produced from color-type ParameterTemplates
     colorPrimaryR?: number;
     colorPrimaryG?: number;

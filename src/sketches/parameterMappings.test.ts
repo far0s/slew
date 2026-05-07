@@ -91,6 +91,17 @@ const ALL_PARAMETER_TEMPLATE_IDS: ParameterTemplateId[] = [
   "trail_steps",
   "trail_blend",
   "three_body",
+  // VortexBeam specific
+  "vb_speed",
+  "vb_glow",
+  "vb_brightness",
+  "vb_tightness",
+  "vb_reach",
+  "vb_trail",
+  "vb_smoke",
+  "vb_chroma",
+  "vb_pulse",
+  "vb_arms",
   // Color parameters
   "color_primary",
   "color_secondary",
