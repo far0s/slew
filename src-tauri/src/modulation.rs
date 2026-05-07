@@ -929,6 +929,15 @@ fn generate_id(prefix: &str) -> String {
 // ============================================================================
 
 #[tauri::command]
+pub fn set_manual_bpm(bpm: Option<f64>) {
+    let clamped = bpm.map(|b| b.clamp(20.0, 300.0));
+    update_bpm(clamped);
+    if let Some(b) = clamped {
+        crate::osc::send_osc_bpm(b);
+    }
+}
+
+#[tauri::command]
 pub fn get_modulation_lfos() -> Vec<LfoSource> {
     get_lfos()
 }

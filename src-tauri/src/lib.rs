@@ -891,6 +891,7 @@ pub fn run() {
             modulation::clear_modulation_audio_modulations,
             modulation::get_full_modulation_state,
             modulation::is_parameter_modulated_cmd,
+            modulation::set_manual_bpm,
             // Video Output
             video_out::list_video_backends,
             video_out::get_video_backend_status,

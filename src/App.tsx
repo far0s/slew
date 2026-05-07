@@ -15,10 +15,12 @@ import type { SketchId, SketchProps } from "./sketches";
 import { getSketchDescriptor } from "./sketches";
 import { makeSlotParameterId } from "./slots/slotTypes";
 import { SlotsArea, RendererPreview, Sidebar, UpdateBanner } from "./components";
+import { BpmPulseOverlay } from "./components/BpmPulseOverlay/BpmPulseOverlay";
 import { useUndoHistory, applyUndo, applyRedo } from "./controls/useUndoHistory";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings, generateMappingId, type AudioMapping } from "./inputs/audio";
 import { useLfos, useModulationTargets, createLfo, createTarget } from "./inputs/modulation";
+import { globalTapTempo } from "./inputs/tapTempo";
 import {
   useMidiMappings,
   useMidiDevices,
@@ -124,6 +126,19 @@ function App() {
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Space — Tap Tempo
+      if (
+        e.key === " " &&
+        !e.altKey &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement) &&
+        !(e.target instanceof HTMLSelectElement)
+      ) {
+        e.preventDefault();
+        globalTapTempo();
+      }
       // Cmd+Shift+F (macOS) or Ctrl+Shift+F (Windows/Linux) - Toggle fullscreen
       if (
         (e.metaKey || e.ctrlKey) &&
@@ -839,6 +854,7 @@ function App() {
 
   return (
     <div className={styles.root}>
+      <BpmPulseOverlay />
       <UpdateBanner state={updateState} onInstall={installUpdate} onDismiss={dismissUpdate} />
       <div className={styles.toolbar}>
         <button

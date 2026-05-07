@@ -142,10 +142,10 @@ Add tap tempo input for modulation BPM sync.
 
 **Subtasks**:
 
-- [ ] "Tap Tempo" button in Modulation Panel
-- [ ] Calculate BPM from tap intervals (use weighted average of last 4-8 taps)
-- [ ] Visual feedback (metronome pulse)
-- [ ] Auto-detect if tapping stops (reset after 3 seconds)
+- [x] "Tap Tempo" button in Modulation Panel
+- [x] Calculate BPM from tap intervals (use weighted average of last 4-8 taps)
+- [x] Visual feedback (metronome pulse)
+- [x] Auto-detect if tapping stops (reset after 3 seconds)
 
 ---
 
