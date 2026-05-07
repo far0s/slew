@@ -28,6 +28,7 @@ import {
 } from "../../hooks";
 import styles from "./Sidebar.module.css";
 import { useUndoHistory } from "../../controls/useUndoHistory";
+import { useUpdater } from "../../hooks/useUpdater";
 
 /**
  * Collapsible section wrapper (matches VideoOutputPanel pattern)
@@ -320,6 +321,61 @@ function SettingsSliders({
  * - Modulation: LFO and modulation matrix
  * - Video: Renderer stats, video output backends
  */
+function UpdateSection() {
+  const { state, checkForUpdate, installUpdate } = useUpdater();
+
+  // Track manual check in progress
+  const [checking, setChecking] = useState(false);
+
+  const handleCheck = useCallback(async () => {
+    setChecking(true);
+    await checkForUpdate();
+    setChecking(false);
+  }, [checkForUpdate]);
+
+  return (
+    <div className={styles.actionsList}>
+      {state.type === "error" && (
+        <p className={styles.settingsNote} style={{ color: "var(--color-error, #f87171)" }}>
+          {state.message}
+        </p>
+      )}
+      {state.type === "available" && (
+        <p className={styles.settingsDescription}>
+          v{state.info.version} available
+          {state.info.body ? ` — ${state.info.body}` : ""}
+        </p>
+      )}
+      {state.type === "available" ? (
+        <button
+          type="button"
+          onClick={installUpdate}
+          className={styles.actionButton}
+        >
+          <span className={styles.actionLabel}>Install &amp; Restart</span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={handleCheck}
+          disabled={checking || state.type === "installing"}
+          className={styles.actionButton}
+        >
+          <span className={styles.actionLabel}>
+            {checking
+              ? "Checking…"
+              : state.type === "installing"
+                ? "Installing…"
+                : state.type === "idle"
+                  ? "Check for Update"
+                  : "Check for Update"}
+          </span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function Sidebar({
   macropadSelectedIndex,
   slots = [],
@@ -399,6 +455,11 @@ export function Sidebar({
                   Settings unavailable - parameter store not connected.
                 </p>
               )}
+            </div>
+
+            <div className={styles.settingsSection}>
+              <h4 className={styles.settingsHeader}>Updates</h4>
+              <UpdateSection />
             </div>
 
             <div className={styles.settingsSection}>
