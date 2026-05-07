@@ -67,6 +67,37 @@ export type ParameterTemplateId =
   | "color_interp"
   | "grain_intensity"
   | "tonemap_mode"
+  // LuminoSmoke specific
+  | "smoke_density"
+  | "halo_radius"
+  | "light_intensity"
+  | "ls_speed"
+  | "ls_count"
+  | "scatter_falloff"
+  | "smoke_turbulence"
+  | "chromatic_spread"
+  | "pulse_amount"
+  // PrismLines specific
+  | "line_glow"
+  | "prism_intensity"
+  | "line_brightness"
+  | "pl_speed"
+  | "pl_count"
+  | "prism_spread"
+  | "rotation_chaos"
+  // StarTrails specific
+  | "trail_length"
+  | "trail_fade"
+  | "star_glow"
+  | "star_brightness"
+  | "swirl_speed"
+  | "swirl_tightness"
+  | "orbit_chaos"
+  | "trail_smoke"
+  | "star_count"
+  | "trail_steps"
+  | "trail_blend"
+  | "three_body"
   // Color parameters (logical IDs — expand to _r/_g/_b sub-params in the store)
   | "color_primary"
   | "color_secondary"
@@ -163,6 +194,37 @@ export interface SketchProps {
     colorInterp: number;
     grainIntensity: number;
     tonemapMode: number;
+    // LuminoSmoke specific
+    smokeDensity: number;
+    haloRadius: number;
+    lightIntensity: number;
+    lsSpeed: number;
+    lsCount: number;
+    scatterFalloff: number;
+    smokeTurbulence: number;
+    chromaticSpread: number;
+    pulseAmount: number;
+    // PrismLines specific
+    lineGlow: number;
+    prismIntensity: number;
+    lineBrightness: number;
+    plSpeed: number;
+    plCount: number;
+    prismSpread: number;
+    rotationChaos: number;
+    // StarTrails specific
+    trailLength: number;
+    trailFade: number;
+    starGlow: number;
+    starBrightness: number;
+    swirlSpeed: number;
+    swirlTightness: number;
+    orbitChaos: number;
+    trailSmoke: number;
+    trailBlend: number;
+    threeBody: number;
+    starCount: number;
+    trailSteps: number;
     // Color parameters — individual channels produced from color-type ParameterTemplates
     colorPrimaryR?: number;
     colorPrimaryG?: number;

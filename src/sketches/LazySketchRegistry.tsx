@@ -72,6 +72,21 @@ const LazyAura = lazy(() =>
   import("./Aura").then((m) => ({ default: m.Aura })),
 );
 
+// LuminoSmoke
+const LazyLuminoSmoke = lazy(() =>
+  import("./LuminoSmoke").then((m) => ({ default: m.LuminoSmoke })),
+);
+
+// StarTrails
+const LazyStarTrails = lazy(() =>
+  import("./StarTrails").then((m) => ({ default: m.StarTrails })),
+);
+
+// PrismLines
+const LazyPrismLines = lazy(() =>
+  import("./PrismLines").then((m) => ({ default: m.PrismLines })),
+);
+
 // =============================================================================
 // Registry
 // =============================================================================
@@ -103,6 +118,12 @@ export const LAZY_SKETCH_REGISTRY: Record<string, LazySketchComponent> = {
   auraForestClearing: LazyAura,
   auraDefaultIntense: LazyAura,
   auraBlushNebula: LazyAura,
+  // LuminoSmoke
+  luminoSmoke: LazyLuminoSmoke,
+  // PrismLines
+  prismLines: LazyPrismLines,
+  // StarTrails
+  starTrails: LazyStarTrails,
 };
 
 /**
