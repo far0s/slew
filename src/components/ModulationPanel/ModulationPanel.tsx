@@ -41,7 +41,6 @@ import {
 } from "../../slots/slotTypes";
 import type { Slot } from "../../slots/useSlots";
 import styles from "./ModulationPanel.module.css";
-import { useTapTempo } from "../../inputs/tapTempo";
 
 // ============================================================================
 // LFO Waveform Visualization
@@ -1208,8 +1207,6 @@ export function ModulationPanel({
     clear: clearAudioMods,
   } = useAudioModulations();
 
-  const tapTempo = useTapTempo();
-
   const handleAddLfo = async (lfo: LfoSource) => {
     try {
       await addLfo(lfo.id ? lfo : createLfo(lfo));
@@ -1251,40 +1248,6 @@ export function ModulationPanel({
         >
           {totalActive > 0 ? `${totalActive} active` : "Inactive"}
         </span>
-      </div>
-
-      {/* Tap Tempo Bar */}
-      <div className={styles.tapTempoBar}>
-        <button
-          type="button"
-          className={`${styles.tapButton} ${tapTempo.isPulsing ? styles.tapPulse : ""}`}
-          onClick={tapTempo.tap}
-          aria-label="Tap tempo"
-        >
-          Tap
-        </button>
-        <div className={styles.tapBpmDisplay}>
-          {tapTempo.bpm !== null ? (
-            <>
-              <span className={styles.tapBpmValue}>{tapTempo.bpm}</span>
-              <span className={styles.tapBpmUnit}>BPM</span>
-            </>
-          ) : (
-            <span className={styles.tapBpmHint}>
-              {tapTempo.tapCount === 0 ? "Tap to set BPM" : "Keep tapping..."}
-            </span>
-          )}
-        </div>
-        {tapTempo.bpm !== null && (
-          <button
-            type="button"
-            className={styles.tapResetButton}
-            onClick={tapTempo.reset}
-            aria-label="Clear tap tempo"
-          >
-            ×
-          </button>
-        )}
       </div>
 
       {/* LFOs Section */}

@@ -22,6 +22,106 @@ const MIN_INTERVAL_MS = (1000 * 60) / MAX_BPM; // ~200ms at 300 BPM
 const MAX_INTERVAL_MS = (1000 * 60) / MIN_BPM; // 3000ms at 20 BPM
 
 // ============================================================================
+// Tap keyboard shortcut — persisted to localStorage
+// ============================================================================
+
+const SHORTCUT_STORAGE_KEY = "slew:tapShortcut";
+
+export interface TapShortcut {
+  /** The key value from KeyboardEvent.key */
+  key: string;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
+}
+
+const DEFAULT_SHORTCUT: TapShortcut = {
+  key: " ",
+  ctrlKey: false,
+  metaKey: false,
+  altKey: false,
+  shiftKey: false,
+};
+
+function loadShortcut(): TapShortcut {
+  try {
+    const raw = localStorage.getItem(SHORTCUT_STORAGE_KEY);
+    if (raw) return JSON.parse(raw) as TapShortcut;
+  } catch {
+    // ignore
+  }
+  return DEFAULT_SHORTCUT;
+}
+
+let _tapShortcut: TapShortcut = loadShortcut();
+const _shortcutListeners = new Set<(s: TapShortcut) => void>();
+
+/** Returns the current tap keyboard shortcut. */
+export function getTapShortcut(): TapShortcut {
+  return _tapShortcut;
+}
+
+/** Returns true if the shortcut is the default (Space, no modifiers). */
+export function isTapShortcutDefault(): boolean {
+  const s = _tapShortcut;
+  return (
+    s.key === " " &&
+    !s.ctrlKey &&
+    !s.metaKey &&
+    !s.altKey &&
+    !s.shiftKey
+  );
+}
+
+/** Formats a TapShortcut for display, e.g. "Ctrl+B" or "Space". */
+export function formatTapShortcut(s: TapShortcut): string {
+  const parts: string[] = [];
+  if (s.ctrlKey) parts.push("Ctrl");
+  if (s.metaKey) parts.push("⌘");
+  if (s.altKey) parts.push("Alt");
+  if (s.shiftKey) parts.push("Shift");
+  const key = s.key === " " ? "Space" : s.key.length === 1 ? s.key.toUpperCase() : s.key;
+  parts.push(key);
+  return parts.join("+");
+}
+
+/** Set a new tap shortcut and persist it. */
+export function setTapShortcut(shortcut: TapShortcut): void {
+  _tapShortcut = shortcut;
+  try {
+    localStorage.setItem(SHORTCUT_STORAGE_KEY, JSON.stringify(shortcut));
+  } catch {
+    // ignore
+  }
+  _shortcutListeners.forEach((cb) => cb(shortcut));
+}
+
+/** Reset to the default Space shortcut. */
+export function resetTapShortcut(): void {
+  setTapShortcut(DEFAULT_SHORTCUT);
+}
+
+/** Subscribe to shortcut changes. Returns an unsubscribe function. */
+export function subscribeTapShortcut(cb: (s: TapShortcut) => void): () => void {
+  _shortcutListeners.add(cb);
+  cb(_tapShortcut);
+  return () => _shortcutListeners.delete(cb);
+}
+
+/** Returns true if a KeyboardEvent matches the current tap shortcut. */
+export function matchesTapShortcut(e: KeyboardEvent): boolean {
+  const s = _tapShortcut;
+  return (
+    e.key === s.key &&
+    e.ctrlKey === s.ctrlKey &&
+    e.metaKey === s.metaKey &&
+    e.altKey === s.altKey &&
+    e.shiftKey === s.shiftKey
+  );
+}
+
+// ============================================================================
 // Module-level tap registration (allows App.tsx to trigger tap globally)
 // ============================================================================
 

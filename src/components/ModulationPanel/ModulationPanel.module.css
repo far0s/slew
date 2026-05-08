@@ -147,6 +147,61 @@
   background: var(--bg-active);
 }
 
+.tapShortcutButton {
+  flex-shrink: 0;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.2rem;
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.tapShortcutButton:hover {
+  color: var(--text-primary);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+}
+
+.tapShortcutCustom {
+  color: rgb(168 85 247 / 0.85);
+  border-color: rgb(168 85 247 / 0.35);
+}
+
+.tapShortcutCustom:hover {
+  color: rgb(168 85 247);
+  border-color: rgb(168 85 247 / 0.6);
+  background: rgb(168 85 247 / 0.08);
+}
+
+.tapShortcutCapturing {
+  flex-shrink: 0;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgb(99 102 241);
+  background: rgb(99 102 241 / 0.1);
+  border: 1px dashed rgb(99 102 241 / 0.6);
+  border-radius: 0.2rem;
+  cursor: pointer;
+  animation: shortcutBlink 900ms ease-in-out infinite;
+  user-select: none;
+  white-space: nowrap;
+}
+
+@keyframes shortcutBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 
 /* ==========================================================================
    Section Headers (Collapsible)
