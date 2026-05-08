@@ -25,6 +25,10 @@ import {
   type AudioMappingMode,
 } from "../../inputs/audio";
 import {
+  SpectrumAnalyzer,
+  type VisualizerMode,
+} from "../SpectrumAnalyzer";
+import {
   getAllSlotParameterIds,
   getParameterDescriptor,
   getParameterDropdownLabel,
@@ -110,10 +114,36 @@ function BeatIndicator({ beat, bpm }: { beat: boolean; bpm: number | null }) {
  * Audio levels visualization with RMS, peak, and frequency bands.
  */
 function LevelsDisplay() {
-  const { rms, peak, bands, beat, bpm } = useAudioLevels();
+  const { rms, peak, bands, beat, bpm, levelsRef } = useAudioLevels();
+  const [vizMode, setVizMode] = useState<VisualizerMode>("spectrum");
 
   return (
     <div className={styles.levelsDisplay}>
+      {/* Visualizer toggle + canvas */}
+      <div className={styles.levelsSection}>
+        <div className={styles.levelsVisualizerHeader}>
+          <h4 className={styles.levelsSectionTitle}>Visualizer</h4>
+          <div className={styles.vizModeToggle}>
+            {(["spectrum", "waveform", "both"] as VisualizerMode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                className={`${styles.vizModeBtn} ${vizMode === m ? styles.vizModeBtnActive : ""}`}
+                onClick={() => setVizMode(m)}
+              >
+                {m === "both" ? "Both" : m.charAt(0).toUpperCase() + m.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <SpectrumAnalyzer
+          levelsRef={levelsRef}
+          mode={vizMode}
+          height={vizMode === "both" ? 36 : 48}
+          className={styles.vizCanvas}
+        />
+      </div>
+
       <div className={styles.levelsSection}>
         <h4 className={styles.levelsSectionTitle}>Amplitude</h4>
         <LevelMeter value={rms} label="RMS" color="emerald" />

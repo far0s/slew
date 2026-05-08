@@ -18,6 +18,13 @@ pub struct AudioLevels {
     pub bands: AudioBands,
     pub beat: bool,
     pub timestamp: u64,
+    /// Downsampled FFT magnitude spectrum (32 bins, 0-1 normalized, log-scaled frequency).
+    /// Covers 20 Hz – Nyquist in log-spaced bands.
+    #[serde(default)]
+    pub spectrum: Vec<f32>,
+    /// Decimated waveform for time-domain display (64 samples, -1..1).
+    #[serde(default)]
+    pub waveform: Vec<f32>,
 }
 
 /// Frequency band energy levels (each 0-1).

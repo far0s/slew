@@ -51,6 +51,10 @@ export interface AudioLevels {
   beat: boolean;
   /** Timestamp in milliseconds */
   timestamp: number;
+  /** 32 log-spaced spectrum bins (0-1 normalized). Empty when audio is off. */
+  spectrum: number[];
+  /** 64-sample decimated waveform (-1..1). Empty when audio is off. */
+  waveform: number[];
 }
 
 /** Status of the audio engine. */
@@ -403,12 +407,16 @@ export function useAudioLevels() {
   // Track beat timestamps for BPM calculation
   const beatTimestampsRef = useRef<number[]>([]);
 
+  // Ref-backed latest levels — allows canvas consumers to read without re-renders
+  const levelsRef = useRef<AudioLevels | null>(null);
+
   useEffect(() => {
     let unlisten: UnlistenFn | undefined;
 
     void (async () => {
       unlisten = await listen<AudioLevels>("audio_levels", (event) => {
         setLevels(event.payload);
+        levelsRef.current = event.payload;
         if (event.payload.beat) {
           setBeatCount((prev) => prev + 1);
 
@@ -457,6 +465,7 @@ export function useAudioLevels() {
 
   return {
     levels,
+    levelsRef,
     rms: levels?.rms ?? 0,
     peak: levels?.peak ?? 0,
     bands: levels?.bands ?? { bass: 0, low_mid: 0, high_mid: 0, treble: 0 },

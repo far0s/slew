@@ -401,6 +401,8 @@ fn handle_osc_beat(timestamp: u64, app_handle: Option<&AppHandle>) {
         },
         beat: true,
         timestamp,
+        spectrum: Vec::new(),
+        waveform: Vec::new(),
     };
     crate::modulation::update_audio_levels(beat_levels);
     send_osc_beat();

@@ -1,0 +1,27 @@
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.4rem 0.2rem 0.35rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.25rem;
+  flex-shrink: 0;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-success, rgb(34 197 94));
+  flex-shrink: 0;
+  box-shadow: 0 0 4px rgb(34 197 94 / 0.6);
+}
+
+.canvas {
+  display: block;
+  /* Canvas is 48×14 logical pixels; let CSS scale it to fit */
+  width: 48px;
+  height: 14px;
+  image-rendering: pixelated;
+}

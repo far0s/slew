@@ -16,6 +16,7 @@ import { getSketchDescriptor } from "./sketches";
 import { makeSlotParameterId, buildSlotDefaultParameters } from "./slots/slotTypes";
 import { SlotsArea, RendererPreview, Sidebar, UpdateBanner } from "./components";
 import { BpmPulseOverlay } from "./components/BpmPulseOverlay/BpmPulseOverlay";
+import { AudioIndicator } from "./components/AudioIndicator";
 import { useUndoHistory, applyUndo, applyRedo } from "./controls/useUndoHistory";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings, generateMappingId, type AudioMapping } from "./inputs/audio";
@@ -983,6 +984,7 @@ function App() {
         )}
 
         {/* Tap BPM */}
+        <AudioIndicator />
         <div className={styles.toolbarTapGroup}>
           <button
             type="button"

@@ -336,6 +336,51 @@
 }
 
 /* ==========================================================================
+   Visualizer (SpectrumAnalyzer)
+   ========================================================================== */
+
+.levelsVisualizerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vizModeToggle {
+  display: flex;
+  gap: 2px;
+}
+
+.vizModeBtn {
+  padding: 0.1rem 0.35rem;
+  font-size: 0.58rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.2rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 100ms, color 100ms, border-color 100ms;
+}
+
+.vizModeBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.vizModeBtnActive {
+  background: rgb(99 102 241 / 0.15);
+  border-color: rgb(99 102 241 / 0.4);
+  color: rgb(165 180 252);
+}
+
+.vizCanvas {
+  background: var(--bg-elevated);
+  border-radius: 0.25rem;
+  border: 1px solid var(--border-subtle);
+}
+
+/* ==========================================================================
    Level Meter
    ========================================================================== */
 

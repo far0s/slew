@@ -84,21 +84,6 @@ Support external images/videos as input textures for sketches.
 
 ---
 
-### 🟡 Audio Waveform/Spectrum Visualizer `feature`
-
-Add visual feedback for audio input levels and frequency content.
-
-**Context**: Audio input exists but no visual feedback. Helps troubleshoot audio mappings and provides performance feedback.
-
-**Subtasks**:
-
-- [ ] Add compact spectrum analyzer to Audio Panel
-- [ ] Show live FFT bins as bars
-- [ ] Beat detection indicator (flash on beat)
-- [ ] Optional waveform view (time domain)
-
----
-
 ### 🟡 Parameter Randomization `feature`
 
 Add parameter randomization for experimentation.

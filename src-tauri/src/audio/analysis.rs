@@ -9,6 +9,11 @@ use super::constants::FFT_SIZE;
 use super::engine::AudioEngineState;
 use super::types::{AudioBands, AudioLevels};
 
+/// Number of log-spaced spectrum bins to emit for visualization.
+const SPECTRUM_BINS: usize = 32;
+/// Number of waveform samples to emit for time-domain visualization.
+const WAVEFORM_SAMPLES: usize = 64;
+
 /// Perform audio analysis and return levels. Returns `None` if not enough data.
 ///
 /// Uses pre-allocated scratch buffers from the engine state to avoid allocations.
@@ -90,6 +95,51 @@ pub fn analyze_audio(engine: &Arc<Mutex<AudioEngineState>>) -> Option<AudioLevel
         (rms, peak, bands)
     };
 
+    // Build downsampled visualization data from scratch buffers.
+    // Both spectrum and waveform are derived from already-computed data so
+    // there is no extra FFT cost — just cheap indexing/averaging.
+    let (spectrum, waveform) = {
+        let state = engine.lock().unwrap();
+        let scratch = &state.analysis_scratch;
+
+        // --- Spectrum: 32 log-spaced bins from 20 Hz to Nyquist ---
+        let freq_per_bin = sample_rate as f32 / FFT_SIZE as f32;
+        let nyquist = sample_rate as f32 / 2.0;
+        let low_hz: f32 = 20.0;
+        let high_hz: f32 = nyquist;
+        let log_low = low_hz.log2();
+        let log_high = high_hz.log2();
+
+        let mut spec = Vec::with_capacity(SPECTRUM_BINS);
+        let mut max_val = 0.0f32;
+        // First pass: accumulate bin averages
+        for b in 0..SPECTRUM_BINS {
+            let t0 = b as f32 / SPECTRUM_BINS as f32;
+            let t1 = (b + 1) as f32 / SPECTRUM_BINS as f32;
+            let f0 = (log_low + t0 * (log_high - log_low)).exp2();
+            let f1 = (log_low + t1 * (log_high - log_low)).exp2();
+            let bin0 = ((f0 / freq_per_bin) as usize).min(FFT_SIZE / 2 - 1);
+            let bin1 = ((f1 / freq_per_bin) as usize + 1).min(FFT_SIZE / 2);
+            let count = (bin1 - bin0).max(1);
+            let avg: f32 = scratch.magnitudes[bin0..bin1].iter().copied().sum::<f32>() / count as f32;
+            spec.push(avg);
+            if avg > max_val { max_val = avg; }
+        }
+        // Normalize to 0-1 with empirical headroom factor
+        let norm = if max_val > 0.0 { (max_val * 0.1_f32).max(max_val) } else { 1.0 };
+        for v in spec.iter_mut() {
+            *v = (*v / norm).min(1.0);
+        }
+
+        // --- Waveform: decimate windowed buffer to 64 samples ---
+        let step = FFT_SIZE / WAVEFORM_SAMPLES;
+        let wave: Vec<f32> = (0..WAVEFORM_SAMPLES)
+            .map(|i| scratch.windowed[i * step])
+            .collect();
+
+        (spec, wave)
+    };
+
     // Beat detection (separate lock)
     let beat = {
         let state = engine.lock().unwrap();
@@ -108,6 +158,8 @@ pub fn analyze_audio(engine: &Arc<Mutex<AudioEngineState>>) -> Option<AudioLevel
         bands,
         beat,
         timestamp,
+        spectrum,
+        waveform,
     })
 }
 
