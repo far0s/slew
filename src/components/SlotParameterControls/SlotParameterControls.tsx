@@ -425,7 +425,7 @@ export function SlotParameterControls({
                       max={255}
                       step={1}
                       color={chColor}
-                      showSpacing
+                      inline
                       onChange={(val) => {
                         const newR = ch === "r" ? val : r;
                         const newG = ch === "g" ? val : g;

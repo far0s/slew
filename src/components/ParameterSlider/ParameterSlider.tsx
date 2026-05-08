@@ -69,6 +69,8 @@ export interface ParameterSliderProps {
   description?: string;
   color?: SliderColorVariant;
   showSpacing?: boolean;
+  compact?: boolean;
+  inline?: boolean;
   formatValue?: (value: number) => string;
   onChange: (value: number) => void;
   onCommit?: (after: number, before: number) => void;
@@ -102,6 +104,8 @@ export function ParameterSlider({
   description,
   color = "emerald",
   showSpacing = false,
+  compact = false,
+  inline = false,
   formatValue = (v) => v.toFixed(2),
   onChange,
   "aria-label": ariaLabel,
@@ -154,7 +158,7 @@ export function ParameterSlider({
 
   return (
     <div
-      className={`${styles.container} ${showSpacing ? styles.containerSpaced : ""} ${disabledClass}`}
+      className={`${styles.container} ${showSpacing ? styles.containerSpaced : ""} ${compact ? styles.containerCompact : ""} ${inline ? styles.containerInline : ""} ${disabledClass}`}
       title={
         isMidiControlled
           ? "Controlled via MIDI - adjust using your MIDI controller"
@@ -178,7 +182,7 @@ export function ParameterSlider({
           <span className={styles.value}>{formatValue(value)}</span>
         </label>
         <div className={styles.labelActions}>
-          {audioMapping && (
+          {!inline && audioMapping && (
             onUnlinkBeat ? (
               <button
                 type="button"
@@ -215,7 +219,7 @@ export function ParameterSlider({
               </span>
             )
           )}
-          {modulationIndicator && (
+          {!inline && modulationIndicator && (
             onUnlinkLfo ? (
               <button
                 type="button"
@@ -250,7 +254,7 @@ export function ParameterSlider({
               </span>
             )
           )}
-          {description && (
+          {!inline && description && (
             <div
               className={styles.infoButtonWrapper}
               onMouseEnter={() => setShowInfo(true)}
@@ -270,7 +274,7 @@ export function ParameterSlider({
               )}
             </div>
           )}
-          {onQuickBeat && !audioMapping && (
+          {!inline && onQuickBeat && !audioMapping && (
             <button
               type="button"
               className={styles.quickBeatButton}
@@ -281,7 +285,7 @@ export function ParameterSlider({
               ♩
             </button>
           )}
-          {onQuickLfo && !modulationIndicator && (
+          {!inline && onQuickLfo && !modulationIndicator && (
             <button
               type="button"
               className={styles.quickLfoButton}
@@ -292,7 +296,7 @@ export function ParameterSlider({
               ~
             </button>
           )}
-          {midiParameterId && (
+          {!inline && midiParameterId && (
             <MidiLearnButton
               parameterId={midiParameterId}
               min={min}
@@ -330,6 +334,74 @@ export function ParameterSlider({
         )}
         <Slider.Thumb className={`${styles.sliderThumb} ${thumbClass}`} />
       </Slider.Root>
+      {inline && (
+        <>
+          <span className={styles.inlineValue}>{formatValue(value)}</span>
+          <div className={styles.inlineSuffix}>
+            {audioMapping && (
+              onUnlinkBeat ? (
+                <button
+                  type="button"
+                  className={styles.audioMappingBadge}
+                  style={{
+                    backgroundColor: `color-mix(in srgb, ${audioMapping.color} 20%, transparent)`,
+                    borderColor: `color-mix(in srgb, ${audioMapping.color} 40%, transparent)`,
+                    color: audioMapping.color,
+                  }}
+                  title={`Audio mapped: ${audioMapping.sourceLabel} — click to remove`}
+                  onClick={onUnlinkBeat}
+                >
+                  <span className={styles.audioMappingDot} style={{ backgroundColor: audioMapping.color }} />
+                  {audioMapping.sourceLabel}
+                </button>
+              ) : (
+                <span
+                  className={styles.audioMappingBadge}
+                  style={{
+                    backgroundColor: `color-mix(in srgb, ${audioMapping.color} 20%, transparent)`,
+                    borderColor: `color-mix(in srgb, ${audioMapping.color} 40%, transparent)`,
+                    color: audioMapping.color,
+                  }}
+                  title={`Audio mapped: ${audioMapping.sourceLabel}`}
+                >
+                  <span className={styles.audioMappingDot} style={{ backgroundColor: audioMapping.color }} />
+                  {audioMapping.sourceLabel}
+                </span>
+              )
+            )}
+            {modulationIndicator && (
+              onUnlinkLfo ? (
+                <button
+                  type="button"
+                  className={styles.modulationBadge}
+                  title={modulationIndicator.count && modulationIndicator.count > 1 ? `Modulated by ${modulationIndicator.count} LFOs — click to remove` : `Modulated by ${modulationIndicator.lfoName} — click to remove`}
+                  onClick={onUnlinkLfo}
+                >
+                  <span className={styles.modulationDot} style={{ backgroundColor: MODULATION_INDICATOR_COLOR }} />
+                  LFO
+                </button>
+              ) : (
+                <span
+                  className={styles.modulationBadge}
+                  title={modulationIndicator.count && modulationIndicator.count > 1 ? `Modulated by ${modulationIndicator.count} LFOs including ${modulationIndicator.lfoName}` : `Modulated by ${modulationIndicator.lfoName}`}
+                >
+                  <span className={styles.modulationDot} style={{ backgroundColor: MODULATION_INDICATOR_COLOR }} />
+                  LFO
+                </span>
+              )
+            )}
+            {onQuickBeat && !audioMapping && (
+              <button type="button" className={styles.quickBeatButton} onClick={onQuickBeat} title="Quick-wire Beat trigger" aria-label="Quick-wire Beat trigger">♩</button>
+            )}
+            {onQuickLfo && !modulationIndicator && (
+              <button type="button" className={styles.quickLfoButton} onClick={onQuickLfo} title="Quick-wire LFO" aria-label="Quick-wire LFO">~</button>
+            )}
+            {midiParameterId && (
+              <MidiLearnButton parameterId={midiParameterId} min={min} max={max} />
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
