@@ -133,13 +133,25 @@ jobs:
           name: macos-${{ matrix.arch }}
           path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
 
+      - name: Rename updater artifacts to include arch
+        run: |
+          BUNDLE_PATH="src-tauri/target/${{ matrix.target }}/release/bundle/macos"
+          for f in "$BUNDLE_PATH"/*.app.tar.gz; do
+            base=$(basename "$f" .app.tar.gz)
+            mv "$f" "$BUNDLE_PATH/${base}-${{ matrix.arch }}.app.tar.gz"
+          done
+          for f in "$BUNDLE_PATH"/*.app.tar.gz.sig; do
+            base=$(basename "$f" .app.tar.gz.sig)
+            mv "$f" "$BUNDLE_PATH/${base}-${{ matrix.arch }}.app.tar.gz.sig"
+          done
+
       - name: Upload updater artifacts
         uses: actions/upload-artifact@v4
         with:
           name: updater-macos-${{ matrix.arch }}
           path: |
-            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
-            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*-${{ matrix.arch }}.app.tar.gz
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*-${{ matrix.arch }}.app.tar.gz.sig
           if-no-files-found: error
 
   # Build Linux and Windows with tauri-action (no signature issues)
@@ -287,13 +299,13 @@ jobs:
           # Read signatures
           read_sig() { cat "$1" 2>/dev/null || echo ""; }
 
-          SIG_MACOS_AARCH64=$(read_sig artifacts/updater-macos-aarch64/*.app.tar.gz.sig)
-          SIG_MACOS_X64=$(read_sig artifacts/updater-macos-x64/*.app.tar.gz.sig)
+          SIG_MACOS_AARCH64=$(read_sig artifacts/updater-macos-aarch64/*-aarch64.app.tar.gz.sig)
+          SIG_MACOS_X64=$(read_sig artifacts/updater-macos-x64/*-x64.app.tar.gz.sig)
           SIG_LINUX=$(read_sig artifacts/updater-linux/appimage/*.AppImage.sig)
           SIG_WINDOWS=$(read_sig artifacts/updater-windows/*.exe.sig)
 
-          FILENAME_MACOS_AARCH64=$(basename artifacts/updater-macos-aarch64/*.app.tar.gz)
-          FILENAME_MACOS_X64=$(basename artifacts/updater-macos-x64/*.app.tar.gz)
+          FILENAME_MACOS_AARCH64=$(basename artifacts/updater-macos-aarch64/*-aarch64.app.tar.gz)
+          FILENAME_MACOS_X64=$(basename artifacts/updater-macos-x64/*-x64.app.tar.gz)
           FILENAME_LINUX=$(basename artifacts/updater-linux/appimage/*.AppImage.sig | sed 's/\.sig$//')
           FILENAME_WINDOWS=$(basename artifacts/updater-windows/*.exe.sig | sed 's/\.sig$//')
 
@@ -358,10 +370,10 @@ jobs:
           files: |
             artifacts/macos-aarch64/*.dmg
             artifacts/macos-x64/*.dmg
-            artifacts/updater-macos-aarch64/*.app.tar.gz
-            artifacts/updater-macos-aarch64/*.app.tar.gz.sig
-            artifacts/updater-macos-x64/*.app.tar.gz
-            artifacts/updater-macos-x64/*.app.tar.gz.sig
+            artifacts/updater-macos-aarch64/*-aarch64.app.tar.gz
+            artifacts/updater-macos-aarch64/*-aarch64.app.tar.gz.sig
+            artifacts/updater-macos-x64/*-x64.app.tar.gz
+            artifacts/updater-macos-x64/*-x64.app.tar.gz.sig
             artifacts/linux/deb/*.deb
             artifacts/linux/rpm/*.rpm
             artifacts/linux/appimage/*.AppImage
