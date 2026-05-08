@@ -250,22 +250,6 @@ Add optional telemetry for debugging and product insights.
 
 ---
 
-### 🟢 Auto-Update Mechanism `feature`
-
-Add in-app update notifications.
-
-**Context**: Users must manually check GitHub for updates.
-
-**Subtasks**:
-
-- [x] Integrate Tauri updater plugin
-- [x] Check for updates on startup (background)
-- [x] Notification when update available
-- [x] One-click download & install
-- [x] Release notes display (first line of body shown in banner)
-
----
-
 ### 🟢 Parameter Locking `feature`
 
 Lock parameters to prevent accidental changes.
@@ -519,20 +503,6 @@ Complete Windows distribution pipeline testing.
 - [ ] Test NSIS/MSI installers on Windows 10/11
 - [ ] Verify all features work on Windows
 - [ ] Document Windows-specific setup
-
----
-
-### 🟢 Code Signing `chore`
-
-Sign builds for smoother user experience (removes Gatekeeper/SmartScreen warnings).
-
-**Context**: Currently releasing unsigned builds with documented workarounds. Signing is optional but improves UX for non-technical users.
-
-**Subtasks**:
-
-- [ ] macOS: Apple Developer Program ($99/year), code signing + notarization
-- [ ] Windows: EV Code Signing certificate ($200-500/year)
-- [ ] Update GitHub Actions workflow with signing steps
 
 ---
 
