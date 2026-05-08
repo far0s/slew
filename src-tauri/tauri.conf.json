@@ -69,7 +69,7 @@
       "frameworks": ["./frameworks/Syphon.framework"],
       "minimumSystemVersion": "15.0",
       "entitlements": "./entitlements.plist",
-      "signingIdentity": null,
+      "signingIdentity": "Developer ID Application: Seb Dancer-Michel (2T9JQY697M)",
       "providerShortName": null,
       "dmg": {
         "appPosition": { "x": 180, "y": 170 },

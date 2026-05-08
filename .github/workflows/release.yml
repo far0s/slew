@@ -71,11 +71,45 @@ jobs:
           cache-on-failure: true
           shared-key: "macos-${{ matrix.target }}"
 
-      - name: Build Tauri app
+      - name: Import Apple Developer certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
+
+          # Create a temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate
+          echo "$APPLE_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 \
+            -k "$KEYCHAIN_PATH" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
+
+      - name: Build Tauri app (signed + notarized)
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
         run: npm run tauri build -- --target ${{ matrix.target }} -- --no-default-features
+
+      - name: Cleanup keychain
+        if: always()
+        run: security delete-keychain "$KEYCHAIN_PATH" || true
 
       - name: Show sccache stats
         run: sccache --show-stats
@@ -92,67 +126,6 @@ jobs:
             exit 1
           fi
           echo "✅ Updater artifacts found."
-
-      - name: Fix code signature
-        run: |
-          APP_PATH="src-tauri/target/${{ matrix.target }}/release/bundle/macos/Slew.app"
-          DMG_PATH="src-tauri/target/${{ matrix.target }}/release/bundle/dmg"
-
-          echo "Removing invalid signature and re-signing with ad-hoc..."
-          codesign --remove-signature "$APP_PATH" || true
-          codesign --force --deep -s - "$APP_PATH"
-
-          echo "Verifying signature..."
-          codesign -vv "$APP_PATH"
-
-          echo "Recreating DMG with fixed app..."
-          # Find the DMG file
-          DMG_FILE=$(ls "$DMG_PATH"/*.dmg | head -1)
-          DMG_NAME=$(basename "$DMG_FILE")
-          echo "Original DMG: $DMG_FILE"
-
-          # Convert to read-write format (hdiutil adds .dmg automatically, so we use a name without it)
-          TEMP_DMG_BASE="$DMG_PATH/temp_rw"
-          TEMP_DMG="${TEMP_DMG_BASE}.dmg"
-          rm -f "$TEMP_DMG"
-          hdiutil convert "$DMG_FILE" -format UDRW -o "$TEMP_DMG_BASE"
-          echo "Converted to RW DMG: $TEMP_DMG"
-          ls -la "$TEMP_DMG"
-
-          # Attach without specifying mount point - let macOS choose
-          echo "Attaching DMG..."
-          ATTACH_OUTPUT=$(hdiutil attach "$TEMP_DMG" -nobrowse -noverify)
-          echo "Attach output: $ATTACH_OUTPUT"
-
-          # Find the mount point from attach output (last column of last line with /Volumes)
-          MOUNT_POINT=$(echo "$ATTACH_OUTPUT" | grep "/Volumes" | awk -F'\t' '{print $NF}' | head -1)
-          echo "Mount point: $MOUNT_POINT"
-
-          if [ -z "$MOUNT_POINT" ] || [ ! -d "$MOUNT_POINT" ]; then
-            echo "ERROR: Failed to find mount point"
-            echo "Listing /Volumes:"
-            ls -la /Volumes/
-            exit 1
-          fi
-
-          # Remove old app and copy fixed one
-          echo "Copying fixed app to DMG..."
-          rm -rf "$MOUNT_POINT/Slew.app"
-          cp -R "$APP_PATH" "$MOUNT_POINT/"
-
-          # Sync and unmount
-          sync
-          echo "Detaching DMG..."
-          hdiutil detach "$MOUNT_POINT"
-
-          # Convert back to compressed DMG
-          echo "Converting back to compressed DMG..."
-          rm -f "$DMG_FILE"
-          hdiutil convert "$TEMP_DMG" -format UDZO -o "${DMG_FILE%.dmg}"
-          rm -f "$TEMP_DMG"
-
-          echo "DMG recreated with properly signed app: $DMG_FILE"
-          ls -la "$DMG_FILE"
 
       - name: Upload DMG artifacts
         uses: actions/upload-artifact@v4
@@ -381,11 +354,7 @@ jobs:
 
             ### macOS Note
 
-            This app is not signed with an Apple Developer certificate. On first launch, you may see a warning. To open:
-            1. Right-click the app and select "Open"
-            2. Click "Open" in the dialog
-
-            Or run in Terminal: `xattr -cr /Applications/Slew.app`
+            This app is signed and notarized by Apple. It should open without any security warnings.
           files: |
             artifacts/macos-aarch64/*.dmg
             artifacts/macos-x64/*.dmg
