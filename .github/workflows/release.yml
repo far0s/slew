@@ -80,6 +80,19 @@ jobs:
       - name: Show sccache stats
         run: sccache --show-stats
 
+      - name: Verify updater artifacts were produced
+        run: |
+          BUNDLE_PATH="src-tauri/target/${{ matrix.target }}/release/bundle/macos"
+          echo "=== Bundle directory contents ==="
+          ls -la "$BUNDLE_PATH/" || echo "Bundle dir not found!"
+          echo "=== Looking for updater files ==="
+          find src-tauri/target/${{ matrix.target }}/release/bundle -name "*.tar.gz" -o -name "*.sig" | sort
+          if ! ls "$BUNDLE_PATH"/*.app.tar.gz 1>/dev/null 2>&1; then
+            echo "ERROR: No .app.tar.gz found — signing likely failed. Check TAURI_SIGNING_PRIVATE_KEY."
+            exit 1
+          fi
+          echo "✅ Updater artifacts found."
+
       - name: Fix code signature
         run: |
           APP_PATH="src-tauri/target/${{ matrix.target }}/release/bundle/macos/Slew.app"
@@ -154,6 +167,7 @@ jobs:
           path: |
             src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
             src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
+          if-no-files-found: error
 
   # Build Linux and Windows with tauri-action (no signature issues)
   build-linux-windows:
@@ -240,6 +254,7 @@ jobs:
           path: |
             src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz
             src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz.sig
+          if-no-files-found: error
 
       - name: Upload Windows artifacts
         if: matrix.platform == 'windows-latest'
@@ -258,6 +273,7 @@ jobs:
           path: |
             src-tauri/target/release/bundle/nsis/*.nsis.zip
             src-tauri/target/release/bundle/nsis/*.nsis.zip.sig
+          if-no-files-found: error
 
   # Create release and upload all artifacts
   release:
@@ -301,10 +317,18 @@ jobs:
           SIG_LINUX=$(read_sig artifacts/updater-linux/*.AppImage.tar.gz.sig)
           SIG_WINDOWS=$(read_sig artifacts/updater-windows/*.nsis.zip.sig)
 
-          FILENAME_MACOS_AARCH64=$(basename artifacts/updater-macos-aarch64/*.app.tar.gz 2>/dev/null || echo "Slew.app.tar.gz")
-          FILENAME_MACOS_X64=$(basename artifacts/updater-macos-x64/*.app.tar.gz 2>/dev/null || echo "Slew.app.tar.gz")
-          FILENAME_LINUX=$(basename artifacts/updater-linux/*.AppImage.tar.gz 2>/dev/null || echo "Slew.AppImage.tar.gz")
-          FILENAME_WINDOWS=$(basename artifacts/updater-windows/*.nsis.zip 2>/dev/null || echo "Slew.nsis.zip")
+          FILENAME_MACOS_AARCH64=$(basename artifacts/updater-macos-aarch64/*.app.tar.gz)
+          FILENAME_MACOS_X64=$(basename artifacts/updater-macos-x64/*.app.tar.gz)
+          FILENAME_LINUX=$(basename artifacts/updater-linux/*.AppImage.tar.gz)
+          FILENAME_WINDOWS=$(basename artifacts/updater-windows/*.nsis.zip)
+
+          # Fail fast if any filename resolved to a glob (file not found)
+          for f in "$FILENAME_MACOS_AARCH64" "$FILENAME_MACOS_X64" "$FILENAME_LINUX" "$FILENAME_WINDOWS"; do
+            if [[ "$f" == *'*'* ]]; then
+              echo "ERROR: Updater file not found: $f — signing may have failed in a build job."
+              exit 1
+            fi
+          done
 
           cat > latest.json <<EOF
           {
