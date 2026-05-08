@@ -316,12 +316,12 @@ jobs:
 
           SIG_MACOS_AARCH64=$(read_sig artifacts/updater-macos-aarch64/*.app.tar.gz.sig)
           SIG_MACOS_X64=$(read_sig artifacts/updater-macos-x64/*.app.tar.gz.sig)
-          SIG_LINUX=$(read_sig artifacts/updater-linux/*.AppImage.sig)
+          SIG_LINUX=$(read_sig artifacts/updater-linux/appimage/*.AppImage.sig)
           SIG_WINDOWS=$(read_sig artifacts/updater-windows/*.exe.sig)
 
           FILENAME_MACOS_AARCH64=$(basename artifacts/updater-macos-aarch64/*.app.tar.gz)
           FILENAME_MACOS_X64=$(basename artifacts/updater-macos-x64/*.app.tar.gz)
-          FILENAME_LINUX=$(basename artifacts/updater-linux/*.AppImage.sig | sed 's/\.sig$//')
+          FILENAME_LINUX=$(basename artifacts/updater-linux/appimage/*.AppImage.sig | sed 's/\.sig$//')
           FILENAME_WINDOWS=$(basename artifacts/updater-windows/*.exe.sig | sed 's/\.sig$//')
 
           # Fail fast if any filename resolved to a glob (file not found)
