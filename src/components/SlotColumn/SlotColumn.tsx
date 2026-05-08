@@ -6,6 +6,7 @@ import {
   useState,
   useMemo,
   type ReactNode,
+  type ReactElement,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import * as Select from "@radix-ui/react-select";
@@ -33,7 +34,58 @@ import { StreamedPreview } from "../StreamedPreview";
 import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import type { MidiMapping, MidiPickupState } from "../../inputs/midi";
+import { MidiPanel } from "../MidiPanel";
+import { AudioPanel } from "../AudioPanel";
+import { OscPanel } from "../OscPanel";
+import { ModulationPanel } from "../ModulationPanel";
+import { HidPanel } from "../HidPanel";
 import styles from "./SlotColumn.module.css";
+
+// ============================================================================
+// Panel slot types
+// ============================================================================
+
+export type PanelId = "midi" | "audio" | "osc" | "mod" | "hid";
+
+interface PanelConfig {
+  id: PanelId;
+  label: string;
+  shortLabel: string;
+  render: (slots: Array<Slot & { sketchId: SketchId }>) => ReactElement;
+}
+
+const PANEL_CONFIGS: PanelConfig[] = [
+  {
+    id: "midi",
+    label: "MIDI",
+    shortLabel: "MIDI",
+    render: () => <MidiPanel />,
+  },
+  {
+    id: "audio",
+    label: "Audio",
+    shortLabel: "Audio",
+    render: () => <AudioPanel />,
+  },
+  {
+    id: "osc",
+    label: "OSC",
+    shortLabel: "OSC",
+    render: (slots) => <OscPanel slots={slots} />,
+  },
+  {
+    id: "mod",
+    label: "Modulation",
+    shortLabel: "Mod",
+    render: (slots) => <ModulationPanel slots={slots} />,
+  },
+  {
+    id: "hid",
+    label: "HID",
+    shortLabel: "HID",
+    render: () => <HidPanel />,
+  },
+];
 
 // Session storage key for persisting search across slot browsers
 const SKETCH_SEARCH_STORAGE_KEY = "slew-sketch-search";
@@ -104,6 +156,61 @@ function filterSketchGroups(
     .filter((group) => group.sketches.length > 0);
 }
 
+// ============================================================================
+// PanelSlotContent
+// ============================================================================
+
+function PanelSlotContent({
+  slotIndex,
+  panelId,
+  filledSlots,
+  onClose,
+  isDragging = false,
+  dragOffsetX = 0,
+  onDragStart,
+}: {
+  slotIndex: number;
+  panelId: PanelId;
+  filledSlots: Array<Slot & { sketchId: SketchId }>;
+  onClose: () => void;
+  isDragging?: boolean;
+  dragOffsetX?: number;
+  onDragStart?: (e: React.PointerEvent) => void;
+}) {
+  const config = PANEL_CONFIGS.find((p) => p.id === panelId);
+  const displayNumber = slotIndex + 1;
+
+  return (
+    <motion.article
+      className={`${styles.panelColumn}${isDragging ? " " + styles.dragging : ""}`}
+      aria-label={`Slot ${displayNumber} - ${config?.label ?? panelId} panel`}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={isDragging ? { opacity: 1, scale: 1, x: dragOffsetX } : { opacity: 1, scale: 1, x: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={isDragging ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
+      layout={!isDragging}
+      style={{ zIndex: isDragging ? 10 : undefined }}
+      onPointerDown={onDragStart}
+    >
+      <div className={styles.panelColumnHeader}>
+        <div className={styles.inlineSlotBadge}>{displayNumber}</div>
+        <span className={styles.panelColumnTitle}>{config?.label ?? panelId}</span>
+        <button
+          type="button"
+          className={styles.panelColumnClose}
+          onClick={onClose}
+          aria-label={`Close ${config?.label ?? panelId} panel`}
+        >
+          <Cross2Icon />
+        </button>
+      </div>
+      <div className={styles.panelColumnBody} data-nodrag>
+        {config?.render(filledSlots)}
+      </div>
+    </motion.article>
+  );
+}
+
 export interface SlotColumnProps {
   slotIndex: number;
   sketchId: SketchId | null;
@@ -137,6 +244,12 @@ export interface SlotColumnProps {
   onQuickLfo?: (parameterId: string) => void;
   onUnlinkBeat?: (parameterId: string) => void;
   onUnlinkLfo?: (parameterId: string) => void;
+  panelId?: PanelId | null;
+  onOpenPanel?: (panelId: PanelId) => void;
+  onClosePanel?: () => void;
+  isDragging?: boolean;
+  dragOffsetX?: number;
+  onDragStart?: (e: React.PointerEvent) => void;
 }
 
 function getSketchLabel(sketchId: SketchId): string {
@@ -228,11 +341,19 @@ function InlineSketchBrowser({
   filledSlots,
   onSelectSketch,
   onCopySlot,
+  onOpenPanel,
+  isDragging = false,
+  dragOffsetX = 0,
+  onDragStart,
 }: {
   slotIndex: number;
   filledSlots: Array<Slot & { sketchId: SketchId }>;
   onSelectSketch: (sketchId: SketchId) => void;
   onCopySlot?: (sourceSlotIndex: number) => void;
+  onOpenPanel?: (panelId: PanelId) => void;
+  isDragging?: boolean;
+  dragOffsetX?: number;
+  onDragStart?: (e: React.PointerEvent) => void;
 }) {
   const displayNumber = slotIndex + 1;
   const { query, setQuery } = useSketchSearch();
@@ -277,13 +398,15 @@ function InlineSketchBrowser({
 
   return (
     <motion.article
-      className={styles.emptyColumn}
+      className={`${styles.emptyColumn}${isDragging ? " " + styles.dragging : ""}`}
       aria-label={`Slot ${displayNumber} - choose a sketch`}
       initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
+      animate={isDragging ? { opacity: 1, scale: 1, x: dragOffsetX } : { opacity: 1, scale: 1, x: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
-      layout
+      transition={isDragging ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
+      layout={!isDragging}
+      style={{ zIndex: isDragging ? 10 : undefined }}
+      onPointerDown={onDragStart}
     >
       <div className={styles.inlineBrowserHeader}>
         <div className={styles.inlineSlotBadge}>{displayNumber}</div>
@@ -345,6 +468,24 @@ function InlineSketchBrowser({
       {isSearching && filteredGroups.length > 0 && (
         <div className={styles.searchResultsCount} aria-live="polite">
           {totalMatches} {totalMatches === 1 ? "sketch" : "sketches"} found
+        </div>
+      )}
+
+      {onOpenPanel && (
+        <div className={styles.inlinePanelSection}>
+          <span className={styles.inlineCopySectionLabel}>Open panel</span>
+          <div className={styles.inlinePanelOptions}>
+            {PANEL_CONFIGS.map((panel) => (
+              <button
+                key={panel.id}
+                type="button"
+                className={styles.inlinePanelButton}
+                onClick={() => onOpenPanel(panel.id)}
+              >
+                {panel.shortLabel}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -453,8 +594,28 @@ export function SlotColumn({
   onQuickLfo,
   onUnlinkBeat,
   onUnlinkLfo,
+  panelId,
+  onOpenPanel,
+  onClosePanel,
+  isDragging = false,
+  dragOffsetX = 0,
+  onDragStart,
 }: SlotColumnProps) {
   const [isSlotStreaming, setIsSlotStreaming] = useState(false);
+
+  if (sketchId === null && panelId) {
+    return (
+      <PanelSlotContent
+        slotIndex={slotIndex}
+        panelId={panelId}
+        filledSlots={filledSlots ?? []}
+        onClose={onClosePanel ?? (() => {})}
+        isDragging={isDragging}
+        dragOffsetX={dragOffsetX}
+        onDragStart={onDragStart}
+      />
+    );
+  }
 
   if (sketchId === null) {
     return (
@@ -463,6 +624,10 @@ export function SlotColumn({
         filledSlots={filledSlots}
         onSelectSketch={onSketchChange}
         onCopySlot={onCopyToSlot}
+        onOpenPanel={onOpenPanel}
+        isDragging={isDragging}
+        dragOffsetX={dragOffsetX}
+        onDragStart={onDragStart}
       />
     );
   }
@@ -491,6 +656,7 @@ export function SlotColumn({
     styles.column,
     isActive && styles.activeColumn,
     isMacropadSelected && !isActive && styles.macropadSelected,
+    isDragging && styles.dragging,
   ]
     .filter(Boolean)
     .join(" ");
@@ -500,10 +666,12 @@ export function SlotColumn({
       className={columnClassNames}
       aria-label={`Slot ${displayNumber}${isMacropadSelected ? " (macropad selected)" : ""}`}
       initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
+      animate={isDragging ? { opacity: 1, scale: 1, x: dragOffsetX } : { opacity: 1, scale: 1, x: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
-      layout
+      transition={isDragging ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
+      layout={!isDragging}
+      style={{ zIndex: isDragging ? 10 : undefined }}
+      onPointerDown={onDragStart}
     >
       <PreviewContainer aspectRatio={rendererAspectRatio}>
         {SketchComponent ? (
@@ -629,7 +797,7 @@ export function SlotColumn({
         </div>
       </PreviewContainer>
 
-      <div className={styles.controls}>
+      <div className={styles.controls} data-nodrag>
         <SlotParameterControls
           slotIndex={slotIndex}
           sketchId={sketchId}

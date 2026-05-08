@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect } from "react";
+import { useCallback, useRef, useState, useEffect, useMemo } from "react";
 import { AnimatePresence } from "motion/react";
 
 import type { SketchId, SketchProps } from "../../sketches";
@@ -7,8 +7,89 @@ import type { AudioMapping } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import type { MidiMapping, MidiPickupState } from "../../inputs/midi";
 import { makeSlotParameterId } from "../../slots/slotTypes";
-import { SlotColumn } from "../SlotColumn";
+import { SlotColumn, type PanelId } from "../SlotColumn";
 import styles from "./SlotsArea.module.css";
+
+// ============================================================================
+// Drag-to-reorder hook
+// ============================================================================
+
+interface DragState {
+  slotIndex: number;   // which slot is being dragged
+  startX: number;      // pointer X at drag start
+  currentX: number;    // current pointer X
+  columnWidth: number; // measured column width + gap
+  originOrder: number[]; // displayOrder at drag start
+}
+
+function useDragReorder(slotCount: number) {
+  const [displayOrder, setDisplayOrder] = useState<number[]>(() =>
+    Array.from({ length: slotCount }, (_, i) => i),
+  );
+
+  // Keep displayOrder length in sync if slotCount changes
+  useEffect(() => {
+    setDisplayOrder((prev) => {
+      if (prev.length === slotCount) return prev;
+      return Array.from({ length: slotCount }, (_, i) => i);
+    });
+  }, [slotCount]);
+
+  const dragRef = useRef<DragState | null>(null);
+  const [draggingSlotIndex, setDraggingSlotIndex] = useState<number | null>(null);
+  const [dragOffsetX, setDragOffsetX] = useState(0);
+
+  const startDrag = useCallback(
+    (slotIndex: number, startX: number, columnWidth: number) => {
+      dragRef.current = {
+        slotIndex,
+        startX,
+        currentX: startX,
+        columnWidth,
+        originOrder: [...displayOrder],
+      };
+      setDraggingSlotIndex(slotIndex);
+      setDragOffsetX(0);
+    },
+    [displayOrder],
+  );
+
+  const moveDrag = useCallback((currentX: number) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+
+    const delta = currentX - drag.startX;
+    setDragOffsetX(delta);
+    drag.currentX = currentX;
+
+    // Compute how many columns the drag has moved
+    const steps = Math.round(delta / drag.columnWidth);
+    const originPos = drag.originOrder.indexOf(drag.slotIndex);
+    if (originPos === -1) return;
+
+    const targetPos = Math.max(
+      0,
+      Math.min(drag.originOrder.length - 1, originPos + steps),
+    );
+
+    // Rebuild order: move dragged item to targetPos
+    const newOrder = drag.originOrder.filter((idx) => idx !== drag.slotIndex);
+    newOrder.splice(targetPos, 0, drag.slotIndex);
+
+    setDisplayOrder((prev) => {
+      if (prev.join(",") === newOrder.join(",")) return prev;
+      return newOrder;
+    });
+  }, []);
+
+  const endDrag = useCallback(() => {
+    dragRef.current = null;
+    setDraggingSlotIndex(null);
+    setDragOffsetX(0);
+  }, []);
+
+  return { displayOrder, draggingSlotIndex, dragOffsetX, startDrag, moveDrag, endDrag };
+}
 
 export interface SlotsAreaProps {
   slots: Slot[];
@@ -80,6 +161,66 @@ export function SlotsArea({
     (s): s is Slot & { sketchId: SketchId } => s.sketchId !== null,
   );
 
+  const { displayOrder, draggingSlotIndex, dragOffsetX, startDrag, moveDrag, endDrag } =
+    useDragReorder(slots.length);
+
+  const orderedSlots = useMemo(
+    () => displayOrder.map((i) => slots[i]).filter(Boolean),
+    [displayOrder, slots],
+  );
+
+  const [panelSlots, setPanelSlots] = useState<Record<number, PanelId | null>>({});
+
+  const handleOpenPanel = useCallback((slotIndex: number, panelId: PanelId) => {
+    setPanelSlots((prev) => ({ ...prev, [slotIndex]: panelId }));
+  }, []);
+
+  const handleClosePanel = useCallback((slotIndex: number) => {
+    setPanelSlots((prev) => ({ ...prev, [slotIndex]: null }));
+  }, []);
+
+  const columnsWrapperRef = useRef<HTMLDivElement>(null);
+
+  const handlePointerDown = useCallback(
+    (slotIndex: number, e: React.PointerEvent) => {
+      // Only drag on primary button, not on interactive children
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      // Don't start drag from buttons, inputs, selects or scrollable controls
+      if (target.closest("button, input, select, [role='slider'], [data-nodrag]")) return;
+
+      const wrapper = columnsWrapperRef.current;
+      if (!wrapper) return;
+
+      // Measure a column width (first child)
+      const firstCol = wrapper.firstElementChild as HTMLElement | null;
+      const columnWidth = firstCol
+        ? firstCol.getBoundingClientRect().width + 12 // 12px = 0.75rem gap
+        : 332;
+
+      startDrag(slotIndex, e.clientX, columnWidth);
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [startDrag],
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (draggingSlotIndex === null) return;
+      moveDrag(e.clientX);
+    },
+    [draggingSlotIndex, moveDrag],
+  );
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (draggingSlotIndex === null) return;
+      endDrag();
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    },
+    [draggingSlotIndex, endDrag],
+  );
+
   const getCrossfadeProgress = useCallback(
     (slotIndex: number): number => {
       if (slotIndex === activeIndex) {
@@ -131,9 +272,15 @@ export function SlotsArea({
           <div className={styles.fadeLeft} aria-hidden="true" />
         )}
         <div ref={scrollRef} className={styles.scrollArea}>
-          <div className={styles.columnsWrapper}>
+          <div
+            ref={columnsWrapperRef}
+            className={styles.columnsWrapper}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+          >
             <AnimatePresence mode="popLayout">
-              {slots.map((slot) => {
+              {orderedSlots.map((slot) => {
                 const alphaParamId = makeSlotParameterId(slot.index, "alpha");
                 const alpha = slot.sketchId ? (getValue(alphaParamId) ?? 1) : 1;
 
@@ -150,6 +297,9 @@ export function SlotsArea({
                     key={slot.index}
                     slotIndex={slot.index}
                     sketchId={slot.sketchId}
+                    isDragging={slot.index === draggingSlotIndex}
+                    dragOffsetX={slot.index === draggingSlotIndex ? dragOffsetX : 0}
+                    onDragStart={(e) => handlePointerDown(slot.index, e)}
                     isActive={slot.index === activeIndex}
                     isCrossfadeTarget={slot.index === crossfadeTargetIndex}
                     crossfadeProgress={getCrossfadeProgress(slot.index)}
@@ -185,6 +335,9 @@ export function SlotsArea({
                     lfos={lfos}
                     midiMappings={midiMappings}
                     midiPickupStates={midiPickupStates}
+                    panelId={panelSlots[slot.index] ?? null}
+                    onOpenPanel={(panelId) => handleOpenPanel(slot.index, panelId)}
+                    onClosePanel={() => handleClosePanel(slot.index)}
                     filledSlots={filledSlots}
                     onSketchChange={(sketchId) => {
                       if (slot.sketchId === null) {

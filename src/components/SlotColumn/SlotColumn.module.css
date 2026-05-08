@@ -22,10 +22,20 @@
   transition:
     border-color 0.15s ease,
     background-color 0.2s ease;
+  cursor: grab;
+  user-select: none;
 }
 
 .column:hover {
   border-color: var(--border-accent);
+}
+
+/* Dragging state — applied to whichever column is being dragged */
+.dragging {
+  cursor: grabbing;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.45), 0 2px 8px rgb(0 0 0 / 0.3);
+  border-color: rgb(99 102 241 / 0.6) !important;
+  background: var(--bg-active) !important;
 }
 
 .activeColumn {
@@ -407,6 +417,43 @@
 }
 
 /* Custom scrollbar for controls */
+/* Restore cursor for interactive children — columns are grab by default */
+.column button,
+.column input,
+.column select,
+.column [role="slider"],
+.column [data-nodrag],
+.column [data-nodrag] * {
+  cursor: default;
+}
+
+.emptyColumn button,
+.emptyColumn input,
+.emptyColumn [data-nodrag] * {
+  cursor: default;
+}
+
+.panelColumn button,
+.panelColumn input,
+.panelColumn [data-nodrag],
+.panelColumn [data-nodrag] * {
+  cursor: default;
+}
+
+/* Exception: buttons get pointer cursor */
+.column button:not(:disabled),
+.emptyColumn button:not(:disabled),
+.panelColumn button:not(:disabled) {
+  cursor: pointer;
+}
+
+/* Exception: inputs get text cursor */
+.column input,
+.emptyColumn input,
+.panelColumn input {
+  cursor: text;
+}
+
 .controls::-webkit-scrollbar {
   width: 4px;
 }
@@ -472,6 +519,8 @@
   border: 1.5px dashed var(--border-default);
   padding: 0.75rem;
   transition: background-color 0.2s ease;
+  cursor: grab;
+  user-select: none;
 }
 
 @media (max-width: 1024px) {
@@ -745,6 +794,170 @@
   padding-top: 0.5rem;
   border-top: 1px solid var(--border-subtle);
   flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Panel Picker (inside InlineSketchBrowser)
+   ========================================================================== */
+
+.inlinePanelSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.inlinePanelOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.inlinePanelButton {
+  padding: 0.3rem 0.6rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease,
+    color 0.1s ease;
+}
+
+.inlinePanelButton:hover {
+  background: var(--bg-active);
+  border-color: rgb(99 102 241 / 0.5);
+  color: var(--text-primary);
+}
+
+.inlinePanelButton:focus-visible {
+  outline: 2px solid rgb(99 102 241 / 0.6);
+  outline-offset: 1px;
+}
+
+/* ==========================================================================
+   Panel Slot Column (PanelSlotContent)
+   ========================================================================== */
+
+.panelColumn {
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  min-width: 280px;
+  max-width: 420px;
+  flex: 0 0 auto;
+  align-self: stretch;
+  background: var(--bg-elevated);
+  border-radius: 0.5rem;
+  border: 1.5px solid rgb(99 102 241 / 0.35);
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+  cursor: grab;
+  user-select: none;
+}
+
+.panelColumn:hover {
+  border-color: rgb(99 102 241 / 0.5);
+}
+
+@media (max-width: 1024px) {
+  .panelColumn {
+    width: 300px;
+    min-width: 260px;
+  }
+}
+
+@media (max-width: 768px) {
+  .panelColumn {
+    width: 280px;
+    min-width: 240px;
+    max-width: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .panelColumn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.panelColumnHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.panelColumnTitle {
+  flex: 1;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.panelColumnClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0.25rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background 0.1s ease,
+    color 0.1s ease;
+}
+
+.panelColumnClose:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.panelColumnClose:focus-visible {
+  outline: 2px solid rgb(99 102 241 / 0.6);
+  outline-offset: 1px;
+}
+
+.panelColumnClose svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.panelColumnBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.panelColumnBody::-webkit-scrollbar {
+  width: 4px;
+}
+
+.panelColumnBody::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panelColumnBody::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.1);
+  border-radius: 2px;
+}
+
+.panelColumnBody::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 0.15);
 }
 
 .inlineCopySectionLabel {
