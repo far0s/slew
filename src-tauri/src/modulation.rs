@@ -381,8 +381,12 @@ fn start_audio_listener(app_handle: AppHandle) {
     // Listen for BPM updates (frontend calculates BPM from beat events)
     let _ = app_handle.listen("audio_bpm", move |event| {
         if let Ok(bpm) = event.payload().parse::<f64>() {
-            let mut state = engine.lock().unwrap();
-            state.current_bpm = Some(bpm);
+            {
+                let mut state = engine.lock().unwrap();
+                state.current_bpm = Some(bpm);
+            }
+            // Forward to OSC output if enabled
+            crate::osc::send_osc_bpm(bpm);
         }
     });
 }
@@ -986,6 +990,7 @@ pub fn set_manual_bpm(bpm: Option<f64>) {
     update_bpm(clamped);
     if let Some(b) = clamped {
         crate::osc::send_osc_bpm(b);
+        crate::osc::send_osc_beat();
     }
 }
 

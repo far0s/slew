@@ -546,6 +546,11 @@ pub fn send_osc_message(address: &str, args: Vec<OscType>) {
                         log::warn!("[OSC Out] Send failed: {}", e);
                     } else {
                         log::debug!("[OSC Out] Sent {} to {}", address, target);
+                        // Pulse the activity indicator
+                        if let Some(ref handle) = state.app_handle {
+                            use tauri::Emitter;
+                            let _ = handle.emit("osc_output_sent", ());
+                        }
                     }
                 }
             });

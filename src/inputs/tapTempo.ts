@@ -83,6 +83,7 @@ export function useBpmBeat(onBeat: () => void): void {
       const ms = (60 / _bpm) * 1000;
       timeoutId = setTimeout(() => {
         onBeatRef.current();
+        void invoke("notify_beat");
         scheduleNext(); // keep going
       }, ms);
     };

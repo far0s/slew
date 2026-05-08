@@ -343,6 +343,11 @@ fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
+fn notify_beat() {
+    osc::send_osc_beat();
+}
+
+#[tauri::command]
 fn send_color_osc(slot: usize, template_id: String, r: u8, g: u8, b: u8) {
     osc::send_osc_color(slot, &template_id, r, g, b);
 }
@@ -855,6 +860,7 @@ pub fn run() {
             osc::get_osc_output_config,
             osc::set_osc_output_config,
             osc::send_osc_message_cmd,
+            notify_beat,
             send_color_osc,
             // Audio
             audio::commands::list_audio_devices,
