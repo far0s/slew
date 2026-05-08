@@ -158,7 +158,7 @@ function OutputSection() {
         <OscOutputActivityDot />
       </div>
 
-      <div className={`${styles.outputFields} ${!config.enabled ? styles.outputFieldsDisabled : ""}`}>
+      <div className={styles.outputFields}>
         <div className={styles.outputFieldRow}>
           <label className={styles.fieldLabel} htmlFor="osc-out-host">Host</label>
           <input
@@ -167,7 +167,7 @@ function OutputSection() {
             value={hostInput}
             onChange={(e) => setHostInput(e.target.value)}
             onBlur={handleHostBlur}
-            disabled={!config.enabled}
+            disabled={false}
             className={styles.outputInput}
             placeholder="127.0.0.1"
             spellCheck={false}
@@ -182,7 +182,7 @@ function OutputSection() {
             value={portInput}
             onChange={(e) => setPortInput(e.target.value)}
             onBlur={handlePortBlur}
-            disabled={!config.enabled}
+            disabled={false}
             className={`${styles.outputInput} ${styles.outputInputPort}`}
             placeholder="9001"
           />
@@ -195,7 +195,7 @@ function OutputSection() {
             type="checkbox"
             checked={config.forward_beat}
             onChange={(e) => void update({ forward_beat: e.target.checked })}
-            disabled={!config.enabled}
+            disabled={false}
             className={styles.checkbox}
           />
           <span>Forward beat</span>
@@ -206,7 +206,7 @@ function OutputSection() {
             type="checkbox"
             checked={config.forward_bpm}
             onChange={(e) => void update({ forward_bpm: e.target.checked })}
-            disabled={!config.enabled}
+            disabled={false}
             className={styles.checkbox}
           />
           <span>Forward BPM</span>
@@ -217,7 +217,7 @@ function OutputSection() {
             type="checkbox"
             checked={config.forward_colors}
             onChange={(e) => void update({ forward_colors: e.target.checked })}
-            disabled={!config.enabled}
+            disabled={false}
             className={styles.checkbox}
           />
           <span>Forward colors</span>

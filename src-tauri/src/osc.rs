@@ -97,7 +97,7 @@ pub struct OscOutputConfig {
 impl Default for OscOutputConfig {
     fn default() -> Self {
         Self {
-            enabled: false,
+            enabled: true,
             host: "127.0.0.1".to_string(),
             port: 9001,
             forward_beat: true,

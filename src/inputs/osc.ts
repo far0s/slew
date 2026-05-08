@@ -418,7 +418,7 @@ export interface OscOutputConfig {
 }
 
 const DEFAULT_OUTPUT_CONFIG: OscOutputConfig = {
-  enabled: false,
+  enabled: true,
   host: "127.0.0.1",
   port: 9001,
   forward_beat: true,
