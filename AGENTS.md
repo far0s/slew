@@ -44,6 +44,35 @@ Other commands: `osgrep trace "fn"`, `osgrep skeleton file.ts`, `osgrep symbols`
 | `docs/CONTROLLERS.md`  | Hardware controller reference                    |
 | `docs/finished/`       | Completed task documentation                     |
 
+## Releasing a Version
+
+**Files to update** (all three must match):
+
+- `package.json` → `"version": "X.Y.Z",` (comma required — it's not the last key)
+- `src-tauri/Cargo.toml` → `version = "X.Y.Z"`
+- `src-tauri/tauri.conf.json` → `"version": "X.Y.Z",` (comma required — it's not the last key)
+
+After editing, always validate JSON before committing:
+
+```bash
+python3 -c "import json; json.load(open('package.json')); json.load(open('src-tauri/tauri.conf.json')); print('OK')"
+```
+
+Update `Cargo.lock` too:
+
+```bash
+cargo update --manifest-path src-tauri/Cargo.toml --package slew
+```
+
+**Tagging** — tags use bare version numbers, no `v` prefix:
+
+```bash
+git tag 0.11.8        # correct
+git tag v0.11.8       # WRONG
+```
+
+Verify with `git tag | sort -V | tail -5` before pushing.
+
 ## MCP Gemini Design
 
 For UI/design work, delegate to Gemini MCP tools:
