@@ -69,9 +69,7 @@
       "frameworks": ["./frameworks/Syphon.framework"],
       "minimumSystemVersion": "15.0",
       "entitlements": "./entitlements.plist",
-      "infoPlist": {
-        "NSMicrophoneUsageDescription": "Slew uses the microphone for audio-reactive visuals and beat detection."
-      },
+      "infoPlist": "./Info.plist",
       "signingIdentity": "Developer ID Application: Seb Dancer-Michel (2T9JQY697M)",
       "providerShortName": null,
       "dmg": {
