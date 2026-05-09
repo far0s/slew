@@ -16,10 +16,11 @@ import styles from "./SlotsArea.module.css";
 
 interface DragState {
   slotIndex: number;   // which slot is being dragged
-  startX: number;      // pointer X at drag start
+  startX: number;      // pointer X at drag start (rebased on each swap)
   currentX: number;    // current pointer X
   columnWidth: number; // measured column width + gap
   originOrder: number[]; // displayOrder at drag start
+  currentPos: number;  // current position index in displayOrder
 }
 
 function useDragReorder(slotCount: number) {
@@ -41,15 +42,18 @@ function useDragReorder(slotCount: number) {
 
   const startDrag = useCallback(
     (slotIndex: number, startX: number, columnWidth: number) => {
+      const originPos = displayOrder.indexOf(slotIndex);
       dragRef.current = {
         slotIndex,
         startX,
         currentX: startX,
         columnWidth,
         originOrder: [...displayOrder],
+        currentPos: originPos,
       };
       setDraggingSlotIndex(slotIndex);
       setDragOffsetX(0);
+      document.body.style.userSelect = "none";
     },
     [displayOrder],
   );
@@ -58,34 +62,40 @@ function useDragReorder(slotCount: number) {
     const drag = dragRef.current;
     if (!drag) return;
 
-    const delta = currentX - drag.startX;
-    setDragOffsetX(delta);
     drag.currentX = currentX;
+    const delta = currentX - drag.startX;
 
-    // Compute how many columns the drag has moved
+    // Compute target position based on how far we've dragged from our current rebased origin
     const steps = Math.round(delta / drag.columnWidth);
-    const originPos = drag.originOrder.indexOf(drag.slotIndex);
-    if (originPos === -1) return;
-
     const targetPos = Math.max(
       0,
-      Math.min(drag.originOrder.length - 1, originPos + steps),
+      Math.min(drag.originOrder.length - 1, drag.currentPos + steps),
     );
 
-    // Rebuild order: move dragged item to targetPos
-    const newOrder = drag.originOrder.filter((idx) => idx !== drag.slotIndex);
-    newOrder.splice(targetPos, 0, drag.slotIndex);
+    if (targetPos !== drag.currentPos) {
+      // Rebase startX before computing the new offset so both state updates
+      // use the same rebased value — eliminates the one-frame flash.
+      const posDelta = targetPos - drag.currentPos;
+      drag.startX += posDelta * drag.columnWidth;
+      drag.currentPos = targetPos;
 
-    setDisplayOrder((prev) => {
-      if (prev.join(",") === newOrder.join(",")) return prev;
-      return newOrder;
-    });
+      setDisplayOrder((prev) => {
+        const newOrder = prev.filter((idx) => idx !== drag.slotIndex);
+        newOrder.splice(targetPos, 0, drag.slotIndex);
+        if (prev.join(",") === newOrder.join(",")) return prev;
+        return newOrder;
+      });
+    }
+
+    // Always update the visual offset using the (possibly just rebased) startX
+    setDragOffsetX(currentX - drag.startX);
   }, []);
 
   const endDrag = useCallback(() => {
     dragRef.current = null;
     setDraggingSlotIndex(null);
     setDragOffsetX(0);
+    document.body.style.userSelect = "";
   }, []);
 
   return { displayOrder, draggingSlotIndex, dragOffsetX, startDrag, moveDrag, endDrag };
@@ -188,6 +198,9 @@ export function SlotsArea({
       const target = e.target as HTMLElement;
       // Don't start drag from buttons, inputs, selects or scrollable controls
       if (target.closest("button, input, select, [role='slider'], [data-nodrag]")) return;
+
+      // Prevent text selection for the duration of the drag
+      e.preventDefault();
 
       const wrapper = columnsWrapperRef.current;
       if (!wrapper) return;
