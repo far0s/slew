@@ -369,6 +369,73 @@ fn get_parameter(id: String) -> Option<Parameter> {
     with_parameter_store(|store| store.get(&id))
 }
 
+/// Set all three RGB channels of a colour parameter atomically in one call.
+/// Avoids partial-update flicker when animating colour in real time (e.g. chroma loop).
+/// transition_speed 0 = instant snap (recommended for high-rate animation).
+#[tauri::command]
+fn set_color_channels(
+    app: AppHandle,
+    base_id: String,
+    r: f64,
+    g: f64,
+    b: f64,
+    transition_speed: f64,
+) {
+    let r_id = format!("{}_r", base_id);
+    let g_id = format!("{}_g", base_id);
+    let b_id = format!("{}_b", base_id);
+
+    let (pr, pg, pb) = with_parameter_store(|store| {
+        let pr = store.set_target_with_transition(r_id.clone(), r, transition_speed);
+        let pg = store.set_target_with_transition(g_id.clone(), g, transition_speed);
+        let pb = store.set_target_with_transition(b_id.clone(), b, transition_speed);
+        (pr, pg, pb)
+    });
+
+    // For instant-snap (transition_speed = 0) emit value=target so the renderer
+    // sees the final colour right away without waiting for the next tick.
+    // For non-zero transition, emit as-is so the tick loop can animate smoothly.
+    let make_immediate = |p: Parameter| -> Parameter {
+        if transition_speed <= 0.0 {
+            Parameter { value: p.target, ..p }
+        } else {
+            p
+        }
+    };
+
+    // Emit all three atomically — renderer sees a coherent RGB triple
+    let _ = app.emit("parameter_changed", &make_immediate(pr));
+    let _ = app.emit("parameter_changed", &make_immediate(pg));
+    let _ = app.emit("parameter_changed", &make_immediate(pb));
+
+    // Do NOT save to disk here — this command is called at animation frame rate
+    // (up to 60fps). The values are transient animation state; persistence happens
+    // when the loop stops and the user picks a static color.
+}
+
+/// Set a parameter's target with an explicit transition speed (in seconds, 0 = instant).
+/// Useful for colour changes where the caller wants a specific fade duration.
+#[tauri::command]
+fn set_parameter_with_transition(
+    app: AppHandle,
+    id: String,
+    value: f64,
+    transition_speed: f64,
+) -> Parameter {
+    let updated = with_parameter_store(|store| {
+        store.set_target_with_transition(id.clone(), value, transition_speed)
+    });
+    save_parameters_to_disk(&app);
+
+    // Emit current value so the tick loop animates smoothly
+    let _ = app.emit("parameter_changed", &updated);
+
+    // Send MIDI feedback
+    midi::send_parameter_feedback(&id, value);
+
+    updated
+}
+
 /// Set a parameter's target. Emits immediate feedback for most parameters,
 /// but lets crossfade animate smoothly via the tick loop.
 /// Also sends MIDI feedback to connected controllers.
@@ -809,6 +876,8 @@ pub fn run() {
             get_parameters,
             get_parameter,
             set_parameter,
+            set_parameter_with_transition,
+            set_color_channels,
             clear_parameters,
             set_slot_pairing,
             set_all_slots,
