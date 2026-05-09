@@ -20,8 +20,6 @@
 
 .colorParamRowSpaced {
   padding-top: 0.5rem;
-  margin-top: 0.25rem;
-  border-top: 1px solid var(--border-subtle);
 }
 
 .colorParamHeader {
