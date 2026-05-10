@@ -66,6 +66,111 @@ Add a full-size slot editor overlay, allowing users to focus on editing one slot
 
 ## Medium Priority
 
+### 🟡 BPM / Beat Detection Accuracy `issue`
+
+Improve the reliability of microphone-based BPM and beat detection.
+
+**Context**: During live use the audio-analysis BPM was badly wrong (e.g. reporting 180 BPM when the music was ~130). The current implementation in `src-tauri/src/audio/buffer.rs` uses a simple adaptive-threshold detector on bass energy with a fixed cooldown (`BEAT_COOLDOWN_SAMPLES`). The frontend derives BPM by measuring inter-beat intervals, which compounds the error when false beats are fired.
+
+**Known failure modes**:
+- Bass transients (kick + bassline overlap) fire two beats per musical beat, doubling the estimated BPM.
+- Cooldown is sample-count based; at different buffer sizes the effective minimum BPM window shifts.
+- The adaptive average window (64 energy frames) is too short to track slower tempos reliably.
+
+**Subtasks**:
+
+- [ ] Audit `BeatDetector::update` — tune `BEAT_THRESHOLD` and `BEAT_COOLDOWN_SAMPLES`; add a configurable minimum BPM floor (e.g. 60 BPM = 1 s cooldown).
+- [ ] Replace or augment the frontend inter-beat BPM estimator with a median-of-last-N-intervals approach to smooth outliers and reject double-triggers.
+- [ ] Consider moving BPM estimation fully to Rust where inter-beat timestamps are already tracked.
+- [ ] Add a sensitivity / threshold slider in the Audio panel so the user can tune detection for their room and music genre.
+- [ ] Stress-test with recordings at 90, 120, 130, 140, 175 BPM and verify accuracy within +-2 BPM.
+
+---
+
+### 🟡 OSC BPM / Beat Input — Discoverability and Auto-Connect `feature`
+
+Make it easy to drive Slew's BPM and beat clock from an external source (DAW, DJ software, Ableton) via OSC, and automate the connection experience.
+
+**Context**: The OSC input path already handles `/slew/beat` and `/slew/bpm` (`osc.rs:handle_osc_beat`, `osc.ts:useOscBeat`). What is missing is discoverability and automation: there is no in-app guidance on how to route BPM from tools like Ableton, rekordbox, or a Focusrite interface via audio routing software (e.g. Loopback). The UI also does not confirm the OSC port is active or show that beat packets are arriving.
+
+**Subtasks**:
+
+- [ ] Surface the OSC input port prominently in the Audio or OSC panel with a "Waiting for /slew/beat..." / "Receiving OSC beat" status indicator.
+- [ ] Add an activity LED in the Audio panel that pulses on every received OSC beat, distinct from the mic-detected beat indicator.
+- [ ] On app launch, if OSC beat packets arrive within ~5 s, automatically switch the active BPM source to OSC and show a brief toast notification.
+- [ ] Write an in-app collapsible help note explaining how to send OSC from common tools: Ableton Live (Max4Live MIDI-to-OSC device), rekordbox (OSC plugin), TouchOSC, and macOS Loopback / Audio MIDI Setup for audio routing.
+- [ ] (Design decision needed) Decide whether to add an explicit "BPM Source" selector (Microphone / OSC / Tap / Manual) or keep sources additive with OSC taking priority when active.
+
+---
+
+### 🟡 MIDI/Controller Unlearn Button — Stuck Learn State Bug `issue`
+
+The unbind button on a mapped parameter is sometimes unclickable with no clear explanation, requiring a full window restart or sketch removal to recover.
+
+**Context**: `MidiLearnButton` is `disabled` when `isLearningOther` is true, i.e. any other parameter on screen is currently in learn mode. When learn mode gets stuck (controls window closed mid-learn, sketch swapped out while learning), the global `MidiLearnState.is_learning` flag in the Rust backend remains `true`, permanently disabling every other button until the app restarts.
+
+**Subtasks**:
+
+- [ ] Investigate whether learn mode is cancelled when: (a) the controls window is closed or restarted, (b) the sketch owning the learning parameter is removed from the scene.
+- [ ] Add a `cancel_midi_learn` Tauri command invoked on window `beforeunload` and on sketch removal to reset the global learn state.
+- [ ] In `MidiLearnButton`, update the disabled tooltip text to explicitly say "Another parameter is being learned — cancel it first" so the user understands why the button is greyed out.
+- [ ] Add a global "Cancel learn" escape hatch in the Controls toolbar or triggered by the Escape key.
+- [ ] Add a regression test for the stuck-learn-mode scenario.
+
+---
+
+### 🟡 LFO Naming and Modulation Panel UX `feature`
+
+Make LFOs easier to identify and manage when multiple are active mid-performance.
+
+**Context**: All LFOs are created with the default name "LFO" (`modulation.rs` default impl). With several active at once and targets spread across different sketches, it is impossible to tell them apart in the panel list or in the Target / AudioMod source dropdowns.
+
+**Phase 1 — Quick wins (low effort)**:
+
+- [ ] Auto-generate a meaningful default name on LFO creation: e.g. "Sine 0.5 Hz" or, when created via the Quick-wire button on a parameter, "[SketchName] / [ParamName]". Update the Rust `Default` impl and the `LfoForm` initial value in the frontend.
+- [ ] Show the LFO waveform shape icon and current rate next to the name in all dropdowns and list rows.
+- [ ] Add a subtle per-LFO activity animation in the panel list (small oscillating bar or phase dot) so the operator can confirm an LFO is running at a glance.
+
+**Phase 2 — Deeper overhaul (design decision required before starting)**:
+
+- [ ] Full redesign of the ModulationPanel: group modulation targets visually under their source LFO; show which parameters each LFO controls inline.
+- [ ] Allow reordering and pinning LFOs.
+- [ ] Add a "Modulation overview" mini-map showing all active LFO-to-parameter connections at once.
+
+---
+
+### 🟡 Parameter List UX — Scroll-Into-View, Density and Row Hiding `feature`
+
+Improve usability of long parameter lists, especially during live performance in low-light.
+
+**Context**: Sketches with many parameters produce long scrollable lists that are hard to scan. When an external controller moves a parameter that is currently scrolled off-screen there is no visual feedback and no quick way to locate it.
+
+**Subtasks**:
+
+- [ ] **Scroll-into-view on external update**: When a parameter value changes via MIDI or OSC (not from direct UI interaction), call `scrollIntoView({ behavior: 'smooth', block: 'nearest' })` on its row and briefly highlight it (flash the label or row background for ~500 ms).
+- [ ] **Compact display mode**: Add a density toggle (normal / compact) to the sketch panel header. Compact mode reduces row padding and hides description text, fitting roughly 2x more parameters on screen.
+- [ ] **Row hiding**: Allow the user to right-click a parameter row to hide it. Hidden rows are persisted per sketch ID in localStorage. A "Show hidden (N)" chip at the bottom of the list allows restoring them.
+- [ ] **Sketch-level cleanup** (design decision needed): Evaluate adding a `hidden: true` flag in `ParameterTemplate` so sketch authors can suppress parameters that are irrelevant to live performance. Agree on the convention before implementing.
+
+---
+
+### 🟡 Controls Window Performance Monitor `feature`
+
+Add a live performance health indicator to the Controls window top bar.
+
+**Context**: The Renderer window already shows FPS / CPU / GPU via `stats-gl` (toggled with "D"). During a live session the operator watches the Controls window, so renderer degradation is invisible until it causes visible stuttering. Memory or CPU spikes from a particular sketch or parameter change are only discoverable by feel.
+
+**Subtasks**:
+
+- [ ] Collect lightweight stats from the Controls window itself: JS heap size via `performance.memory`, rAF cadence (frame budget), and Renderer FPS already available via the `RendererStats` hook.
+- [ ] Add a compact status chip to the Controls window top bar showing: Controls rAF FPS, JS heap in MB, and Renderer FPS.
+- [ ] Color-code the chip: green (nominal) / amber (warn: renderer below 45 fps or heap above 70%) / red (critical: renderer below 25 fps or heap above 80%).
+- [ ] In red state, pulse-animate the chip to draw the operator's eye. Add an opt-in audio cue (system beep) in Settings.
+- [ ] Investigate whether adding or removing a sketch causes a measurable rAF spike; if so, show a brief "spike" transient on the chip.
+- [ ] (Stretch) Log performance snapshots to a ring buffer and allow exporting a post-show performance report.
+
+---
+
 ### 🟡 External Texture Input `feature`
 
 Support external images/videos as input textures for sketches.
