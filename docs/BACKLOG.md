@@ -103,21 +103,6 @@ Make it easy to drive Slew's BPM and beat clock from an external source (DAW, DJ
 
 ---
 
-### 🟡 Parameter List UX — Scroll-Into-View, Density and Row Hiding `feature`
-
-Improve usability of long parameter lists, especially during live performance in low-light.
-
-**Context**: Sketches with many parameters produce long scrollable lists that are hard to scan. When an external controller moves a parameter that is currently scrolled off-screen there is no visual feedback and no quick way to locate it.
-
-**Subtasks**:
-
-- [ ] **Scroll-into-view on external update**: When a parameter value changes via MIDI or OSC (not from direct UI interaction), call `scrollIntoView({ behavior: 'smooth', block: 'nearest' })` on its row and briefly highlight it (flash the label or row background for ~500 ms).
-- [ ] **Compact display mode**: Add a density toggle (normal / compact) to the sketch panel header. Compact mode reduces row padding and hides description text, fitting roughly 2x more parameters on screen.
-- [ ] **Row hiding**: Allow the user to right-click a parameter row to hide it. Hidden rows are persisted per sketch ID in localStorage. A "Show hidden (N)" chip at the bottom of the list allows restoring them.
-- [ ] **Sketch-level cleanup** (design decision needed): Evaluate adding a `hidden: true` flag in `ParameterTemplate` so sketch authors can suppress parameters that are irrelevant to live performance. Agree on the convention before implementing.
-
----
-
 ### 🟡 Controls Window Performance Monitor `feature`
 
 Add a live performance health indicator to the Controls window top bar.

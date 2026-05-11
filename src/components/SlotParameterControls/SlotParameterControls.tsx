@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { subscribeBpm } from "../../inputs/tapTempo";
 import { pushUndoEntry } from "../../controls/useUndoHistory";
@@ -40,6 +41,29 @@ export interface SlotParameterControlsProps {
   onQuickLfo?: (parameterId: string) => void;
   onUnlinkBeat?: (parameterId: string) => void;
   onUnlinkLfo?: (parameterId: string) => void;
+}
+
+const HIDDEN_PARAMS_STORAGE_PREFIX = "slew:hidden-params:";
+
+function loadHiddenParams(sketchId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(`${HIDDEN_PARAMS_STORAGE_PREFIX}${sketchId}`);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveHiddenParams(sketchId: string, hidden: Set<string>): void {
+  try {
+    localStorage.setItem(
+      `${HIDDEN_PARAMS_STORAGE_PREFIX}${sketchId}`,
+      JSON.stringify([...hidden]),
+    );
+  } catch {
+    // ignore
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -421,6 +445,53 @@ export function SlotParameterControls({
 }: SlotParameterControlsProps) {
   const descriptor = getSketchDescriptor(sketchId);
 
+  // Hidden parameters, persisted per sketch ID
+  const [hiddenParams, setHiddenParams] = useState<Set<string>>(() =>
+    loadHiddenParams(sketchId),
+  );
+
+  // Reset hidden params when sketch changes
+  useEffect(() => {
+    setHiddenParams(loadHiddenParams(sketchId));
+  }, [sketchId]);
+
+  const hideParam = useCallback(
+    (templateId: string) => {
+      setHiddenParams((prev) => {
+        const next = new Set(prev);
+        next.add(templateId);
+        saveHiddenParams(sketchId, next);
+        return next;
+      });
+    },
+    [sketchId],
+  );
+
+  const showAllParams = useCallback(() => {
+    const empty = new Set<string>();
+    saveHiddenParams(sketchId, empty);
+    setHiddenParams(empty);
+  }, [sketchId]);
+
+  // Scroll-into-view: refs to each param row element
+  const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  // Track whether the user is actively dragging a slider to avoid self-triggering
+  const isUserInteractingRef = useRef(false);
+
+  useEffect(() => {
+    const unlisten = listen<{ id: string; value: number; target: number }>("parameter_changed", (event) => {
+      if (isUserInteractingRef.current) return;
+      const { id } = event.payload;
+      const row = rowRefs.current.get(id);
+      if (row) {
+        row.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    });
+    return () => {
+      void unlisten.then((fn) => fn());
+    };
+  }, []);
+
   if (!descriptor) {
     return (
       <div className={styles.container}>
@@ -562,6 +633,8 @@ export function SlotParameterControls({
     })();
   };
 
+  const hiddenCount = hiddenParams.size;
+
   return (
     <div className={styles.container}>
       {descriptor.colorPalette && colors && !hasColorParams && (
@@ -593,6 +666,8 @@ export function SlotParameterControls({
           // Shows a visual ColorPicker swatch + R/G/B sliders each with
           // beat / LFO / MIDI-learn controls identical to regular sliders.
           if (template.inputType === "color") {
+            // Color rows use templateId as the hide key
+            if (hiddenParams.has(template.templateId)) return null;
             const baseId = `slot_${slotIndex}_${template.templateId}`;
             const r = getValue(`${baseId}_r`);
             const g = getValue(`${baseId}_g`);
@@ -615,7 +690,15 @@ export function SlotParameterControls({
             ];
 
             return (
-              <div key={baseId} className={`${styles.colorParamRow} ${index > 0 ? styles.colorParamRowSpaced : ""}`}>
+              <div
+                key={baseId}
+                ref={(el) => {
+                  if (el) rowRefs.current.set(baseId, el);
+                  else rowRefs.current.delete(baseId);
+                }}
+                className={`${styles.colorParamRow} ${index > 0 ? styles.colorParamRowSpaced : ""}`}
+                onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
+              >
                 {/* Color label + swatch button */}
                 <div className={styles.colorParamHeader}>
                   <span className={styles.colorParamLabel}>{template.label}</span>
@@ -653,6 +736,7 @@ export function SlotParameterControls({
                       color={chColor}
                       inline
                       onChange={(val) => {
+                        isUserInteractingRef.current = true;
                         const newR = ch === "r" ? val : r;
                         const newG = ch === "g" ? val : g;
                         const newB = ch === "b" ? val : b;
@@ -664,6 +748,7 @@ export function SlotParameterControls({
                         );
                       }}
                       onCommit={(after, before) => {
+                        isUserInteractingRef.current = false;
                         if (after !== before) pushUndoEntry(chId, before, after);
                       }}
                       audioMapping={getAudioMappingIndicator(chId, audioMappings)}
@@ -694,22 +779,83 @@ export function SlotParameterControls({
             );
           }
 
+          // Skip hidden parameters
+          if (hiddenParams.has(template.templateId)) return null;
+
           // Render select input for parameters with inputType: "select"
           if (template.inputType === "select" && template.options) {
             const selectBefore = getValue(paramId);
             return (
-              <ParameterSelect
+              <div
                 key={paramId}
+                ref={(el) => {
+                  if (el) rowRefs.current.set(paramId, el);
+                  else rowRefs.current.delete(paramId);
+                }}
+                className={undefined}
+                onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
+              >
+                <ParameterSelect
+                  id={`slot-${slotIndex}-${template.templateId}`}
+                  label={template.label}
+                  value={getValue(paramId)}
+                  options={template.options}
+                  showSpacing={index > 0}
+                  description={undefined}
+                  onChange={(value: number) => {
+                    createChangeHandler(slotIndex, template, setValue).onChange(value);
+                    pushUndoEntry(paramId, selectBefore, value);
+                  }}
+                  audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
+                  modulationIndicator={getModulationIndicator(
+                    paramId,
+                    modulationTargets,
+                    lfos,
+                  )}
+                  isMidiControlled={hasMidiMapping}
+                  onQuickBeat={
+                    onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined
+                  }
+                  onQuickLfo={
+                    onQuickLfo ? () => onQuickLfo(paramId) : undefined
+                  }
+                  onUnlinkBeat={
+                    onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined
+                  }
+                  onUnlinkLfo={
+                    onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined
+                  }
+                />
+              </div>
+            );
+          }
+
+          // Default to slider input
+          const { onChange: sliderOnChange, onCommit: sliderOnCommit } = createChangeHandler(
+            slotIndex, template, setValue,
+          );
+          return (
+            <div
+              key={paramId}
+              ref={(el) => {
+                if (el) rowRefs.current.set(paramId, el);
+                else rowRefs.current.delete(paramId);
+              }}
+              className={undefined}
+              onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
+            >
+              <ParameterSlider
                 id={`slot-${slotIndex}-${template.templateId}`}
                 label={template.label}
                 value={getValue(paramId)}
-                options={template.options}
+                min={template.min}
+                max={template.max}
+                step={template.step}
+                color={template.color ?? "emerald"}
                 showSpacing={index > 0}
-                description={template.description}
-                onChange={(value: number) => {
-                  createChangeHandler(slotIndex, template, setValue).onChange(value);
-                  pushUndoEntry(paramId, selectBefore, value);
-                }}
+                description={undefined}
+                onChange={(v) => { isUserInteractingRef.current = true; sliderOnChange(v); }}
+                onCommit={(after, before) => { isUserInteractingRef.current = false; sliderOnCommit(after, before); }}
                 audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
                 modulationIndicator={getModulationIndicator(
                   paramId,
@@ -717,6 +863,8 @@ export function SlotParameterControls({
                   lfos,
                 )}
                 isMidiControlled={hasMidiMapping}
+                pickupState={midiPickupStates?.get(paramId)}
+                midiParameterId={paramId}
                 onQuickBeat={
                   onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined
                 }
@@ -730,52 +878,19 @@ export function SlotParameterControls({
                   onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined
                 }
               />
-            );
-          }
-
-          // Default to slider input
-          const { onChange: sliderOnChange, onCommit: sliderOnCommit } = createChangeHandler(
-            slotIndex, template, setValue,
-          );
-          return (
-            <ParameterSlider
-              key={paramId}
-              id={`slot-${slotIndex}-${template.templateId}`}
-              label={template.label}
-              value={getValue(paramId)}
-              min={template.min}
-              max={template.max}
-              step={template.step}
-              color={template.color ?? "emerald"}
-              showSpacing={index > 0}
-              description={template.description}
-              onChange={sliderOnChange}
-              onCommit={sliderOnCommit}
-              audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
-              modulationIndicator={getModulationIndicator(
-                paramId,
-                modulationTargets,
-                lfos,
-              )}
-              isMidiControlled={hasMidiMapping}
-              pickupState={midiPickupStates?.get(paramId)}
-              midiParameterId={paramId}
-              onQuickBeat={
-                onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined
-              }
-              onQuickLfo={
-                onQuickLfo ? () => onQuickLfo(paramId) : undefined
-              }
-              onUnlinkBeat={
-                onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined
-              }
-              onUnlinkLfo={
-                onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined
-              }
-            />
+            </div>
           );
         })}
       </div>
+      {hiddenCount > 0 && (
+        <button
+          type="button"
+          className={styles.showHiddenChip}
+          onClick={showAllParams}
+        >
+          Show hidden ({hiddenCount})
+        </button>
+      )}
     </div>
   );
 }
