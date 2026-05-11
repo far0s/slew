@@ -45,6 +45,30 @@ export interface SlotParameterControlsProps {
 
 const HIDDEN_PARAMS_STORAGE_PREFIX = "slew:hidden-params:";
 
+/** Walk up the DOM to find the nearest ancestor that scrolls vertically. */
+function findScrollParent(el: HTMLElement): HTMLElement | null {
+  let node: HTMLElement | null = el.parentElement;
+  while (node) {
+    const { overflowY } = getComputedStyle(node);
+    if ((overflowY === "auto" || overflowY === "scroll") && node.scrollHeight > node.clientHeight) {
+      return node;
+    }
+    node = node.parentElement;
+  }
+  return null;
+}
+
+/** Compute the offsetTop of `el` relative to `ancestor` by summing offsetTop chain. */
+function getOffsetRelativeTo(el: HTMLElement, ancestor: HTMLElement): number {
+  let offset = 0;
+  let node: HTMLElement | null = el;
+  while (node && node !== ancestor) {
+    offset += node.offsetTop;
+    node = node.offsetParent as HTMLElement | null;
+  }
+  return offset;
+}
+
 function loadHiddenParams(sketchId: string): Set<string> {
   try {
     const raw = localStorage.getItem(`${HIDDEN_PARAMS_STORAGE_PREFIX}${sketchId}`);
@@ -475,36 +499,75 @@ export function SlotParameterControls({
 
   // Scroll-into-view: refs to each param row element
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  // Ref to the vertical scroll container so we can scroll only it (not horizontal ancestors)
-  const controlsRef = useRef<HTMLDivElement>(null);
   // Track whether the user is actively dragging a slider to avoid self-triggering
   const isUserInteractingRef = useRef(false);
+  // Safety reset: if the pointer is released anywhere (or cancelled), clear the flag.
+  // This prevents isUserInteractingRef from getting stuck `true` if the user lifts
+  // the mouse outside the slider thumb, which would block all MIDI auto-scroll.
+  useEffect(() => {
+    const reset = () => { isUserInteractingRef.current = false; };
+    window.addEventListener("pointerup", reset);
+    window.addEventListener("pointercancel", reset);
+    return () => {
+      window.removeEventListener("pointerup", reset);
+      window.removeEventListener("pointercancel", reset);
+    };
+  }, []);
+
+  // Timestamp of the last manual scroll — auto-scroll is suppressed for 1s after.
+  const lastManualScrollRef = useRef(0);
+  // The scroller element we've attached the manual-scroll listener to.
+  const scrollerListenerRef = useRef<{ el: HTMLElement; handler: () => void } | null>(null);
+  // Clean up the scroller listener on unmount.
+  useEffect(() => {
+    return () => {
+      if (scrollerListenerRef.current) {
+        const { el, handler } = scrollerListenerRef.current;
+        el.removeEventListener("wheel", handler);
+        el.removeEventListener("touchstart", handler);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const unlisten = listen<{ id: string; value: number; target: number }>("parameter_changed", (event) => {
       if (isUserInteractingRef.current) return;
+      if (Date.now() - lastManualScrollRef.current < 1000) return;
       const { id } = event.payload;
       const row = rowRefs.current.get(id);
-      const container = controlsRef.current;
-      if (row && container) {
-        // Manually scroll only the vertical controls container to avoid
-        // propagating to the horizontal SlotsArea scroller (which would
-        // jump the view back to this column).
-        const rowTop = row.offsetTop;
-        const rowBottom = rowTop + row.offsetHeight;
-        const scrollTop = container.scrollTop;
-        const containerHeight = container.clientHeight;
-        if (rowTop < scrollTop) {
-          container.scrollTo({ top: rowTop, behavior: "smooth" });
-        } else if (rowBottom > scrollTop + containerHeight) {
-          container.scrollTo({ top: rowBottom - containerHeight, behavior: "smooth" });
+      if (row) {
+        // Walk up the DOM to find the nearest scrolling ancestor
+        const scroller = findScrollParent(row);
+        if (scroller) {
+          // Lazily attach manual-scroll listener to the scroller the first time we see it
+          if (scrollerListenerRef.current?.el !== scroller) {
+            if (scrollerListenerRef.current) {
+              const { el, handler } = scrollerListenerRef.current;
+              el.removeEventListener("wheel", handler);
+              el.removeEventListener("touchstart", handler);
+            }
+            const handler = () => { lastManualScrollRef.current = Date.now(); };
+            scroller.addEventListener("wheel", handler, { passive: true });
+            scroller.addEventListener("touchstart", handler, { passive: true });
+            scrollerListenerRef.current = { el: scroller, handler };
+          }
+
+          const rowTop = getOffsetRelativeTo(row, scroller);
+          const rowBottom = rowTop + row.offsetHeight;
+          const scrollTop = scroller.scrollTop;
+          const containerHeight = scroller.clientHeight;
+          if (rowTop < scrollTop) {
+            scroller.scrollTo({ top: rowTop, behavior: "smooth" });
+          } else if (rowBottom > scrollTop + containerHeight) {
+            scroller.scrollTo({ top: rowBottom - containerHeight, behavior: "smooth" });
+          }
         }
       }
     });
     return () => {
       void unlisten.then((fn) => fn());
     };
-  }, []);
+  }, [slotIndex, sketchId]);
 
   if (!descriptor) {
     return (
@@ -669,7 +732,7 @@ export function SlotParameterControls({
           onBackgroundReset={handleBackgroundReset}
         />
       )}
-      <div className={styles.controls} ref={controlsRef}>
+      <div className={styles.controls}>
         {sortedParameters.map((template, index) => {
           const paramId = makeSlotParameterId(slotIndex, template.templateId);
           const hasMidiMapping = midiMappings?.some(
