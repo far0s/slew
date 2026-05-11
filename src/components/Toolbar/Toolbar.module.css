@@ -1,0 +1,253 @@
+.toolbarButton {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.25rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.toolbarButton:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.toolbarButton:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.toolbarButtonLearning {
+  border-color: var(--midi-learning-border);
+  color: var(--midi-learning-text);
+  background: var(--midi-learning-bg);
+}
+
+.toolbarButtonLearning:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--midi-learning-border) 30%, transparent);
+  color: var(--midi-learning-text);
+}
+
+/* ==========================================================================
+   Toolbar — Renderer Stats
+   ========================================================================== */
+
+.toolbarStats {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.25rem;
+}
+
+.toolbarStat {
+  font-size: 0.68rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: baseline;
+  gap: 0.1rem;
+}
+
+.toolbarStat[data-fps-status="good"],
+.toolbarStat[data-ft-status="good"] {
+  color: var(--accent-success, rgb(34 197 94));
+}
+
+.toolbarStat[data-fps-status="ok"],
+.toolbarStat[data-ft-status="ok"] {
+  color: var(--accent-warning, rgb(234 179 8));
+}
+
+.toolbarStat[data-fps-status="low"],
+.toolbarStat[data-ft-status="low"] {
+  color: var(--accent-danger, rgb(239 68 68));
+}
+
+.toolbarStatUnit {
+  font-size: 0.58rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.toolbarStatDivider {
+  width: 1px;
+  height: 0.75rem;
+  background: var(--border-subtle);
+  opacity: 0.6;
+}
+
+/* ==========================================================================
+   Toolbar — Tap BPM
+   ========================================================================== */
+
+.toolbarTapGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.15rem 0.15rem 0.2rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.3rem;
+}
+
+.toolbarTapBeat {
+  animation: tap-group-beat 550ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes tap-group-beat {
+  0% {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 35%, transparent),
+                0 0 6px color-mix(in srgb, var(--accent-primary) 25%, transparent);
+  }
+  100% {
+    border-color: var(--border-subtle);
+    box-shadow: none;
+  }
+}
+
+.toolbarTapButton {
+  flex-shrink: 0;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  background: var(--bg-active);
+  border: 1px solid var(--border-default);
+  border-radius: 0.2rem;
+  cursor: pointer;
+  transition: background 80ms ease, transform 80ms ease, box-shadow 80ms ease;
+  user-select: none;
+}
+
+.toolbarTapButton:hover {
+  background: color-mix(in srgb, var(--accent-primary) 15%, transparent);
+  border-color: color-mix(in srgb, var(--accent-primary) 40%, transparent);
+}
+
+.toolbarTapButton:active,
+.toolbarTapButton.toolbarTapPulse {
+  background: color-mix(in srgb, var(--accent-primary) 35%, transparent);
+  border-color: color-mix(in srgb, var(--accent-primary) 70%, transparent);
+  transform: scale(0.95);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent-primary) 40%, transparent);
+}
+
+.toolbarBpmDisplay {
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  min-width: 3.2rem;
+}
+
+.toolbarBpmValue {
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.toolbarBpmUnit {
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.toolbarBpmHint {
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.toolbarTapReset {
+  flex-shrink: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 0.2rem;
+  cursor: pointer;
+  transition: color 100ms ease, background 100ms ease;
+}
+
+.toolbarTapReset:hover {
+  color: var(--text-primary);
+  background: var(--bg-active);
+}
+
+.toolbarShortcutBadge {
+  flex-shrink: 0;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.2rem;
+  cursor: pointer;
+  transition: color 100ms ease, background 100ms ease, border-color 100ms ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.toolbarShortcutBadge:hover {
+  color: var(--text-primary);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+}
+
+.toolbarShortcutCustom {
+  color: rgb(168 85 247 / 0.85);
+  border-color: rgb(168 85 247 / 0.35);
+}
+
+.toolbarShortcutCustom:hover {
+  color: rgb(168 85 247);
+  border-color: rgb(168 85 247 / 0.6);
+  background: rgb(168 85 247 / 0.08);
+}
+
+.toolbarShortcutCapturing {
+  flex-shrink: 0;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: rgb(99 102 241);
+  background: rgb(99 102 241 / 0.1);
+  border: 1px dashed rgb(99 102 241 / 0.6);
+  border-radius: 0.2rem;
+  cursor: pointer;
+  animation: toolbarShortcutBlink 900ms ease-in-out infinite;
+  user-select: none;
+  white-space: nowrap;
+}
+
+@keyframes toolbarShortcutBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

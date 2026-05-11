@@ -15,7 +15,8 @@ import type { SketchId, SketchProps } from "./sketches";
 import { getSketchDescriptor } from "./sketches";
 import { makeSlotParameterId, buildSlotDefaultParameters } from "./slots/slotTypes";
 import { SlotsArea, RendererPreview, Sidebar, UpdateBanner } from "./components";
-import { BpmPulseOverlay } from "./components/BpmPulseOverlay/BpmPulseOverlay";
+import { ToolbarUndoRedo, ToolbarRendererStats, ToolbarTapBpm } from "./components/Toolbar";
+
 import { AudioIndicator } from "./components/AudioIndicator";
 import { useUndoHistory, applyUndo, applyRedo } from "./controls/useUndoHistory";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
@@ -24,13 +25,6 @@ import { useLfos, useModulationTargets, createLfo, createTarget } from "./inputs
 import {
   globalTapTempo,
   matchesTapShortcut,
-  useTapTempo,
-  formatTapShortcut,
-  isTapShortcutDefault,
-  setTapShortcut,
-  resetTapShortcut,
-  subscribeTapShortcut,
-  type TapShortcut,
 } from "./inputs/tapTempo";
 import {
   useMidiMappings,
@@ -98,36 +92,6 @@ function App() {
 
   // Renderer settings (for aspect ratio sync)
   const { info: rendererInfo } = useRendererSettings();
-
-  // Tap tempo for toolbar
-  const tapTempo = useTapTempo();
-  const [shortcutLabel, setShortcutLabel] = useState(() =>
-    formatTapShortcut({ key: " ", ctrlKey: false, metaKey: false, altKey: false, shiftKey: false })
-  );
-  const [shortcutIsDefault, setShortcutIsDefault] = useState(() => isTapShortcutDefault());
-  const [isCapturingShortcut, setIsCapturingShortcut] = useState(false);
-
-  useEffect(() => {
-    return subscribeTapShortcut((s) => {
-      setShortcutLabel(formatTapShortcut(s));
-      setShortcutIsDefault(s.key === " " && !s.ctrlKey && !s.metaKey && !s.altKey && !s.shiftKey);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!isCapturingShortcut) return;
-    const handleCapture = (e: KeyboardEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.key === "Escape") { setIsCapturingShortcut(false); return; }
-      if (["Control", "Meta", "Alt", "Shift"].includes(e.key)) return;
-      const s: TapShortcut = { key: e.key, ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey, shiftKey: e.shiftKey };
-      setTapShortcut(s);
-      setIsCapturingShortcut(false);
-    };
-    window.addEventListener("keydown", handleCapture, true);
-    return () => window.removeEventListener("keydown", handleCapture, true);
-  }, [isCapturingShortcut]);
 
   // Calculate aspect ratio from renderer window dimensions
   const rendererAspectRatio =
@@ -953,132 +917,30 @@ function App() {
 
   return (
     <div className={styles.root}>
-      <BpmPulseOverlay />
       <UpdateBanner state={updateState} onInstall={installUpdate} onDismiss={dismissUpdate} />
       <div className={styles.toolbar}>
-        <button
-          className={styles.toolbarButton}
-          onClick={handleUndo}
-          disabled={!undoHistory.canUndo}
-          title="Undo (Cmd+Z)"
-          aria-label="Undo"
-        >
-          ↩ Undo
-        </button>
-        <button
-          className={styles.toolbarButton}
-          onClick={handleRedo}
-          disabled={!undoHistory.canRedo}
-          title="Redo (Cmd+Shift+Z)"
-          aria-label="Redo"
-        >
-          ↪ Redo
-        </button>
-
-        {/* Cancel MIDI learn escape hatch — visible only when learn mode is active */}
-        {isMidiLearning && (
-          <button
-            type="button"
-            className={`${styles.toolbarButton} ${styles.toolbarButtonLearning}`}
-            onClick={() => void cancelMidiLearnLocal()}
-            title="Cancel MIDI learn (Esc)"
-            aria-label="Cancel MIDI learn"
-          >
-            ✕ Cancel Learn
-          </button>
-        )}
+        <ToolbarUndoRedo
+          canUndo={undoHistory.canUndo}
+          canRedo={undoHistory.canRedo}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          isMidiLearning={isMidiLearning}
+          onCancelMidiLearn={() => void cancelMidiLearnLocal()}
+        />
 
         <div className={styles.toolbarSpacer} />
 
         {/* Renderer stats */}
         {rendererInfo?.stats && (
-          <div className={styles.toolbarStats}>
-            <span
-              className={styles.toolbarStat}
-              data-fps-status={
-                rendererInfo.stats.fps >= 55 ? "good" :
-                rendererInfo.stats.fps >= 40 ? "ok" : "low"
-              }
-              title="Renderer FPS"
-            >
-              {Math.round(rendererInfo.stats.fps)}<span className={styles.toolbarStatUnit}>fps</span>
-            </span>
-            <span className={styles.toolbarStatDivider} />
-            <span
-              className={styles.toolbarStat}
-              data-ft-status={
-                rendererInfo.stats.frameTimeMs < 20 ? "good" :
-                rendererInfo.stats.frameTimeMs < 33 ? "ok" : "low"
-              }
-              title="Frame time"
-            >
-              {rendererInfo.stats.frameTimeMs.toFixed(1)}<span className={styles.toolbarStatUnit}>ms</span>
-            </span>
-          </div>
+          <ToolbarRendererStats
+            fps={rendererInfo.stats.fps}
+            frameTimeMs={rendererInfo.stats.frameTimeMs}
+          />
         )}
 
         {/* Tap BPM */}
         <AudioIndicator />
-        <div className={styles.toolbarTapGroup}>
-          <button
-            type="button"
-            className={`${styles.toolbarTapButton} ${tapTempo.isPulsing ? styles.toolbarTapPulse : ""}`}
-            onClick={tapTempo.tap}
-            aria-label="Tap tempo"
-          >
-            Tap
-          </button>
-          <div className={styles.toolbarBpmDisplay}>
-            {tapTempo.bpm !== null ? (
-              <>
-                <span className={styles.toolbarBpmValue}>{tapTempo.bpm}</span>
-                <span className={styles.toolbarBpmUnit}>BPM</span>
-              </>
-            ) : (
-              <span className={styles.toolbarBpmHint}>--</span>
-            )}
-          </div>
-          {tapTempo.bpm !== null && (
-            <button
-              type="button"
-              className={styles.toolbarTapReset}
-              onClick={tapTempo.reset}
-              aria-label="Clear tap tempo"
-            >
-              ×
-            </button>
-          )}
-          {isCapturingShortcut ? (
-            <button
-              type="button"
-              className={styles.toolbarShortcutCapturing}
-              onClick={() => setIsCapturingShortcut(false)}
-              aria-label="Cancel shortcut capture"
-            >
-              Press key…
-            </button>
-          ) : shortcutIsDefault ? (
-            <button
-              type="button"
-              className={styles.toolbarShortcutBadge}
-              onClick={() => setIsCapturingShortcut(true)}
-              title={`Tap shortcut: ${shortcutLabel} — click to change`}
-              aria-label={`Tap shortcut is ${shortcutLabel}, click to change`}
-            >
-              {shortcutLabel}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className={`${styles.toolbarShortcutBadge} ${styles.toolbarShortcutCustom}`}
-              onClick={() => resetTapShortcut()}
-              title={`Custom shortcut: ${shortcutLabel} — click to reset to Space`}
-              aria-label={`Reset tap shortcut to Space`}
-            >
-              Reset to Space
-            </button>
-          )}
-        </div>
+        <ToolbarTapBpm />
       </div>
       <LayoutGroup>
         <main className={styles.main}>
