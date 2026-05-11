@@ -103,26 +103,6 @@ Make it easy to drive Slew's BPM and beat clock from an external source (DAW, DJ
 
 ---
 
-### 🟡 LFO Naming and Modulation Panel UX `feature`
-
-Make LFOs easier to identify and manage when multiple are active mid-performance.
-
-**Context**: All LFOs are created with the default name "LFO" (`modulation.rs` default impl). With several active at once and targets spread across different sketches, it is impossible to tell them apart in the panel list or in the Target / AudioMod source dropdowns.
-
-**Phase 1 — Quick wins (low effort)**:
-
-- [x] Auto-generate a meaningful default name on LFO creation: e.g. "Sine 0.5 Hz" or, when created via the Quick-wire button on a parameter, "[SketchName] / [ParamName]". Update the Rust `Default` impl and the `LfoForm` initial value in the frontend.
-- [x] Show the LFO waveform shape icon and current rate next to the name in all dropdowns and list rows.
-- [x] Add a subtle per-LFO activity animation in the panel list (small oscillating bar or phase dot) so the operator can confirm an LFO is running at a glance.
-
-**Phase 2 — Deeper overhaul (design decision required before starting)**:
-
-- [ ] Full redesign of the ModulationPanel: group modulation targets visually under their source LFO; show which parameters each LFO controls inline.
-- [ ] Allow reordering and pinning LFOs.
-- [ ] Add a "Modulation overview" mini-map showing all active LFO-to-parameter connections at once.
-
----
-
 ### 🟡 Parameter List UX — Scroll-Into-View, Density and Row Hiding `feature`
 
 Improve usability of long parameter lists, especially during live performance in low-light.
@@ -274,6 +254,20 @@ Create troubleshooting guide for video output setup.
 ---
 
 ## Low Priority / Future
+
+---
+
+### 🟢 Modulation Overview Mini-Map `feature`
+
+A node-graph / web view showing all active LFO-to-parameter connections at once.
+
+**Context**: Split from the LFO Naming and Modulation Panel UX item (Phase 2). During a live performance with several LFOs active, it's hard to quickly understand the full modulation state at a glance. A visual connection map would let the operator see the whole picture in one screen.
+
+**Proposed UI**: Node-graph style — LFO nodes on the left connected by lines to parameter nodes on the right. Color coded by LFO shape. Line weight indicates depth. Clicking a node focuses the relevant LFO in the panel.
+
+**Design decisions needed before starting**:
+- Where does the view live: a collapsible section in ModulationPanel, or a separate overlay/drawer?
+- Tech: SVG hand-rolled, or a lightweight graph library (e.g. `@xyflow/react`)?
 
 ---
 

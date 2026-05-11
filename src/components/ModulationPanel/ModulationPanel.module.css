@@ -306,11 +306,19 @@
    ========================================================================== */
 
 .noItems {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
   text-align: center;
-  padding: 0.75rem 0;
+  padding: 0.5rem 0.25rem;
   margin: 0;
+}
+
+.sectionHint {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  margin: 0 0 0.4rem;
+  line-height: 1.4;
+  padding: 0 0.1rem;
 }
 
 .sectionFooter {
@@ -369,18 +377,34 @@
   gap: 0.35rem;
 }
 
+.lfoCard {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.3rem;
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.lfoCard.lfoDisabled {
+  opacity: 0.5;
+}
+
+.lfoCard.lfoDragging {
+  opacity: 0.7;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
+  z-index: 10;
+  position: relative;
+}
+
+.lfoCard.lfoPinned {
+  border-color: rgb(99 102 241 / 0.5);
+}
+
 .lfoRow {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   padding: 0.35rem 0.5rem;
-  background: var(--bg-hover);
-  border: 1px solid var(--border-subtle);
-  border-radius: 0.25rem;
-}
-
-.lfoRow.lfoDisabled {
-  opacity: 0.5;
 }
 
 .lfoToggle {
@@ -567,6 +591,7 @@
 }
 
 .targetArrow {
+  font-size: 0.6rem;
   color: var(--text-muted);
   flex-shrink: 0;
 }
@@ -582,6 +607,7 @@
 }
 
 .targetParam {
+  font-size: 0.65rem;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -991,3 +1017,146 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ==========================================================================
+   LFO Card — drag handle, pin, inline targets
+   ========================================================================== */
+
+.lfoDragHandle {
+  width: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: grab;
+  flex-shrink: 0;
+  opacity: 0.5;
+  user-select: none;
+  touch-action: none;
+}
+
+.lfoDragHandle:hover {
+  opacity: 1;
+}
+
+.lfoDragHandle:active {
+  cursor: grabbing;
+}
+
+.lfoPinButton {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 0.65rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0.3;
+  transition: opacity 0.15s ease;
+}
+
+.lfoPinButton:hover {
+  opacity: 0.8;
+}
+
+.lfoPinButton.pinned {
+  opacity: 1;
+}
+
+.lfoTargetsList {
+  border-top: 1px solid var(--border-subtle);
+  padding: 0.2rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.inlineTargetRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0;
+}
+
+.inlineTargetRow.targetDisabled {
+  opacity: 0.5;
+}
+
+.inlineTargetInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background: none;
+  border: none;
+  padding: 0.1rem 0.25rem;
+  border-radius: 0.2rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.inlineTargetInfo:hover {
+  background: var(--bg-active);
+}
+
+.addTargetButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.5rem;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.addTargetButton:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   Inline confirm (replaces window.confirm)
+   ========================================================================== */
+
+.confirmClear {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.confirmYes {
+  background: none;
+  border: none;
+  color: var(--accent-danger, #ef4444);
+  font-size: 0.62rem;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 600;
+}
+
+.confirmNo {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.confirmYes:hover { opacity: 0.75; }
+.confirmNo:hover { opacity: 0.75; }

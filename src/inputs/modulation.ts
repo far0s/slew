@@ -60,6 +60,10 @@ export interface LfoSource {
   sync_to_bpm: boolean;
   /** BPM division when synced (1 = 1 beat, 2 = 2 beats, 0.5 = half beat, etc.) */
   bpm_division: number;
+  /** Display order index for reordering (lower = higher in list) */
+  order: number;
+  /** Whether this LFO is pinned (stays at top, survives Clear All) */
+  pinned: boolean;
 }
 
 /** Default values for a new LFO */
@@ -73,6 +77,8 @@ export const DEFAULT_LFO: Omit<LfoSource, "id"> = {
   enabled: true,
   sync_to_bpm: false,
   bpm_division: 1.0,
+  order: 0,
+  pinned: false,
 };
 
 /** A modulation target that routes an LFO to a parameter */

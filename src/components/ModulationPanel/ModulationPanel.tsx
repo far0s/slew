@@ -16,7 +16,6 @@ import {
   useAudioModulations,
   useLfoValues,
   createLfo,
-  getTargetsForLfo,
   generateLfoName,
   LFO_SHAPES,
   LFO_SHAPE_LABELS,
@@ -183,64 +182,155 @@ function WaveformDisplay({
 interface LfoRowProps {
   lfo: LfoSource;
   value: number;
-  targetCount: number;
+  targets: ModulationTarget[];
+  slots: Slot[];
   onEdit: () => void;
   onToggle: () => void;
   onDelete: () => void;
+  onPin: () => void;
+  onAddTarget: (lfoId: string) => void;
+  onEditTarget: (target: ModulationTarget) => void;
+  onToggleTarget: (target: ModulationTarget) => void;
+  onDeleteTarget: (id: string) => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+  isDragging?: boolean;
 }
 
 function LfoRow({
   lfo,
   value,
-  targetCount,
+  targets,
   onEdit,
   onToggle,
   onDelete,
+  onPin,
+  onAddTarget,
+  onEditTarget,
+  onToggleTarget,
+  onDeleteTarget,
+  dragHandleProps,
+  isDragging,
 }: LfoRowProps) {
   const color = LFO_SHAPE_COLORS[lfo.shape];
+  const lfoTargets = targets.filter((t) => t.source_id === lfo.id);
 
   return (
     <div
-      className={`${styles.lfoRow} ${!lfo.enabled ? styles.lfoDisabled : ""}`}
+      className={`${styles.lfoCard} ${!lfo.enabled ? styles.lfoDisabled : ""} ${isDragging ? styles.lfoDragging : ""} ${lfo.pinned ? styles.lfoPinned : ""}`}
     >
+      {/* LFO header row */}
+      <div className={styles.lfoRow}>
+        <div
+          className={styles.lfoDragHandle}
+          aria-label="Drag to reorder"
+          {...dragHandleProps}
+        >
+          ⠿
+        </div>
+
+        <button
+          type="button"
+          className={`${styles.lfoToggle} ${lfo.enabled ? styles.enabled : ""}`}
+          onClick={onToggle}
+          aria-label={lfo.enabled ? "Disable LFO" : "Enable LFO"}
+        >
+          {lfo.enabled ? "●" : "○"}
+        </button>
+
+        <WaveformDisplay
+          shape={lfo.shape}
+          value={value}
+          color={color}
+          size={28}
+          rate={lfo.rate}
+        />
+
+        <button type="button" className={styles.lfoInfo} onClick={onEdit}>
+          <span className={styles.lfoName}>{lfo.name}</span>
+          <span className={styles.lfoRate}>
+            {lfo.sync_to_bpm
+              ? lfo.bpm_division >= 4
+                ? `${lfo.bpm_division / 4} bar${lfo.bpm_division >= 8 ? "s" : ""}`
+                : `${lfo.bpm_division} beat${lfo.bpm_division !== 1 ? "s" : ""}`
+              : formatPeriod(lfo.rate)}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          className={`${styles.lfoPinButton} ${lfo.pinned ? styles.pinned : ""}`}
+          onClick={onPin}
+          aria-label={lfo.pinned ? "Unpin LFO" : "Pin LFO"}
+          title={lfo.pinned ? "Pinned — survives Clear All" : "Pin LFO"}
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          className={styles.lfoDelete}
+          onClick={onDelete}
+          aria-label="Delete LFO"
+        >
+          ×
+        </button>
+      </div>
+
+      {/* Inline targets */}
+      {lfoTargets.length > 0 && (
+        <div className={styles.lfoTargetsList}>
+          {lfoTargets.map((target) => {
+            const paramLabel = getParameterDropdownLabel(
+              target.parameter_id as ParameterId,
+            );
+            return (
+              <div
+                key={target.id}
+                className={`${styles.inlineTargetRow} ${!target.enabled ? styles.targetDisabled : ""}`}
+              >
+                <button
+                  type="button"
+                  className={`${styles.targetToggle} ${target.enabled ? styles.enabled : ""}`}
+                  onClick={() => onToggleTarget(target)}
+                  aria-label={target.enabled ? "Disable" : "Enable"}
+                >
+                  {target.enabled ? "●" : "○"}
+                </button>
+                <button
+                  type="button"
+                  className={styles.inlineTargetInfo}
+                  onClick={() => onEditTarget(target)}
+                >
+                  <span className={styles.targetArrow}>→</span>
+                  <span className={styles.targetParam}>{paramLabel}</span>
+                  <span className={styles.targetDepth}>
+                    {target.bipolar ? "±" : ""}
+                    {(target.depth * 100).toFixed(0)}%
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={styles.targetDelete}
+                  onClick={() => onDeleteTarget(target.id)}
+                  aria-label="Remove target"
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add target button */}
       <button
         type="button"
-        className={`${styles.lfoToggle} ${lfo.enabled ? styles.enabled : ""}`}
-        onClick={onToggle}
-        aria-label={lfo.enabled ? "Disable LFO" : "Enable LFO"}
+        className={styles.addTargetButton}
+        onClick={() => onAddTarget(lfo.id)}
       >
-        {lfo.enabled ? "●" : "○"}
-      </button>
-
-      <WaveformDisplay
-        shape={lfo.shape}
-        value={value}
-        color={color}
-        size={28}
-        rate={lfo.rate}
-      />
-
-      <button type="button" className={styles.lfoInfo} onClick={onEdit}>
-        <span className={styles.lfoName}>{lfo.name}</span>
-        <span className={styles.lfoRate}>
-          {lfo.sync_to_bpm
-            ? lfo.bpm_division >= 4
-              ? `${lfo.bpm_division / 4} bar${lfo.bpm_division >= 8 ? "s" : ""}`
-              : `${lfo.bpm_division} beat${lfo.bpm_division !== 1 ? "s" : ""}`
-            : formatPeriod(lfo.rate)}
-        </span>
-        {targetCount > 0 && (
-          <span className={styles.lfoTargetCount}>{targetCount} targets</span>
-        )}
-      </button>
-
-      <button
-        type="button"
-        className={styles.lfoDelete}
-        onClick={onDelete}
-        aria-label="Delete LFO"
-      >
-        ×
+        + Add Target
       </button>
     </div>
   );
@@ -328,6 +418,8 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
       enabled: editingLfo?.enabled ?? true,
       sync_to_bpm: syncToBpm,
       bpm_division: bpmDivision,
+      order: editingLfo?.order ?? 0,
+      pinned: editingLfo?.pinned ?? false,
     };
     onSave(lfo);
   };
@@ -495,23 +587,59 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
 }
 
 // ============================================================================
-// LFOs Section
+// LFOs Section (with inline targets, drag reorder, pin)
 // ============================================================================
 
-function LfosSection() {
+interface LfosSectionProps {
+  slots: Slot[];
+}
+
+function LfosSection({ slots }: LfosSectionProps) {
   const { lfos, add, update, remove } = useLfos();
-  const { targets } = useModulationTargets();
+  const { targets, add: addTarget, remove: removeTarget } = useModulationTargets();
   const { values } = useLfoValues();
 
   const [editingLfo, setEditingLfo] = useState<LfoSource | null>(null);
   const [showForm, setShowForm] = useState(false);
+  // Target form state: null = closed, string = lfoId to pre-select, ModulationTarget = editing
+  const [targetFormState, setTargetFormState] = useState<null | string | ModulationTarget>(null);
 
-  const handleSave = async (lfo: LfoSource) => {
+  // Local drag-reorder state (display order of lfo ids)
+  const [dragOrder, setDragOrder] = useState<string[]>([]);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const dragRef = useRef<{ id: string; startY: number; currentY: number } | null>(null);
+  const itemHeights = useRef<Map<string, number>>(new Map());
+  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Keep dragOrder in sync with lfos (preserve existing order, add new ones at end)
+  useEffect(() => {
+    setDragOrder((prev) => {
+      const lfoIds = lfos.map((l) => l.id);
+      // Remove ids that no longer exist
+      const filtered = prev.filter((id) => lfoIds.includes(id));
+      // Add new ids at the end
+      const added = lfoIds.filter((id) => !filtered.includes(id));
+      return [...filtered, ...added];
+    });
+  }, [lfos]);
+
+  // Sort: pinned first (by order), then unpinned (by order)
+  const sortedLfos = useMemo(() => {
+    const ordered = dragOrder
+      .map((id) => lfos.find((l) => l.id === id))
+      .filter((l): l is LfoSource => l !== undefined);
+    const pinned = ordered.filter((l) => l.pinned);
+    const unpinned = ordered.filter((l) => !l.pinned);
+    return [...pinned, ...unpinned];
+  }, [dragOrder, lfos]);
+
+  const handleSaveLfo = async (lfo: LfoSource) => {
     try {
       if (lfo.id) {
         await update(lfo);
       } else {
-        await add(createLfo(lfo));
+        const newLfo = createLfo({ ...lfo, order: lfos.length });
+        await add(newLfo);
       }
       setEditingLfo(null);
       setShowForm(false);
@@ -536,11 +664,107 @@ function LfosSection() {
     }
   };
 
+  const handlePin = async (lfo: LfoSource) => {
+    try {
+      await update({ ...lfo, pinned: !lfo.pinned });
+    } catch {
+      // UI state already reflects failure
+    }
+  };
+
+  const handleSaveTarget = async (target: ModulationTarget) => {
+    try {
+      await addTarget(target);
+      setTargetFormState(null);
+    } catch {
+      // UI state already reflects failure
+    }
+  };
+
+  const handleToggleTarget = async (target: ModulationTarget) => {
+    try {
+      await addTarget({ ...target, enabled: !target.enabled });
+    } catch {
+      // UI state already reflects failure
+    }
+  };
+
+  const handleDeleteTarget = async (id: string) => {
+    try {
+      await removeTarget(id);
+    } catch {
+      // UI state already reflects failure
+    }
+  };
+
+  // Persist order to backend after drag ends
+  const persistOrder = async (orderedIds: string[]) => {
+    const updates = orderedIds.map((id, index) => {
+      const lfo = lfos.find((l) => l.id === id);
+      return lfo ? { ...lfo, order: index } : null;
+    }).filter((l): l is LfoSource => l !== null);
+    for (const lfo of updates) {
+      try { await update(lfo); } catch { /* ignore */ }
+    }
+  };
+
+  // Drag handlers
+  const handleDragStart = (id: string, e: React.PointerEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = { id, startY: e.clientY, currentY: e.clientY };
+    setDraggingId(id);
+  };
+
+  const handleDragMove = (e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    dragRef.current.currentY = e.clientY;
+
+    const dy = e.clientY - dragRef.current.startY;
+    const currentOrder = dragOrder.filter((id) => {
+      const lfo = lfos.find((l) => l.id === id);
+      return lfo !== undefined;
+    });
+    const fromIdx = currentOrder.indexOf(dragRef.current.id);
+    if (fromIdx === -1) return;
+
+    // Estimate rows by accumulated heights
+    let accumulated = 0;
+    let toIdx = fromIdx;
+    for (let i = 0; i < currentOrder.length; i++) {
+      const h = itemHeights.current.get(currentOrder[i]) ?? 52;
+      if (i === fromIdx) continue;
+      if (i < fromIdx) {
+        if (dy < accumulated - h / 2) { toIdx = i; break; }
+        accumulated -= h;
+      } else {
+        accumulated += h;
+        if (dy > accumulated - h / 2) toIdx = i;
+      }
+    }
+
+    if (toIdx !== fromIdx) {
+      setDragOrder((prev) => {
+        const next = prev.filter((id) => id !== dragRef.current!.id);
+        next.splice(toIdx, 0, dragRef.current!.id);
+        return next;
+      });
+      dragRef.current.startY = e.clientY;
+    }
+  };
+
+  const handleDragEnd = () => {
+    if (!dragRef.current) return;
+    const finalOrder = [...dragOrder];
+    dragRef.current = null;
+    setDraggingId(null);
+    void persistOrder(finalOrder);
+  };
+
   if (showForm || editingLfo) {
     return (
       <LfoForm
         editingLfo={editingLfo}
-        onSave={handleSave}
+        onSave={handleSaveLfo}
         onCancel={() => {
           setEditingLfo(null);
           setShowForm(false);
@@ -549,83 +773,66 @@ function LfosSection() {
     );
   }
 
+  if (targetFormState !== null) {
+    const editingTarget = typeof targetFormState === "object" ? targetFormState : null;
+    const preselectedLfoId = typeof targetFormState === "string" ? targetFormState : undefined;
+    return (
+      <TargetForm
+        lfos={sortedLfos}
+        slots={slots}
+        editingTarget={editingTarget}
+        preselectedLfoId={preselectedLfoId}
+        onSave={handleSaveTarget}
+        onCancel={() => setTargetFormState(null)}
+      />
+    );
+  }
+
   return (
-    <div className={styles.lfosSection}>
+    <div
+      className={styles.lfosSection}
+      onPointerMove={handleDragMove}
+      onPointerUp={handleDragEnd}
+      onPointerCancel={handleDragEnd}
+    >
       {lfos.length === 0 ? (
         <p className={styles.noItems}>No LFOs. Click "+ Add" to create one.</p>
       ) : (
         <div className={styles.lfosList}>
-          {lfos.map((lfo) => (
-            <LfoRow
+          {sortedLfos.map((lfo) => (
+            <div
               key={lfo.id}
-              lfo={lfo}
-              value={values[lfo.id] ?? 0}
-              targetCount={getTargetsForLfo(targets, lfo.id).length}
-              onEdit={() => setEditingLfo(lfo)}
-              onToggle={() => handleToggle(lfo)}
-              onDelete={() => handleDelete(lfo.id)}
-            />
+              ref={(el) => {
+                if (el) {
+                  itemRefs.current.set(lfo.id, el);
+                  itemHeights.current.set(lfo.id, el.offsetHeight);
+                } else {
+                  itemRefs.current.delete(lfo.id);
+                }
+              }}
+            >
+              <LfoRow
+                lfo={lfo}
+                value={values[lfo.id] ?? 0}
+                targets={targets}
+                slots={slots}
+                onEdit={() => setEditingLfo(lfo)}
+                onToggle={() => handleToggle(lfo)}
+                onDelete={() => handleDelete(lfo.id)}
+                onPin={() => handlePin(lfo)}
+                onAddTarget={(lfoId) => setTargetFormState(lfoId)}
+                onEditTarget={(target) => setTargetFormState(target)}
+                onToggleTarget={handleToggleTarget}
+                onDeleteTarget={handleDeleteTarget}
+                isDragging={draggingId === lfo.id}
+                dragHandleProps={{
+                  onPointerDown: (e) => handleDragStart(lfo.id, e),
+                }}
+              />
+            </div>
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-// ============================================================================
-// Modulation Target Row
-// ============================================================================
-
-interface TargetRowProps {
-  target: ModulationTarget;
-  lfoName: string;
-  onEdit: () => void;
-  onToggle: () => void;
-  onDelete: () => void;
-}
-
-function TargetRow({
-  target,
-  lfoName,
-  onEdit,
-  onToggle,
-  onDelete,
-}: TargetRowProps) {
-  const paramLabel = getParameterDropdownLabel(
-    target.parameter_id as ParameterId,
-  );
-
-  return (
-    <div
-      className={`${styles.targetRow} ${!target.enabled ? styles.targetDisabled : ""}`}
-    >
-      <button
-        type="button"
-        className={`${styles.targetToggle} ${target.enabled ? styles.enabled : ""}`}
-        onClick={onToggle}
-        aria-label={target.enabled ? "Disable target" : "Enable target"}
-      >
-        {target.enabled ? "●" : "○"}
-      </button>
-
-      <button type="button" className={styles.targetInfo} onClick={onEdit}>
-        <span className={styles.targetLfo}>{lfoName}</span>
-        <span className={styles.targetArrow}>→</span>
-        <span className={styles.targetParam}>{paramLabel}</span>
-        <span className={styles.targetDepth}>
-          {target.bipolar ? "±" : ""}
-          {(target.depth * 100).toFixed(0)}%
-        </span>
-      </button>
-
-      <button
-        type="button"
-        className={styles.targetDelete}
-        onClick={onDelete}
-        aria-label="Delete target"
-      >
-        ×
-      </button>
     </div>
   );
 }
@@ -638,6 +845,7 @@ interface TargetFormProps {
   lfos: LfoSource[];
   slots: Slot[];
   editingTarget: ModulationTarget | null;
+  preselectedLfoId?: string;
   onSave: (target: ModulationTarget) => void;
   onCancel: () => void;
 }
@@ -646,13 +854,14 @@ function TargetForm({
   lfos,
   slots,
   editingTarget,
+  preselectedLfoId,
   onSave,
   onCancel,
 }: TargetFormProps) {
   const isEditing = editingTarget !== null;
 
   const [sourceId, setSourceId] = useState(
-    editingTarget?.source_id ?? lfos[0]?.id ?? "",
+    editingTarget?.source_id ?? preselectedLfoId ?? lfos[0]?.id ?? "",
   );
   const [parameterId, setParameterId] = useState<string>(
     editingTarget?.parameter_id ?? "",
@@ -772,99 +981,6 @@ function TargetForm({
           {isEditing ? "Save" : "Add Target"}
         </button>
       </div>
-    </div>
-  );
-}
-
-// ============================================================================
-// Targets Section
-// ============================================================================
-
-interface TargetsSectionProps {
-  slots: Slot[];
-}
-
-function TargetsSection({ slots }: TargetsSectionProps) {
-  const { lfos } = useLfos();
-  const { targets, add, remove } = useModulationTargets();
-  const [showForm, setShowForm] = useState(false);
-  const [editingTarget, setEditingTarget] = useState<ModulationTarget | null>(
-    null,
-  );
-
-  const handleSave = async (target: ModulationTarget) => {
-    try {
-      await add(target);
-      setShowForm(false);
-      setEditingTarget(null);
-    } catch {
-      // UI state already reflects failure
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await remove(id);
-    } catch {
-      // UI state already reflects failure
-    }
-  };
-
-  const handleToggle = async (target: ModulationTarget) => {
-    try {
-      await add({ ...target, enabled: !target.enabled });
-    } catch {
-      // UI state already reflects failure
-    }
-  };
-
-  const getLfoName = (id: string): string => {
-    return lfos.find((lfo) => lfo.id === id)?.name ?? "Unknown LFO";
-  };
-
-  if (lfos.length === 0) {
-    return (
-      <p className={styles.noItems}>
-        Create an LFO first before adding modulation targets.
-      </p>
-    );
-  }
-
-  if (showForm || editingTarget) {
-    return (
-      <TargetForm
-        lfos={lfos}
-        slots={slots}
-        editingTarget={editingTarget}
-        onSave={handleSave}
-        onCancel={() => {
-          setShowForm(false);
-          setEditingTarget(null);
-        }}
-      />
-    );
-  }
-
-  return (
-    <div className={styles.targetsSection}>
-      {targets.length === 0 ? (
-        <p className={styles.noItems}>
-          No targets. Click "+ Add" to route an LFO to a parameter.
-        </p>
-      ) : (
-        <div className={styles.targetsList}>
-          {targets.map((target) => (
-            <TargetRow
-              key={target.id}
-              target={target}
-              lfoName={getLfoName(target.source_id)}
-              onEdit={() => setEditingTarget(target)}
-              onToggle={() => handleToggle(target)}
-              onDelete={() => handleDelete(target.id)}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -1202,18 +1318,13 @@ export function ModulationPanel({
   slots = [],
 }: ModulationPanelProps) {
   const [lfosOpen, setLfosOpen] = useState(true);
-  const [targetsOpen, setTargetsOpen] = useState(true);
   const [audioModsOpen, setAudioModsOpen] = useState(true);
   const [showAddLfo, setShowAddLfo] = useState(false);
-  const [showAddTarget, setShowAddTarget] = useState(false);
   const [showAddAudioMod, setShowAddAudioMod] = useState(false);
+  const [confirmClearLfos, setConfirmClearLfos] = useState(false);
+  const [confirmClearAudioMods, setConfirmClearAudioMods] = useState(false);
 
   const { lfos, add: addLfo, clear: clearLfos } = useLfos();
-  const {
-    targets,
-    add: addTarget,
-    clear: clearTargets,
-  } = useModulationTargets();
   const {
     audioModulations,
     add: addAudioMod,
@@ -1229,15 +1340,6 @@ export function ModulationPanel({
     }
   };
 
-  const handleAddTarget = async (target: ModulationTarget) => {
-    try {
-      await addTarget(target);
-      setShowAddTarget(false);
-    } catch {
-      // UI state already reflects failure
-    }
-  };
-
   const handleAddAudioMod = async (mod: AudioModulation) => {
     try {
       await addAudioMod(mod);
@@ -1247,23 +1349,13 @@ export function ModulationPanel({
     }
   };
 
-  const totalActive =
-    lfos.filter((l) => l.enabled).length +
-    targets.filter((t) => t.enabled).length +
-    audioModulations.filter((m) => m.enabled).length;
-
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
       <div className={styles.header}>
         <h3 className={styles.title}>Modulation</h3>
-        <span
-          className={`${styles.statusBadge} ${totalActive > 0 ? styles.active : ""}`}
-        >
-          {totalActive > 0 ? `${totalActive} active` : "Inactive"}
-        </span>
       </div>
 
-      {/* LFOs Section */}
+      {/* LFOs + Targets Section */}
       <Collapsible.Root open={lfosOpen} onOpenChange={setLfosOpen}>
         <div className={styles.sectionHeaderWithAction}>
           <Collapsible.Trigger asChild>
@@ -1287,24 +1379,35 @@ export function ModulationPanel({
           >
             + Add
           </button>
-          {lfos.length > 0 && (
+          {lfos.length > 0 && !confirmClearLfos && (
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (
-                  window.confirm(
-                    "Clear all LFOs? This will also remove all modulation targets.",
-                  )
-                ) {
-                  void clearLfos();
-                }
-              }}
+              onClick={(e) => { e.stopPropagation(); setConfirmClearLfos(true); }}
               className={styles.clearButton}
               aria-label="Clear all LFOs"
             >
               Clear All
             </button>
+          )}
+          {confirmClearLfos && (
+            <span className={styles.confirmClear}>
+              Sure?{ }
+              <button
+                type="button"
+                className={styles.confirmYes}
+                onClick={() => { void clearLfos(); setConfirmClearLfos(false); }}
+              >
+                Yes
+              </button>
+              { }/{ }
+              <button
+                type="button"
+                className={styles.confirmNo}
+                onClick={() => setConfirmClearLfos(false)}
+              >
+                No
+              </button>
+            </span>
           )}
         </div>
         <Collapsible.Content className={styles.sectionContent}>
@@ -1315,63 +1418,7 @@ export function ModulationPanel({
               onCancel={() => setShowAddLfo(false)}
             />
           ) : (
-            <LfosSection />
-          )}
-        </Collapsible.Content>
-      </Collapsible.Root>
-
-      {/* Targets Section */}
-      <Collapsible.Root open={targetsOpen} onOpenChange={setTargetsOpen}>
-        <div className={styles.sectionHeaderWithAction}>
-          <Collapsible.Trigger asChild>
-            <button type="button" className={styles.sectionHeader}>
-              {targetsOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-              <span>Targets</span>
-              {targets.length > 0 && (
-                <span className={styles.sectionBadge}>{targets.length}</span>
-              )}
-            </button>
-          </Collapsible.Trigger>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowAddTarget(true);
-              setTargetsOpen(true);
-            }}
-            className={styles.headerAddButton}
-            disabled={lfos.length === 0}
-            aria-label="Add modulation target"
-          >
-            + Add
-          </button>
-          {targets.length > 0 && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (window.confirm("Clear all modulation targets?")) {
-                  void clearTargets();
-                }
-              }}
-              className={styles.clearButton}
-              aria-label="Clear all targets"
-            >
-              Clear All
-            </button>
-          )}
-        </div>
-        <Collapsible.Content className={styles.sectionContent}>
-          {showAddTarget && lfos.length > 0 ? (
-            <TargetForm
-              lfos={lfos}
-              slots={slots}
-              editingTarget={null}
-              onSave={handleAddTarget}
-              onCancel={() => setShowAddTarget(false)}
-            />
-          ) : (
-            <TargetsSection slots={slots} />
+            <LfosSection slots={slots} />
           )}
         </Collapsible.Content>
       </Collapsible.Root>
@@ -1403,23 +1450,39 @@ export function ModulationPanel({
           >
             + Add
           </button>
-          {audioModulations.length > 0 && (
+          {audioModulations.length > 0 && !confirmClearAudioMods && (
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (window.confirm("Clear all audio modulations?")) {
-                  void clearAudioMods();
-                }
-              }}
+              onClick={(e) => { e.stopPropagation(); setConfirmClearAudioMods(true); }}
               className={styles.clearButton}
               aria-label="Clear all audio modulations"
             >
               Clear All
             </button>
           )}
+          {confirmClearAudioMods && (
+            <span className={styles.confirmClear}>
+              Sure?{ }
+              <button
+                type="button"
+                className={styles.confirmYes}
+                onClick={() => { void clearAudioMods(); setConfirmClearAudioMods(false); }}
+              >
+                Yes
+              </button>
+              { }/{ }
+              <button
+                type="button"
+                className={styles.confirmNo}
+                onClick={() => setConfirmClearAudioMods(false)}
+              >
+                No
+              </button>
+            </span>
+          )}
         </div>
         <Collapsible.Content className={styles.sectionContent}>
+          <p className={styles.sectionHint}>Route audio signals (level, bass, beat…) to modulate an LFO’s rate or depth in real time.</p>
           {showAddAudioMod && lfos.length > 0 ? (
             <AudioModForm
               lfos={lfos}

@@ -63,6 +63,10 @@ pub struct LfoSource {
     pub sync_to_bpm: bool,
     /// BPM division when synced (1 = 1 beat, 2 = 2 beats, 0.5 = half beat, etc.)
     pub bpm_division: f64,
+    /// Display order index for reordering in the UI (lower = higher in list)
+    pub order: u32,
+    /// Whether this LFO is pinned (stays at top and survives Clear All)
+    pub pinned: bool,
     /// Current phase accumulator (internal state, 0.0 to 1.0)
     #[serde(skip)]
     pub current_phase: f64,
@@ -93,6 +97,8 @@ impl Default for LfoSource {
             enabled: true,
             sync_to_bpm: false,
             bpm_division: 1.0,
+            order: 0,
+            pinned: false,
             current_phase: 0.0,
             current_value: 0.0,
             last_random: 0.0,
@@ -679,8 +685,10 @@ pub fn remove_lfo(id: &str) -> bool {
 /// Clear all LFOs
 pub fn clear_lfos() {
     let app_handle = with_modulation_engine(|state| {
-        state.lfos.clear();
-        state.targets.clear();
+        state.lfos.retain(|_, lfo| lfo.pinned);
+        let remaining_ids: std::collections::HashSet<String> =
+            state.lfos.keys().cloned().collect();
+        state.targets.retain(|t| remaining_ids.contains(&t.source_id));
         state.audio_modulations.clear();
         state.base_values.clear();
         state.app_handle.clone()
