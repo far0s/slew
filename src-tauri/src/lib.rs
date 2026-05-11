@@ -943,6 +943,7 @@ pub fn run() {
             audio::commands::set_audio_mapping_enabled,
             audio::commands::set_audio_auto_reconnect,
             audio::commands::get_audio_auto_reconnect,
+            audio::commands::set_beat_sensitivity_command,
             // HID
             hid::commands::list_hid_devices,
             hid::commands::list_supported_hid_devices,

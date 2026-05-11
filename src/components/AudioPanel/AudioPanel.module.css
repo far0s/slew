@@ -946,3 +946,27 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Beat detection sensitivity slider */
+.sensitivityRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.sensitivityLabel {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  width: 58px;
+}
+
+.sensitivityValue {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  width: 24px;
+  text-align: right;
+  flex-shrink: 0;
+}

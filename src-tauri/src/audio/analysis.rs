@@ -144,7 +144,7 @@ pub fn analyze_audio(engine: &Arc<Mutex<AudioEngineState>>) -> Option<AudioLevel
     let beat = {
         let state = engine.lock().unwrap();
         let mut detector = state.beat_detector.lock().unwrap();
-        detector.update(bands.bass, FFT_SIZE)
+        detector.update(bands.bass)
     };
 
     let timestamp = std::time::SystemTime::now()

@@ -5,7 +5,7 @@
  * real-time level visualization, and audio → parameter mappings.
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import { motion } from "motion/react";
@@ -23,6 +23,7 @@ import {
   type AudioSource,
   type AudioMapping,
   type AudioMappingMode,
+  setBeatSensitivity,
 } from "../../inputs/audio";
 import {
   SpectrumAnalyzer,
@@ -116,6 +117,17 @@ function BeatIndicator({ beat, bpm }: { beat: boolean; bpm: number | null }) {
 function LevelsDisplay() {
   const { rms, peak, bands, beat, bpm, levelsRef } = useAudioLevels();
   const [vizMode, setVizMode] = useState<VisualizerMode>("spectrum");
+  // 0 = most sensitive, 1 = least sensitive; default 0.4 ≈ threshold 1.5×
+  const [sensitivity, setSensitivity] = useState(0.4);
+
+  const handleSensitivityChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = parseFloat(e.target.value);
+      setSensitivity(val);
+      void setBeatSensitivity(val);
+    },
+    [],
+  );
 
   return (
     <div className={styles.levelsDisplay}>
@@ -161,6 +173,28 @@ function LevelsDisplay() {
       <div className={styles.levelsSection}>
         <h4 className={styles.levelsSectionTitle}>Beat Detection</h4>
         <BeatIndicator beat={beat} bpm={bpm} />
+        <div className={styles.sensitivityRow}>
+          <label className={styles.sensitivityLabel} htmlFor="beat-sensitivity">
+            Sensitivity
+          </label>
+          <input
+            id="beat-sensitivity"
+            type="range"
+            className={styles.formRange}
+            min={0}
+            max={1}
+            step={0.01}
+            value={sensitivity}
+            onChange={handleSensitivityChange}
+          />
+          <span className={styles.sensitivityValue}>
+            {sensitivity < 0.33
+              ? "High"
+              : sensitivity < 0.67
+                ? "Med"
+                : "Low"}
+          </span>
+        </div>
       </div>
     </div>
   );

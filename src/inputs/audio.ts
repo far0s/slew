@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { listen, emit, type UnlistenFn } from "@tauri-apps/api/event";
 import { useEventListener, useFetchOnMount } from "./shared";
 import { logger } from "../lib/logger";
 import { BPM_HISTORY_SIZE, MIN_BPM, MAX_BPM } from "../config";
@@ -241,6 +241,17 @@ export async function setAudioMappingEnabled(
   return invoke<boolean>("set_audio_mapping_enabled", { id, enabled });
 }
 
+/**
+ * Set beat detection sensitivity (0–1 normalised).
+ *
+ * 0.0 = most sensitive (fires on small bass spikes)
+ * 0.5 = default
+ * 1.0 = least sensitive (only large transients trigger)
+ */
+export async function setBeatSensitivity(sensitivity: number): Promise<void> {
+  return invoke("set_beat_sensitivity_command", { sensitivity });
+}
+
 // ============================================================================
 // React Hooks
 // ============================================================================
@@ -420,32 +431,40 @@ export function useAudioLevels() {
         if (event.payload.beat) {
           setBeatCount((prev) => prev + 1);
 
-          // Calculate BPM from beat intervals
+          // Calculate BPM from beat intervals using median (robust to outliers /
+          // double-triggers that would otherwise double the estimated BPM).
           const now = Date.now();
           const timestamps = beatTimestampsRef.current;
           timestamps.push(now);
 
-          // Keep only recent timestamps
+          // Keep only enough timestamps for the desired history window
           if (timestamps.length > BPM_HISTORY_SIZE + 1) {
             timestamps.shift();
           }
 
-          // Need at least 2 beats to calculate BPM
-          if (timestamps.length >= 2) {
-            // Calculate average interval between beats
+          // Need at least 4 beats to get a meaningful median
+          if (timestamps.length >= 4) {
             const intervals: number[] = [];
             for (let i = 1; i < timestamps.length; i++) {
               intervals.push(timestamps[i] - timestamps[i - 1]);
             }
-            const avgInterval =
-              intervals.reduce((a, b) => a + b, 0) / intervals.length;
 
-            // Convert to BPM (60000ms per minute)
-            const calculatedBpm = 60000 / avgInterval;
+            // Median interval — sorts a copy so the ref array is untouched
+            const sorted = [...intervals].sort((a, b) => a - b);
+            const mid = Math.floor(sorted.length / 2);
+            const medianInterval =
+              sorted.length % 2 === 0
+                ? (sorted[mid - 1] + sorted[mid]) / 2
+                : sorted[mid];
 
-            // Only update if within reasonable range
+            // Convert to BPM and clamp to valid range
+            const calculatedBpm = 60000 / medianInterval;
             if (calculatedBpm >= MIN_BPM && calculatedBpm <= MAX_BPM) {
-              setBpm(Math.round(calculatedBpm));
+              const rounded = Math.round(calculatedBpm);
+              setBpm(rounded);
+              // Forward to Rust modulation engine so LFOs and OSC sync to
+              // the mic-detected BPM (same channel the audio_bpm listener uses)
+              void emit("audio_bpm", rounded);
             }
           }
         }

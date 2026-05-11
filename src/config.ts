@@ -11,7 +11,7 @@ export const FPS_SAMPLE_COUNT = 60; // Ring buffer size for FPS averaging
 export const STATS_REPORT_INTERVAL_MS = 1000;
 
 // Audio / Beat Detection
-export const BPM_HISTORY_SIZE = 8;
+export const BPM_HISTORY_SIZE = 16; // Number of inter-beat intervals kept for median BPM estimation
 export const MIN_BPM = 60;
 export const MAX_BPM = 200;
 

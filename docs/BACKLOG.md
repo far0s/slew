@@ -66,27 +66,6 @@ Add a full-size slot editor overlay, allowing users to focus on editing one slot
 
 ## Medium Priority
 
-### 🟡 BPM / Beat Detection Accuracy `issue`
-
-Improve the reliability of microphone-based BPM and beat detection.
-
-**Context**: During live use the audio-analysis BPM was badly wrong (e.g. reporting 180 BPM when the music was ~130). The current implementation in `src-tauri/src/audio/buffer.rs` uses a simple adaptive-threshold detector on bass energy with a fixed cooldown (`BEAT_COOLDOWN_SAMPLES`). The frontend derives BPM by measuring inter-beat intervals, which compounds the error when false beats are fired.
-
-**Known failure modes**:
-- Bass transients (kick + bassline overlap) fire two beats per musical beat, doubling the estimated BPM.
-- Cooldown is sample-count based; at different buffer sizes the effective minimum BPM window shifts.
-- The adaptive average window (64 energy frames) is too short to track slower tempos reliably.
-
-**Subtasks**:
-
-- [ ] Audit `BeatDetector::update` — tune `BEAT_THRESHOLD` and `BEAT_COOLDOWN_SAMPLES`; add a configurable minimum BPM floor (e.g. 60 BPM = 1 s cooldown).
-- [ ] Replace or augment the frontend inter-beat BPM estimator with a median-of-last-N-intervals approach to smooth outliers and reject double-triggers.
-- [ ] Consider moving BPM estimation fully to Rust where inter-beat timestamps are already tracked.
-- [ ] Add a sensitivity / threshold slider in the Audio panel so the user can tune detection for their room and music genre.
-- [ ] Stress-test with recordings at 90, 120, 130, 140, 175 BPM and verify accuracy within +-2 BPM.
-
----
-
 ### 🟡 OSC BPM / Beat Input — Discoverability and Auto-Connect `feature`
 
 Make it easy to drive Slew's BPM and beat clock from an external source (DAW, DJ software, Ableton) via OSC, and automate the connection experience.

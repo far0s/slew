@@ -1,5 +1,6 @@
 //! Tauri commands for audio functionality.
 
+use super::buffer::set_beat_sensitivity;
 use super::capture::{
     get_status, is_auto_reconnect_enabled, set_auto_reconnect, start_capture, stop_capture,
 };
@@ -62,4 +63,14 @@ pub fn set_audio_auto_reconnect(enabled: bool) {
 #[tauri::command]
 pub fn get_audio_auto_reconnect() -> bool {
     is_auto_reconnect_enabled()
+}
+
+/// Set the beat detection sensitivity from a normalised 0–1 slider value.
+///
+/// 0.0 = most sensitive (fires on small bass spikes)
+/// 0.5 = default (equivalent to the original 1.5× threshold)
+/// 1.0 = least sensitive (only large transients trigger a beat)
+#[tauri::command]
+pub fn set_beat_sensitivity_command(sensitivity: f64) {
+    set_beat_sensitivity(sensitivity);
 }
