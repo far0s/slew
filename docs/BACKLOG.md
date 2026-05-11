@@ -103,22 +103,6 @@ Make it easy to drive Slew's BPM and beat clock from an external source (DAW, DJ
 
 ---
 
-### 🟡 MIDI/Controller Unlearn Button — Stuck Learn State Bug `issue`
-
-The unbind button on a mapped parameter is sometimes unclickable with no clear explanation, requiring a full window restart or sketch removal to recover.
-
-**Context**: `MidiLearnButton` is `disabled` when `isLearningOther` is true, i.e. any other parameter on screen is currently in learn mode. When learn mode gets stuck (controls window closed mid-learn, sketch swapped out while learning), the global `MidiLearnState.is_learning` flag in the Rust backend remains `true`, permanently disabling every other button until the app restarts.
-
-**Subtasks**:
-
-- [ ] Investigate whether learn mode is cancelled when: (a) the controls window is closed or restarted, (b) the sketch owning the learning parameter is removed from the scene.
-- [ ] Add a `cancel_midi_learn` Tauri command invoked on window `beforeunload` and on sketch removal to reset the global learn state.
-- [ ] In `MidiLearnButton`, update the disabled tooltip text to explicitly say "Another parameter is being learned — cancel it first" so the user understands why the button is greyed out.
-- [ ] Add a global "Cancel learn" escape hatch in the Controls toolbar or triggered by the Escape key.
-- [ ] Add a regression test for the stuck-learn-mode scenario.
-
----
-
 ### 🟡 LFO Naming and Modulation Panel UX `feature`
 
 Make LFOs easier to identify and manage when multiple are active mid-performance.

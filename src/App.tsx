@@ -36,6 +36,8 @@ import {
   useMidiMappings,
   useMidiDevices,
   useMidiPickupStates,
+  useMidiLearn,
+  cancelMidiLearn,
 } from "./inputs/midi";
 import {
   useWindowManager,
@@ -85,6 +87,7 @@ function App() {
   const { mappings: midiMappings } = useMidiMappings();
   const { devices: midiDevices } = useMidiDevices();
   const { pickupStates: midiPickupStates } = useMidiPickupStates();
+  const { isLearning: isMidiLearning, learningParameterId: midiLearningParameterId, cancelLearn: cancelMidiLearnLocal } = useMidiLearn();
 
   // Check if any MIDI device is connected (for disabling direct input on mapped controls)
   const isMidiDeviceConnected = midiDevices.some((d) => d.is_connected);
@@ -164,9 +167,23 @@ function App() {
     }
   }, [paramStore]);
 
+  // Cancel MIDI learn when the controls window is closed/reloaded
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      void cancelMidiLearn();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape — cancel MIDI learn if active
+      if (e.key === "Escape" && isMidiLearning) {
+        e.preventDefault();
+        void cancelMidiLearnLocal();
+      }
       // Tap Tempo — configurable shortcut (default: Space)
       if (
         matchesTapShortcut(e) &&
@@ -200,7 +217,7 @@ function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toggleFullscreenControls, handleUndo, handleRedo]);
+  }, [toggleFullscreenControls, handleUndo, handleRedo, isMidiLearning, cancelMidiLearnLocal]);
 
   // Quick-wire handlers for Beat and LFO buttons on parameter sliders
   const handleQuickBeat = useCallback(
@@ -656,6 +673,10 @@ function App() {
     // Note: We don't remove parameters from the backend (per user requirement)
     // but we do remove them from the local store for cleanliness
     paramStore.removeSlotParameters(slotIndex);
+    // If MIDI learn is active for a parameter in this slot, cancel it
+    if (isMidiLearning && midiLearningParameterId?.startsWith(`slot${slotIndex}_`)) {
+      void cancelMidiLearnLocal();
+    }
   }
 
   // Refresh backend parameters - wrapped in useCallback with proper dependencies
@@ -953,6 +974,19 @@ function App() {
         >
           ↪ Redo
         </button>
+
+        {/* Cancel MIDI learn escape hatch — visible only when learn mode is active */}
+        {isMidiLearning && (
+          <button
+            type="button"
+            className={`${styles.toolbarButton} ${styles.toolbarButtonLearning}`}
+            onClick={() => void cancelMidiLearnLocal()}
+            title="Cancel MIDI learn (Esc)"
+            aria-label="Cancel MIDI learn"
+          >
+            ✕ Cancel Learn
+          </button>
+        )}
 
         <div className={styles.toolbarSpacer} />
 

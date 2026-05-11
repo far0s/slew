@@ -133,7 +133,7 @@ export function MidiLearnButton({
       onMouseLeave={() => setIsHovered(false)}
       disabled={isProcessing || isLearningOther}
       className={`${buttonClass} ${className ?? ""}`}
-      title={buttonTitle}
+      title={isLearningOther ? "Another parameter is being learned — cancel it first (Esc)" : buttonTitle}
       aria-label={buttonTitle}
     >
       {buttonContent}

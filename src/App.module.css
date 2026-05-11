@@ -35,7 +35,7 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.3rem 0.75rem 0;
+  padding: 0.3rem 0.75rem 0.3rem;
   background: var(--bg-primary);
   flex-shrink: 0;
 }
@@ -59,6 +59,17 @@
 .toolbarButton:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+
+.toolbarButtonLearning {
+  border-color: var(--midi-learning-border);
+  color: var(--midi-learning-text);
+  background: var(--midi-learning-bg);
+}
+
+.toolbarButtonLearning:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--midi-learning-border) 30%, transparent);
+  color: var(--midi-learning-text);
 }
 
 .toolbarSpacer {
