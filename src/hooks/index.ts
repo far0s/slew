@@ -1,4 +1,6 @@
 export { useStatsToggle } from "./useStatsToggle";
+export { usePerformanceMonitor } from "./usePerformanceMonitor";
+export type { PerformanceMonitorStats } from "./usePerformanceMonitor";
 export { useWindowManager } from "./useWindowManager";
 export { useRendererSettings } from "./useRendererSettings";
 export { useLayoutPreferences } from "./useLayoutPreferences";

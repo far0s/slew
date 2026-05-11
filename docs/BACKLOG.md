@@ -103,23 +103,6 @@ Make it easy to drive Slew's BPM and beat clock from an external source (DAW, DJ
 
 ---
 
-### 🟡 Controls Window Performance Monitor `feature`
-
-Add a live performance health indicator to the Controls window top bar.
-
-**Context**: The Renderer window already shows FPS / CPU / GPU via `stats-gl` (toggled with "D"). During a live session the operator watches the Controls window, so renderer degradation is invisible until it causes visible stuttering. Memory or CPU spikes from a particular sketch or parameter change are only discoverable by feel.
-
-**Subtasks**:
-
-- [ ] Collect lightweight stats from the Controls window itself: JS heap size via `performance.memory`, rAF cadence (frame budget), and Renderer FPS already available via the `RendererStats` hook.
-- [ ] Add a compact status chip to the Controls window top bar showing: Controls rAF FPS, JS heap in MB, and Renderer FPS.
-- [ ] Color-code the chip: green (nominal) / amber (warn: renderer below 45 fps or heap above 70%) / red (critical: renderer below 25 fps or heap above 80%).
-- [ ] In red state, pulse-animate the chip to draw the operator's eye. Add an opt-in audio cue (system beep) in Settings.
-- [ ] Investigate whether adding or removing a sketch causes a measurable rAF spike; if so, show a brief "spike" transient on the chip.
-- [ ] (Stretch) Log performance snapshots to a ring buffer and allow exporting a post-show performance report.
-
----
-
 ### 🟡 External Texture Input `feature`
 
 Support external images/videos as input textures for sketches.

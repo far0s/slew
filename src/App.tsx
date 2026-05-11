@@ -15,7 +15,7 @@ import type { SketchId, SketchProps } from "./sketches";
 import { getSketchDescriptor } from "./sketches";
 import { makeSlotParameterId, buildSlotDefaultParameters, getParameterDropdownLabel, type ParameterId } from "./slots/slotTypes";
 import { SlotsArea, RendererPreview, Sidebar, UpdateBanner } from "./components";
-import { ToolbarUndoRedo, ToolbarRendererStats, ToolbarTapBpm } from "./components/Toolbar";
+import { ToolbarUndoRedo, ToolbarTapBpm, PerformanceChip } from "./components/Toolbar";
 
 import { AudioIndicator } from "./components/AudioIndicator";
 import { useUndoHistory, applyUndo, applyRedo } from "./controls/useUndoHistory";
@@ -37,6 +37,7 @@ import {
   useWindowManager,
   useLayoutPreferences,
   useRendererSettings,
+  usePerformanceMonitor,
 } from "./hooks";
 import { useUpdater } from "./hooks/useUpdater";
 import styles from "./App.module.css";
@@ -92,6 +93,7 @@ function App() {
 
   // Renderer settings (for aspect ratio sync)
   const { info: rendererInfo } = useRendererSettings();
+  const performanceStats = usePerformanceMonitor();
 
   // Calculate aspect ratio from renderer window dimensions
   const rendererAspectRatio =
@@ -931,13 +933,12 @@ function App() {
 
         <div className={styles.toolbarSpacer} />
 
-        {/* Renderer stats */}
-        {rendererInfo?.stats && (
-          <ToolbarRendererStats
-            fps={rendererInfo.stats.fps}
-            frameTimeMs={rendererInfo.stats.frameTimeMs}
-          />
-        )}
+        {/* Performance chip — Controls rAF FPS, JS heap, Renderer FPS */}
+        <PerformanceChip
+          controls={performanceStats}
+          rendererFps={rendererInfo?.stats?.fps ?? null}
+          rendererFrameTimeMs={rendererInfo?.stats?.frameTimeMs ?? null}
+        />
 
         {/* Tap BPM */}
         <AudioIndicator />

@@ -232,6 +232,109 @@
   background: rgb(168 85 247 / 0.08);
 }
 
+/* ==========================================================================
+   Toolbar — Performance Dot
+   ========================================================================== */
+
+/* Outer container — provides hover area and popover anchor */
+.perfDot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  cursor: default;
+}
+
+/* The actual dot */
+.perfDotIndicator {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent-success);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+  flex-shrink: 0;
+}
+
+.perfDotIndicator[data-status="amber"] {
+  background: var(--accent-warning);
+}
+
+.perfDotIndicator[data-status="red"] {
+  background: var(--accent-danger);
+  animation: perfPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes perfPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-danger) 50%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-danger) 0%, transparent);
+  }
+}
+
+/* Popover panel */
+.perfPopover {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 100;
+  min-width: 11rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.35rem;
+  padding: 0.5rem 0.65rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.perfPopoverTitle {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.perfPopoverRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.1rem 0;
+}
+
+.perfPopoverLabel {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.perfPopoverValue {
+  font-size: 0.68rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.perfPopoverValue[data-status="green"] { color: var(--accent-success); }
+.perfPopoverValue[data-status="amber"] { color: var(--accent-warning); }
+.perfPopoverValue[data-status="red"]   { color: var(--accent-danger); }
+
+.perfPopoverSub {
+  font-size: 0.6rem;
+  opacity: 0.6;
+}
+
+/* ==========================================================================
+   Toolbar — Shortcut Badge (capturing)
+   ========================================================================== */
+
 .toolbarShortcutCapturing {
   flex-shrink: 0;
   padding: 0.15rem 0.35rem;
