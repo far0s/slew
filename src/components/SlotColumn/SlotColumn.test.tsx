@@ -118,8 +118,9 @@ describe("SlotColumn", () => {
     });
 
     it("displays slot number badge", () => {
-      render(<SlotColumn {...defaultProps} slotIndex={0} />);
-      expect(screen.getByText("1")).toBeInTheDocument();
+      const { container } = render(<SlotColumn {...defaultProps} slotIndex={0} />);
+      const badge = container.querySelector('[class*="inlineSlotBadge"]');
+      expect(badge).toHaveTextContent("1");
     });
 
     it("displays correct slot number (index + 1)", () => {
