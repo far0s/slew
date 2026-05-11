@@ -398,6 +398,71 @@ export function useOscBeat() {
 }
 
 // ============================================================================
+// OSC Beat Config
+// ============================================================================
+
+/** Configuration for OSC beat / BPM address bindings. */
+export interface OscBeatConfig {
+  /** OSC address that triggers a beat pulse (default "/slew/beat") */
+  beat_address: string;
+  /** OSC address that carries a BPM float value (default "/slew/bpm") */
+  bpm_address: string;
+}
+
+export const DEFAULT_OSC_BEAT_CONFIG: OscBeatConfig = {
+  beat_address: "/slew/beat",
+  bpm_address: "/slew/bpm",
+};
+
+/** Fetch the current OSC beat config from the backend. */
+export async function getOscBeatConfig(): Promise<OscBeatConfig> {
+  return invoke<OscBeatConfig>("get_osc_beat_config");
+}
+
+/** Save a new OSC beat config to the backend. */
+export async function setOscBeatConfig(config: OscBeatConfig): Promise<void> {
+  return invoke<void>("set_osc_beat_config", { config });
+}
+
+/**
+ * Hook for OSC beat address configuration.
+ *
+ * Loads the current config on mount and provides an `update` callback
+ * that persists partial changes to the backend immediately.
+ * Follows the same pattern as `useOscOutput`.
+ */
+export function useOscBeatConfig() {
+  const [config, setConfig] = useState<OscBeatConfig>(DEFAULT_OSC_BEAT_CONFIG);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    void getOscBeatConfig()
+      .then(setConfig)
+      .catch(() => {
+        /* backend not ready — keep defaults */
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const update = useCallback(
+    async (partial: Partial<OscBeatConfig>) => {
+      const next = { ...config, ...partial };
+      setConfig(next);
+      try {
+        await setOscBeatConfig(next);
+      } catch (e) {
+        // revert on error
+        setConfig(config);
+        throw e;
+      }
+    },
+    [config],
+  );
+
+  return { config, isLoading, update };
+}
+
+// ============================================================================
 // OSC Output
 // ============================================================================
 

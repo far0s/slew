@@ -5,7 +5,7 @@
  * real-time level visualization, and audio → parameter mappings.
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import { motion } from "motion/react";
@@ -25,6 +25,11 @@ import {
   type AudioMappingMode,
   setBeatSensitivity,
 } from "../../inputs/audio";
+import {
+  useActiveBpmSource,
+  useMidiClock,
+  BPM_SOURCE_LABELS,
+} from "../../inputs/bpmSource";
 import {
   SpectrumAnalyzer,
   type VisualizerMode,
@@ -80,6 +85,123 @@ function LevelMeter({
 
 function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
+ * Small colored dot indicating the active BPM source.
+ */
+const BPM_SOURCE_DOT_COLORS: Record<string, string> = {
+  microphone: "#6b7280",  // gray
+  osc: "#a855f7",          // purple
+  midi_clock: "#3b82f6",  // blue
+  manual: "#22c55e",       // green
+};
+
+/**
+ * Row showing the currently active BPM source with a colored dot.
+ */
+function BpmSourceRow() {
+  const { source: activeSource } = useActiveBpmSource();
+  const dotColor = BPM_SOURCE_DOT_COLORS[activeSource] ?? "#6b7280";
+
+  return (
+    <div className={styles.bpmSourceRow}>
+      <span className={styles.bpmSourceDot} style={{ backgroundColor: dotColor }} />
+      <span className={styles.bpmSourceText}>
+        {BPM_SOURCE_LABELS[activeSource] ?? activeSource}
+      </span>
+      <span className={styles.bpmSourceSuffix}>driving BPM</span>
+    </div>
+  );
+}
+
+/**
+ * Compact MIDI Clock connection sub-section.
+ */
+function MidiClockSection() {
+  const { status, ports, isLoading, connect, disconnect } = useMidiClock();
+  const [selectedPortId, setSelectedPortId] = useState("");
+
+  // Auto-connect when exactly one port is available and nothing is connected
+  const autoConnectedRef = useRef(false);
+  useEffect(() => {
+    if (
+      !autoConnectedRef.current &&
+      !status.is_connected &&
+      !isLoading &&
+      ports.length === 1
+    ) {
+      autoConnectedRef.current = true;
+      setSelectedPortId(ports[0].id);
+      void connect(ports[0].id);
+    }
+  }, [ports, status.is_connected, isLoading, connect]);
+
+  return (
+    <div className={styles.midiClockSection}>
+      <div className={styles.midiClockHeader}>
+        <span
+          className={`${styles.midiClockDot} ${
+            status.is_connected ? styles.midiClockDotActive : ""
+          }`}
+        />
+        <span className={styles.midiClockTitle}>MIDI Clock</span>
+        {status.is_connected && status.bpm !== null && (
+          <span className={styles.midiClockBpm}>{status.bpm} BPM</span>
+        )}
+      </div>
+
+      <div className={styles.midiClockControls}>
+        <select
+          className={styles.midiClockSelect}
+          value={status.device_id ?? selectedPortId}
+          onChange={(e) => setSelectedPortId(e.target.value)}
+          disabled={status.is_connected || isLoading}
+          aria-label="MIDI Clock port"
+        >
+          <option value="">Select port…</option>
+          {ports.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+
+        {status.is_connected ? (
+          <button
+            type="button"
+            onClick={() => void disconnect()}
+            disabled={isLoading}
+            className={`${styles.midiClockButton} ${styles.midiClockButtonStop}`}
+          >
+            Disconnect
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              if (selectedPortId) void connect(selectedPortId);
+            }}
+            className={`${styles.midiClockButton} ${styles.midiClockButtonStart}`}
+            disabled={isLoading || ports.length === 0 || !selectedPortId}
+          >
+            Connect
+          </button>
+        )}
+      </div>
+
+      <p className={styles.midiClockStatus}>
+        {status.is_connected
+          ? `Connected — ${
+              ports.find((p) => p.id === status.device_id)?.name ??
+              status.device_id
+            }`
+          : ports.length === 0
+            ? "No MIDI ports available"
+            : "Not connected"}
+      </p>
+    </div>
+  );
 }
 
 /**
@@ -173,6 +295,8 @@ function LevelsDisplay() {
       <div className={styles.levelsSection}>
         <h4 className={styles.levelsSectionTitle}>Beat Detection</h4>
         <BeatIndicator beat={beat} bpm={bpm} />
+        <BpmSourceRow />
+        <MidiClockSection />
         <div className={styles.sensitivityRow}>
           <label className={styles.sensitivityLabel} htmlFor="beat-sensitivity">
             Sensitivity

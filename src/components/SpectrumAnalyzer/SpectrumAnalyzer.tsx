@@ -118,7 +118,7 @@ export function SpectrumAnalyzer({
   const draw = useCallback(() => {
     if (!mountedRef.current) return;
 
-    const levels = levelsRef.current;
+    const levels = levelsRef?.current;
 
     const spectrum = levels?.spectrum ?? [];
     const waveform = levels?.waveform ?? [];

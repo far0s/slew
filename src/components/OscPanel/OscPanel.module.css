@@ -951,3 +951,154 @@
   font-style: italic;
   line-height: 1.4;
 }
+
+/* ==========================================================================
+   Beat Input — new additions
+   ========================================================================== */
+
+/* Active source row */
+.beatSourceRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0;
+}
+
+.beatSourceLabel {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.beatSourceBadge {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.75rem;
+  background: var(--bg-active);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.beatSourceBadge.beatSourceBadgeActive {
+  background: rgb(168 85 247 / 0.18);
+  color: #9333ea;
+  border-color: rgb(168 85 247 / 0.35);
+}
+
+[data-theme="dark"] .beatSourceBadge.beatSourceBadgeActive {
+  color: rgb(216 180 254);
+}
+
+/* Configurable address inputs */
+.beatAddressFields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.beatAddressRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.beatAddressLabel {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  width: 4.5rem;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.beatAddressInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.25rem 0.4rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
+  border-radius: 0.25rem;
+  color: var(--text-primary);
+  font-size: 0.7rem;
+  font-family: ui-monospace, monospace;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.beatAddressInput:focus {
+  border-color: rgb(168 85 247 / 0.5);
+}
+
+.beatAddressInput::placeholder {
+  color: var(--text-muted);
+}
+
+/* Status label beside BPM value */
+.bpmStatusLabel {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-left: auto;
+}
+
+/* Collapsible help note */
+.helpDetails {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 0.35rem;
+  margin-top: 0.1rem;
+}
+
+.helpSummary {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0;
+  transition: color 0.15s;
+}
+
+.helpSummary::-webkit-details-marker {
+  display: none;
+}
+
+.helpSummary::before {
+  content: "▶";
+  font-size: 0.5rem;
+  opacity: 0.5;
+  transition: transform 0.15s;
+  display: inline-block;
+}
+
+details[open] .helpSummary::before {
+  transform: rotate(90deg);
+}
+
+.helpSummary:hover {
+  color: var(--text-secondary);
+}
+
+.helpContent {
+  padding: 0.5rem 0 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.helpContent p {
+  font-size: 0.67rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.helpContent strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}

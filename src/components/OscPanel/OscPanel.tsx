@@ -15,10 +15,15 @@ import {
   useOscRecentMessages,
   useOscBeat,
   useOscOutput,
+  useOscBeatConfig,
   DEFAULT_OSC_PORT,
   setupDefaultMappings,
   type OscMapping,
 } from "../../inputs/osc";
+import {
+  useActiveBpmSource,
+  BPM_SOURCE_LABELS,
+} from "../../inputs/bpmSource";
 import { useEventListener } from "../../inputs/shared";
 import {
   getAllSlotParameterIds,
@@ -30,9 +35,10 @@ import type { Slot } from "../../slots/useSlots";
 import styles from "./OscPanel.module.css";
 
 /**
- * Beat indicator for OSC beat input — pulses on each /slew/beat message.
+ * Beat indicator for OSC beat input — pulses on each beat message.
+ * Shows a waiting label using the configured beat address.
  */
-function OscBeatIndicator() {
+function OscBeatIndicator({ beatAddress }: { beatAddress: string }) {
   const { beat, bpm } = useOscBeat();
 
   return (
@@ -53,38 +59,147 @@ function OscBeatIndicator() {
             <span className={styles.bpmUnit}>BPM</span>
           </>
         ) : (
-          <span className={styles.bpmWaiting}>Waiting…</span>
+          <span className={styles.bpmWaiting}>
+            Waiting for <code className={styles.inlineCode}>{beatAddress}</code>…
+          </span>
         )}
       </span>
+      {bpm !== null && (
+        <span className={styles.bpmStatusLabel}>Receiving OSC beat</span>
+      )}
     </div>
   );
 }
 
 /**
- * Beat Input section: reserved address reference + live beat indicator.
+ * Beat Input section: active source badge, configurable addresses,
+ * live beat indicator, and collapsible help note.
  */
 function BeatInputSection({ port }: { port: number | null }) {
   const displayPort = port ?? DEFAULT_OSC_PORT;
+  const activeSource = useActiveBpmSource();
+  const { config, update } = useOscBeatConfig();
+
+  const [beatAddrInput, setBeatAddrInput] = useState(
+    config.beat_address ?? "/slew/beat",
+  );
+  const [bpmAddrInput, setBpmAddrInput] = useState(
+    config.bpm_address ?? "/slew/bpm",
+  );
+
+  // Keep local inputs in sync if config changes externally
+  useEffect(() => {
+    setBeatAddrInput(config.beat_address ?? "/slew/beat");
+    setBpmAddrInput(config.bpm_address ?? "/slew/bpm");
+  }, [config.beat_address, config.bpm_address]);
+
+  const commitBeatAddr = () => {
+    const val = beatAddrInput.trim() || "/slew/beat";
+    if (val !== (config.beat_address ?? "/slew/beat")) {
+      void update({ beat_address: val });
+    }
+    setBeatAddrInput(val);
+  };
+
+  const commitBpmAddr = () => {
+    const val = bpmAddrInput.trim() || "/slew/bpm";
+    if (val !== (config.bpm_address ?? "/slew/bpm")) {
+      void update({ bpm_address: val });
+    }
+    setBpmAddrInput(val);
+  };
+
+  const isOscActive = activeSource.source === "osc";
 
   return (
     <div className={styles.beatInputSection}>
+      {/* Active source badge */}
+      <div className={styles.beatSourceRow}>
+        <span className={styles.beatSourceLabel}>Active source:</span>
+        <span
+          className={`${styles.beatSourceBadge} ${
+            isOscActive ? styles.beatSourceBadgeActive : ""
+          }`}
+        >
+          {BPM_SOURCE_LABELS[activeSource.source]}
+        </span>
+      </div>
+
       <p className={styles.beatInputHint}>
         Send from Ableton (Max4Live), TouchOSC, or any OSC app to{" "}
         <code className={styles.inlineCode}>127.0.0.1:{displayPort}</code>.
       </p>
 
-      <div className={styles.reservedAddresses}>
-        <div className={styles.reservedAddress}>
-          <code className={styles.addressCode}>/slew/beat</code>
-          <span className={styles.addressDesc}>Trigger a beat pulse</span>
+      {/* Configurable address fields */}
+      <div className={styles.beatAddressFields}>
+        <div className={styles.beatAddressRow}>
+          <label className={styles.beatAddressLabel} htmlFor="osc-beat-addr">
+            Beat addr
+          </label>
+          <input
+            id="osc-beat-addr"
+            type="text"
+            value={beatAddrInput}
+            onChange={(e) => setBeatAddrInput(e.target.value)}
+            onBlur={commitBeatAddr}
+            onKeyDown={(e) => e.key === "Enter" && commitBeatAddr()}
+            className={styles.beatAddressInput}
+            spellCheck={false}
+            placeholder="/slew/beat"
+          />
         </div>
-        <div className={styles.reservedAddress}>
-          <code className={styles.addressCode}>/slew/bpm &lt;float&gt;</code>
-          <span className={styles.addressDesc}>Set BPM (20–300)</span>
+        <div className={styles.beatAddressRow}>
+          <label className={styles.beatAddressLabel} htmlFor="osc-bpm-addr">
+            BPM addr
+          </label>
+          <input
+            id="osc-bpm-addr"
+            type="text"
+            value={bpmAddrInput}
+            onChange={(e) => setBpmAddrInput(e.target.value)}
+            onBlur={commitBpmAddr}
+            onKeyDown={(e) => e.key === "Enter" && commitBpmAddr()}
+            className={styles.beatAddressInput}
+            spellCheck={false}
+            placeholder="/slew/bpm"
+          />
         </div>
       </div>
 
-      <OscBeatIndicator />
+      <OscBeatIndicator beatAddress={beatAddrInput || "/slew/beat"} />
+
+      {/* Collapsible help note */}
+      <details className={styles.helpDetails}>
+        <summary className={styles.helpSummary}>How to connect your tool</summary>
+        <div className={styles.helpContent}>
+          <p>
+            <strong>Ableton Live:</strong> Use a Max4Live MIDI-to-OSC device
+            (e.g. LiveGrabber). Configure it to send{" "}
+            <code className={styles.inlineCode}>{beatAddrInput || "/slew/beat"}</code> on
+            each beat and{" "}
+            <code className={styles.inlineCode}>{bpmAddrInput || "/slew/bpm"}</code> with
+            your tempo, or enter the paths your patch uses above.
+          </p>
+          <p>
+            <strong>Traktor / Serato / rekordbox:</strong> These tools send
+            MIDI Clock natively. Use the MIDI Clock tab to connect directly —
+            no OSC bridge needed.
+          </p>
+          <p>
+            <strong>TouchOSC:</strong> Set your button/beat widget&rsquo;s
+            address to{" "}
+            <code className={styles.inlineCode}>{beatAddrInput || "/slew/beat"}</code> and
+            a fader to{" "}
+            <code className={styles.inlineCode}>{bpmAddrInput || "/slew/bpm"}</code>. Or
+            enter your custom addresses above.
+          </p>
+          <p>
+            <strong>Other tools:</strong> Set the OSC destination to this
+            machine&rsquo;s IP and port shown above, then configure the address
+            paths to match your tool.
+          </p>
+        </div>
+      </details>
     </div>
   );
 }

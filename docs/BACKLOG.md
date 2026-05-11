@@ -66,19 +66,18 @@ Add a full-size slot editor overlay, allowing users to focus on editing one slot
 
 ## Medium Priority
 
-### 🟡 OSC BPM / Beat Input — Discoverability and Auto-Connect `feature`
+### 🟡 BPM Source System — Remaining Polish `feature`
 
-Make it easy to drive Slew's BPM and beat clock from an external source (DAW, DJ software, Ableton) via OSC, and automate the connection experience.
+The core BPM source arbitration system is implemented. OSC (configurable addresses), MIDI Clock, and Microphone are all wired up with a priority waterfall. What remains is minor polish.
 
-**Context**: The OSC input path already handles `/slew/beat` and `/slew/bpm` (`osc.rs:handle_osc_beat`, `osc.ts:useOscBeat`). What is missing is discoverability and automation: there is no in-app guidance on how to route BPM from tools like Ableton, rekordbox, or a Focusrite interface via audio routing software (e.g. Loopback). The UI also does not confirm the OSC port is active or show that beat packets are arriving.
-
-**Subtasks**:
-
-- [ ] Surface the OSC input port prominently in the Audio or OSC panel with a "Waiting for /slew/beat..." / "Receiving OSC beat" status indicator.
-- [ ] Add an activity LED in the Audio panel that pulses on every received OSC beat, distinct from the mic-detected beat indicator.
-- [ ] On app launch, if OSC beat packets arrive within ~5 s, automatically switch the active BPM source to OSC and show a brief toast notification.
-- [ ] Write an in-app collapsible help note explaining how to send OSC from common tools: Ableton Live (Max4Live MIDI-to-OSC device), rekordbox (OSC plugin), TouchOSC, and macOS Loopback / Audio MIDI Setup for audio routing.
-- [ ] (Design decision needed) Decide whether to add an explicit "BPM Source" selector (Microphone / OSC / Tap / Manual) or keep sources additive with OSC taking priority when active.
+**What was built**:
+- `bpm.rs` — priority arbitration engine (Manual > OSC > MIDI Clock > Microphone), 5 s silence timeout, `bpm_source_changed` event
+- `midi_clock.rs` — MIDI Clock input via `midir`, 24 PPQN pulse counting, median-interval BPM, auto-reconnect
+- Configurable OSC beat/BPM addresses (`OscBeatConfig`, persisted to disk)
+- AudioPanel: active source indicator (colored dot + label), MIDI Clock port selector
+- OscPanel: editable address fields, activity indicator using configured address, collapsible tool guide
+- Toast notification on first OSC beat arrival
+- Auto-select MIDI Clock port if only one port is available
 
 ---
 
@@ -459,6 +458,27 @@ Bypass CPU entirely for ultimate video output performance.
 - [ ] Monitor WebGPU native extensions for Metal handle access
 - [ ] Prototype CALayer IOSurface capture (test feasibility outside App Store)
 - [ ] Evaluate SyphonMetalServer migration (even with CPU upload)
+
+---
+
+### 🟢 Ableton Link `feature`
+
+LAN-based tempo sync. Ableton Link is a distributed consensus protocol where all peers on a LAN continuously negotiate a shared timeline and tempo.
+
+**Context**: Most Slew use cases (Ableton, Traktor, Serato, rekordbox) are already covered by MIDI Clock over IAC. Link adds value for **wireless/LAN sync** — e.g. syncing to djay Pro on a phone, or connecting to Resolume without a cable. It requires the official Ableton Link C++ SDK at build time and a stateful background thread maintaining a Link session.
+
+**Implementation notes**:
+- `rusty_link` crate wraps the official C++ SDK — requires the SDK source as a build submodule and a C++ compiler
+- Slew would be a Link *follower* only (receives tempo, fires beats) — it does not need to contribute tempo
+- Add as a fourth source in `bpm.rs` with priority between OSC and MIDI Clock
+
+**Subtasks**:
+
+- [ ] Evaluate `rusty_link` build complexity on macOS and Windows
+- [ ] Add Link as a build feature flag (optional, off by default until tested)
+- [ ] Implement `link.rs` engine with background session thread
+- [ ] UI: Link enable toggle and peer count display in AudioPanel
+- [ ] Test with Ableton Live, Resolume, djay Pro
 
 ---
 

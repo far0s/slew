@@ -135,13 +135,19 @@ fn start_analysis_loop() {
                         state.app_handle.clone()
                     };
 
-                    if let Some(handle) = app_handle {
+                    if let Some(ref handle) = app_handle {
                         use tauri::Emitter;
                         let _ = handle.emit("audio_levels", &levels);
                     }
                     // Forward beat to OSC output if enabled
                     if levels.beat {
                         crate::osc::send_osc_beat();
+                        // Report to BPM source arbitration (no BPM value from mic)
+                        crate::bpm::report_beat(
+                            crate::bpm::BpmSourceKind::Microphone,
+                            None,
+                            app_handle.as_ref(),
+                        );
                     }
                 }
             }

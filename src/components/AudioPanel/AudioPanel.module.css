@@ -970,3 +970,168 @@
   text-align: right;
   flex-shrink: 0;
 }
+
+/* ==========================================================================
+   BPM Source Row
+   ========================================================================== */
+
+.bpmSourceRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0;
+}
+
+.bpmSourceDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background-color 0.3s ease;
+}
+
+.bpmSourceText {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.bpmSourceSuffix {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   MIDI Clock Section
+   ========================================================================== */
+
+.midiClockSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem 0.5rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.3rem;
+  margin-top: 0.2rem;
+}
+
+.midiClockHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.midiClockDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.midiClockDot.midiClockDotActive {
+  background: #3b82f6;
+  box-shadow: 0 0 5px rgb(59 130 246 / 0.5);
+}
+
+.midiClockTitle {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.midiClockBpm {
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #3b82f6;
+}
+
+[data-theme="dark"] .midiClockBpm {
+  color: rgb(147 197 253);
+}
+
+.midiClockControls {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.midiClockSelect {
+  flex: 1;
+  min-width: 0;
+  padding: 0.25rem 0.4rem;
+  background: var(--bg-elevated, var(--bg-hover));
+  border: 1px solid var(--border-default);
+  border-radius: 0.25rem;
+  color: var(--text-primary);
+  font-size: 0.68rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.midiClockSelect:focus {
+  border-color: rgb(59 130 246 / 0.5);
+}
+
+.midiClockSelect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.midiClockButton {
+  padding: 0.25rem 0.55rem;
+  border-radius: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.midiClockButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.midiClockButtonStart {
+  background: rgb(59 130 246 / 0.15);
+  border: 1px solid rgb(59 130 246 / 0.3);
+  color: #1d4ed8;
+}
+
+[data-theme="dark"] .midiClockButtonStart {
+  color: rgb(147 197 253);
+}
+
+.midiClockButtonStart:hover:not(:disabled) {
+  background: rgb(59 130 246 / 0.25);
+  border-color: rgb(59 130 246 / 0.5);
+}
+
+.midiClockButtonStop {
+  background: rgb(239 68 68 / 0.12);
+  border: 1px solid rgb(239 68 68 / 0.25);
+  color: #dc2626;
+}
+
+[data-theme="dark"] .midiClockButtonStop {
+  color: rgb(252 165 165);
+}
+
+.midiClockButtonStop:hover:not(:disabled) {
+  background: rgb(239 68 68 / 0.2);
+  border-color: rgb(239 68 68 / 0.4);
+}
+
+.midiClockStatus {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+}

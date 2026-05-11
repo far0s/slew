@@ -9,11 +9,13 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, RunEvent};
 
 pub mod audio;
+pub mod bpm;
 pub mod common;
 pub mod config;
 pub mod frame_distribution;
 pub mod hid;
 pub mod midi;
+pub mod midi_clock;
 pub mod modulation;
 pub mod osc;
 pub mod wled;
@@ -833,6 +835,7 @@ pub fn run() {
             // Initialize all engines (they log internally at debug level)
             midi::init_midi_engine(app.handle().clone());
             osc::init_osc_engine(app.handle().clone());
+            bpm::init_bpm_source(app.handle().clone());
             audio::init_audio_engine(app.handle().clone());
             hid::init_hid_engine(app.handle());
             modulation::init_modulation_engine(app.handle().clone());
@@ -852,6 +855,7 @@ pub fn run() {
             );
 
             updater::init_updater(app.handle().clone());
+            midi_clock::init_midi_clock_engine(app.handle().clone());
             start_parameter_tick_loop(app.handle().clone());
 
             // Window placement - spawn with delay to ensure windows are ready
@@ -929,6 +933,8 @@ pub fn run() {
             osc::get_osc_output_config,
             osc::set_osc_output_config,
             osc::send_osc_message_cmd,
+            osc::get_osc_beat_config_cmd,
+            osc::set_osc_beat_config_cmd,
             notify_beat,
             send_color_osc,
             // Audio
@@ -977,6 +983,11 @@ pub fn run() {
             modulation::get_full_modulation_state,
             modulation::is_parameter_modulated_cmd,
             modulation::set_manual_bpm,
+            // MIDI Clock
+            midi_clock::list_midi_clock_ports_cmd,
+            midi_clock::connect_midi_clock_cmd,
+            midi_clock::disconnect_midi_clock_cmd,
+            midi_clock::get_midi_clock_status_cmd,
             // Video Output
             video_out::list_video_backends,
             video_out::get_video_backend_status,

@@ -77,6 +77,24 @@ pub struct OscMessageInfo {
     pub timestamp: u64,
 }
 
+/// Configuration for which OSC addresses trigger beat/BPM input.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OscBeatConfig {
+    /// OSC address that fires a beat pulse (default "/slew/beat")
+    pub beat_address: String,
+    /// OSC address that sets the BPM (default "/slew/bpm")
+    pub bpm_address: String,
+}
+
+impl Default for OscBeatConfig {
+    fn default() -> Self {
+        Self {
+            beat_address: "/slew/beat".to_string(),
+            bpm_address: "/slew/bpm".to_string(),
+        }
+    }
+}
+
 /// Configuration for the OSC output client.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OscOutputConfig {
@@ -125,6 +143,8 @@ struct OscEngineState {
     osc_bpm: Option<f64>,
     /// Output config
     output_config: OscOutputConfig,
+    /// Beat/BPM address config
+    beat_config: OscBeatConfig,
     /// UDP socket for sending OSC output (None if not yet bound or disabled)
     output_socket: Option<UdpSocket>,
 }
@@ -143,6 +163,7 @@ impl Default for OscEngineState {
             osc_bpm: None,
             output_config: OscOutputConfig::default(),
             output_socket: None,
+            beat_config: OscBeatConfig::default(),
         }
     }
 }
@@ -170,6 +191,7 @@ pub fn init_osc_engine(app_handle: AppHandle) {
     // Load mappings from disk
     load_mappings_from_disk();
     load_output_config_from_disk();
+    load_beat_config_from_disk();
 
     log::debug!("[OSC] Engine initialized");
 }
@@ -342,22 +364,26 @@ fn handle_osc_message(msg: &OscMessage, mappings: &[OscMapping], app_handle: Opt
     // Reserved /slew/* addresses — handled before user mappings
     // -------------------------------------------------------------------------
 
-    // /slew/beat — fire a beat pulse into the modulation engine
-    if msg.addr == "/slew/beat" {
+    // Fetch configured beat/bpm addresses for this check.
+    let (beat_addr, bpm_addr) = with_osc_engine(|state| {
+        (state.beat_config.beat_address.clone(), state.beat_config.bpm_address.clone())
+    });
+
+    // <beat_address> — fire a beat pulse into the modulation engine
+    if msg.addr == beat_addr {
         handle_osc_beat(timestamp, app_handle);
         return;
     }
 
-    // /slew/bpm <float> — update the modulation engine's BPM
-    if msg.addr == "/slew/bpm" {
+    // <bpm_address> <float> — update the modulation engine's BPM
+    if msg.addr == bpm_addr {
         if let Some(bpm) = extract_numeric(&msg.args) {
             let clamped = bpm.clamp(20.0, 300.0);
             with_osc_engine(|state| {
                 state.osc_bpm = Some(clamped);
             });
             send_osc_bpm(clamped);
-            crate::modulation::update_bpm(Some(clamped));
-            log::debug!("[OSC] BPM set to {:.1} via /slew/bpm", clamped);
+            log::debug!("[OSC] BPM set to {:.1} via {}", clamped, bpm_addr);
         }
         return;
     }
@@ -388,8 +414,12 @@ fn handle_osc_message(msg: &OscMessage, mappings: &[OscMapping], app_handle: Opt
 
 /// Fire a beat pulse into the modulation engine and emit `osc_beat` to the frontend.
 fn handle_osc_beat(timestamp: u64, app_handle: Option<&AppHandle>) {
-    // Build a minimal AudioLevels with beat=true so existing AudioSource::Beat
-    // mappings and AudioModulation entries are triggered.
+    let bpm = with_osc_engine(|state| state.osc_bpm);
+
+    // Route through BPM source arbitration.
+    crate::bpm::report_beat(crate::bpm::BpmSourceKind::Osc, bpm, app_handle);
+
+    // Also trigger AudioLevels with beat=true so AudioSource::Beat mappings fire.
     let beat_levels = crate::audio::AudioLevels {
         rms: 0.0,
         peak: 0.0,
@@ -407,14 +437,80 @@ fn handle_osc_beat(timestamp: u64, app_handle: Option<&AppHandle>) {
     crate::modulation::update_audio_levels(beat_levels);
     send_osc_beat();
 
-    // Emit osc_beat event so the frontend beat indicator can pulse
-    let bpm = with_osc_engine(|state| state.osc_bpm);
+    // Emit osc_beat event so the frontend beat indicator can pulse.
     if let Some(handle) = app_handle {
         let beat_info = OscBeatInfo { timestamp, bpm };
         let _ = handle.emit("osc_beat", &beat_info);
     }
 
-    log::debug!("[OSC] Beat pulse fired via /slew/beat");
+    log::debug!("[OSC] Beat pulse fired");
+}
+
+// ============================================================================
+// Beat config accessors
+// ============================================================================
+
+/// Get the current OSC beat/bpm address config.
+pub fn get_osc_beat_config() -> OscBeatConfig {
+    with_osc_engine(|state| state.beat_config.clone())
+}
+
+/// Set and persist the OSC beat/bpm address config.
+pub fn set_osc_beat_config(config: OscBeatConfig) -> Result<(), String> {
+    with_osc_engine(|state| {
+        state.beat_config = config.clone();
+    });
+    save_beat_config_to_disk();
+    log::info!("[OSC] Beat config updated: beat={} bpm={}", config.beat_address, config.bpm_address);
+    Ok(())
+}
+
+fn beat_config_path(app_handle: &AppHandle) -> Option<std::path::PathBuf> {
+    app_handle
+        .path()
+        .app_config_dir()
+        .ok()
+        .map(|p| p.join("osc_beat_config.json"))
+}
+
+fn load_beat_config_from_disk() {
+    let app_handle = with_osc_engine(|state| state.app_handle.clone());
+    if let Some(handle) = app_handle {
+        if let Some(path) = beat_config_path(&handle) {
+            if path.exists() {
+                match std::fs::read_to_string(&path) {
+                    Ok(contents) => match serde_json::from_str::<OscBeatConfig>(&contents) {
+                        Ok(config) => {
+                            with_osc_engine(|state| state.beat_config = config);
+                            log::debug!("[OSC] Loaded beat config from disk");
+                        }
+                        Err(e) => log::warn!("[OSC] Failed to parse beat config: {}", e),
+                    },
+                    Err(e) => log::warn!("[OSC] Failed to read beat config: {}", e),
+                }
+            }
+        }
+    }
+}
+
+fn save_beat_config_to_disk() {
+    let (app_handle, config) =
+        with_osc_engine(|state| (state.app_handle.clone(), state.beat_config.clone()));
+    if let Some(handle) = app_handle {
+        if let Some(path) = beat_config_path(&handle) {
+            if let Some(parent) = path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            match serde_json::to_string_pretty(&config) {
+                Ok(json) => {
+                    if let Err(e) = std::fs::write(&path, json) {
+                        log::error!("[OSC] Failed to write beat config: {}", e);
+                    }
+                }
+                Err(e) => log::error!("[OSC] Failed to serialize beat config: {}", e),
+            }
+        }
+    }
 }
 
 /// Extract a numeric f64 from the first OSC argument, if possible.
@@ -830,6 +926,18 @@ pub fn get_osc_output_config() -> OscOutputConfig {
 #[tauri::command]
 pub fn set_osc_output_config(config: OscOutputConfig) -> Result<(), String> {
     set_output_config(config)
+}
+
+/// Get the current OSC beat/bpm address config.
+#[tauri::command]
+pub fn get_osc_beat_config_cmd() -> OscBeatConfig {
+    get_osc_beat_config()
+}
+
+/// Set the OSC beat/bpm address config.
+#[tauri::command]
+pub fn set_osc_beat_config_cmd(config: OscBeatConfig) -> Result<(), String> {
+    set_osc_beat_config(config)
 }
 
 /// Send a one-off OSC message with float arguments.

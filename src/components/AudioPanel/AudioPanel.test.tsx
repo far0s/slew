@@ -51,6 +51,25 @@ const mockUseAudioCapture = vi.fn();
 const mockUseAudioLevels = vi.fn();
 const mockUseAudioMappings = vi.fn();
 
+// Mock bpmSource hooks
+vi.mock("../../inputs/bpmSource", () => ({
+  useActiveBpmSource: () => ({ source: "microphone", bpm: null }),
+  useMidiClock: () => ({
+    status: { device_id: null, is_connected: false, bpm: null },
+    ports: [],
+    isLoading: false,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    refreshPorts: vi.fn(),
+  }),
+  BPM_SOURCE_LABELS: {
+    manual: "Tap / Manual",
+    osc: "OSC",
+    midi_clock: "MIDI Clock",
+    microphone: "Microphone",
+  },
+}));
+
 vi.mock("../../inputs/audio", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../inputs/audio")>();
   return {

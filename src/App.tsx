@@ -40,6 +40,8 @@ import {
   usePerformanceMonitor,
 } from "./hooks";
 import { useUpdater } from "./hooks/useUpdater";
+import { useEventListener } from "./inputs/shared";
+import type { BpmSourceChangedEvent } from "./inputs/bpmSource";
 import styles from "./App.module.css";
 
 function App() {
@@ -918,9 +920,32 @@ function App() {
   const { sidebarPosition } = useLayoutPreferences();
   const { state: updateState, installUpdate, dismiss: dismissUpdate } = useUpdater();
 
+  // Show a one-time toast when OSC takes over as the BPM source for the first time
+  const oscToastShownRef = useRef(false);
+  const [showOscBeatToast, setShowOscBeatToast] = useState(false);
+  useEventListener<BpmSourceChangedEvent>("bpm_source_changed", (event) => {
+    if (event.source === "osc" && !oscToastShownRef.current) {
+      oscToastShownRef.current = true;
+      setShowOscBeatToast(true);
+    }
+  });
+
   return (
     <div className={styles.root}>
       <UpdateBanner state={updateState} onInstall={installUpdate} onDismiss={dismissUpdate} />
+      {showOscBeatToast && (
+        <div className={styles.oscBeatToast} role="status">
+          <span className={styles.oscBeatToastBadge}>OSC</span>
+          <span className={styles.oscBeatToastMessage}>Beat clock connected — BPM now driven by OSC</span>
+          <button
+            className={styles.oscBeatToastDismiss}
+            onClick={() => setShowOscBeatToast(false)}
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <div className={styles.toolbar}>
         <ToolbarUndoRedo
           canUndo={undoHistory.canUndo}
