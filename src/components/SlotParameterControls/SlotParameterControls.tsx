@@ -475,6 +475,8 @@ export function SlotParameterControls({
 
   // Scroll-into-view: refs to each param row element
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  // Ref to the vertical scroll container so we can scroll only it (not horizontal ancestors)
+  const controlsRef = useRef<HTMLDivElement>(null);
   // Track whether the user is actively dragging a slider to avoid self-triggering
   const isUserInteractingRef = useRef(false);
 
@@ -483,8 +485,20 @@ export function SlotParameterControls({
       if (isUserInteractingRef.current) return;
       const { id } = event.payload;
       const row = rowRefs.current.get(id);
-      if (row) {
-        row.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      const container = controlsRef.current;
+      if (row && container) {
+        // Manually scroll only the vertical controls container to avoid
+        // propagating to the horizontal SlotsArea scroller (which would
+        // jump the view back to this column).
+        const rowTop = row.offsetTop;
+        const rowBottom = rowTop + row.offsetHeight;
+        const scrollTop = container.scrollTop;
+        const containerHeight = container.clientHeight;
+        if (rowTop < scrollTop) {
+          container.scrollTo({ top: rowTop, behavior: "smooth" });
+        } else if (rowBottom > scrollTop + containerHeight) {
+          container.scrollTo({ top: rowBottom - containerHeight, behavior: "smooth" });
+        }
       }
     });
     return () => {
@@ -655,7 +669,7 @@ export function SlotParameterControls({
           onBackgroundReset={handleBackgroundReset}
         />
       )}
-      <div className={styles.controls}>
+      <div className={styles.controls} ref={controlsRef}>
         {sortedParameters.map((template, index) => {
           const paramId = makeSlotParameterId(slotIndex, template.templateId);
           const hasMidiMapping = midiMappings?.some(
