@@ -111,9 +111,9 @@ Make LFOs easier to identify and manage when multiple are active mid-performance
 
 **Phase 1 — Quick wins (low effort)**:
 
-- [ ] Auto-generate a meaningful default name on LFO creation: e.g. "Sine 0.5 Hz" or, when created via the Quick-wire button on a parameter, "[SketchName] / [ParamName]". Update the Rust `Default` impl and the `LfoForm` initial value in the frontend.
-- [ ] Show the LFO waveform shape icon and current rate next to the name in all dropdowns and list rows.
-- [ ] Add a subtle per-LFO activity animation in the panel list (small oscillating bar or phase dot) so the operator can confirm an LFO is running at a glance.
+- [x] Auto-generate a meaningful default name on LFO creation: e.g. "Sine 0.5 Hz" or, when created via the Quick-wire button on a parameter, "[SketchName] / [ParamName]". Update the Rust `Default` impl and the `LfoForm` initial value in the frontend.
+- [x] Show the LFO waveform shape icon and current rate next to the name in all dropdowns and list rows.
+- [x] Add a subtle per-LFO activity animation in the panel list (small oscillating bar or phase dot) so the operator can confirm an LFO is running at a glance.
 
 **Phase 2 — Deeper overhaul (design decision required before starting)**:
 

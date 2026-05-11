@@ -13,7 +13,7 @@ import {
 } from "./controls/useParameterStore";
 import type { SketchId, SketchProps } from "./sketches";
 import { getSketchDescriptor } from "./sketches";
-import { makeSlotParameterId, buildSlotDefaultParameters } from "./slots/slotTypes";
+import { makeSlotParameterId, buildSlotDefaultParameters, getParameterDropdownLabel, type ParameterId } from "./slots/slotTypes";
 import { SlotsArea, RendererPreview, Sidebar, UpdateBanner } from "./components";
 import { ToolbarUndoRedo, ToolbarRendererStats, ToolbarTapBpm } from "./components/Toolbar";
 
@@ -205,7 +205,8 @@ function App() {
 
   const handleQuickLfo = useCallback(
     async (parameterId: string) => {
-      const lfo = createLfo({ name: "LFO" });
+      const lfoName = getParameterDropdownLabel(parameterId as ParameterId);
+      const lfo = createLfo({ name: lfoName });
       const savedLfo = await addLfo(lfo);
       const target = createTarget(savedLfo.id, parameterId, {
         depth: 0.5,

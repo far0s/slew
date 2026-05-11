@@ -17,6 +17,7 @@ import {
   useLfoValues,
   createLfo,
   getTargetsForLfo,
+  generateLfoName,
   LFO_SHAPES,
   LFO_SHAPE_LABELS,
   LFO_SHAPE_COLORS,
@@ -292,9 +293,14 @@ interface LfoFormProps {
 function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
   const isEditing = editingLfo !== null;
 
-  const [name, setName] = useState(editingLfo?.name ?? "LFO");
   const [shape, setShape] = useState<LfoShape>(editingLfo?.shape ?? "sine");
   const [rate, setRate] = useState(editingLfo?.rate ?? 0.5);
+  // For a new LFO, auto-generate name from shape+rate. For editing, use saved name.
+  const [name, setName] = useState(
+    editingLfo?.name ?? generateLfoName(editingLfo?.shape ?? "sine", editingLfo?.rate ?? 0.5),
+  );
+  // Track whether the user has manually edited the name so we stop auto-updating it
+  const [nameManuallyEdited, setNameManuallyEdited] = useState(isEditing);
   const [depth, setDepth] = useState(editingLfo?.depth ?? 1.0);
   const [offset, setOffset] = useState(editingLfo?.offset ?? 0.0);
   const [phase, setPhase] = useState(editingLfo?.phase ?? 0.0);
@@ -302,6 +308,13 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
   const [bpmDivision, setBpmDivision] = useState(
     editingLfo?.bpm_division ?? 1.0,
   );
+
+  // Auto-update name when shape or rate changes (only for new LFOs with unedited name)
+  useEffect(() => {
+    if (!nameManuallyEdited) {
+      setName(generateLfoName(shape, rate));
+    }
+  }, [shape, rate, nameManuallyEdited]);
 
   const handleSubmit = () => {
     const lfo: LfoSource = {
@@ -334,7 +347,7 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
             type="text"
             className={styles.formInput}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => { setName(e.target.value); setNameManuallyEdited(true); }}
             placeholder="LFO name…"
           />
         </label>
@@ -1004,7 +1017,7 @@ function AudioModForm({
           >
             {lfos.map((lfo) => (
               <option key={lfo.id} value={lfo.id}>
-                {lfo.name}
+                {lfo.name} ({LFO_SHAPE_LABELS[lfo.shape]})
               </option>
             ))}
           </select>

@@ -177,6 +177,16 @@ export const LFO_SHAPE_COLORS: Record<LfoShape, string> = {
 /** Colors for modulation depth indicators */
 export const MODULATION_INDICATOR_COLOR = "rgb(99 102 241)"; // indigo
 
+/**
+ * Generate a human-readable default name for a new LFO.
+ * e.g. "Sine 1.0 Hz", "Triangle 0.25 Hz"
+ */
+export function generateLfoName(shape: LfoShape, rate: number): string {
+  const shapeLabel = LFO_SHAPE_LABELS[shape] ?? shape;
+  const hz = rate >= 1 ? `${rate.toFixed(1)} Hz` : `${rate.toFixed(2)} Hz`;
+  return `${shapeLabel} ${hz}`;
+}
+
 // ============================================================================
 // API Functions (Tauri command wrappers)
 // ============================================================================
