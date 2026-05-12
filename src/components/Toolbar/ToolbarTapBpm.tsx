@@ -9,11 +9,15 @@ import {
   subscribeTapShortcut,
   type TapShortcut,
 } from "../../inputs/tapTempo";
+import { useLinkStatus } from "../../inputs/bpmSource";
+import { useActiveBpmSource } from "../../inputs/bpmSource";
 import styles from "./Toolbar.module.css";
 
 export function ToolbarTapBpm() {
   const tapTempo = useTapTempo();
   const tapGroupRef = useRef<HTMLDivElement>(null);
+  const { status: linkStatus } = useLinkStatus();
+  const activeSource = useActiveBpmSource();
 
   useBpmBeat(() => {
     const el = tapGroupRef.current;
@@ -53,7 +57,14 @@ export function ToolbarTapBpm() {
   }, [isCapturingShortcut]);
 
   return (
-    <div ref={tapGroupRef} className={styles.toolbarTapGroup}>
+    <div className={styles.toolbarTapGroup} ref={tapGroupRef}>
+      {linkStatus.enabled && linkStatus.bpm !== null && (
+        <div className={styles.toolbarLinkBpm} data-active={activeSource.source === "link"}>
+          <span className={styles.toolbarLinkLabel}>Link</span>
+          <span className={styles.toolbarBpmValue}>{linkStatus.bpm}</span>
+          <span className={styles.toolbarBpmUnit}>BPM</span>
+        </div>
+      )}
       <button
         type="button"
         className={`${styles.toolbarTapButton} ${tapTempo.isPulsing ? styles.toolbarTapPulse : ""}`}

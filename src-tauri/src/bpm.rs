@@ -24,6 +24,7 @@ use tauri::{AppHandle, Emitter};
 pub enum BpmSourceKind {
     Manual,
     Osc,
+    Link,
     MidiClock,
     Microphone,
 }
@@ -32,10 +33,11 @@ impl BpmSourceKind {
     /// Lower number = higher priority.
     fn priority(self) -> u8 {
         match self {
-            BpmSourceKind::Manual => 1,
-            BpmSourceKind::Osc => 2,
-            BpmSourceKind::MidiClock => 3,
-            BpmSourceKind::Microphone => 4,
+            BpmSourceKind::Manual    => 1,
+            BpmSourceKind::Osc      => 2,
+            BpmSourceKind::Link     => 3,
+            BpmSourceKind::MidiClock => 4,
+            BpmSourceKind::Microphone => 5,
         }
     }
 }
@@ -69,10 +71,11 @@ struct BpmSourceState {
 impl BpmSourceState {
     fn new() -> Self {
         let sources = vec![
-            SourceRecord { kind: BpmSourceKind::Manual,    last_seen: None, bpm: None },
-            SourceRecord { kind: BpmSourceKind::Osc,       last_seen: None, bpm: None },
-            SourceRecord { kind: BpmSourceKind::MidiClock, last_seen: None, bpm: None },
-            SourceRecord { kind: BpmSourceKind::Microphone,last_seen: None, bpm: None },
+            SourceRecord { kind: BpmSourceKind::Manual,     last_seen: None, bpm: None },
+            SourceRecord { kind: BpmSourceKind::Osc,        last_seen: None, bpm: None },
+            SourceRecord { kind: BpmSourceKind::Link,       last_seen: None, bpm: None },
+            SourceRecord { kind: BpmSourceKind::MidiClock,  last_seen: None, bpm: None },
+            SourceRecord { kind: BpmSourceKind::Microphone, last_seen: None, bpm: None },
         ];
         Self {
             sources,
@@ -219,4 +222,16 @@ pub fn get_active_source() -> BpmSourceKind {
 /// Return the BPM of the currently winning source.
 pub fn get_active_bpm() -> Option<f64> {
     with_bpm_source(|state| state.active_bpm)
+}
+
+// ============================================================================
+// Tauri commands
+// ============================================================================
+
+#[tauri::command]
+pub fn get_active_bpm_source() -> serde_json::Value {
+    use serde_json::json;
+    with_bpm_source(|state| {
+        json!({ "source": state.active_source, "bpm": state.active_bpm })
+    })
 }

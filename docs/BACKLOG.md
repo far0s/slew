@@ -66,21 +66,6 @@ Add a full-size slot editor overlay, allowing users to focus on editing one slot
 
 ## Medium Priority
 
-### 🟡 BPM Source System — Remaining Polish `feature`
-
-The core BPM source arbitration system is implemented. OSC (configurable addresses), MIDI Clock, and Microphone are all wired up with a priority waterfall. What remains is minor polish.
-
-**What was built**:
-- `bpm.rs` — priority arbitration engine (Manual > OSC > MIDI Clock > Microphone), 5 s silence timeout, `bpm_source_changed` event
-- `midi_clock.rs` — MIDI Clock input via `midir`, 24 PPQN pulse counting, median-interval BPM, auto-reconnect
-- Configurable OSC beat/BPM addresses (`OscBeatConfig`, persisted to disk)
-- AudioPanel: active source indicator (colored dot + label), MIDI Clock port selector
-- OscPanel: editable address fields, activity indicator using configured address, collapsible tool guide
-- Toast notification on first OSC beat arrival
-- Auto-select MIDI Clock port if only one port is available
-
----
-
 ### 🟡 External Texture Input `feature`
 
 Support external images/videos as input textures for sketches.
@@ -458,27 +443,6 @@ Bypass CPU entirely for ultimate video output performance.
 - [ ] Monitor WebGPU native extensions for Metal handle access
 - [ ] Prototype CALayer IOSurface capture (test feasibility outside App Store)
 - [ ] Evaluate SyphonMetalServer migration (even with CPU upload)
-
----
-
-### 🟢 Ableton Link `feature`
-
-LAN-based tempo sync. Ableton Link is a distributed consensus protocol where all peers on a LAN continuously negotiate a shared timeline and tempo.
-
-**Context**: Most Slew use cases (Ableton, Traktor, Serato, rekordbox) are already covered by MIDI Clock over IAC. Link adds value for **wireless/LAN sync** — e.g. syncing to djay Pro on a phone, or connecting to Resolume without a cable. It requires the official Ableton Link C++ SDK at build time and a stateful background thread maintaining a Link session.
-
-**Implementation notes**:
-- `rusty_link` crate wraps the official C++ SDK — requires the SDK source as a build submodule and a C++ compiler
-- Slew would be a Link *follower* only (receives tempo, fires beats) — it does not need to contribute tempo
-- Add as a fourth source in `bpm.rs` with priority between OSC and MIDI Clock
-
-**Subtasks**:
-
-- [ ] Evaluate `rusty_link` build complexity on macOS and Windows
-- [ ] Add Link as a build feature flag (optional, off by default until tested)
-- [ ] Implement `link.rs` engine with background session thread
-- [ ] UI: Link enable toggle and peer count display in AudioPanel
-- [ ] Test with Ableton Live, Resolume, djay Pro
 
 ---
 

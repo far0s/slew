@@ -16,6 +16,7 @@ pub mod frame_distribution;
 pub mod hid;
 pub mod midi;
 pub mod midi_clock;
+pub mod link;
 pub mod modulation;
 pub mod osc;
 pub mod wled;
@@ -856,6 +857,7 @@ pub fn run() {
 
             updater::init_updater(app.handle().clone());
             midi_clock::init_midi_clock_engine(app.handle().clone());
+            link::init_link_engine(app.handle().clone());
             start_parameter_tick_loop(app.handle().clone());
 
             // Window placement - spawn with delay to ensure windows are ready
@@ -988,6 +990,11 @@ pub fn run() {
             midi_clock::connect_midi_clock_cmd,
             midi_clock::disconnect_midi_clock_cmd,
             midi_clock::get_midi_clock_status_cmd,
+            // Ableton Link
+            link::enable_link_cmd,
+            link::get_link_status_cmd,
+            // BPM source
+            bpm::get_active_bpm_source,
             // Video Output
             video_out::list_video_backends,
             video_out::get_video_backend_status,

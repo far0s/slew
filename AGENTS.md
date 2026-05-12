@@ -8,8 +8,7 @@ VJ software for creative coders — Tauri v2 (Rust + WebView), React, Three.js, 
 
 ```bash
 npm install
-npm run tauri dev          # Development with hot reload
-npm run tauri:no-ndi       # Without NDI SDK
+npm run tauri:dev         # Development with hot reload (NDI + Link)
 npm test                   # Watch mode
 npm run test:run           # Single run
 ```

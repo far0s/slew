@@ -930,6 +930,7 @@ function App() {
     }
   });
 
+  // Show a one-time toast when OSC takes over as the BPM source for the first time
   return (
     <div className={styles.root}>
       <UpdateBanner state={updateState} onInstall={installUpdate} onDismiss={dismissUpdate} />

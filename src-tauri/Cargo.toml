@@ -42,6 +42,7 @@ env_logger = "0.11"  # Logging implementation
 dirs = "5.0"         # Home directory detection for config/mappings
 reqwest = { version = "0.12", features = ["blocking", "json"], default-features = false }  # HTTP client for WLED
 tauri-plugin-updater = "2.10.1"
+rusty_link = "0.4"              # Ableton Link (bundles its own C++ SDK via cmake)
 
 # Video Output (macOS Syphon)
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -56,6 +57,7 @@ optional = true
 [features]
 default = ["ndi"]                # NDI enabled by default (requires SDK)
 ndi = ["grafton-ndi"]            # NDI requires SDK installation
+# Note: Ableton Link (rusty_link) is always compiled — it bundles its own SDK
 
 # Release profile - balanced optimization and compile speed
 [profile.release]

@@ -14,7 +14,7 @@ import { useEventListener, useFetchOnMount } from "./shared";
 // ============================================================================
 
 /** The possible BPM input sources, matching the Rust `BpmSourceKind` enum. */
-export type BpmSourceKind = "manual" | "osc" | "midi_clock" | "microphone";
+export type BpmSourceKind = "manual" | "osc" | "midi_clock" | "microphone" | "link";
 
 /** Event payload emitted when the active BPM source or BPM value changes. */
 export interface BpmSourceChangedEvent {
@@ -22,6 +22,18 @@ export interface BpmSourceChangedEvent {
   source: BpmSourceKind;
   /** The current BPM value, or null if the source has not produced one yet */
   bpm: number | null;
+}
+
+/** Status of the Ableton Link session. */
+export interface LinkStatus {
+  /** Whether Link is currently enabled */
+  enabled: boolean;
+  /** Number of peers currently in the Link session */
+  peer_count: number;
+  /** The current session BPM from Link, or null if not yet received */
+  bpm: number | null;
+  /** Whether Link support was compiled in */
+  available: boolean;
 }
 
 /** Status of the MIDI Clock receiver. */
@@ -54,6 +66,7 @@ export const BPM_SOURCE_LABELS: Record<BpmSourceKind, string> = {
   osc: "OSC",
   midi_clock: "MIDI Clock",
   microphone: "Microphone",
+  link: "Ableton Link",
 };
 
 // ============================================================================
@@ -66,6 +79,16 @@ export async function getActiveBpmSource(): Promise<{
   bpm: number | null;
 }> {
   return invoke("get_active_bpm_source");
+}
+
+/** Get the current Ableton Link status. */
+export async function getLinkStatus(): Promise<LinkStatus> {
+  return invoke<LinkStatus>("get_link_status_cmd");
+}
+
+/** Enable or disable Ableton Link. */
+export async function setLinkEnabled(enabled: boolean): Promise<void> {
+  return invoke<void>("enable_link_cmd", { enabled });
 }
 
 /** List MIDI devices available for MIDI Clock input. */
@@ -117,6 +140,48 @@ export function useActiveBpmSource(): {
   });
 
   return state;
+}
+
+/** Default Link status used before the first fetch completes. */
+const DEFAULT_LINK_STATUS: LinkStatus = {
+  enabled: false,
+  peer_count: 0,
+  bpm: null,
+  available: true,
+};
+
+/**
+ * Hook for Ableton Link management.
+ *
+ * Fetches the initial status on mount, subscribes to `link_status_changed`
+ * events for live updates, and exposes a `setEnabled` action that optimistically
+ * updates local state.
+ */
+export function useLinkStatus(): {
+  status: LinkStatus;
+  setEnabled: (enabled: boolean) => Promise<void>;
+} {
+  const [status, setStatus] = useState<LinkStatus>(DEFAULT_LINK_STATUS);
+
+  useFetchOnMount(getLinkStatus, {
+    initialValue: DEFAULT_LINK_STATUS,
+    onSuccess: setStatus,
+  });
+
+  useEventListener<LinkStatus>("link_status_changed", setStatus);
+
+  const setEnabled = useCallback(async (enabled: boolean) => {
+    // Optimistic update
+    setStatus((prev) => ({ ...prev, enabled }));
+    try {
+      await setLinkEnabled(enabled);
+    } catch {
+      // Revert on failure — next event will reconcile
+      setStatus((prev) => ({ ...prev, enabled: !enabled }));
+    }
+  }, []);
+
+  return { status, setEnabled };
 }
 
 /** Default MIDI Clock status used before the first fetch completes. */

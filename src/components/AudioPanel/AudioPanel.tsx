@@ -28,6 +28,7 @@ import {
 import {
   useActiveBpmSource,
   useMidiClock,
+  useLinkStatus,
   BPM_SOURCE_LABELS,
 } from "../../inputs/bpmSource";
 import {
@@ -95,6 +96,7 @@ const BPM_SOURCE_DOT_COLORS: Record<string, string> = {
   osc: "#a855f7",          // purple
   midi_clock: "#3b82f6",  // blue
   manual: "#22c55e",       // green
+  link: "#f59e0b",         // amber
 };
 
 /**
@@ -205,6 +207,72 @@ function MidiClockSection() {
 }
 
 /**
+ * Compact Ableton Link enable/disable sub-section.
+ */
+function AbletonLinkSection() {
+  const { status, setEnabled } = useLinkStatus();
+
+  return (
+    <div className={styles.midiClockSection}>
+      <div className={styles.midiClockHeader}>
+        <span
+          className={`${styles.midiClockDot} ${
+            status.enabled ? styles.midiClockDotActive : ""
+          }`}
+          style={
+            status.enabled
+              ? { background: "#f59e0b", boxShadow: "0 0 5px rgb(245 158 11 / 0.5)" }
+              : undefined
+          }
+        />
+        <span className={styles.midiClockTitle}>Ableton Link</span>
+        {status.enabled && status.bpm !== null && (
+          <span className={styles.midiClockBpm} style={{ color: "#f59e0b" }}>
+            {status.bpm} BPM
+          </span>
+        )}
+      </div>
+
+      {!status.available ? (
+        <p className={styles.midiClockStatus}>Not available in this build</p>
+      ) : (
+        <>
+          <div className={styles.midiClockControls}>
+            <button
+              type="button"
+              onClick={() => void setEnabled(!status.enabled)}
+              className={`${styles.midiClockButton} ${
+                status.enabled
+                  ? styles.midiClockButtonStop
+                  : styles.midiClockButtonStart
+              }`}
+            >
+              {status.enabled ? "Disable" : "Enable"}
+            </button>
+            {status.enabled && (
+              <span
+                className={styles.midiClockStatus}
+                style={{ marginLeft: "auto", fontStyle: "normal" }}
+              >
+                {status.peer_count === 0
+                  ? "No peers"
+                  : status.peer_count === 1
+                    ? "1 peer"
+                    : `${status.peer_count} peers`}
+              </span>
+            )}
+          </div>
+
+          <p className={styles.midiClockStatus}>
+            {status.enabled ? "Link session active" : "Link disabled"}
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
  * Beat indicator with BPM display.
  */
 function BeatIndicator({ beat, bpm }: { beat: boolean; bpm: number | null }) {
@@ -295,8 +363,6 @@ function LevelsDisplay() {
       <div className={styles.levelsSection}>
         <h4 className={styles.levelsSectionTitle}>Beat Detection</h4>
         <BeatIndicator beat={beat} bpm={bpm} />
-        <BpmSourceRow />
-        <MidiClockSection />
         <div className={styles.sensitivityRow}>
           <label className={styles.sensitivityLabel} htmlFor="beat-sensitivity">
             Sensitivity
@@ -842,8 +908,8 @@ export interface AudioPanelProps {
  * - Audio → parameter mappings
  */
 export function AudioPanel({ className, slots = [] }: AudioPanelProps) {
-  const [deviceOpen, setDeviceOpen] = useState(true);
-  const [levelsOpen, setLevelsOpen] = useState(true);
+  const [deviceOpen, setDeviceOpen] = useState(false);
+  const [levelsOpen, setLevelsOpen] = useState(false);
   const [mappingsOpen, setMappingsOpen] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const { isRunning } = useAudioCapture();
@@ -851,7 +917,6 @@ export function AudioPanel({ className, slots = [] }: AudioPanelProps) {
 
   const handleClearAll = async () => {
     if (mappings.length === 0) return;
-    if (!window.confirm("Clear all audio mappings?")) return;
     try {
       await clear();
     } catch {
@@ -877,6 +942,12 @@ export function AudioPanel({ className, slots = [] }: AudioPanelProps) {
         >
           {isRunning ? "Capturing" : "Stopped"}
         </span>
+      </div>
+
+      <div className={styles.sectionContent}>
+        <BpmSourceRow />
+        <MidiClockSection />
+        <AbletonLinkSection />
       </div>
 
       <Collapsible.Root open={deviceOpen} onOpenChange={setDeviceOpen}>

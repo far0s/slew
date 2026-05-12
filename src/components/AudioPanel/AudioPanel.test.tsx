@@ -54,6 +54,10 @@ const mockUseAudioMappings = vi.fn();
 // Mock bpmSource hooks
 vi.mock("../../inputs/bpmSource", () => ({
   useActiveBpmSource: () => ({ source: "microphone", bpm: null }),
+  useLinkStatus: () => ({
+    status: { enabled: false, peer_count: 0, bpm: null, available: false },
+    setEnabled: vi.fn(),
+  }),
   useMidiClock: () => ({
     status: { device_id: null, is_connected: false, bpm: null },
     ports: [],
@@ -67,6 +71,7 @@ vi.mock("../../inputs/bpmSource", () => ({
     osc: "OSC",
     midi_clock: "MIDI Clock",
     microphone: "Microphone",
+    link: "Ableton Link",
   },
 }));
 
@@ -775,7 +780,7 @@ describe("AudioPanel", () => {
   // ===========================================================================
 
   describe("clear all mappings", () => {
-    it("shows confirmation dialog when Clear All clicked", async () => {
+    it("calls clear immediately when Clear All clicked", async () => {
       const testMapping: AudioMapping = {
         id: "test-mapping",
         source: "bass",
@@ -802,7 +807,7 @@ describe("AudioPanel", () => {
       fireEvent.click(clearButton);
 
       await waitFor(() => {
-        expect(mockConfirm).toHaveBeenCalledWith("Clear all audio mappings?");
+        expect(mockClearMappings).toHaveBeenCalled();
       });
     });
 
@@ -839,37 +844,19 @@ describe("AudioPanel", () => {
       });
     });
 
-    it("does not call clear when cancelled", async () => {
-      mockConfirm.mockReturnValue(false);
-
-      const testMapping: AudioMapping = {
-        id: "test-mapping",
-        source: "bass",
-        parameter_id: "slot_0_brightness",
-        min_input: 0,
-        max_input: 1,
-        min_output: 0,
-        max_output: 1,
-        mode: "continuous",
-        smoothing: 0.3,
-        enabled: true,
-      };
+    it("does not call clear when no mappings exist", async () => {
 
       mockUseAudioMappings.mockReturnValue({
         ...defaultMappingsState,
-        mappings: [testMapping],
+        mappings: [],
       });
 
       render(<AudioPanel {...defaultProps} />);
-      const clearButton = screen.getByRole("button", {
-        name: /Clear all mappings/i,
-      });
 
-      fireEvent.click(clearButton);
-
-      await waitFor(() => {
-        expect(mockConfirm).toHaveBeenCalled();
-      });
+      // Clear All button not rendered when mappings is empty
+      expect(
+        screen.queryByRole("button", { name: /Clear all mappings/i })
+      ).not.toBeInTheDocument();
 
       expect(mockClearMappings).not.toHaveBeenCalled();
     });
