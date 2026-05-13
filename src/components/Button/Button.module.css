@@ -20,8 +20,8 @@
 .button:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 2px rgb(14 165 233),
-    0 0 0 4px rgb(2 6 23);
+    0 0 0 2px var(--accent-primary),
+    0 0 0 4px var(--bg-primary);
 }
 
 /* Sizes */

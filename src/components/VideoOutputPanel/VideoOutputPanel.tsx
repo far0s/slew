@@ -246,6 +246,7 @@ function RendererSection() {
                     data-last={index === dprOptions.length - 1}
                     onClick={() => setDpr(opt.value)}
                     title={opt.description}
+                    aria-pressed={settings.dpr === opt.value}
                   >
                     {opt.label}
                   </button>
@@ -293,6 +294,7 @@ function RendererSection() {
                     data-last={index === previewFpsOptions.length - 1}
                     onClick={() => setPreviewStreamFps(opt.value)}
                     title={opt.description}
+                    aria-pressed={settings.previewStreamFps === opt.value}
                   >
                     {opt.label}
                   </button>
