@@ -308,10 +308,11 @@
    Global Styles
    ========================================================================== */
 
-/* Applying zoom here means 100vw/100vh inside children are relative to the
-   zoomed viewport, so the layout never overflows when zoom > 1. */
+/* UI Zoom — scale the root font-size so all rem-based sizes adjust.
+   px-based values (slot column widths) remain fixed and scroll horizontally
+   as intended. */
 html {
-  zoom: var(--ui-zoom, 1);
+  font-size: calc(16px * var(--ui-zoom, 1));
 }
 
 /* Body baseline for both windows - uses theme CSS variables */
