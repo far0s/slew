@@ -208,6 +208,14 @@ button.modulationBadge:hover {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .modulationDot {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Select dropdown */
 .selectTrigger {
   all: unset;

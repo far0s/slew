@@ -77,6 +77,12 @@
   50%       { border-color: rgb(167 139 250 / 0.9); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .chromaLoopActive {
+    animation: none;
+  }
+}
+
 .chromaLoopIcon {
   width: 11px;
   height: 11px;
