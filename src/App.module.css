@@ -23,8 +23,6 @@
   transition:
     background-color 0.2s ease,
     color 0.2s ease;
-  /* UI Zoom - controlled via CSS variable */
-  zoom: var(--ui-zoom, 1);
 
   * {
     overscroll-behavior: none;

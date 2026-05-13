@@ -308,6 +308,12 @@
    Global Styles
    ========================================================================== */
 
+/* Applying zoom here means 100vw/100vh inside children are relative to the
+   zoomed viewport, so the layout never overflows when zoom > 1. */
+html {
+  zoom: var(--ui-zoom, 1);
+}
+
 /* Body baseline for both windows - uses theme CSS variables */
 body {
   position: absolute;
@@ -340,9 +346,10 @@ body {
    ========================================================================== */
 
 @media (prefers-contrast: more) {
+  /* Dark default (blue tint) */
   :root {
-    --text-secondary: #c8d6e8;
-    --text-muted: #9fb3c8;
+    --text-secondary: #c0cfde;
+    --text-muted: #a0b4c8;
     --border-subtle: rgba(255, 255, 255, 0.25);
     --border-default: rgba(255, 255, 255, 0.4);
     --bg-hover: rgba(255, 255, 255, 0.1);
@@ -355,12 +362,26 @@ body {
     --border-subtle: rgba(0, 0, 0, 0.3);
     --border-default: rgba(0, 0, 0, 0.5);
   }
+
+  [data-accent="amber"] {
+    --text-secondary: #e0c4ac;
+    --text-muted: #c8a488;
+    --border-subtle: rgba(255, 140, 100, 0.25);
+    --border-default: rgba(255, 140, 100, 0.45);
+  }
+
+  [data-accent="neutral"] {
+    --text-secondary: #d4d4d4;
+    --text-muted: #b8b8b8;
+    --border-subtle: rgba(255, 255, 255, 0.25);
+    --border-default: rgba(255, 255, 255, 0.4);
+  }
 }
 
-/* Manual high-contrast override (toggled from Sidebar) */
+/* Manual high-contrast override */
 [data-contrast="high"] {
-  --text-secondary: #c8d6e8;
-  --text-muted: #9fb3c8;
+  --text-secondary: #c0cfde;
+  --text-muted: #a0b4c8;
   --border-subtle: rgba(255, 255, 255, 0.25);
   --border-default: rgba(255, 255, 255, 0.4);
   --bg-hover: rgba(255, 255, 255, 0.1);
@@ -372,6 +393,20 @@ body {
   --text-muted: #3d5068;
   --border-subtle: rgba(0, 0, 0, 0.3);
   --border-default: rgba(0, 0, 0, 0.5);
+}
+
+[data-accent="amber"][data-contrast="high"] {
+  --text-secondary: #e0c4ac;
+  --text-muted: #c8a488;
+  --border-subtle: rgba(255, 140, 100, 0.25);
+  --border-default: rgba(255, 140, 100, 0.45);
+}
+
+[data-accent="neutral"][data-contrast="high"] {
+  --text-secondary: #d4d4d4;
+  --text-muted: #b8b8b8;
+  --border-subtle: rgba(255, 255, 255, 0.25);
+  --border-default: rgba(255, 255, 255, 0.4);
 }
 
 /* Make sure the Tauri root element fills the window; React layout components
