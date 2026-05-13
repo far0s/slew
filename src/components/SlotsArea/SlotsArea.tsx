@@ -297,13 +297,7 @@ export function SlotsArea({
                 const alphaParamId = makeSlotParameterId(slot.index, "alpha");
                 const alpha = slot.sketchId ? (getValue(alphaParamId) ?? 1) : 1;
 
-                const audioReactivityParamId = makeSlotParameterId(
-                  slot.index,
-                  "audio_reactivity",
-                );
-                const audioReactivity = slot.sketchId
-                  ? (getValue(audioReactivityParamId) ?? 1)
-                  : 1;
+
 
                 return (
                   <SlotColumn
@@ -340,7 +334,7 @@ export function SlotsArea({
                       slot.sketchId ? getSlotColors?.(slot.index) : undefined
                     }
                     alpha={alpha}
-                    audioReactivity={audioReactivity}
+
                     getValue={getValue}
                     setValue={setValue}
                     audioMappings={audioMappings}

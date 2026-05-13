@@ -9,15 +9,18 @@ import {
   type ReactElement,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
 import * as Select from "@radix-ui/react-select";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
   Cross2Icon,
+  EyeOpenIcon,
+  EyeClosedIcon,
   MagnifyingGlassIcon,
   PlusIcon,
   CopyIcon,
-  SpeakerOffIcon,
+
 } from "@radix-ui/react-icons";
 import { motion, AnimatePresence } from "motion/react";
 import type { SketchId, SketchProps, SketchGroup } from "../../sketches";
@@ -227,7 +230,7 @@ export interface SlotColumnProps {
   previewParams?: SketchProps["params"];
   colors?: SketchProps["colors"];
   alpha?: number;
-  audioReactivity?: number;
+
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
   audioMappings?: AudioMapping[];
@@ -577,7 +580,7 @@ export function SlotColumn({
   previewParams,
   colors,
   alpha = 1,
-  audioReactivity = 1,
+
   getValue,
   setValue,
   audioMappings,
@@ -602,6 +605,14 @@ export function SlotColumn({
   onDragStart,
 }: SlotColumnProps) {
   const [isSlotStreaming, setIsSlotStreaming] = useState(false);
+  const [isPreviewHidden, setIsPreviewHidden] = useState(false);
+
+  useEffect(() => {
+    emit("slot-preview-visibility-changed", {
+      slotIndex,
+      hidden: isPreviewHidden,
+    });
+  }, [slotIndex, isPreviewHidden]);
 
   if (sketchId === null && panelId) {
     return (
@@ -674,128 +685,131 @@ export function SlotColumn({
       onPointerDown={onDragStart}
     >
       <PreviewContainer aspectRatio={rendererAspectRatio}>
-        {SketchComponent ? (
-          <Suspense fallback={<div className={styles.fallback}>Loading…</div>}>
-            <SlotPreview
-              slotIndex={slotIndex}
-              SketchComponent={SketchComponent}
-              params={previewParams ?? params}
-              colors={colors}
-              onStreamingChange={setIsSlotStreaming}
-            />
-            {(alpha < 0.99 || audioReactivity < 0.5) && (
-              <div className={styles.alphaOverlay}>
-                {audioReactivity < 0.5 && (
-                  <span className={styles.mutedIndicator} title="Audio muted">
-                    <SpeakerOffIcon />
-                  </span>
-                )}
-                {alpha < 0.99 && (
-                  <span className={styles.alphaValue}>
-                    {Math.round(alpha * 100)}%
-                  </span>
-                )}
-              </div>
-            )}
-          </Suspense>
-        ) : (
-          <div className={styles.fallback}>Unknown sketch: {sketchId}</div>
-        )}
-        <div
-          className={`${styles.slotBadge} ${isMacropadSelected ? styles.slotBadgeSelected : ""}`}
-          title={isSlotStreaming ? "Streamed from Renderer" : "Local preview"}
-        >
-          <span
-            className={
-              isSlotStreaming
-                ? styles.streamDotActive
-                : styles.streamDotInactive
-            }
-          />
-          {displayNumber}
-          {isMacropadSelected && (
-            <span className={styles.macropadIndicator}>⎈</span>
+          {isPreviewHidden ? (
+            <div className={styles.previewHiddenPlaceholder} />
+          ) : SketchComponent ? (
+            <Suspense fallback={<div className={styles.fallback}>Loading…</div>}>
+              <SlotPreview
+                slotIndex={slotIndex}
+                SketchComponent={SketchComponent}
+                params={previewParams ?? params}
+                colors={colors}
+                onStreamingChange={setIsSlotStreaming}
+              />
+            </Suspense>
+          ) : (
+            <div className={styles.fallback}>Unknown sketch: {sketchId}</div>
           )}
-        </div>
-
-        <div className={styles.bottomOverlay}>
-          <div className={styles.selectorWrapper}>
-            <Select.Root
-              value={sketchId}
-              disabled={isSelectDisabled}
-              onValueChange={(v) => onSketchChange(v as SketchId)}
-            >
-              <Select.Trigger
-                className={styles.selectTrigger}
-                aria-label={`Slot ${displayNumber} sketch selection`}
+          <div className={styles.alphaOverlay}>
+              <button
+                className={styles.previewToggleButton}
+                onClick={(e) => { e.stopPropagation(); setIsPreviewHidden((v) => !v); }}
+                title={isPreviewHidden ? "Show preview" : "Hide preview"}
+                aria-label={isPreviewHidden ? "Show preview" : "Hide preview"}
               >
-                <Select.Value>{displayLabel}</Select.Value>
-                <Select.Icon className={styles.selectIcon}>
-                  <ChevronDownIcon />
-                </Select.Icon>
-              </Select.Trigger>
-              <Select.Portal>
-                <Select.Content
-                  className={styles.selectContent}
-                  position="popper"
-                  sideOffset={4}
-                >
-                  <Select.Viewport className={styles.selectViewport}>
-                    {SKETCH_GROUPS.map((group) => (
-                      <Select.Group key={group.id}>
-                        <Select.Label className={styles.selectGroupLabel}>
-                          {group.label}
-                        </Select.Label>
-                        {group.sketches.map((descriptor) => {
-                          const isExcluded =
-                            descriptor.id !== sketchId &&
-                            excludeSketchIds.includes(
-                              descriptor.id as SketchId,
-                            );
-                          if (isExcluded) return null;
-                          return (
-                            <Select.Item
-                              key={descriptor.id}
-                              value={descriptor.id}
-                              className={styles.selectItem}
-                            >
-                              <Select.ItemText>
-                                {descriptor.shortLabel}
-                              </Select.ItemText>
-                            </Select.Item>
-                          );
-                        })}
-                      </Select.Group>
-                    ))}
-                  </Select.Viewport>
-                </Select.Content>
-              </Select.Portal>
-            </Select.Root>
+                {isPreviewHidden ? <EyeOpenIcon /> : <EyeClosedIcon />}
+              </button>
+
+              {alpha < 0.99 && (
+                <span className={styles.alphaValue}>
+                  {Math.round(alpha * 100)}%
+                </span>
+              )}
+            </div>
+          <div
+            className={`${styles.slotBadge} ${isMacropadSelected ? styles.slotBadgeSelected : ""}`}
+            title={isSlotStreaming ? "Streamed from Renderer" : "Local preview"}
+          >
+            <span
+              className={
+                isSlotStreaming
+                  ? styles.streamDotActive
+                  : styles.streamDotInactive
+              }
+            />
+            {displayNumber}
+            {isMacropadSelected && (
+              <span className={styles.macropadIndicator}>⎈</span>
+            )}
           </div>
+          <div className={styles.bottomOverlay}>
+            <div className={styles.selectorWrapper}>
+              <Select.Root
+                value={sketchId}
+                disabled={isSelectDisabled}
+                onValueChange={(v) => onSketchChange(v as SketchId)}
+              >
+                <Select.Trigger
+                  className={styles.selectTrigger}
+                  aria-label={`Slot ${displayNumber} sketch selection`}
+                >
+                  <Select.Value>{displayLabel}</Select.Value>
+                  <Select.Icon className={styles.selectIcon}>
+                    <ChevronDownIcon />
+                  </Select.Icon>
+                </Select.Trigger>
+                <Select.Portal>
+                  <Select.Content
+                    className={styles.selectContent}
+                    position="popper"
+                    sideOffset={4}
+                  >
+                    <Select.Viewport className={styles.selectViewport}>
+                      {SKETCH_GROUPS.map((group) => (
+                        <Select.Group key={group.id}>
+                          <Select.Label className={styles.selectGroupLabel}>
+                            {group.label}
+                          </Select.Label>
+                          {group.sketches.map((descriptor) => {
+                            const isExcluded =
+                              descriptor.id !== sketchId &&
+                              excludeSketchIds.includes(
+                                descriptor.id as SketchId,
+                              );
+                            if (isExcluded) return null;
+                            return (
+                              <Select.Item
+                                key={descriptor.id}
+                                value={descriptor.id}
+                                className={styles.selectItem}
+                              >
+                                <Select.ItemText>
+                                  {descriptor.shortLabel}
+                                </Select.ItemText>
+                              </Select.Item>
+                            );
+                          })}
+                        </Select.Group>
+                      ))}
+                    </Select.Viewport>
+                  </Select.Content>
+                </Select.Portal>
+              </Select.Root>
+            </div>
 
-          <div className={styles.actionsWrapper}>
-            <button
-              type="button"
-              className={`${styles.crossfadeButton} ${isActive ? styles.crossfadeActive : ""} ${isCrossfadeTarget ? styles.crossfadeTarget : ""}`}
-              onClick={onCrossfade}
-              disabled={isCrossfadeDisabled}
-            >
-              {crossfadeButtonLabel}
-            </button>
-
-            {showRemoveButton && (
+            <div className={styles.actionsWrapper}>
               <button
                 type="button"
-                className={styles.removeButton}
-                onClick={onRemove}
-                aria-label={`Remove slot ${displayNumber}`}
+                className={`${styles.crossfadeButton} ${isActive ? styles.crossfadeActive : ""} ${isCrossfadeTarget ? styles.crossfadeTarget : ""}`}
+                onClick={onCrossfade}
+                disabled={isCrossfadeDisabled}
               >
-                <Cross2Icon />
+                {crossfadeButtonLabel}
               </button>
-            )}
+
+              {showRemoveButton && (
+                <button
+                  type="button"
+                  className={styles.removeButton}
+                  onClick={onRemove}
+                  aria-label={`Remove slot ${displayNumber}`}
+                >
+                  <Cross2Icon />
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      </PreviewContainer>
+        </PreviewContainer>
 
       <div className={styles.controls} data-nodrag>
         <SlotParameterControls

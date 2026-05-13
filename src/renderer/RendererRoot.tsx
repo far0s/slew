@@ -325,6 +325,29 @@ function RendererContent({
 }: RendererContentProps) {
   const [tintLfoPhase, setTintLfoPhase] = useState(0);
   const slotGroupsRef = useRef<Map<number, THREE.Group>>(new Map());
+  const [hiddenPreviewSlots, setHiddenPreviewSlots] = useState<Set<number>>(
+    new Set(),
+  );
+
+  useEffect(() => {
+    const unlisten = listen<{ slotIndex: number; hidden: boolean }>(
+      "slot-preview-visibility-changed",
+      (event) => {
+        setHiddenPreviewSlots((prev) => {
+          const next = new Set(prev);
+          if (event.payload.hidden) {
+            next.add(event.payload.slotIndex);
+          } else {
+            next.delete(event.payload.slotIndex);
+          }
+          return next;
+        });
+      },
+    );
+    return () => {
+      unlisten.then((u) => u());
+    };
+  }, []);
 
   const crossfade = paramStore.get("crossfade") ?? 0;
 
@@ -370,7 +393,9 @@ function RendererContent({
       {/* Per-slot preview capture for streaming to Controls window */}
       <SlotPreviewCapture
         slotGroups={slotGroupsRef}
-        visibleSlotIndices={slotsToRender.map((s) => s.index)}
+        visibleSlotIndices={slotsToRender
+          .map((s) => s.index)
+          .filter((i) => !hiddenPreviewSlots.has(i))}
       />
 
       {/* Render all visible slots in index order */}

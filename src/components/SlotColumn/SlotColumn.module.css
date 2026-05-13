@@ -118,6 +118,41 @@
   background: var(--bg-panel);
 }
 
+/* ==========================================================================
+   Preview hide toggle
+   ========================================================================== */
+
+/* Eye toggle button inline inside alphaOverlay pill */
+.previewToggleButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgb(255 255 255 / 0.7);
+  cursor: pointer;
+  pointer-events: all;
+  transition: color 0.15s ease;
+  line-height: 1;
+}
+
+.previewToggleButton:hover {
+  color: #fff;
+}
+
+.previewToggleButton svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* Placeholder shown when preview is hidden — fills the previewContainer */
+.previewHiddenPlaceholder {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-panel);
+}
+
 /* Alpha indicator badge - shown when slot alpha < 1 */
 .alphaOverlay {
   position: absolute;
@@ -141,22 +176,7 @@
   color: rgb(255 255 255 / 0.8);
 }
 
-.mutedIndicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgb(239 68 68 / 0.9);
-}
 
-.mutedIndicator svg {
-  width: 0.875rem;
-  height: 0.875rem;
-}
-
-/* When both muted and alpha are shown, add gap */
-.alphaOverlay {
-  gap: 0.3rem;
-}
 
 /* Slot number badge (top-left) */
 .slotBadge {

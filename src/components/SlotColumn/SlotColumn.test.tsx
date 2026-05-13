@@ -358,27 +358,6 @@ describe("SlotColumn", () => {
       expect(screen.queryByText("100%")).not.toBeInTheDocument();
     });
 
-    it("shows muted indicator when audioReactivity < 0.5", () => {
-      const props: SlotColumnProps = {
-        ...defaultProps,
-        sketchId: "blueCube" as SketchId,
-        audioReactivity: 0.3,
-      };
-      render(<SlotColumn {...props} />);
-      const mutedIndicator = screen.getByTitle("Audio muted");
-      expect(mutedIndicator).toBeInTheDocument();
-    });
-
-    it("does not show muted indicator when audioReactivity >= 0.5", () => {
-      const props: SlotColumnProps = {
-        ...defaultProps,
-        sketchId: "blueCube" as SketchId,
-        audioReactivity: 0.8,
-      };
-      render(<SlotColumn {...props} />);
-      const mutedIndicator = screen.queryByTitle("Audio muted");
-      expect(mutedIndicator).not.toBeInTheDocument();
-    });
   });
 
   // ===========================================================================
