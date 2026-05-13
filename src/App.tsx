@@ -15,7 +15,8 @@ import type { SketchId, SketchProps } from "./sketches";
 import { getSketchDescriptor } from "./sketches";
 import { makeSlotParameterId, buildSlotDefaultParameters, getParameterDropdownLabel, type ParameterId } from "./slots/slotTypes";
 import { SlotsArea, RendererPreview, Sidebar, UpdateBanner } from "./components";
-import { ToolbarUndoRedo, ToolbarTapBpm, PerformanceChip } from "./components/Toolbar";
+import { ToolbarUndoRedo, ToolbarTapBpm, PerformanceChip, ToolbarShortcutsButton } from "./components/Toolbar";
+import { ShortcutsModal } from "./components/ShortcutsModal/ShortcutsModal";
 
 import { AudioIndicator } from "./components/AudioIndicator";
 import { useUndoHistory, applyUndo, applyRedo } from "./controls/useUndoHistory";
@@ -923,6 +924,7 @@ function App() {
   // Show a one-time toast when OSC takes over as the BPM source for the first time
   const oscToastShownRef = useRef(false);
   const [showOscBeatToast, setShowOscBeatToast] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   useEventListener<BpmSourceChangedEvent>("bpm_source_changed", (event) => {
     if (event.source === "osc" && !oscToastShownRef.current) {
       oscToastShownRef.current = true;
@@ -934,6 +936,7 @@ function App() {
   return (
     <div className={styles.root}>
       <UpdateBanner state={updateState} onInstall={installUpdate} onDismiss={dismissUpdate} />
+      <ShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
       {showOscBeatToast && (
         <div className={styles.oscBeatToast} role="status">
           <span className={styles.oscBeatToastBadge}>OSC</span>
@@ -969,6 +972,7 @@ function App() {
         {/* Tap BPM */}
         <AudioIndicator />
         <ToolbarTapBpm />
+        <ToolbarShortcutsButton onOpen={() => setShowShortcuts(true)} />
       </div>
       <LayoutGroup>
         <main className={styles.main}>

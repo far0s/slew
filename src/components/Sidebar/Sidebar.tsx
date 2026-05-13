@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -27,6 +27,11 @@ import { useContrast } from "../../hooks/useContrast";
 import styles from "./Sidebar.module.css";
 import { useUndoHistory } from "../../controls/useUndoHistory";
 import { useUpdater } from "../../hooks/useUpdater";
+import {
+  getTapShortcut,
+  formatTapShortcut,
+  subscribeTapShortcut,
+} from "../../inputs/tapTempo";
 
 /**
  * Props for the Sidebar component.
@@ -353,6 +358,18 @@ function UpdateSection() {
   );
 }
 
+function TapShortcutDisplay() {
+  const [label, setLabel] = useState(() => formatTapShortcut(getTapShortcut()));
+
+  useEffect(() => {
+    return subscribeTapShortcut((s) => {
+      setLabel(formatTapShortcut(s));
+    });
+  }, []);
+
+  return <kbd className={styles.actionShortcut}>{label}</kbd>;
+}
+
 export function Sidebar({
   macropadSelectedIndex,
   slots = [],
@@ -442,6 +459,10 @@ export function Sidebar({
             <div className={styles.settingsSection}>
               <h4 className={styles.settingsHeader}>Actions</h4>
               <div className={styles.actionsList}>
+                <div className={styles.actionItem}>
+                  <span className={styles.actionLabel}>Tap Tempo</span>
+                  <TapShortcutDisplay />
+                </div>
                 <button
                   type="button"
                   onClick={onUndo}
@@ -460,6 +481,10 @@ export function Sidebar({
                   <span className={styles.actionLabel}>Redo</span>
                   <kbd className={styles.actionShortcut}>⌘⇧Z</kbd>
                 </button>
+                <div className={styles.actionItem}>
+                  <span className={styles.actionLabel}>Cancel MIDI Learn</span>
+                  <kbd className={styles.actionShortcut}>Esc</kbd>
+                </div>
                 <button
                   type="button"
                   onClick={() => toggleFullscreenControls()}

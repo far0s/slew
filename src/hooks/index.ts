@@ -1,4 +1,4 @@
-export { useStatsToggle } from "./useStatsToggle";
+
 export { usePerformanceMonitor } from "./usePerformanceMonitor";
 export type { PerformanceMonitorStats } from "./usePerformanceMonitor";
 export { useWindowManager } from "./useWindowManager";

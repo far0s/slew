@@ -50,21 +50,6 @@ Implement Spout backend for Windows video output.
 
 ---
 
-### 🔴 Keyboard Shortcuts Reference Panel `feature`
-
-Add in-app keyboard shortcuts reference.
-
-**Context**: Shortcuts exist (Cmd+Shift+F, Cmd+Shift+C/R) but are undiscoverable. No in-app help for keyboard controls.
-
-**Subtasks**:
-
-- [ ] Create shortcuts reference modal/panel
-- [ ] Add "?" or "Keyboard Shortcuts" button in Settings
-- [ ] Document all existing shortcuts
-- [ ] Consider making shortcuts customizable (future enhancement)
-
----
-
 ## Medium Priority
 
 ### 🟡 Full Size Slot Editor Overlay `feature`
