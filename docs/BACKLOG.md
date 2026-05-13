@@ -169,22 +169,6 @@ Create troubleshooting guide for video output setup.
 
 ## Low Priority / Future
 
----
-
-### 🟢 Modulation Overview Mini-Map `feature`
-
-A node-graph / web view showing all active LFO-to-parameter connections at once.
-
-**Context**: Split from the LFO Naming and Modulation Panel UX item (Phase 2). During a live performance with several LFOs active, it's hard to quickly understand the full modulation state at a glance. A visual connection map would let the operator see the whole picture in one screen.
-
-**Proposed UI**: Node-graph style — LFO nodes on the left connected by lines to parameter nodes on the right. Color coded by LFO shape. Line weight indicates depth. Clicking a node focuses the relevant LFO in the panel.
-
-**Design decisions needed before starting**:
-- Where does the view live: a collapsible section in ModulationPanel, or a separate overlay/drawer?
-- Tech: SVG hand-rolled, or a lightweight graph library (e.g. `@xyflow/react`)?
-
----
-
 ### 🟢 Crash Reporting & Analytics `feature`
 
 Add optional telemetry for debugging and product insights.

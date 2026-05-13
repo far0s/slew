@@ -41,6 +41,7 @@ import {
 } from "../../slots/slotTypes";
 import type { Slot } from "../../slots/useSlots";
 import styles from "./ModulationPanel.module.css";
+import { ModulationMap } from "./ModulationMap";
 
 // ============================================================================
 // LFO Waveform Visualization
@@ -1323,6 +1324,7 @@ export function ModulationPanel({
   const [showAddAudioMod, setShowAddAudioMod] = useState(false);
   const [confirmClearLfos, setConfirmClearLfos] = useState(false);
   const [confirmClearAudioMods, setConfirmClearAudioMods] = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
   const { lfos, add: addLfo, clear: clearLfos } = useLfos();
   const {
@@ -1353,7 +1355,23 @@ export function ModulationPanel({
     <div className={`${styles.container} ${className ?? ""}`}>
       <div className={styles.header}>
         <h3 className={styles.title}>Modulation</h3>
+        {lfos.length > 0 && (
+          <button
+            type="button"
+            className={styles.headerAddButton}
+            onClick={() => setShowMap(true)}
+            aria-label="Open modulation map"
+          >
+            Map
+          </button>
+        )}
       </div>
+
+      <ModulationMap
+        isOpen={showMap}
+        onClose={() => setShowMap(false)}
+        slots={slots}
+      />
 
       {/* LFOs + Targets Section */}
       <Collapsible.Root open={lfosOpen} onOpenChange={setLfosOpen}>
