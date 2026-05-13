@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
+import { toggleFullscreen } from "../hooks/useWindowManager";
 import * as THREE from "three";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -883,8 +884,12 @@ export function RendererRoot() {
     };
   }, []);
 
+  const handleDoubleClick = useCallback(() => {
+    void toggleFullscreen("renderer");
+  }, []);
+
   return (
-    <div className={styles.root}>
+    <div className={styles.root} onDoubleClick={handleDoubleClick}>
       <WebGPUCanvas
         camera={{ position: [0, 0, 4], fov: 50 }}
         frameloop="always"
