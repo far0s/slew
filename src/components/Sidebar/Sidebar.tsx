@@ -26,6 +26,7 @@ import {
   MIN_ZOOM,
   MAX_ZOOM,
 } from "../../hooks";
+import { useContrast } from "../../hooks/useContrast";
 import styles from "./Sidebar.module.css";
 import { useUndoHistory } from "../../controls/useUndoHistory";
 import { useUpdater } from "../../hooks/useUpdater";
@@ -102,6 +103,7 @@ export interface SidebarProps {
  */
 function ThemeControls() {
   const { mode, accent, setMode, setAccent } = useTheme();
+  const { contrast, setContrast } = useContrast();
 
   return (
     <div className={styles.layoutControls}>
@@ -162,6 +164,33 @@ function ThemeControls() {
             aria-pressed={accent === "amber"}
           >
             Warm
+          </button>
+        </div>
+      </div>
+
+      {/* Contrast */}
+      <div className={styles.layoutRow}>
+        <span className={styles.layoutLabel}>Contrast</span>
+        <div
+          className={styles.toggleGroup}
+          role="group"
+          aria-label="Display contrast"
+        >
+          <button
+            type="button"
+            className={`${styles.toggleSegment} ${contrast === "normal" ? styles.toggleSegmentActive : ""}`}
+            onClick={() => setContrast("normal")}
+            aria-pressed={contrast === "normal"}
+          >
+            Normal
+          </button>
+          <button
+            type="button"
+            className={`${styles.toggleSegment} ${contrast === "high" ? styles.toggleSegmentActive : ""}`}
+            onClick={() => setContrast("high")}
+            aria-pressed={contrast === "high"}
+          >
+            High
           </button>
         </div>
       </div>
