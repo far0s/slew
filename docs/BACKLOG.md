@@ -217,23 +217,6 @@ Design and implement proper app icon for Slew.
 
 ---
 
-### 🟢 Accessibility Audit `a11y` `chore`
-
-Comprehensive accessibility improvements.
-
-**Context**: Keyboard navigation exists but incomplete. Screen reader support minimal.
-
-**Subtasks**:
-
-- [ ] Test full keyboard-only navigation
-- [ ] Verify Radix Slider arrow key support works
-- [ ] Add aria-live regions for status updates (device connections, slot state)
-- [ ] Run automated contrast checker (WCAG AA)
-- [ ] Add high-contrast theme option
-- [ ] Ensure all animations respect `prefers-reduced-motion`
-
----
-
 ### 🟢 Crash Reporting & Analytics `feature`
 
 Add optional telemetry for debugging and product insights.

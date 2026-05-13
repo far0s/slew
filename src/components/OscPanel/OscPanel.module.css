@@ -337,6 +337,12 @@
   border-color: rgb(168 85 247 / 0.5);
 }
 
+.rangeInput:focus-visible {
+  outline: none;
+  border-color: rgb(168 85 247 / 0.7);
+  box-shadow: 0 0 0 2px rgb(168 85 247 / 0.35);
+}
+
 .rangeSeparator {
   font-size: 0.7rem;
   color: var(--text-muted);
