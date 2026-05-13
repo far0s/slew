@@ -44,6 +44,34 @@ export interface SlotParameterControlsProps {
 }
 
 const HIDDEN_PARAMS_STORAGE_PREFIX = "slew:hidden-params:";
+const COLLAPSED_GROUPS_STORAGE_PREFIX = "slew:collapsed-groups:";
+
+const GROUP_LABELS: Record<string, string> = {
+  sketch: "Sketch",
+  transition: "Transition",
+  global: "Global",
+};
+
+function loadCollapsedGroups(sketchId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(`${COLLAPSED_GROUPS_STORAGE_PREFIX}${sketchId}`);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveCollapsedGroups(sketchId: string, collapsed: Set<string>): void {
+  try {
+    localStorage.setItem(
+      `${COLLAPSED_GROUPS_STORAGE_PREFIX}${sketchId}`,
+      JSON.stringify([...collapsed]),
+    );
+  } catch {
+    // ignore
+  }
+}
 
 /** Walk up the DOM to find the nearest ancestor that scrolls vertically. */
 function findScrollParent(el: HTMLElement): HTMLElement | null {
@@ -474,9 +502,28 @@ export function SlotParameterControls({
     loadHiddenParams(sketchId),
   );
 
+  // Collapsed groups, persisted per sketch ID
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() =>
+    loadCollapsedGroups(sketchId),
+  );
+
+  const toggleGroup = useCallback(
+    (group: string) => {
+      setCollapsedGroups((prev) => {
+        const next = new Set(prev);
+        if (next.has(group)) next.delete(group);
+        else next.add(group);
+        saveCollapsedGroups(sketchId, next);
+        return next;
+      });
+    },
+    [sketchId],
+  );
+
   // Reset hidden params when sketch changes
   useEffect(() => {
     setHiddenParams(loadHiddenParams(sketchId));
+    setCollapsedGroups(loadCollapsedGroups(sketchId));
   }, [sketchId]);
 
   const hideParam = useCallback(
@@ -712,6 +759,190 @@ export function SlotParameterControls({
 
   const hiddenCount = hiddenParams.size;
 
+  const renderParameter = (template: ParameterTemplate, index: number) => {
+    const paramId = makeSlotParameterId(slotIndex, template.templateId);
+    const hasMidiMapping = midiMappings?.some(
+      (m) => m.parameter_id === paramId,
+    );
+
+    // Render color picker group for parameters with inputType: "color"
+    if (template.inputType === "color") {
+      if (hiddenParams.has(template.templateId)) return null;
+      const baseId = `slot_${slotIndex}_${template.templateId}`;
+      const r = getValue(`${baseId}_r`);
+      const g = getValue(`${baseId}_g`);
+      const b = getValue(`${baseId}_b`);
+      const hexValue = rgbToHex(r, g, b);
+      const siblingSwatches = sortedParameters
+        .filter((t) => t.inputType === "color" && t.templateId !== template.templateId)
+        .map((t) => {
+          const sid = `slot_${slotIndex}_${t.templateId}`;
+          return rgbToHex(getValue(`${sid}_r`), getValue(`${sid}_g`), getValue(`${sid}_b`));
+        })
+        .filter((hex) => hex !== "#000000");
+      const channels = [
+        { ch: "r" as const, label: "R", value: r, color: "rose" as const },
+        { ch: "g" as const, label: "G", value: g, color: "emerald" as const },
+        { ch: "b" as const, label: "B", value: b, color: "sky" as const },
+      ];
+      return (
+        <div
+          key={baseId}
+          ref={(el) => {
+            if (el) rowRefs.current.set(baseId, el);
+            else rowRefs.current.delete(baseId);
+          }}
+          className={`${styles.colorParamRow} ${index > 0 ? styles.colorParamRowSpaced : ""}`}
+          onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
+        >
+          <div className={styles.colorParamHeader}>
+            <span className={styles.colorParamLabel}>{template.label}</span>
+            <ColorPicker
+              label={template.label}
+              value={hexValue}
+              swatches={siblingSwatches}
+              onChange={(hex) =>
+                handleColorParamChange(slotIndex, template.templateId, hex, setValue, COLOR_PICK_TRANSITION)
+              }
+            />
+          </div>
+          <ChromaLoop
+            slotIndex={slotIndex}
+            templateId={template.templateId}
+            getValue={getValue}
+            setValue={setValue}
+          />
+          {channels.map(({ ch, label: chLabel, value: chVal, color: chColor }) => {
+            const chId = `${baseId}_${ch}`;
+            const hasMidiMappingCh = midiMappings?.some((m) => m.parameter_id === chId);
+            return (
+              <ParameterSlider
+                key={chId}
+                id={`slot-${slotIndex}-${template.templateId}-${ch}`}
+                label={chLabel}
+                value={chVal}
+                min={0}
+                max={255}
+                step={1}
+                color={chColor}
+                inline
+                onChange={(val) => {
+                  isUserInteractingRef.current = true;
+                  const newR = ch === "r" ? val : r;
+                  const newG = ch === "g" ? val : g;
+                  const newB = ch === "b" ? val : b;
+                  handleColorParamChange(slotIndex, template.templateId, rgbToHex(newR, newG, newB), setValue);
+                }}
+                onCommit={(after, before) => {
+                  isUserInteractingRef.current = false;
+                  if (after !== before) pushUndoEntry(chId, before, after);
+                }}
+                audioMapping={getAudioMappingIndicator(chId, audioMappings)}
+                modulationIndicator={getModulationIndicator(chId, modulationTargets, lfos)}
+                isMidiControlled={hasMidiMappingCh}
+                pickupState={midiPickupStates?.get(chId)}
+                midiParameterId={chId}
+                onQuickBeat={onQuickBeat ? () => onQuickBeat(chId, 255) : undefined}
+                onQuickLfo={onQuickLfo ? () => onQuickLfo(chId) : undefined}
+                onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(chId) : undefined}
+                onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(chId) : undefined}
+              />
+            );
+          })}
+        </div>
+      );
+    }
+
+    // Skip hidden parameters
+    if (hiddenParams.has(template.templateId)) return null;
+
+    // Render select input
+    if (template.inputType === "select" && template.options) {
+      const selectBefore = getValue(paramId);
+      return (
+        <div
+          key={paramId}
+          ref={(el) => {
+            if (el) rowRefs.current.set(paramId, el);
+            else rowRefs.current.delete(paramId);
+          }}
+          onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
+        >
+          <ParameterSelect
+            id={`slot-${slotIndex}-${template.templateId}`}
+            label={template.label}
+            value={getValue(paramId)}
+            options={template.options}
+            showSpacing={index > 0}
+            description={undefined}
+            onChange={(value: number) => {
+              createChangeHandler(slotIndex, template, setValue).onChange(value);
+              pushUndoEntry(paramId, selectBefore, value);
+            }}
+            audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
+            modulationIndicator={getModulationIndicator(paramId, modulationTargets, lfos)}
+            isMidiControlled={hasMidiMapping}
+            onQuickBeat={onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined}
+            onQuickLfo={onQuickLfo ? () => onQuickLfo(paramId) : undefined}
+            onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined}
+            onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined}
+          />
+        </div>
+      );
+    }
+
+    // Default: slider input
+    const { onChange: sliderOnChange, onCommit: sliderOnCommit } = createChangeHandler(slotIndex, template, setValue);
+    return (
+      <div
+        key={paramId}
+        ref={(el) => {
+          if (el) rowRefs.current.set(paramId, el);
+          else rowRefs.current.delete(paramId);
+        }}
+        onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
+      >
+        <ParameterSlider
+          id={`slot-${slotIndex}-${template.templateId}`}
+          label={template.label}
+          value={getValue(paramId)}
+          min={template.min}
+          max={template.max}
+          step={template.step}
+          color={template.color ?? "emerald"}
+          showSpacing={index > 0}
+          description={undefined}
+          onChange={(v) => { isUserInteractingRef.current = true; sliderOnChange(v); }}
+          onCommit={(after, before) => { isUserInteractingRef.current = false; sliderOnCommit(after, before); }}
+          audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
+          modulationIndicator={getModulationIndicator(paramId, modulationTargets, lfos)}
+          isMidiControlled={hasMidiMapping}
+          pickupState={midiPickupStates?.get(paramId)}
+          midiParameterId={paramId}
+          onQuickBeat={onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined}
+          onQuickLfo={onQuickLfo ? () => onQuickLfo(paramId) : undefined}
+          onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined}
+          onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined}
+        />
+      </div>
+    );
+  };
+
+  // Group parameters by their group field for rendering
+  const groupedParameters = (() => {
+    const groups = new Map<string | undefined, ParameterTemplate[]>();
+    for (const template of sortedParameters) {
+      const key = template.group;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(template);
+    }
+    return groups;
+  })();
+
+  // Show group headers when there are multiple distinct named groups
+  const namedGroups = [...groupedParameters.keys()].filter(Boolean) as string[];
+  const showGroupHeaders = namedGroups.length > 1;
+
   return (
     <div className={styles.container}>
       {descriptor.colorPalette && colors && !hasColorParams && (
@@ -733,231 +964,31 @@ export function SlotParameterControls({
         />
       )}
       <div className={styles.controls}>
-        {sortedParameters.map((template, index) => {
-          const paramId = makeSlotParameterId(slotIndex, template.templateId);
-          const hasMidiMapping = midiMappings?.some(
-            (m) => m.parameter_id === paramId,
-          );
-
-          // Render color picker group for parameters with inputType: "color"
-          // Shows a visual ColorPicker swatch + R/G/B sliders each with
-          // beat / LFO / MIDI-learn controls identical to regular sliders.
-          if (template.inputType === "color") {
-            // Color rows use templateId as the hide key
-            if (hiddenParams.has(template.templateId)) return null;
-            const baseId = `slot_${slotIndex}_${template.templateId}`;
-            const r = getValue(`${baseId}_r`);
-            const g = getValue(`${baseId}_g`);
-            const b = getValue(`${baseId}_b`);
-            const hexValue = rgbToHex(r, g, b);
-
-            // Collect sibling color values as quick swatches (primary ↔ secondary cross-reference)
-            const siblingSwatches = sortedParameters
-              .filter((t) => t.inputType === "color" && t.templateId !== template.templateId)
-              .map((t) => {
-                const sid = `slot_${slotIndex}_${t.templateId}`;
-                return rgbToHex(getValue(`${sid}_r`), getValue(`${sid}_g`), getValue(`${sid}_b`));
-              })
-              .filter((hex) => hex !== "#000000");
-
-            const channels = [
-              { ch: "r" as const, label: "R", value: r, color: "rose" as const },
-              { ch: "g" as const, label: "G", value: g, color: "emerald" as const },
-              { ch: "b" as const, label: "B", value: b, color: "sky" as const },
-            ];
-
-            return (
-              <div
-                key={baseId}
-                ref={(el) => {
-                  if (el) rowRefs.current.set(baseId, el);
-                  else rowRefs.current.delete(baseId);
-                }}
-                className={`${styles.colorParamRow} ${index > 0 ? styles.colorParamRowSpaced : ""}`}
-                onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
-              >
-                {/* Color label + swatch button */}
-                <div className={styles.colorParamHeader}>
-                  <span className={styles.colorParamLabel}>{template.label}</span>
-                  <ColorPicker
-                    label={template.label}
-                    value={hexValue}
-                    swatches={siblingSwatches}
-                    onChange={(hex) =>
-                      handleColorParamChange(slotIndex, template.templateId, hex, setValue, COLOR_PICK_TRANSITION)
-                    }
-                  />
-                </div>
-                {/* Chroma loop */}
-                <ChromaLoop
-                  slotIndex={slotIndex}
-                  templateId={template.templateId}
-                  getValue={getValue}
-                  setValue={setValue}
-                />
-                {/* Per-channel sliders with full controls */}
-                {channels.map(({ ch, label, value: chVal, color: chColor }) => {
-                  const chId = `${baseId}_${ch}`;
-                  const hasMidiMappingCh = midiMappings?.some(
-                    (m) => m.parameter_id === chId,
-                  );
-                  return (
-                    <ParameterSlider
-                      key={chId}
-                      id={`slot-${slotIndex}-${template.templateId}-${ch}`}
-                      label={label}
-                      value={chVal}
-                      min={0}
-                      max={255}
-                      step={1}
-                      color={chColor}
-                      inline
-                      onChange={(val) => {
-                        isUserInteractingRef.current = true;
-                        const newR = ch === "r" ? val : r;
-                        const newG = ch === "g" ? val : g;
-                        const newB = ch === "b" ? val : b;
-                        handleColorParamChange(
-                          slotIndex,
-                          template.templateId,
-                          rgbToHex(newR, newG, newB),
-                          setValue,
-                        );
-                      }}
-                      onCommit={(after, before) => {
-                        isUserInteractingRef.current = false;
-                        if (after !== before) pushUndoEntry(chId, before, after);
-                      }}
-                      audioMapping={getAudioMappingIndicator(chId, audioMappings)}
-                      modulationIndicator={getModulationIndicator(
-                        chId,
-                        modulationTargets,
-                        lfos,
-                      )}
-                      isMidiControlled={hasMidiMappingCh}
-                      pickupState={midiPickupStates?.get(chId)}
-                      midiParameterId={chId}
-                      onQuickBeat={
-                        onQuickBeat ? () => onQuickBeat(chId, 255) : undefined
-                      }
-                      onQuickLfo={
-                        onQuickLfo ? () => onQuickLfo(chId) : undefined
-                      }
-                      onUnlinkBeat={
-                        onUnlinkBeat ? () => onUnlinkBeat(chId) : undefined
-                      }
-                      onUnlinkLfo={
-                        onUnlinkLfo ? () => onUnlinkLfo(chId) : undefined
-                      }
-                    />
-                  );
-                })}
-              </div>
-            );
-          }
-
-          // Skip hidden parameters
-          if (hiddenParams.has(template.templateId)) return null;
-
-          // Render select input for parameters with inputType: "select"
-          if (template.inputType === "select" && template.options) {
-            const selectBefore = getValue(paramId);
-            return (
-              <div
-                key={paramId}
-                ref={(el) => {
-                  if (el) rowRefs.current.set(paramId, el);
-                  else rowRefs.current.delete(paramId);
-                }}
-                className={undefined}
-                onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
-              >
-                <ParameterSelect
-                  id={`slot-${slotIndex}-${template.templateId}`}
-                  label={template.label}
-                  value={getValue(paramId)}
-                  options={template.options}
-                  showSpacing={index > 0}
-                  description={undefined}
-                  onChange={(value: number) => {
-                    createChangeHandler(slotIndex, template, setValue).onChange(value);
-                    pushUndoEntry(paramId, selectBefore, value);
-                  }}
-                  audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
-                  modulationIndicator={getModulationIndicator(
-                    paramId,
-                    modulationTargets,
-                    lfos,
+        {showGroupHeaders
+          ? [...groupedParameters.entries()].map(([group, groupTemplates]) => {
+              const isCollapsed = group ? collapsedGroups.has(group) : false;
+              const label = group ? (GROUP_LABELS[group] ?? group) : undefined;
+              return (
+                <div key={group ?? "__ungrouped__"} className={styles.paramGroup}>
+                  {label && (
+                    <button
+                      type="button"
+                      className={styles.groupHeader}
+                      onClick={() => group && toggleGroup(group)}
+                      aria-expanded={!isCollapsed}
+                    >
+                      <span className={`${styles.groupChevron} ${isCollapsed ? styles.groupChevronCollapsed : ""}`}>▾</span>
+                      <span className={styles.groupLabel}>{label}</span>
+                    </button>
                   )}
-                  isMidiControlled={hasMidiMapping}
-                  onQuickBeat={
-                    onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined
-                  }
-                  onQuickLfo={
-                    onQuickLfo ? () => onQuickLfo(paramId) : undefined
-                  }
-                  onUnlinkBeat={
-                    onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined
-                  }
-                  onUnlinkLfo={
-                    onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined
-                  }
-                />
-              </div>
-            );
-          }
-
-          // Default to slider input
-          const { onChange: sliderOnChange, onCommit: sliderOnCommit } = createChangeHandler(
-            slotIndex, template, setValue,
-          );
-          return (
-            <div
-              key={paramId}
-              ref={(el) => {
-                if (el) rowRefs.current.set(paramId, el);
-                else rowRefs.current.delete(paramId);
-              }}
-              className={undefined}
-              onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
-            >
-              <ParameterSlider
-                id={`slot-${slotIndex}-${template.templateId}`}
-                label={template.label}
-                value={getValue(paramId)}
-                min={template.min}
-                max={template.max}
-                step={template.step}
-                color={template.color ?? "emerald"}
-                showSpacing={index > 0}
-                description={undefined}
-                onChange={(v) => { isUserInteractingRef.current = true; sliderOnChange(v); }}
-                onCommit={(after, before) => { isUserInteractingRef.current = false; sliderOnCommit(after, before); }}
-                audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
-                modulationIndicator={getModulationIndicator(
-                  paramId,
-                  modulationTargets,
-                  lfos,
-                )}
-                isMidiControlled={hasMidiMapping}
-                pickupState={midiPickupStates?.get(paramId)}
-                midiParameterId={paramId}
-                onQuickBeat={
-                  onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined
-                }
-                onQuickLfo={
-                  onQuickLfo ? () => onQuickLfo(paramId) : undefined
-                }
-                onUnlinkBeat={
-                  onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined
-                }
-                onUnlinkLfo={
-                  onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined
-                }
-              />
-            </div>
-          );
-        })}
+                  {!isCollapsed && groupTemplates.map((template, index) =>
+                    renderParameter(template, index)
+                  )}
+                </div>
+              );
+            })
+          : sortedParameters.map((template, index) => renderParameter(template, index))
+        }
       </div>
       {hiddenCount > 0 && (
         <button

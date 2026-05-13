@@ -49,7 +49,7 @@ import {
 export const SLOT_ALPHA_TEMPLATE: ParameterTemplate = {
   templateId: "alpha",
   label: "Alpha",
-  group: "sketch",
+  group: "transition",
   orderHint: 0,
   min: 0,
   max: 1,

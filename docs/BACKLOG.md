@@ -119,21 +119,6 @@ Save/load parameter configurations per sketch.
 
 ---
 
-### 🟡 Parameter Grouping/Folding `feature`
-
-Add collapsible parameter groups for sketches with many parameters.
-
-**Context**: Aura has 12 parameters - long scrollable list. `ParameterTemplate` has optional `group` field (unused). Quick win since the data model is already ready.
-
-**Subtasks**:
-
-- [ ] Respect `group` field in SlotParameterControls
-- [ ] Render collapsible sections per group
-- [ ] Persist collapsed state per sketch
-- [ ] Design: group header with chevron
-
----
-
 ### 🟡 MIDI Note Velocity Support `feature`
 
 Extend MIDI mappings to support note velocity.

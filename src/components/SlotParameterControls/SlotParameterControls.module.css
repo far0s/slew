@@ -144,3 +144,47 @@
   color: var(--text-secondary);
   border-color: var(--border-default);
 }
+
+/* Parameter group */
+.paramGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0 0.35rem 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.67rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  transition: color 0.12s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.groupHeader:hover {
+  color: var(--text-secondary);
+}
+
+.groupChevron {
+  font-size: 0.7rem;
+  display: inline-block;
+  transition: transform 0.15s ease;
+  line-height: 1;
+  margin-top: 0.05rem;
+}
+
+.groupChevronCollapsed {
+  transform: rotate(-90deg);
+}
+
+.groupLabel {
+  line-height: 1;
+}
