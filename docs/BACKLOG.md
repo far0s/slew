@@ -20,6 +20,21 @@ Prioritized list of potential work items for Slew.
 
 ## Active / High Priority
 
+### 🔴 App Icon `chore`
+
+Design and implement proper app icon for Slew.
+
+**Context**: App name is now "Slew" with tagline "VJ software for creative coders". Currently using 🎛️ emoji as a placeholder symbol. Needs a proper icon before public release.
+
+**Subtasks**:
+
+- [ ] Design app icon concept
+- [ ] Export all required sizes (32x32, 128x128, 128x128@2x, .icns, .ico)
+- [ ] Replace placeholder icons in `src-tauri/icons/`
+- [ ] Test icon appearance on all platforms
+
+---
+
 ### 🔴 Spout Video Output (Windows) `feature`
 
 Implement Spout backend for Windows video output.
@@ -50,7 +65,9 @@ Add in-app keyboard shortcuts reference.
 
 ---
 
-### 🔴 Full size Slot editor overlay `feature`
+## Medium Priority
+
+### 🟡 Full Size Slot Editor Overlay `feature`
 
 Add a full-size slot editor overlay, allowing users to focus on editing one slot at a time.
 
@@ -60,11 +77,9 @@ Add a full-size slot editor overlay, allowing users to focus on editing one slot
 
 - [ ] Slot preview click handler to open full-size editor
 - [ ] Full-size editor UI design and implementation: slot preview takes as much space as possible, slot parameters are put into a sidebar.
-- [ ] ...Make implementation as comprehensive as possible before starting the work.
+- [ ] Make implementation as comprehensive as possible before starting the work.
 
 ---
-
-## Medium Priority
 
 ### 🟡 External Texture Input `feature`
 
@@ -119,20 +134,18 @@ Save/load parameter configurations per sketch.
 
 ---
 
-### 🟡 New Sketch Group: "Effects" `feature`
+### 🟡 Parameter Grouping/Folding `feature`
 
-Create post-processing/effects sketch group.
+Add collapsible parameter groups for sketches with many parameters.
 
-**Context**: Current sketches are generative. VJs also need post-processing effects. Sketch-based approach is more flexible than global post-processing pipeline (can layer effects in slots).
+**Context**: Aura has 12 parameters - long scrollable list. `ParameterTemplate` has optional `group` field (unused). Quick win since the data model is already ready.
 
-**Ideas**:
+**Subtasks**:
 
-- [ ] Mirror/Symmetry: Reflect parts of output
-- [ ] Pixelation: Animated mosaic effect
-- [ ] RGB Split: Chromatic aberration with displacement
-- [ ] Datamosh: Glitch aesthetic (frame buffer feedback)
-- [ ] Trails/Feedback: Feedback delay with decay
-- [ ] Edge Detection: Sobel/Canny edge highlighting
+- [ ] Respect `group` field in SlotParameterControls
+- [ ] Render collapsible sections per group
+- [ ] Persist collapsed state per sketch
+- [ ] Design: group header with chevron
 
 ---
 
@@ -172,7 +185,7 @@ Create developer guide for building custom sketches.
 
 Create troubleshooting guide for video output setup.
 
-**Context**: Users will struggle with Syphon/NDI/Spout setup. Need comprehensive guide.
+**Context**: Users will struggle with Syphon/NDI/Spout setup. Need comprehensive guide. Write after Spout is done so the Windows section is complete.
 
 **Subtasks**:
 
@@ -199,21 +212,6 @@ A node-graph / web view showing all active LFO-to-parameter connections at once.
 **Design decisions needed before starting**:
 - Where does the view live: a collapsible section in ModulationPanel, or a separate overlay/drawer?
 - Tech: SVG hand-rolled, or a lightweight graph library (e.g. `@xyflow/react`)?
-
----
-
-### 🟢 App Icon `chore`
-
-Design and implement proper app icon for Slew.
-
-**Context**: App name is now "Slew" with tagline "VJ software for creative coders". Currently using 🎛️ emoji as a placeholder symbol. Need a proper icon before public release.
-
-**Subtasks**:
-
-- [ ] Design app icon concept
-- [ ] Export all required sizes (32x32, 128x128, 128x128@2x, .icns, .ico)
-- [ ] Replace placeholder icons in `src-tauri/icons/`
-- [ ] Test icon appearance on all platforms
 
 ---
 
@@ -247,21 +245,6 @@ Lock parameters to prevent accidental changes.
 
 ---
 
-### 🟢 Parameter Grouping/Folding `feature`
-
-Add collapsible parameter groups for sketches with many parameters.
-
-**Context**: Aura has 12 parameters - long scrollable list. ParameterTemplate has optional `group` field (unused).
-
-**Subtasks**:
-
-- [ ] Respect `group` field in SlotParameterControls
-- [ ] Render collapsible sections per group
-- [ ] Persist collapsed state per sketch
-- [ ] Design: group header with chevron
-
----
-
 ### 🟢 Integration Tests `chore`
 
 Add end-to-end testing for critical workflows.
@@ -283,7 +266,7 @@ Add end-to-end testing for critical workflows.
 
 Add automated testing to CI pipeline.
 
-**Context**: GitHub Actions builds but doesn't run tests.
+**Context**: GitHub Actions builds but doesn't run tests. Can be partially done now (existing unit tests) without waiting for integration tests.
 
 **Subtasks**:
 
@@ -329,7 +312,7 @@ Add long-running stability testing.
 
 Save/load complete project state.
 
-**Context**: For live performance, users need to save entire setups including all slots, parameters, and mappings.
+**Context**: For live performance, users need to save entire setups including all slots, parameters, and mappings. Sketch Presets (🟡) is a natural prerequisite.
 
 **Subtasks**:
 
@@ -369,48 +352,38 @@ GPU-based capture or frame export.
 
 ---
 
-### 🟢 Post-Processing Pipeline `feature`
+### 🟢 Post-Processing Effects Panel `feature`
 
-Add grain, bloom, feedback, color grading effects, etc.
+A dedicated effects panel operating on the composited output, with an ordered stack of effects that can be added, removed, and reordered.
 
-**Context**: Post-processing can add polish and visual interest to any sketch. Right now the Aura sketch does have grain (and tone mapping modes, but that needs to stay separate I believe) baked in, but it would be useful to have more control over these effects at a more global level.
+**Context**: Merged from "New Sketch Group: Effects" and the previous "Post-Processing Pipeline" item. Per-slot effects via the slot system are too limiting — global effects (grain, bloom, etc.) shouldn't consume a slot, and chaining order matters. A first-class Effects Panel is the right model.
+
+**Architecture notes** (design pass needed before implementation):
+- Effects run on the composited output, after slot blending but before Syphon/NDI output — natural seam in `VideoOutputCapture.tsx`
+- Effects are descriptor-based like sketches (same `ParameterTemplate` system, same auto-generated sliders)
+- UI: separate panel with add/remove/drag-to-reorder stack
+
+**Effect ideas** (from Phobon's Fragments Boilerplate and beyond):
+- Grain
+- Bloom
+- Chromatic Aberration / RGB Split
+- CRT Scanlines
+- Dither / Halftone
+- Pixelation
+- Vignette
+- Feedback / Trails (frame buffer decay)
+- Mirror / Symmetry
+- Bulge / Swirl / Wave Distortion
+- Edge Detection
+- Datamosh (glitch)
 
 **Subtasks**:
 
-- [ ] Add Post-processing pipeline
-- [ ] Sidebar: add post-processing controls tab
-- [ ] Allow to add independent post-processing effects
-- [ ] Allow post-processing effects to be chained, re-ordered
-- [ ] Effects: Grain, Chromatic Aberration, Bloom, CRT Scanlines, Dither, Halftone, Pixellation, Vignette, LED, Bulge Distortion, Swirl distortion, Wave Distortion... These effects can be ported over from Phobon's Fragments Boilerplate https://github.com/phobon/fragments-boilerplate
-
----
-
-### 🟢 IOSurface Zero-Copy (macOS) `feature`
-
-Bypass CPU entirely for ultimate video output performance.
-
-**Context**: Current WebGPU async readback + binary IPC achieves **stable 60fps at 1080p**. IOSurface would provide ~10-20% additional improvement by eliminating CPU copies entirely, but requires significant effort and possibly private APIs. **Not a priority** given current performance meets requirements.
-
-**Reference**: See `docs/finished/IOSURFACE_FEASIBILITY.md` for detailed research (updated June 2025).
-
-**Key findings from research**:
-
-- WebGPU uses Metal internally on macOS, but no public API exposes Metal textures
-- SyphonMetalServer can publish directly from Metal textures with GPU blit
-- CALayer private API (`_contentsIOSurface`) is high risk (App Store rejection)
-- Current ~5-8ms per frame is well within 16.67ms budget for 60fps
-
-**When to revisit**:
-
-- Performance requirements increase (4K output, multiple simultaneous outputs)
-- Apple provides new public APIs for WebGPU texture access
-- VJ performance becomes a key differentiator worth major investment
-
-**Subtasks** (deferred):
-
-- [ ] Monitor WebGPU native extensions for Metal handle access
-- [ ] Prototype CALayer IOSurface capture (test feasibility outside App Store)
-- [ ] Evaluate SyphonMetalServer migration (even with CPU upload)
+- [ ] Design pass: pipeline integration, descriptor schema for effects, panel UX
+- [ ] Implement effects render pass in `VideoOutputCapture.tsx`
+- [ ] Effects Panel UI (add, remove, reorder, per-effect parameters)
+- [ ] Implement initial set of effects
+- [ ] Persist effects stack and parameters
 
 ---
 
@@ -443,6 +416,21 @@ OSC → DMX integration for lighting.
 
 ---
 
+### 🟢 Onboarding / First-Run Experience `feature`
+
+Guide new users on first launch.
+
+**Context**: Currently a new user sees 8 empty slots with no hints. No tutorial, no "get started" guidance. Worth at least a lightweight first-run hint system before wide release.
+
+**Subtasks**:
+
+- [ ] Identify the 3-4 key actions a new user needs to discover (load sketch, map MIDI, enable output)
+- [ ] Design: tooltip hints, empty-state copy, or a dismissable welcome card
+- [ ] Implement and make dismissable/skippable
+- [ ] Don't show again after first use (persist dismissed state)
+
+---
+
 ### 🟢 Linux Packaging Testing `issue` `chore`
 
 Verify Linux builds work correctly.
@@ -463,7 +451,7 @@ Verify Linux builds work correctly.
 
 Complete Windows distribution pipeline testing.
 
-**Context**: macOS packaging is done (unsigned); Windows needs verification.
+**Context**: Dependent on Spout (🔴) being complete first.
 
 **Subtasks**:
 
@@ -476,6 +464,35 @@ Complete Windows distribution pipeline testing.
 ## Future Consideration / Inspiration
 
 These are more speculative ideas that could differentiate Slew from other VJ software. Not prioritized but worth documenting for future exploration.
+
+### 🎨 IOSurface Zero-Copy (macOS) `feature`
+
+Bypass CPU entirely for ultimate video output performance.
+
+**Context**: Current WebGPU async readback + binary IPC achieves **stable 60fps at 1080p**. IOSurface would provide ~10-20% additional improvement by eliminating CPU copies entirely, but requires significant effort and possibly private APIs. **Not a priority** given current performance meets requirements.
+
+**Reference**: See `docs/finished/IOSURFACE_FEASIBILITY.md` for detailed research (updated June 2025).
+
+**Key findings from research**:
+
+- WebGPU uses Metal internally on macOS, but no public API exposes Metal textures
+- SyphonMetalServer can publish directly from Metal textures with GPU blit
+- CALayer private API (`_contentsIOSurface`) is high risk (App Store rejection)
+- Current ~5-8ms per frame is well within 16.67ms budget for 60fps
+
+**When to revisit**:
+
+- Performance requirements increase (4K output, multiple simultaneous outputs)
+- Apple provides new public APIs for WebGPU texture access
+- VJ performance becomes a key differentiator worth major investment
+
+**Subtasks** (deferred):
+
+- [ ] Monitor WebGPU native extensions for Metal handle access
+- [ ] Prototype CALayer IOSurface capture (test feasibility outside App Store)
+- [ ] Evaluate SyphonMetalServer migration (even with CPU upload)
+
+---
 
 ### 🎨 Sketch Sequencer `feature`
 
