@@ -597,19 +597,6 @@ export function Sidebar({
               <h4 className={styles.settingsHeader}>Layout</h4>
               <LayoutControls />
             </div>
-
-            <Section
-              title="Custom CSS"
-              badge={
-                <span className={styles.comingSoonBadge}>Coming Soon</span>
-              }
-              defaultOpen={false}
-            >
-              <p className={styles.placeholderText}>
-                Custom CSS is not yet available. This feature will allow you to
-                load your own stylesheet to customize the UI appearance.
-              </p>
-            </Section>
           </div>
         </Tabs.Content>
       </div>
