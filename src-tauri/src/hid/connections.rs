@@ -124,8 +124,10 @@ pub(crate) fn connect_device_internal(path: &str, update_status: bool) -> Result
 
     let api = HidApi::new().map_err(|e| format!("Failed to initialize HID API: {}", e))?;
 
+    let cpath = std::ffi::CString::new(path)
+        .map_err(|_| format!("Device path contains null byte: {}", path))?;
     let device = api
-        .open_path(std::ffi::CString::new(path).unwrap().as_c_str())
+        .open_path(cpath.as_c_str())
         .map_err(|e| format!("Failed to open device: {}", e))?;
 
     device

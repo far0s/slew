@@ -296,21 +296,6 @@ Add end-to-end testing for critical workflows.
 
 ---
 
-### 🟢 Rust Unwrap/Expect Audit `issue` `chore`
-
-Audit and fix unwrap/expect usage in Rust code.
-
-**Context**: 117 unwrap/expect calls - potential production panics.
-
-**Subtasks**:
-
-- [ ] Audit each usage
-- [ ] Keep unwraps in initialization code (acceptable)
-- [ ] Replace with proper error handling in hot paths
-- [ ] Add comments explaining why unwrap is safe (when kept)
-
----
-
 ### 🟢 CI Test Job `chore`
 
 Add automated testing to CI pipeline.
