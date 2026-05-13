@@ -371,11 +371,25 @@ body {
     --border-default: rgba(255, 140, 100, 0.45);
   }
 
+  [data-theme="light"][data-accent="amber"] {
+    --text-secondary: #6b3a28;
+    --text-muted: #7a4a38;
+    --border-subtle: rgba(140, 60, 30, 0.3);
+    --border-default: rgba(140, 60, 30, 0.5);
+  }
+
   [data-accent="neutral"] {
     --text-secondary: #d4d4d4;
     --text-muted: #b8b8b8;
     --border-subtle: rgba(255, 255, 255, 0.25);
     --border-default: rgba(255, 255, 255, 0.4);
+  }
+
+  [data-theme="light"][data-accent="neutral"] {
+    --text-secondary: #2a2a2a;
+    --text-muted: #3d3d3d;
+    --border-subtle: rgba(0, 0, 0, 0.3);
+    --border-default: rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -403,11 +417,27 @@ body {
   --border-default: rgba(255, 140, 100, 0.45);
 }
 
+/* Light + accent: must come after and use 3-attribute selectors to beat the
+   2-attribute [data-theme="light"][data-contrast="high"] rule */
+[data-theme="light"][data-accent="amber"][data-contrast="high"] {
+  --text-secondary: #6b3a28;
+  --text-muted: #7a4a38;
+  --border-subtle: rgba(140, 60, 30, 0.3);
+  --border-default: rgba(140, 60, 30, 0.5);
+}
+
 [data-accent="neutral"][data-contrast="high"] {
   --text-secondary: #d4d4d4;
   --text-muted: #b8b8b8;
   --border-subtle: rgba(255, 255, 255, 0.25);
   --border-default: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="light"][data-accent="neutral"][data-contrast="high"] {
+  --text-secondary: #2a2a2a;
+  --text-muted: #3d3d3d;
+  --border-subtle: rgba(0, 0, 0, 0.3);
+  --border-default: rgba(0, 0, 0, 0.5);
 }
 
 /* Make sure the Tauri root element fills the window; React layout components
