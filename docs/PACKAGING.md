@@ -312,18 +312,18 @@ xcrun stapler staple Slew.app
 
 ### GitHub Releases
 
-1. Tag your release: `git tag 0.7.0`
-2. Push the tag: `git push origin 0.7.0`
-3. Create a release on GitHub
-4. Upload the built artifacts
+Releases are fully automated via GitHub Actions. The workflow builds for macOS (aarch64 + x64), Windows, and Linux on every pushed tag.
 
-### Auto-Update (Future)
+1. Follow the version bump steps in the checklist below (or see `AGENTS.md`)
+2. Push the tag: `git push origin <version>`
+3. CI builds all platforms and creates a draft release with artifacts attached
+4. Review the draft on GitHub, then publish it
 
-Tauri supports auto-update via the `tauri-plugin-updater`. This requires:
+Do not manually upload artifacts — the CI job handles this.
 
-- A server hosting update manifests
-- Code signing (required for auto-update)
-- Configuration in `tauri.conf.json`
+### Auto-Update
+
+Tauri auto-update is configured via `tauri-plugin-updater`. Update manifests are served from GitHub Releases. Code signing is required for auto-update to work on macOS.
 
 ---
 
@@ -432,12 +432,12 @@ Before releasing a new version:
 1. [ ] Update version in `package.json`
 2. [ ] Update version in `src-tauri/Cargo.toml`
 3. [ ] Update version in `src-tauri/tauri.conf.json`
-4. [ ] Update CHANGELOG
-5. [ ] Test on all target platforms
-6. [ ] Build release packages
-7. [ ] Sign and notarize (macOS)
-8. [ ] Create GitHub release with artifacts
-9. [ ] Update documentation if needed
+4. [ ] Validate JSON: `python3 -c "import json; json.load(open('package.json')); json.load(open('src-tauri/tauri.conf.json')); print('OK')"`
+5. [ ] Update `Cargo.lock`: `cargo update --manifest-path src-tauri/Cargo.toml --package slew`
+6. [ ] Commit, tag (bare version — no `v` prefix), and push tag
+7. [ ] CI builds all platforms and creates a draft GitHub release — verify it
+8. [ ] Publish the draft release
+9. [ ] Sign and notarize (macOS) if distributing outside CI
 
 ---
 

@@ -20,6 +20,49 @@ Prioritized list of potential work items for Slew.
 
 ## Active / High Priority
 
+### 🔴 Codebase Stabilisation `chore` `issue`
+
+Several recent development cycles added features rapidly without enough time for clean-up. This item tracks all the concrete technical-debt tasks identified in a post-0.12.0 audit so they can be resolved before the next major feature wave.
+
+Work is grouped into three tiers — bugs first, then design/smell fixes, then test coverage — so it can be picked off incrementally.
+
+#### Tier 1 — Bugs & Correctness (fix first)
+
+- [ ] **`midi_clock.rs:198` — O(n) ring buffer** · `pulse_times` is a `Vec<Instant>` that calls `remove(0)` (shifts all elements) inside the hot MIDI callback at up to 120×/sec at 300 BPM. Replace with `VecDeque<Instant>` + `pop_front()` / `push_back()` for O(1) and reduced timing jitter.
+- [ ] **`bpm.rs:213` — BPM dropout on manual-clear while Link is active** · `report_manual_bpm(None)` calls `arbitrate(state, BpmSourceKind::Manual)` (correctly promotes Link), then unconditionally calls `modulation::update_bpm(None)`, overwriting the just-promoted source's BPM. After clearing manual, read the winning source's BPM from state and pass that value instead.
+- [ ] **`link.rs:124–139` — Double `report_beat` in same poll tick** · When a beat edge and a tempo change coincide (common), `modulation::update_bpm` is invoked twice with the same value. Guard with a check so the second call is skipped when `bpm_changed` is already covered by the beat-fired path.
+- [ ] **`RendererRoot.tsx:172,205–209` — Debug code left in render path** · `let _dbgLastOpacity: Record<number, number> = {}` and the surrounding `[RENDERER FLASH DBG]` console.log block inside the per-frame opacity path. Remove the variable and the entire debug block — this bypasses `logger.ts` and fires in the hot render loop.
+
+#### Tier 2 — Design / Code Smell
+
+- [ ] **`wled.rs:217` — New `reqwest::blocking::Client` on every WLED flush (~25 Hz)** · `do_post` builds a fresh client (new connection pool, DNS resolver, TLS state, TCP handshake) on every call. Store a single `Client` in `WledState` or use `Lazy<Client>`.
+- [ ] **`wled.rs:75,84` / `bpm.rs:92` / `hid/reading.rs:13` — `unwrap()` on mutex locks** · If a thread panics while holding one of these locks the mutex becomes poisoned and every subsequent call panics the whole process. Replace bare `.unwrap()` with `.unwrap_or_else(|poisoned| poisoned.into_inner())` or proper error propagation. The `hid/reading.rs` case is in a background thread and is the highest-risk.
+- [ ] **`StepInput.tsx:7–18` — Duplicate `KnobColorVariant` type** · `StepInput` defines its own full copy of the 10-variant union instead of importing from `KnobInput`. Two definitions must stay in sync manually. Import the type from `../KnobInput`.
+- [ ] **`ToolbarTapBpm.tsx:73` — Inline re-implementation of `isTapShortcutDefault`** · The boolean expression `s.key === " " && !s.ctrlKey && ...` duplicates the already-imported `isTapShortcutDefault()`. Use the function instead.
+- [ ] **`ToolbarTapBpm.tsx:13–16` — Split import from same module** · Two consecutive `import` statements from `"../../inputs/bpmSource"`. Merge into one.
+- [ ] **`WledPanel.tsx:39,50` — Raw `console.error` bypassing `logger`** · Two `.catch` handlers call `console.error("[WLED] ...")` directly. Replace with `logger.error("WLED", ...)` to respect the log-level system introduced in the console logging cleanup sprint.
+- [ ] **`Aura/index.tsx:203,282` — `@ts-ignore` on dead `estimateNormal` function** · The function is never called and suppresses the type-checker with `// @ts-ignore - Reserved for future debug modes`. Either delete it or convert to `@ts-expect-error` with a proper justification; dead code that evades TypeScript adds maintenance risk.
+- [ ] **`bpm.rs:148` — `"microphone"` as idle BPM-source fallback label** · When no source has fired recently, the arbitration returns `BpmSourceKind::Microphone` as the default, causing the frontend to show "microphone" as the active source even when audio analysis is disabled. Use a dedicated `BpmSourceKind::None` / `Idle` variant and handle it in the frontend indicator.
+- [ ] **`midi/types.rs` — `SlotState` name collision** · `midi/types.rs` defines `pub(crate) struct SlotState` for MIDI slot snapshots; `lib.rs` defines `pub struct SlotState` for the global slot store. Two entirely different types, same name. Rename the MIDI one to `MidiSlotInfo` or `SlotSnapshot`.
+- [ ] **`midi/midimix.rs` — hardcoded sketch parameter tables** · `get_sketch_first_params` and `get_sketch_param_range` match on sketch ID strings and hardcode parameter names/ranges. These will silently drift whenever sketches change. Move the data to the sketch descriptors or drive the mapping from the canonical parameter store.
+- [ ] **`modulation.rs` — `#[allow(non_snake_case)]` on Tauri command** · `add_modulation_audio_modulation` uses a camelCase param `audioMod` with a lint suppression instead of a snake_case `audio_mod`. Rename the parameter; Tauri's serde layer handles JS→Rust field mapping.
+- [ ] **`src/controls/` orphaned directory** · Contains only `useParameterStore.ts` and `useUndoHistory.ts` with no barrel `index.ts` and no CSS. Move both to `src/hooks/` and export from `src/hooks/index.ts`.
+- [ ] **Incomplete barrel exports** · `src/hooks/index.ts` omits `useContrast` and `useUpdater`. `src/components/index.ts` omits `WledPanel`, `ShortcutsModal`, `KnobInput`, `StepInput`, `SpectrumAnalyzer`, `AudioIndicator`. Audit and either add the missing exports or document why certain components are intentionally excluded.
+- [ ] **Inconsistent component `index.ts` default re-export** · Three different patterns in use across component barrels: named-only, named + explicit `default`, named + `export { X as default }`. Pick one and normalise.
+- [ ] **`onClose` vs `onDismiss` prop naming** · `ShortcutsModal` and `ModulationMap` use `onClose`; `UpdateBanner` uses `onDismiss`. Pick one name for all modal/overlay dismiss callbacks and normalise.
+- [ ] **Hardcoded colors in components** · `Sidebar.tsx:321` uses `style={{ color: "var(--color-error, #f87171)" }}` inline instead of a CSS module class. `AudioPanel.tsx:230` hardcodes `#f59e0b` instead of `var(--accent-warning)`. Replace both with CSS module classes.
+- [ ] **WLED missing `useWled()` hook** · All other input modules (`useMidi`, `useOsc`, `useHid`, `useAudio`) expose a React hook in `src/inputs/`. WLED has only raw `invoke` wrappers in `wled.ts`. Add a `useWled()` hook following the shared input pattern.
+
+#### Tier 3 — Test Coverage
+
+- [ ] **`KnobInput` — New features have no tests** · The following props added in recent sprints are untested: `pickupState` ghost-marker branch, `modulationIndicator` ring, `audioMapping` indicator, and all four quick-action callbacks (`onQuickBeat`, `onQuickLfo`, `onUnlinkBeat`, `onUnlinkLfo`).
+- [ ] **`ShortcutsModal` — No test file** · Non-trivial interactive component (subscription cleanup, `Escape` keyboard trap, backdrop vs. inner click, conditional render) with zero coverage. Regression risk is high given its event-subscription teardown.
+- [ ] **`tapTempo.ts` — Shortcut functions untested** · `setTapShortcut`, `subscribeTapShortcut`, and `formatTapShortcut` (all recently added) have no tests. Cover: localStorage persist/load round-trip, subscriber notification on change, `formatTapShortcut` edge cases (modifier keys, non-printable keys, Space).
+
+**Sizing**: ~3–4 days total. Tier 1 is ~half a day. Tiers 2–3 can be parallelised.
+
+---
+
 ### 🔴 App Icon `chore`
 
 Design and implement proper app icon for Slew.
@@ -51,6 +94,62 @@ Implement Spout backend for Windows video output.
 ---
 
 ## Medium Priority
+
+### 🟡 Color Parameters `feature`
+
+Promote color from a static sketch config value into a live, MIDI-learnable, LFO-targetable parameter. This is the prerequisite for OSC color forwarding and WLED color control.
+
+**Context**: Sketches currently accept color via a static `colorPalette` preset array. There is no `"color"` `inputType` in the parameter system, so colors cannot be MIDI-mapped, modulated, or changed live without switching presets.
+
+**Subtasks:**
+
+- [ ] Add `"color"` to the `inputType` union on `ParameterTemplate` (`src/sketches/types.ts`)
+- [ ] Expand color params into R/G/B sub-params in `buildSlotDefaultParameters` / `buildSlotParameterDescriptors` using a `slot_{n}_{id}_r/g/b` suffix convention; add `colorChannel?: "r"|"g"|"b"` and `colorGroup?: string` to `SlotParameterDescriptor`
+- [ ] Add `color_primary`, `color_secondary`, `color_bg` to `ParameterTemplateId`
+- [ ] Pack the three sub-params into `[r, g, b]` tuples in `SketchProps.params` so sketches receive a typed color value
+- [ ] `SlotParameterControls`: render a single `ColorPicker` row for the first channel of each color group; skip the `_g` / `_b` rows (already consumed)
+- [ ] Migrate existing sketches (`Aura` presets, etc.) from static `colorPalette` entries to proper `color` parameter descriptors; keep `colorPalette` as a source of default values only
+- [ ] MIDI-learn: support per-channel CC assignment (three `MidiLearnButton` instances in expanded view)
+
+**Sizing**: Large (~2 days). Prerequisite for OSC Color Forwarding and WLED Color Control.
+
+---
+
+### 🟡 OSC Color Forwarding `feature`
+
+Emit live color parameter values over OSC whenever a color param changes, so downstream tools (TouchDesigner, Resolume, etc.) can consume them without polling.
+
+**Depends on**: Color Parameters (above).
+
+**Subtasks:**
+
+- [ ] Add `forward_colors: bool` to `OscOutputConfig` in `src/inputs/osc.ts` and `src-tauri/src/osc.rs`
+- [ ] Add `send_osc_color(slot, template_id, r, g, b)` to the Rust OSC backend, following the `send_osc_beat` / `send_osc_bpm` pattern; address scheme: `/slew/slot/{n}/color/{template_id}  r:Int  g:Int  b:Int`
+- [ ] Hook into the parameter-change event pipeline to emit on color sub-param change, debounced to 30 Hz max
+- [ ] Add a "Forward colors" toggle to the OSC Output section of `OscPanel`
+
+**Sizing**: Small (~half a day) once Color Parameters is done.
+
+---
+
+### 🟡 WLED Color Control `feature`
+
+Map slot color parameters directly to WLED LED strip segments via HTTP, bypassing TouchDesigner for LED routing.
+
+**Context**: The WLED HTTP backend (`src-tauri/src/wled.rs`) already exists with config persistence, `test_wled_connection`, and a `do_post` helper. What's missing is the color-parameter → segment mapping layer.
+
+**Depends on**: Color Parameters (above). Independent of OSC Color Forwarding.
+
+**Subtasks:**
+
+- [ ] Add `WledSegmentMapping { segment_id, slot_index, template_id, color_index }` to `WledState` and persist it
+- [ ] On color sub-param change: recompute diff, batch into a single WLED JSON payload (`seg[].col`), post at ≤25 Hz
+- [ ] Fix `do_post` to reuse a persistent `reqwest::Client` (see Stabilisation → Tier 2) rather than constructing one per call
+- [ ] `WledPanel`: add a Segment Mappings table (segment ID, slot, color param, color index) with Add / Remove rows
+
+**Sizing**: Medium (~1 day) once Color Parameters is done.
+
+---
 
 ### 🟡 MIDI Panel — Device Schematic & Clock UI `feature` `design`
 

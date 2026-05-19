@@ -8,7 +8,7 @@ VJ software for creative coders — Tauri v2 (Rust + WebView), React, Three.js, 
 
 ```bash
 npm install
-npm run tauri:dev         # Development with hot reload (NDI + Link)
+npm run tauri:dev         # Development with hot reload
 npm test                   # Watch mode
 npm run test:run           # Single run
 ```
@@ -36,7 +36,6 @@ Other commands: `osgrep trace "fn"`, `osgrep skeleton file.ts`, `osgrep symbols`
 | Document               | Purpose                                          |
 | ---------------------- | ------------------------------------------------ |
 | `docs/ARCHITECTURE.md` | System design, window architecture, core systems |
-| `docs/CHANGELOG.md`    | Feature status, recent changes                   |
 | `docs/BACKLOG.md`      | Prioritized work items                           |
 | `docs/CONVENTIONS.md`  | Code style, patterns (read when writing code)    |
 | `docs/PACKAGING.md`    | Build and distribution                           |

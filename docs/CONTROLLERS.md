@@ -169,14 +169,16 @@ Legend:
 
 To add support for a new controller:
 
-1. **MIDI Controllers**: Add profile in `src-tauri/src/midi.rs`
-   - Define CC/Note constants
-   - Add detection pattern (device name matching)
-   - Implement auto-mapping in `setup_*_default_mappings()`
+1. **MIDI Controllers**: Add a profile module inside `src-tauri/src/midi/`
+   - Follow the existing pattern (e.g. `midimix.rs`, `mpd218.rs`)
+   - Define CC/Note constants in your module
+   - Add device-name detection and auto-mapping (`setup_*_default_mappings()`)
+   - Re-export from `src-tauri/src/midi/mod.rs`
 
-2. **HID Controllers**: Add profile in `src-tauri/src/hid.rs`
+2. **HID Controllers**: Add a profile inside `src-tauri/src/hid/`
+   - Follow the existing pattern (e.g. `megalodon.rs`)
    - Define Vendor/Product IDs
    - Implement report parsing for the device's HID protocol
-   - Add to device detection in `is_supported_device()`
+   - Add to device detection in `src-tauri/src/hid/devices.rs`
 
 3. **Document**: Add ASCII diagram and mapping table to this file

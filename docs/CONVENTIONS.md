@@ -55,3 +55,44 @@ npm run test:coverage
 - Window communication: Tauri events only (no direct DOM access)
 - No `window.confirm()`: WebView blocks modals — use native Tauri dialogs
 - Video output: prefer WebGPU async readback; WebGL2 PBO fallback exists
+
+## MIDI Hardware Controllers
+
+These rules apply whenever writing MIDI input handling or hardware controller integration.
+
+**Three-layer architecture (strict)**
+
+1. **Input layer** — raw CC / note messages only, no business logic
+2. **Intent layer** — normalised `0.0–1.0` values, canonical truth, owned by the parameter store
+3. **Render / engine layer** — reads intent only; never receives raw MIDI
+
+MIDI must never touch render state directly.
+
+**Soft takeover (required for all absolute CCs)**
+
+- Ignore CC input until it crosses the current intent value (pickup)
+- Reset pickup state on: scene change, MIDI reconnect, mode change
+- On reconnect, discard the first CC value per control
+
+**Button LEDs = output, not mirror**
+
+- Drive LEDs from canonical state only
+- Never mirror raw MIDI input back to LEDs
+- LEDs must reflect active mode, armed state, and active targets
+
+**Failure handling (required)**
+
+Handlers must survive: scene switch mid-gesture, MIDI disconnect / reconnect, app suspend / resume.
+Recovery: re-arm pickup, re-sync LEDs, discard stale CCs.
+
+**Forbidden patterns**
+
+- Do not bind CCs directly to shader uniforms
+- Do not trust absolute CC position as intent truth
+- Do not use physical fader position as UI state
+- Do not map faders to master opacity or safety-critical parameters
+
+**Naming**
+
+- MIDI terminology (`cc74`, `ch1`) belongs only in the input layer
+- Intent names describe perceptual effect: `energy`, `presence` — not `noiseAmplitude`

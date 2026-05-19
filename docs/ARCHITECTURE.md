@@ -213,7 +213,6 @@ Stream rendered frames from Renderer to Controls window for pixel-perfect previe
       syphon.rs             # Native Syphon bindings (macOS)
   /docs/                    # Documentation
     /finished/              # Archived task documents
-    /working/               # Active task documents
   /scripts/                 # Build and setup scripts
 ```
 
@@ -221,43 +220,7 @@ Stream rendered frames from Renderer to Controls window for pixel-perfect previe
 
 ## Code Style
 
-### TypeScript Conventions
-
-**No JSDoc** - rely on TypeScript types for documentation. Types are self-documenting.
-
-```ts
-// ✅ Good - types speak for themselves
-export interface SlotInfo {
-  index: number;
-  sketchId: SketchId | null;
-  label: string;
-}
-
-// ❌ Avoid - redundant JSDoc
-/** Slot information */
-export interface SlotInfo {
-  /** The slot index */ index: number;
-  ...
-}
-```
-
-### Rust Module Organization
-
-Large modules are split into focused submodules:
-
-```
-/midi/
-  mod.rs          # Public API, re-exports
-  types.rs        # Type definitions
-  engine.rs       # State, initialization
-  devices.rs      # Device enumeration
-  connections.rs  # Connect/disconnect
-  mappings.rs     # CRUD + persistence
-  commands.rs     # Tauri command wrappers
-  ...
-```
-
-Pattern: Each submodule is <200 lines, single responsibility.
+See [`docs/CONVENTIONS.md`](CONVENTIONS.md).
 
 ---
 
@@ -286,14 +249,6 @@ Pattern: Each submodule is <200 lines, single responsibility.
 
 ---
 
-## Extensibility
+## Planned Work
 
-The architecture supports future additions:
-
-- More sketches and effects
-- Additional controllers (Launchpad, APC Mini)
-- Post-processing pipeline (bloom, feedback)
-- Multi-display support
-- Recording
-- DMX lighting control
-- IOSurface zero-copy (see `docs/finished/IOSURFACE_FEASIBILITY.md`)
+See [`docs/BACKLOG.md`](BACKLOG.md).
