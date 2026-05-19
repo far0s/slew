@@ -22,7 +22,7 @@ import {
   dot,
 } from "three/tsl";
 
-import type { SketchProps } from "../types";
+import type { SketchProps } from "../../types";
 import { descriptor } from "./descriptor";
 
 export { descriptor };

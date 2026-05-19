@@ -24,10 +24,7 @@ import type {
 import { examplesGroup } from "./Examples";
 import { advancedExamplesGroup } from "./AdvancedExamples";
 import { auraGroup } from "./Aura/presets";
-import { luminoSmokeGroup } from "./LuminoSmoke/group";
-import { prismLinesGroup } from "./PrismLines/group";
-import { starTrailsGroup } from "./StarTrails/group";
-import { vortexBeamGroup } from "./VortexBeam/group";
+import { potifestivalGroup } from "./Potifestival/group";
 import { TEMPLATE_ID_TO_PROPS_KEY } from "./parameterMappings";
 import {
   LAZY_SKETCH_REGISTRY,
@@ -48,10 +45,7 @@ export const SKETCH_GROUPS: SketchGroup[] = [
   examplesGroup,
   advancedExamplesGroup,
   auraGroup,
-  luminoSmokeGroup,
-  prismLinesGroup,
-  starTrailsGroup,
-  vortexBeamGroup,
+  potifestivalGroup,
 ].sort((a, b) => (a.orderHint ?? 0) - (b.orderHint ?? 0));
 
 /**

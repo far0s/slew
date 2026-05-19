@@ -1,4 +1,4 @@
-import type { SketchDescriptor } from "../types";
+import type { SketchDescriptor } from "../../types";
 
 /**
  * LuminoSmoke Sketch Descriptor

@@ -2,7 +2,7 @@
  * LuminoSmoke Sketch Group
  */
 
-import type { SketchGroup } from "../types";
+import type { SketchGroup } from "../../types";
 import { descriptor } from "./descriptor";
 
 export const luminoSmokeGroup: SketchGroup = {

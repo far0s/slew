@@ -74,22 +74,19 @@ const LazyAura = lazy(() =>
 
 // LuminoSmoke
 const LazyLuminoSmoke = lazy(() =>
-  import("./LuminoSmoke").then((m) => ({ default: m.LuminoSmoke })),
+  import("./Potifestival/LuminoSmoke").then((m) => ({ default: m.LuminoSmoke })),
 );
-
 // StarTrails
 const LazyStarTrails = lazy(() =>
-  import("./StarTrails").then((m) => ({ default: m.StarTrails })),
+  import("./Potifestival/StarTrails").then((m) => ({ default: m.StarTrails })),
 );
-
 // PrismLines
 const LazyPrismLines = lazy(() =>
-  import("./PrismLines").then((m) => ({ default: m.PrismLines })),
+  import("./Potifestival/PrismLines").then((m) => ({ default: m.PrismLines })),
 );
-
 // VortexBeam
 const LazyVortexBeam = lazy(() =>
-  import("./VortexBeam").then((m) => ({ default: m.VortexBeam })),
+  import("./Potifestival/VortexBeam").then((m) => ({ default: m.VortexBeam })),
 );
 
 // =============================================================================
