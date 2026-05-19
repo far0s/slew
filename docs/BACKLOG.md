@@ -52,6 +52,59 @@ Implement Spout backend for Windows video output.
 
 ## Medium Priority
 
+### 🟡 MIDI Panel — Device Schematic & Clock UI `feature` `design`
+
+Overhaul the Mappings section of the MIDI Panel to be visually useful and scalable.
+
+**Current problem:** The Mappings section is a flat list of `CC X @ Ch Y → parameter_id` rows. It conveys almost no spatial or contextual information about the device, and becomes unwieldy once more than a handful of mappings exist.
+
+---
+
+**Part 1 — Device Schematic Modal** (main effort)
+
+Replace the list with a compact summary line (e.g. "8 mappings active") and a **"View Device" button** that opens a modal showing a top-down schematic of the connected MIDI controller:
+
+- Knobs, faders, pads, buttons rendered in their physical layout
+- Each control highlighted green/grey to indicate whether it has a mapping
+- Clicking a control opens an inline popover to assign/clear its mapping (replaces the current learn flow)
+- Support for multiple connected devices — tabs or a device switcher at the top of the modal
+
+*Effort estimate:* High. Each supported hardware model requires a schematic definition (layout data + SVG or CSS component). Suggested approach:
+  1. Define a `DeviceLayout` data format (JSON: control type, position, CC number, label)
+  2. Build a generic `<DeviceSchematic>` renderer that consumes the format
+  3. Ship definitions for the initially-supported models (e.g. Akai APC mini, Novation Launch Control, generic 8-knob template)
+  4. Unknown devices fall back to a grid auto-generated from the CC numbers they've emitted
+
+*Creative option:* Allow community-contributed layout files (plain JSON in `~/.slew/device-layouts/`) so users can add their own controllers without a code change.
+
+---
+
+**Part 2 — MIDI Clock UI** (separate, lower coupling)
+
+MIDI Clock is a different kind of signal (timing pulses, not CC messages) and deserves its own dedicated sub-section in the MIDI Panel rather than appearing in the mappings list:
+
+- **Clock source indicator:** shows which device is sending clock (or "Internal" if Slew is the master)
+- **Live BPM display:** large numeric readout derived from inter-pulse timing, with a tap-tempo fallback
+- **Sync status badge:** Locked / Drifting / No Signal, with colour coding
+- **Phase offset control:** nudge slider to align Slew's beat grid to external clock
+- Future: allow Slew to *send* MIDI Clock to downstream devices (master mode)
+
+This section should be visually distinct from the device/mappings section — consider a horizontal "clock strip" at the top of the panel.
+
+---
+
+**Acceptance criteria:**
+- [ ] Mappings list removed; replaced by schematic modal trigger
+- [ ] Modal renders correct physical layout for at least 2 real device models
+- [ ] Unknown devices render an auto-generated grid layout
+- [ ] Mapping assign/clear works inside the modal (no regression on learn flow)
+- [ ] MIDI Clock strip shows BPM and sync status when a clock source is present
+- [ ] All existing `MidiPanel` tests updated / extended
+
+**Sizing:** Large (split into Part 1 and Part 2 as separate PRs). Part 1 alone is likely 2–3 days of design + implementation.
+
+---
+
 ### 🟡 Full Size Slot Editor Overlay `feature`
 
 Add a full-size slot editor overlay, allowing users to focus on editing one slot at a time.
@@ -116,6 +169,39 @@ Save/load parameter configurations per sketch.
 - [ ] Preset management UI (rename, delete)
 - [ ] Preset thumbnails in browser
 - [ ] Preset preview before loading
+
+---
+
+### 🟡 LFO UX Overhaul `feature` `polish`
+
+The LFO creation flow and depth/offset defaults create friction and clipping issues in live use. This task covers a set of tightly related improvements.
+
+**Problems to solve:**
+
+1. **Beat vs LFO CTAs are unclear** — the ♩ and ~ buttons on `KnobInput`/`ParameterSlider` are not self-explanatory. "Beat" triggers a one-shot audio-reactive pulse on transients; "LFO" creates a continuous oscillator. This distinction needs better labelling or a tooltip that explains the difference on first encounter. Consider a small popover on long-press/hover that says "Pulses on detected beat" vs "Continuous oscillation".
+
+2. **New LFOs default to free-running (no BPM sync)** — `DEFAULT_LFO` has `sync_to_bpm: false`. For a VJ tool where everything should lock to tempo, this should default to `sync_to_bpm: true` with a sensible `bpm_division` (e.g. 4 beats). The current flow forces the user to manually enable sync after creation.
+
+3. **Depth defaults to 1.0 (full range) causing clipping/blocking** — When an LFO is quick-linked to a parameter, `handleQuickLfo` hardcodes `depth: 0.5, bipolar: true`. But "bipolar" with depth 0.5 means the parameter swings ±50% of the normalised range, which still maxes out many parameters whose interesting range is much narrower. Depth and offset should be initialised relative to the parameter's actual min/max range:
+   - **Depth** should default to ~25% of `(max - min)` so the oscillation stays within a comfortable range.
+   - **Offset** should default to the parameter's *current value* (not 0), so the LFO oscillates around where the knob already is rather than around the bottom of the range.
+   - The LFO panel editor should show depth in parameter units (e.g. `±0.12`) in addition to or instead of a 0–1 normalised value.
+
+4. **Phase has no obvious musical meaning in the UI** — "Phase" shown as 0–1 is confusing. Consider labelling it "Phase offset" and showing `0°–360°` or beats offset.
+
+**Acceptance criteria:**
+- [ ] `DEFAULT_LFO.sync_to_bpm` set to `true`, `bpm_division` defaults to `4.0` (one full cycle per 4 beats)
+- [ ] `handleQuickLfo` passes `offset` = current param value and `depth` = 25% of `(max - min)`
+- [ ] Beat and LFO CTAs have descriptive tooltips / aria labels distinguishing the two
+- [ ] LFO panel editor shows depth in native parameter units alongside normalised value
+- [ ] Phase control labelled as degrees or musical offset
+- [ ] Existing modulation tests updated to reflect new defaults
+
+**Notes:**
+- The Beat CTA appears functional end-to-end (wired correctly through `SlotsArea → SlotParameterControls → KnobInput`). If it appears to "do nothing", it may be that the beat trigger fires correctly but the visual change is too brief to notice, or the audio beat detector isn't firing (threshold too high). Worth a focused test session before assuming it's broken — but improve the tooltip to set expectations.
+- Changing `DEFAULT_LFO` will be a small breaking change: existing saved LFOs are unaffected (they have their own persisted values), but newly created ones will behave differently. Document in CHANGELOG.
+
+**Sizing:** Medium (1 day). Mostly frontend changes to defaults and the LFO creation path; no Rust changes needed for the core improvements.
 
 ---
 
