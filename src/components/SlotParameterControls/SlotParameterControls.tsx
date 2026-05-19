@@ -284,6 +284,7 @@ function getModulationIndicator(
 
   return {
     lfoName: lfo.name,
+    lfoShape: lfo.shape,
     count: activeTargets.length,
   };
 }

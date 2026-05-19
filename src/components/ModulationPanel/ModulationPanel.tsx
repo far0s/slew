@@ -19,7 +19,6 @@ import {
   generateLfoName,
   LFO_SHAPES,
   LFO_SHAPE_LABELS,
-  LFO_SHAPE_COLORS,
   LFO_PROPERTIES,
   LFO_PROPERTY_LABELS,
   type LfoSource,
@@ -42,6 +41,7 @@ import {
 import type { Slot } from "../../slots/useSlots";
 import styles from "./ModulationPanel.module.css";
 import { ModulationMap } from "./ModulationMap";
+import { LfoShapeIcon } from "./LfoShapeIcon";
 
 // ============================================================================
 // LFO Waveform Visualization
@@ -55,7 +55,8 @@ interface WaveformDisplayProps {
   rate?: number; // Hz — used to animate phase
 }
 
-function WaveformDisplay({
+// WaveformDisplay is kept for future use (e.g. expanded LFO row, hover preview).
+export function WaveformDisplay({
   shape,
   value = 0,
   color,
@@ -199,7 +200,7 @@ interface LfoRowProps {
 
 function LfoRow({
   lfo,
-  value,
+  value: _value,
   targets,
   onEdit,
   onToggle,
@@ -212,7 +213,6 @@ function LfoRow({
   dragHandleProps,
   isDragging,
 }: LfoRowProps) {
-  const color = LFO_SHAPE_COLORS[lfo.shape];
   const lfoTargets = targets.filter((t) => t.source_id === lfo.id);
 
   return (
@@ -238,12 +238,9 @@ function LfoRow({
           {lfo.enabled ? "●" : "○"}
         </button>
 
-        <WaveformDisplay
+        <LfoShapeIcon
           shape={lfo.shape}
-          value={value}
-          color={color}
-          size={28}
-          rate={lfo.rate}
+          width={18}
         />
 
         <button type="button" className={styles.lfoInfo} onClick={onEdit}>
@@ -425,8 +422,6 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
     onSave(lfo);
   };
 
-  const color = LFO_SHAPE_COLORS[shape];
-
   return (
     <div className={styles.lfoForm}>
       <div className={styles.formHeader}>
@@ -434,39 +429,36 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
       </div>
 
       <div className={styles.formRow}>
-        <label className={styles.formLabel}>
-          <span className={styles.formLabelText}>Name</span>
-          <input
-            type="text"
-            className={styles.formInput}
-            value={name}
-            onChange={(e) => { setName(e.target.value); setNameManuallyEdited(true); }}
-            placeholder="LFO name…"
-          />
-        </label>
-      </div>
-
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>
-          <span className={styles.formLabelText}>Shape</span>
-          <div className={styles.shapeSelectWrapper}>
-            <div
-              className={styles.shapePreview}
-              style={{ backgroundColor: color }}
-            />
-            <select
-              className={styles.formSelect}
-              value={shape}
-              onChange={(e) => setShape(e.target.value as LfoShape)}
-            >
-              {LFO_SHAPES.map((s) => (
-                <option key={s} value={s}>
-                  {LFO_SHAPE_LABELS[s]}
-                </option>
-              ))}
-            </select>
+        <div className={styles.shapeNameRow}>
+          <div className={styles.shapeColumn}>
+            <span className={styles.formLabelText}>Shape</span>
+            <div className={styles.shapePickerGrid}>
+            {LFO_SHAPES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={`${styles.shapePickerBtn} ${s === shape ? styles.shapePickerBtnActive : ""}`}
+                onClick={() => setShape(s)}
+                title={LFO_SHAPE_LABELS[s]}
+                aria-label={LFO_SHAPE_LABELS[s]}
+                aria-pressed={s === shape}
+              >
+                <LfoShapeIcon shape={s} width={16} />
+              </button>
+            ))}
+            </div>
           </div>
-        </label>
+          <label className={styles.shapeNameLabel}>
+            <span className={styles.formLabelText}>Name</span>
+            <input
+              type="text"
+              className={styles.formInput}
+              value={name}
+              onChange={(e) => { setName(e.target.value); setNameManuallyEdited(true); }}
+              placeholder="LFO name…"
+            />
+          </label>
+        </div>
       </div>
 
       <div className={styles.formRow}>

@@ -194,15 +194,16 @@ describe("ParameterSlider", () => {
       render(
         <ParameterSlider
           {...defaultProps}
-          modulationIndicator={{ lfoName: "LFO 1" }}
+          modulationIndicator={{ lfoName: "LFO 1", lfoShape: "sine" }}
         />,
       );
-      expect(screen.getByText("LFO")).toBeInTheDocument();
+      // Badge renders as an SVG icon (aria-hidden) — check the button/span is present via title
+      expect(document.querySelector('[title*="LFO 1"]')).toBeInTheDocument();
     });
 
     it("does not show modulation badge when modulationIndicator is null", () => {
       render(<ParameterSlider {...defaultProps} modulationIndicator={null} />);
-      expect(screen.queryByText("LFO")).not.toBeInTheDocument();
+      expect(document.querySelector('[title*="Modulated by"]')).not.toBeInTheDocument();
     });
   });
 

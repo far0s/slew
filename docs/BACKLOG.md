@@ -169,6 +169,23 @@ Create troubleshooting guide for video output setup.
 
 ## Low Priority / Future
 
+### 🟢 App Launch Sequence & Preloader `polish`
+
+Improve the cold-start experience with a polished launch animation and soft preloader.
+
+**Context**: The app currently opens abruptly with no transition. A short branded preloader and entrance animation would make the app feel more professional and mask any initial asset-loading latency.
+
+**Subtasks**:
+
+- [ ] Design a minimal splash/preloader overlay (logo mark + subtle progress indicator)
+- [ ] Animate the preloader out once the control window is ready (fade/slide)
+- [ ] Add entrance animations for key UI regions (toolbar, deck panels, sidebar) on first paint
+- [ ] Ensure the output window opens without a visible flash or blank frame
+- [ ] Keep total perceived launch time the same or shorter (animation should not add wall-clock delay)
+- [ ] Respect `prefers-reduced-motion`
+
+---
+
 ### 🟢 Crash Reporting & Analytics `feature`
 
 Add optional telemetry for debugging and product insights.
@@ -416,6 +433,54 @@ Complete Windows distribution pipeline testing.
 ---
 
 ## Future Consideration / Inspiration
+
+### 🎨 Knob-Style Parameter Controls `polish`
+
+Replace the current horizontal sliders with compact rotary-knob widgets, inspired by hardware mixers (Midimix) and apps like Modulaser.
+
+**Context**: Modulaser uses a circular-arc knob input that maps visually to physical hardware knobs, shows the current value as a number you can click to edit directly, and responds to left/right scroll (or drag) to adjust. This is significantly more space-efficient than sliders and more intuitive for users familiar with hardware controllers.
+
+**Ideas**:
+
+- [ ] Build a `<KnobInput>` component: SVG arc showing value, click-to-edit number field, scroll/drag to change
+- [ ] Value displayed in center of knob; arc sweeps from ~7 o'clock to ~5 o'clock (270°)
+- [ ] Holds a MIDI Learn indicator (dot or ring color) when a mapping is active
+- [ ] Renders at a compact size (~40px) so 3 knobs fit in a single sketch column
+- [ ] Replace existing `<SlotParameterControls>` sliders with knobs for numeric parameters
+- [ ] Keep a label beneath each knob
+
+---
+
+### 🎨 BPM Section Redesign — Editable BPM Field + Beat Grid `polish`
+
+Rework the BPM toolbar area to be more functional and compact, inspired by Modulaser's layout.
+
+**Context**: Currently Slew shows a Tap button and a read-only BPM readout. Modulaser adds: a 2×2 tempo grid (half/double buttons), a directly editable BPM text field, and a Resync button. The Link badge is already there but buried.
+
+**Ideas**:
+
+- [ ] Make the BPM display a click-to-edit `<input type="number">` field (type a value, press Enter/blur to commit via `set_manual_bpm`)
+- [ ] Add ÷2 / ×2 half/double tempo buttons flanking the BPM field
+- [ ] Add a **Resync** button that snaps the internal phase to beat 1 (triggers `reset_bpm_phase` or equivalent)
+- [ ] Tighten the whole section: Tap | ÷2 | [BPM input] | ×2 | Resync | Link badge
+- [ ] Visual beat flash on the tap button (already partially implemented — refine into a smooth pulse ring)
+
+---
+
+### 🎨 Scroll-to-Adjust on All Parameter Inputs `polish`
+
+Allow mouse wheel / trackpad scroll on any parameter label or value display to nudge the value, not just on sliders.
+
+**Context**: Modulaser allows scrolling left/right on a knob to increment/decrement. Slew's sliders already support this in a limited way. A unified `useScrollAdjust` hook applied consistently everywhere (knob widgets, BPM field, LFO rate, depth, etc.) would make the whole UI feel much more hands-on.
+
+**Ideas**:
+
+- [ ] Extract a `useScrollAdjust(value, onChange, step, min, max)` hook
+- [ ] Apply it to `<KnobInput>` (see knob item above), the BPM input, and any other numeric field
+- [ ] Honor Shift key for fine adjustment (÷10 step) and Cmd/Ctrl for coarse (×10 step)
+- [ ] Works alongside existing MIDI input — scroll just calls the same `setParameter` path
+
+---
 
 These are more speculative ideas that could differentiate Slew from other VJ software. Not prioritized but worth documenting for future exploration.
 

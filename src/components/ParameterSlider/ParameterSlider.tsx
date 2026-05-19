@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import * as Slider from "@radix-ui/react-slider";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { MidiLearnButton } from "../MidiLearnButton";
-import { MODULATION_INDICATOR_COLOR } from "../../inputs/modulation";
+import { MODULATION_INDICATOR_COLOR, type LfoShape } from "../../inputs/modulation";
+import { LfoShapeIcon } from "../ModulationPanel/LfoShapeIcon";
 import type { MidiPickupState } from "../../inputs/midi";
 import styles from "./ParameterSlider.module.css";
 
@@ -34,6 +35,8 @@ export interface AudioMappingIndicator {
 export interface ModulationIndicator {
   /** Name of the LFO source */
   lfoName: string;
+  /** Shape of the first (or only) modulating LFO */
+  lfoShape?: LfoShape;
   /** Optional: number of LFOs modulating this parameter (for tooltip) */
   count?: number;
 }
@@ -231,11 +234,14 @@ export function ParameterSlider({
                 }
                 onClick={onUnlinkLfo}
               >
-                <span
-                  className={styles.modulationDot}
-                  style={{ backgroundColor: MODULATION_INDICATOR_COLOR }}
-                />
-                LFO
+                {modulationIndicator.lfoShape ? (
+                  <LfoShapeIcon shape={modulationIndicator.lfoShape} width={14} />
+                ) : (
+                  <span
+                    className={styles.modulationDot}
+                    style={{ backgroundColor: MODULATION_INDICATOR_COLOR }}
+                  />
+                )}
               </button>
             ) : (
               <span
@@ -246,11 +252,14 @@ export function ParameterSlider({
                     : `Modulated by ${modulationIndicator.lfoName}`
                 }
               >
-                <span
-                  className={styles.modulationDot}
-                  style={{ backgroundColor: MODULATION_INDICATOR_COLOR }}
-                />
-                LFO
+                {modulationIndicator.lfoShape ? (
+                  <LfoShapeIcon shape={modulationIndicator.lfoShape} width={14} />
+                ) : (
+                  <span
+                    className={styles.modulationDot}
+                    style={{ backgroundColor: MODULATION_INDICATOR_COLOR }}
+                  />
+                )}
               </span>
             )
           )}
@@ -377,16 +386,22 @@ export function ParameterSlider({
                   title={modulationIndicator.count && modulationIndicator.count > 1 ? `Modulated by ${modulationIndicator.count} LFOs — click to remove` : `Modulated by ${modulationIndicator.lfoName} — click to remove`}
                   onClick={onUnlinkLfo}
                 >
-                  <span className={styles.modulationDot} style={{ backgroundColor: MODULATION_INDICATOR_COLOR }} />
-                  LFO
+                  {modulationIndicator.lfoShape ? (
+                    <LfoShapeIcon shape={modulationIndicator.lfoShape} width={14} />
+                  ) : (
+                    <span className={styles.modulationDot} style={{ backgroundColor: MODULATION_INDICATOR_COLOR }} />
+                  )}
                 </button>
               ) : (
                 <span
                   className={styles.modulationBadge}
                   title={modulationIndicator.count && modulationIndicator.count > 1 ? `Modulated by ${modulationIndicator.count} LFOs including ${modulationIndicator.lfoName}` : `Modulated by ${modulationIndicator.lfoName}`}
                 >
-                  <span className={styles.modulationDot} style={{ backgroundColor: MODULATION_INDICATOR_COLOR }} />
-                  LFO
+                  {modulationIndicator.lfoShape ? (
+                    <LfoShapeIcon shape={modulationIndicator.lfoShape} width={14} />
+                  ) : (
+                    <span className={styles.modulationDot} style={{ backgroundColor: MODULATION_INDICATOR_COLOR }} />
+                  )}
                 </span>
               )
             )}

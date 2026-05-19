@@ -45,12 +45,12 @@
 }
 
 .statusBadge.active {
-  background: rgb(99 102 241 / 0.2);
-  color: #4f46e5;
+  background: color-mix(in srgb, var(--accent-primary) 20%, transparent);
+  color: var(--accent-primary);
 }
 
 [data-theme="dark"] .statusBadge.active {
-  color: rgb(165 180 252);
+  color: color-mix(in srgb, var(--accent-primary) 70%, white);
 }
 
 /* ==========================================================================
@@ -84,16 +84,16 @@
 }
 
 .tapButton:hover {
-  background: rgb(99 102 241 / 0.15);
-  border-color: rgb(99 102 241 / 0.4);
+  background: color-mix(in srgb, var(--accent-primary) 15%, transparent);
+  border-color: color-mix(in srgb, var(--accent-primary) 40%, transparent);
 }
 
 .tapButton:active,
 .tapButton.tapPulse {
-  background: rgb(99 102 241 / 0.35);
-  border-color: rgb(99 102 241 / 0.7);
+  background: color-mix(in srgb, var(--accent-primary) 35%, transparent);
+  border-color: color-mix(in srgb, var(--accent-primary) 70%, transparent);
   transform: scale(0.96);
-  box-shadow: 0 0 6px rgb(99 102 241 / 0.4);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent-primary) 40%, transparent);
 }
 
 .tapBpmDisplay {
@@ -187,9 +187,9 @@
   font-size: 0.6rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: rgb(99 102 241);
-  background: rgb(99 102 241 / 0.1);
-  border: 1px dashed rgb(99 102 241 / 0.6);
+  color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 10%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--accent-primary) 60%, transparent);
   border-radius: 0.2rem;
   cursor: pointer;
   animation: shortcutBlink 900ms ease-in-out infinite;
@@ -229,7 +229,7 @@
 }
 
 .sectionHeader:focus-visible {
-  outline: 2px solid rgb(99 102 241 / 0.8);
+  outline: 2px solid color-mix(in srgb, var(--accent-primary) 80%, transparent);
   outline-offset: 2px;
   border-radius: 2px;
 }
@@ -256,10 +256,10 @@
 
 .headerAddButton {
   padding: 0.2rem 0.5rem;
-  background: rgb(99 102 241 / 0.15);
-  border: 1px solid rgb(99 102 241 / 0.3);
+  background: color-mix(in srgb, var(--accent-primary) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 30%, transparent);
   border-radius: 0.2rem;
-  color: #4f46e5;
+  color: var(--accent-primary);
   font-size: 0.6rem;
   font-weight: 500;
   cursor: pointer;
@@ -270,12 +270,12 @@
 }
 
 [data-theme="dark"] .headerAddButton {
-  color: rgb(165 180 252);
+  color: color-mix(in srgb, var(--accent-primary) 70%, white);
 }
 
 .headerAddButton:hover:not(:disabled) {
-  background: rgb(99 102 241 / 0.25);
-  border-color: rgb(99 102 241 / 0.5);
+  background: color-mix(in srgb, var(--accent-primary) 25%, transparent);
+  border-color: color-mix(in srgb, var(--accent-primary) 50%, transparent);
 }
 
 .headerAddButton:disabled {
@@ -289,12 +289,12 @@
   font-weight: 600;
   padding: 0.1rem 0.3rem;
   border-radius: 0.75rem;
-  background: rgb(99 102 241 / 0.25);
-  color: #4f46e5;
+  background: color-mix(in srgb, var(--accent-primary) 25%, transparent);
+  color: var(--accent-primary);
 }
 
 [data-theme="dark"] .sectionBadge {
-  color: rgb(165 180 252);
+  color: color-mix(in srgb, var(--accent-primary) 70%, white);
 }
 
 .sectionContent {
@@ -397,7 +397,7 @@
 }
 
 .lfoCard.lfoPinned {
-  border-color: rgb(99 102 241 / 0.5);
+  border-color: color-mix(in srgb, var(--accent-primary) 50%, transparent);
 }
 
 .lfoRow {
@@ -423,7 +423,7 @@
 }
 
 .lfoToggle.enabled {
-  color: rgb(99 102 241);
+  color: var(--accent-primary);
 }
 
 .waveformSvg {
@@ -451,7 +451,7 @@
 }
 
 .lfoInfo:focus-visible {
-  outline: 2px solid rgb(99 102 241 / 0.6);
+  outline: 2px solid color-mix(in srgb, var(--accent-primary) 60%, transparent);
   outline-offset: 1px;
 }
 
@@ -473,13 +473,13 @@
   font-size: 0.58rem;
   padding: 0.1rem 0.25rem;
   border-radius: 0.15rem;
-  background: rgb(99 102 241 / 0.2);
-  color: #4f46e5;
+  background: color-mix(in srgb, var(--accent-primary) 20%, transparent);
+  color: var(--accent-primary);
   flex-shrink: 0;
 }
 
 [data-theme="dark"] .lfoTargetCount {
-  color: rgb(165 180 252);
+  color: color-mix(in srgb, var(--accent-primary) 70%, white);
 }
 
 .lfoDelete {
@@ -573,21 +573,21 @@
 }
 
 .targetInfo:focus-visible {
-  outline: 2px solid rgb(99 102 241 / 0.6);
+  outline: 2px solid color-mix(in srgb, var(--accent-primary) 60%, transparent);
   outline-offset: 1px;
 }
 
 .targetLfo {
   font-weight: 600;
   font-size: 0.62rem;
-  color: #4f46e5;
+  color: var(--accent-primary);
   flex-shrink: 0;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
 [data-theme="dark"] .targetLfo {
-  color: rgb(165 180 252);
+  color: color-mix(in srgb, var(--accent-primary) 70%, white);
 }
 
 .targetArrow {
@@ -738,13 +738,13 @@
 }
 
 .audioModLfo {
-  color: #4f46e5;
+  color: var(--accent-primary);
   font-weight: 500;
   flex-shrink: 0;
 }
 
 [data-theme="dark"] .audioModLfo {
-  color: rgb(165 180 252);
+  color: color-mix(in srgb, var(--accent-primary) 70%, white);
 }
 
 .audioModProperty {
@@ -828,13 +828,13 @@
 
 .formInput:focus {
   outline: none;
-  border-color: rgb(99 102 241 / 0.5);
+  border-color: color-mix(in srgb, var(--accent-primary) 50%, transparent);
 }
 
 .formInput:focus-visible {
   outline: none;
-  border-color: rgb(99 102 241 / 0.7);
-  box-shadow: 0 0 0 2px rgb(99 102 241 / 0.3);
+  border-color: color-mix(in srgb, var(--accent-primary) 70%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 30%, transparent);
 }
 
 .formSelect {
@@ -850,13 +850,13 @@
 
 .formSelect:focus {
   outline: none;
-  border-color: rgb(99 102 241 / 0.5);
+  border-color: color-mix(in srgb, var(--accent-primary) 50%, transparent);
 }
 
 .formSelect:focus-visible {
   outline: none;
-  border-color: rgb(99 102 241 / 0.7);
-  box-shadow: 0 0 0 2px rgb(99 102 241 / 0.3);
+  border-color: color-mix(in srgb, var(--accent-primary) 70%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 30%, transparent);
 }
 
 .formRange {
@@ -875,7 +875,7 @@
 
 .formRange:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgb(99 102 241 / 0.5);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 50%, transparent);
   border-radius: 2px;
 }
 
@@ -884,7 +884,7 @@
   appearance: none;
   width: 14px;
   height: 14px;
-  background: rgb(99 102 241);
+  background: var(--accent-primary);
   border-radius: 50%;
   cursor: grab;
 }
@@ -892,7 +892,7 @@
 .formRange::-moz-range-thumb {
   width: 14px;
   height: 14px;
-  background: rgb(99 102 241);
+  background: var(--accent-primary);
   border: none;
   border-radius: 50%;
   cursor: grab;
@@ -918,6 +918,61 @@
   height: 10px;
   border-radius: 2px;
   flex-shrink: 0;
+}
+
+/* ── Shape picker (icon button grid) ── */
+
+.shapeNameRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.shapeColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.shapeNameLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.shapePickerGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 30px);
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.shapePickerBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  padding: 0.2rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 0.25rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.shapePickerBtn:hover {
+  background: var(--bg-active);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+.shapePickerBtnActive {
+  background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent-primary) 60%, transparent);
+  color: var(--accent-primary);
 }
 
 .sourceSelectWrapper {
@@ -954,7 +1009,7 @@
 }
 
 .syncCheckbox input {
-  accent-color: rgb(99 102 241);
+  accent-color: var(--accent-primary);
 }
 
 .checkboxLabel {
@@ -967,7 +1022,7 @@
 }
 
 .checkboxLabel input {
-  accent-color: rgb(99 102 241);
+  accent-color: var(--accent-primary);
 }
 
 .rangeInputs {
@@ -1014,10 +1069,10 @@
 
 .submitButton {
   padding: 0.3rem 0.75rem;
-  background: rgb(99 102 241 / 0.2);
-  border: 1px solid rgb(99 102 241 / 0.4);
+  background: color-mix(in srgb, var(--accent-primary) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 40%, transparent);
   border-radius: 0.25rem;
-  color: #4f46e5;
+  color: var(--accent-primary);
   font-size: 0.68rem;
   font-weight: 500;
   cursor: pointer;
@@ -1027,12 +1082,12 @@
 }
 
 [data-theme="dark"] .submitButton {
-  color: rgb(165 180 252);
+  color: color-mix(in srgb, var(--accent-primary) 70%, white);
 }
 
 .submitButton:hover:not(:disabled) {
-  background: rgb(99 102 241 / 0.3);
-  border-color: rgb(99 102 241 / 0.6);
+  background: color-mix(in srgb, var(--accent-primary) 30%, transparent);
+  border-color: color-mix(in srgb, var(--accent-primary) 60%, transparent);
 }
 
 .submitButton:disabled {

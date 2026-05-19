@@ -3,7 +3,7 @@
  *
  * Full-screen overlay showing a node-graph of all active LFO → parameter
  * connections. LFO nodes on the left, parameter nodes on the right, SVG
- * lines connecting them. Color-coded by LFO shape, line weight = depth.
+ * lines connecting them with line weight proportional to modulation depth.
  */
 
 import { useEffect } from "react";
@@ -11,9 +11,8 @@ import {
   useLfos,
   useModulationTargets,
   useLfoValues,
-  LFO_SHAPE_COLORS,
-  LFO_SHAPE_LABELS,
 } from "../../inputs/modulation";
+import { LFO_SHAPE_PATHS } from "./LfoShapeIcon";
 import {
   getParameterDropdownLabel,
   type ParameterId,
@@ -131,8 +130,7 @@ export function ModulationMap({
                 const paramIdx = uniqueParamIds.indexOf(target.parameter_id);
                 if (lfoIdx === -1 || paramIdx === -1) return null;
 
-                const lfo = activeLfos[lfoIdx];
-                const color = LFO_SHAPE_COLORS[lfo.shape];
+                const color = "var(--accent-primary)";
                 const depth = Math.abs(target.depth);
                 const strokeW = 0.5 + depth * 3.5; // 0.5 – 4px
                 const opacity = target.enabled ? 0.55 + depth * 0.35 : 0.15;
@@ -159,7 +157,7 @@ export function ModulationMap({
               {/* LFO nodes */}
               {activeLfos.map((lfo, i) => {
                 const cy = lfoY(i);
-                const color = LFO_SHAPE_COLORS[lfo.shape];
+                const color = "var(--accent-primary)";
                 const value = getValue(lfo.id) ?? 0;
                 // Mini waveform indicator bar
                 const barH = Math.abs(value) * 8;
@@ -204,17 +202,20 @@ export function ModulationMap({
                     >
                       {lfo.name.length > 14 ? lfo.name.slice(0, 13) + "…" : lfo.name}
                     </text>
-                    <text
-                      x={LFO_X - 28}
-                      y={cy + 8}
-                      fontSize={7.5}
-                      fill={color}
-                      fillOpacity={isDisabled ? 0.3 : 0.7}
-                      dominantBaseline="middle"
-                    >
-                      {LFO_SHAPE_LABELS[lfo.shape]}
-                      {isDisabled ? " · off" : ""}
-                    </text>
+                    {/* Shape glyph */}
+                    <g transform={`translate(${LFO_X - 28}, ${cy + 2})`}>
+                      <svg x={0} y={0} width={22} height={16} viewBox="0 0 32 24" overflow="visible">
+                        <path
+                          d={LFO_SHAPE_PATHS[lfo.shape]}
+                          fill="none"
+                          stroke={color}
+                          strokeOpacity={isDisabled ? 0.3 : 0.7}
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </g>
                     {/* Live value bar */}
                     <rect
                       x={LFO_X + 36}
@@ -248,7 +249,7 @@ export function ModulationMap({
                   ? activeLfos.find((l) => l.id === firstTarget.source_id)
                   : null;
                 const color = tintLfo
-                  ? LFO_SHAPE_COLORS[tintLfo.shape]
+                  ? "var(--accent-primary)"
                   : "var(--text-muted)";
                 const label = getParameterDropdownLabel(
                   paramId as ParameterId,
