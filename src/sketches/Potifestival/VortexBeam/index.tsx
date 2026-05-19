@@ -29,7 +29,7 @@ import type { SketchProps } from "../../types";
 import { descriptor } from "./descriptor";
 
 export { descriptor };
-import { screenAspectUV } from "../../lib/tsl/utils";
+import { screenAspectUV } from "../../../lib/tsl/utils";
 
 interface VortexBeamUniforms {
   colorBeam: { value: THREE.Vector3 };
