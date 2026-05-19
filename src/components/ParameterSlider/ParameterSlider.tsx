@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import * as Slider from "@radix-ui/react-slider";
+import { useScrollAdjust } from "../../inputs/shared";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { MidiLearnButton } from "../MidiLearnButton";
 import { MODULATION_INDICATOR_COLOR, type LfoShape } from "../../inputs/modulation";
@@ -125,6 +126,7 @@ export function ParameterSlider({
 }: ParameterSliderProps) {
   // Track value at the start of an interaction so onCommit can provide before/after
   const beforeRef = useRef<number>(value);
+  const { ref: scrollRef, isHovered: scrollHovered } = useScrollAdjust(value, onChange, step, min, max, isMidiControlled);
 
   const handleInteractionStart = () => {
     beforeRef.current = value;
@@ -161,7 +163,8 @@ export function ParameterSlider({
 
   return (
     <div
-      className={`${styles.container} ${showSpacing ? styles.containerSpaced : ""} ${compact ? styles.containerCompact : ""} ${inline ? styles.containerInline : ""} ${disabledClass}`}
+      ref={scrollRef}
+      className={`${styles.container} ${showSpacing ? styles.containerSpaced : ""} ${compact ? styles.containerCompact : ""} ${inline ? styles.containerInline : ""} ${disabledClass} ${scrollHovered && !isMidiControlled ? styles.containerScrollFocus : ""}`}
       title={
         isMidiControlled
           ? "Controlled via MIDI - adjust using your MIDI controller"

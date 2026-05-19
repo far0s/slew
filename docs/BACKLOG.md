@@ -442,7 +442,7 @@ Replace the current horizontal sliders with compact rotary-knob widgets, inspire
 
 **Ideas**:
 
-- [ ] Build a `<KnobInput>` component: SVG arc showing value, click-to-edit number field, scroll/drag to change
+- [ ] Build a `<KnobInput>` component: SVG arc showing value, click-to-edit number field, scroll/drag to change — wire `useScrollAdjust` from `src/inputs/shared` onto the knob container (`ref={scrollAdjust.ref}`) for consistent scroll-to-adjust behaviour (hook already exists)
 - [ ] Value displayed in center of knob; arc sweeps from ~7 o'clock to ~5 o'clock (270°)
 - [ ] Holds a MIDI Learn indicator (dot or ring color) when a mapping is active
 - [ ] Renders at a compact size (~40px) so 3 knobs fit in a single sketch column
@@ -459,30 +459,13 @@ Rework the BPM toolbar area to be more functional and compact, inspired by Modul
 
 **Ideas**:
 
-- [ ] Make the BPM display a click-to-edit `<input type="number">` field (type a value, press Enter/blur to commit via `set_manual_bpm`)
+- [ ] Make the BPM display a click-to-edit `<input type="number">` field (type a value, press Enter/blur to commit via `set_manual_bpm`) — also wire `useScrollAdjust` from `src/inputs/shared` onto the field container for scroll-to-nudge BPM (hook already exists; use a step of 1, min 20, max 300 or similar)
 - [ ] Add ÷2 / ×2 half/double tempo buttons flanking the BPM field
 - [ ] Add a **Resync** button that snaps the internal phase to beat 1 (triggers `reset_bpm_phase` or equivalent)
 - [ ] Tighten the whole section: Tap | ÷2 | [BPM input] | ×2 | Resync | Link badge
 - [ ] Visual beat flash on the tap button (already partially implemented — refine into a smooth pulse ring)
 
 ---
-
-### 🎨 Scroll-to-Adjust on All Parameter Inputs `polish`
-
-Allow mouse wheel / trackpad scroll on any parameter label or value display to nudge the value, not just on sliders.
-
-**Context**: Modulaser allows scrolling left/right on a knob to increment/decrement. Slew's sliders already support this in a limited way. A unified `useScrollAdjust` hook applied consistently everywhere (knob widgets, BPM field, LFO rate, depth, etc.) would make the whole UI feel much more hands-on.
-
-**Ideas**:
-
-- [ ] Extract a `useScrollAdjust(value, onChange, step, min, max)` hook
-- [ ] Apply it to `<KnobInput>` (see knob item above), the BPM input, and any other numeric field
-- [ ] Honor Shift key for fine adjustment (÷10 step) and Cmd/Ctrl for coarse (×10 step)
-- [ ] Works alongside existing MIDI input — scroll just calls the same `setParameter` path
-
----
-
-These are more speculative ideas that could differentiate Slew from other VJ software. Not prioritized but worth documenting for future exploration.
 
 ### 🎨 IOSurface Zero-Copy (macOS) `feature`
 

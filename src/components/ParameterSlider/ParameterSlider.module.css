@@ -4,6 +4,16 @@
   gap: 0.25rem;
   padding-bottom: 0.3rem;
   border-bottom: 1px solid var(--border-subtle);
+  border-left: 2px solid transparent;
+  padding-left: 4px;
+  margin-left: -6px;
+  border-radius: 0 3px 3px 0;
+  transition: border-left-color 0.1s ease, background-color 0.1s ease;
+}
+/* Scroll-to-adjust hover state — subtle left-border accent */
+.containerScrollFocus {
+  border-left-color: var(--accent-primary);
+  background-color: color-mix(in srgb, var(--accent-primary) 5%, transparent);
 }
 
 /* Compact variant — used inside color param groups.

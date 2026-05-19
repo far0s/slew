@@ -8,6 +8,8 @@
  */
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import type React from "react";
+import { useScrollAdjust } from "../../inputs/shared";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import {
@@ -404,6 +406,11 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
     }
   }, [shape, rate, nameManuallyEdited]);
 
+  const rateScroll = useScrollAdjust(hzToSlider(rate), (v) => setRate(sliderToHz(v)), 0.001, 0, 1, syncToBpm);
+  const depthScroll = useScrollAdjust(depth, setDepth, 0.01, 0, 1);
+  const offsetScroll = useScrollAdjust(offset, setOffset, 0.01, -1, 1);
+  const phaseScroll = useScrollAdjust(phase, setPhase, 0.01, 0, 1);
+
   const handleSubmit = () => {
     const lfo: LfoSource = {
       id: editingLfo?.id ?? "",
@@ -462,7 +469,7 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
       </div>
 
       <div className={styles.formRow}>
-        <label className={styles.formLabel}>
+        <label ref={rateScroll.ref} className={`${styles.formLabel} ${rateScroll.isHovered && !syncToBpm ? styles.formLabelScrollFocus : ""}`}>
           <span className={styles.formLabelText}>
             Rate{" "}
             {syncToBpm ? "(BPM sync)" : `(${formatPeriod(rate)})`}
@@ -508,7 +515,7 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
       </div>
 
       <div className={styles.formRow}>
-        <label className={styles.formLabel}>
+        <label ref={depthScroll.ref} className={`${styles.formLabel} ${depthScroll.isHovered ? styles.formLabelScrollFocus : ""}`}>
           <span className={styles.formLabelText}>
             Depth ({(depth * 100).toFixed(0)}%)
           </span>
@@ -525,7 +532,7 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
       </div>
 
       <div className={styles.formRow}>
-        <label className={styles.formLabel}>
+        <label ref={offsetScroll.ref} className={`${styles.formLabel} ${offsetScroll.isHovered ? styles.formLabelScrollFocus : ""}`}>
           <span className={styles.formLabelText}>
             Offset ({offset >= 0 ? "+" : ""}
             {(offset * 100).toFixed(0)}%)
@@ -543,7 +550,7 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
       </div>
 
       <div className={styles.formRow}>
-        <label className={styles.formLabel}>
+        <label ref={phaseScroll.ref} className={`${styles.formLabel} ${phaseScroll.isHovered ? styles.formLabelScrollFocus : ""}`}>
           <span className={styles.formLabelText}>
             Phase ({(phase * 360).toFixed(0)}°)
           </span>

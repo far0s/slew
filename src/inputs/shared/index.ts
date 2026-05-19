@@ -39,6 +39,8 @@ export {
   type UseMessageHistoryResult,
 } from "./useMessageActivity";
 
+export { useScrollAdjust } from "./useScrollAdjust";
+
 export {
   useMappings,
   useMappingsWithLookup,
