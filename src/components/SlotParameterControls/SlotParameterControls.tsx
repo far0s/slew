@@ -15,6 +15,7 @@ import {
   type ModulationIndicator,
 } from "../ParameterSlider";
 import { KnobInput } from "../KnobInput";
+import { StepInput } from "../StepInput";
 import { ParameterSelect } from "../ParameterSelect";
 import {
   type AudioMapping,
@@ -889,6 +890,33 @@ export function SlotParameterControls({
             onQuickLfo={onQuickLfo ? () => onQuickLfo(paramId) : undefined}
             onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined}
             onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined}
+          />
+        </div>
+      );
+    }
+
+    // Integer stepper
+    if (template.inputType === "integer") {
+      const { onChange: stepOnChange, onCommit: stepOnCommit } = createChangeHandler(slotIndex, template, setValue);
+      return (
+        <div
+          key={paramId}
+          ref={(el) => {
+            if (el) rowRefs.current.set(paramId, el);
+            else rowRefs.current.delete(paramId);
+          }}
+          onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
+        >
+          <StepInput
+            id={`slot-${slotIndex}-${template.templateId}`}
+            label={template.label}
+            value={getValue(paramId)}
+            min={template.min}
+            max={template.max}
+            step={template.step}
+            color={template.color ?? "emerald"}
+            onChange={(v) => { isUserInteractingRef.current = true; stepOnChange(v); }}
+            onCommit={(after, before) => { isUserInteractingRef.current = false; stepOnCommit(after, before); }}
           />
         </div>
       );

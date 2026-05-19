@@ -116,6 +116,7 @@ export const descriptor: SketchDescriptor = {
       max: 6,
       step: 1,
       defaultValue: 4,
+      inputType: "integer",
       description: "Number of active floating light sources.",
     },
     {

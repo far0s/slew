@@ -165,6 +165,7 @@ export const descriptor: SketchDescriptor = {
       max: 6,
       step: 1,
       defaultValue: 2,
+      inputType: "integer",
       description: "Number of spiral arms (rebuilds shader). 1 = single scan, 2 = dual, up to 6.",
     },
   ],

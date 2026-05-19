@@ -23,6 +23,7 @@
     "package:release": "./scripts/package.sh --sign --dmg"
   },
   "dependencies": {
+    "@number-flow/react": "^0.6.0",
     "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-icons": "^1.3.2",
     "@radix-ui/react-progress": "^1.1.8",

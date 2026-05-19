@@ -157,6 +157,7 @@ export const descriptor: SketchDescriptor = {
       max: 8,
       step: 1,
       defaultValue: 5,
+      inputType: "integer",
       description: "Number of stars (rebuilds shader).",
     },
     {

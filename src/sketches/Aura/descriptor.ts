@@ -141,6 +141,7 @@ export const descriptor: SketchDescriptor = {
       max: 16,
       step: 1,
       defaultValue: 8,
+      inputType: "integer",
       description: "Raymarch iteration count (quality vs performance).",
     },
     {
@@ -152,6 +153,7 @@ export const descriptor: SketchDescriptor = {
       max: 10000,
       step: 1,
       defaultValue: 0,
+      inputType: "integer",
       description: "Random seed for noise variation.",
     },
     {

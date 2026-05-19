@@ -300,7 +300,7 @@ export interface SlotParameterDescriptor {
   defaultValue: number;
   color?: SliderColor;
   description?: string;
-  inputType?: "slider" | "select" | "color";
+  inputType?: "slider" | "select" | "color" | "integer";
   colorChannel?: "r" | "g" | "b"; // set only on color sub-param descriptors
   colorGroup?: string;             // templateId of the parent color param (e.g. "color_primary")
 }

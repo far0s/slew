@@ -17,6 +17,7 @@ export const descriptor: SketchDescriptor = {
       step: 1,
       defaultValue: 6,
       color: "violet",
+      inputType: "integer",
       description: "Number of mirror segments (symmetry order).",
     },
     {

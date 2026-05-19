@@ -44,6 +44,7 @@ export const descriptor: SketchDescriptor = {
       step: 1,
       defaultValue: 6,
       color: "rose",
+      inputType: "integer",
       description: "Number of visible tunnel layers/rings.",
     },
     {

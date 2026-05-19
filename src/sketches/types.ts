@@ -125,7 +125,7 @@ export interface ParameterTemplate {
   defaultValue: number;
   color?: SliderColor;
   description?: string;
-  inputType?: "slider" | "select" | "color";
+  inputType?: "slider" | "select" | "color" | "integer";
   defaultColorValue?: [number, number, number]; // for inputType: "color", RGB 0-255
   options?: Array<{ value: number; label: string }>;
 }
