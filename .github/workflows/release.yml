@@ -176,7 +176,7 @@ jobs:
 
       - name: Cache apt packages (Ubuntu)
         if: matrix.platform == 'ubuntu-22.04'
-        uses: awalsh128/cache-apt-pkgs-action@latest
+        uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev libhidapi-dev libudev-dev
           version: 1.0
