@@ -1,0 +1,274 @@
+/* ==========================================================================
+   KnobInput.module.css
+   Compact rotary knob for numeric parameters.
+   Renders at ~56px so 3 knobs fit in a single sketch column.
+   ========================================================================== */
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.2rem 0.4rem;
+  width: 100%;        /* fill grid cell */
+  height: 100%;       /* fill grid cell */
+  box-sizing: border-box;
+  position: relative;
+  min-width: 0;       /* allow content to shrink */
+}
+
+/* ── Label (bottom, above CTAs) ── */
+.label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.2;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* ── Knob SVG area ── */
+.knobArea {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.svg {
+  display: block;
+  cursor: ns-resize; /* drag up/down */
+  outline: none;
+  border-radius: 50%;
+  transition: filter 0.1s ease;
+}
+
+.svg:focus-visible {
+  filter: drop-shadow(0 0 4px var(--knob-color, rgb(52 211 153)));
+}
+
+.hovered .svg {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--knob-color, rgb(52 211 153)) 60%, transparent));
+}
+
+/* ── SVG elements ── */
+.track {
+  stroke: var(--bg-surface);
+}
+
+.fill {
+  stroke: var(--knob-color, rgb(52 211 153));
+  transition: stroke 0.1s ease;
+}
+
+.dot {
+  fill: var(--knob-color, rgb(52 211 153));
+}
+
+.ghostDot {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+  opacity: 0.75;
+}
+
+
+
+/* ── Color variants ── */
+.color_emerald { --knob-color: rgb(52 211 153); }
+.color_indigo  { --knob-color: rgb(129 140 248); }
+.color_cyan    { --knob-color: rgb(34 211 238); }
+.color_amber   { --knob-color: rgb(251 191 36); }
+.color_rose    { --knob-color: rgb(251 113 133); }
+.color_violet  { --knob-color: rgb(167 139 250); }
+.color_lime    { --knob-color: rgb(163 230 53); }
+.color_orange  { --knob-color: rgb(251 146 60); }
+.color_sky     { --knob-color: rgb(56 189 248); }
+.color_fuchsia { --knob-color: rgb(232 121 249); }
+
+/* ── Value centered in knob (click-to-edit) ── */
+.centerValue {
+  all: unset;
+  display: block;
+  width: 100%;
+  font-size: 0.66rem;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  text-align: center;
+  cursor: text;
+  border-radius: 2px;
+  line-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.12s ease;
+}
+
+.centerValue:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.centerValue:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.centerInput {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 0.66rem;
+  font-family: var(--font-mono);
+  text-align: center;
+  line-height: 16px;
+  box-sizing: border-box;
+  -moz-appearance: textfield;
+}
+
+.centerInput::-webkit-outer-spin-button,
+.centerInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ── Label + CTA group (together at the bottom) ── */
+.labelCtaGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* ── CTA row: Learn / Beat / LFO ── */
+.ctaRow {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Base CTA button */
+.ctaBtn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.6rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  border: 1.5px solid var(--border-subtle);
+  color: var(--text-muted);
+  background: transparent;
+  transition:
+    color 0.12s ease,
+    border-color 0.12s ease,
+    background-color 0.12s ease,
+    opacity 0.12s ease;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  letter-spacing: 0;
+}
+
+/* Inactive hover */
+.ctaBtn:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+}
+
+/* ── MIDI Learn CTA ── */
+.ctaLearnActive {
+  color: rgb(251 191 36);
+  border-color: rgb(251 191 36 / 0.6);
+  background: rgb(251 191 36 / 0.12);
+  animation: learnPulse 1.2s ease-in-out infinite;
+}
+
+.ctaLearnActive:hover {
+  color: rgb(253 212 100);
+  border-color: rgb(253 212 100 / 0.8);
+  background: rgb(251 191 36 / 0.22);
+}
+
+@keyframes learnPulse {
+  0%, 100% { border-color: rgb(251 191 36 / 0.6); }
+  50%       { border-color: rgb(251 191 36); }
+}
+
+/* ── Beat CTA ── */
+.ctaBeatActive {
+  color: rgb(251 191 36);
+  border-color: rgb(251 191 36 / 0.6);
+  background: rgb(251 191 36 / 0.12);
+}
+
+.ctaBeatActive:hover {
+  color: rgb(239 68 68);
+  border-color: rgb(239 68 68 / 0.6);
+  background: rgb(239 68 68 / 0.12);
+}
+
+/* ── LFO CTA ── */
+.ctaLfoActive {
+  color: rgb(129 140 248);
+  border-color: rgb(129 140 248 / 0.6);
+  background: rgb(129 140 248 / 0.12);
+}
+
+.ctaLfoActive:hover {
+  color: rgb(239 68 68);
+  border-color: rgb(239 68 68 / 0.6);
+  background: rgb(239 68 68 / 0.12);
+}
+
+/* ── Pickup direction badge ── */
+.pickupBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.pickupArrow {
+  font-size: 0.6rem;
+  color: rgb(251 191 36 / 0.8);
+}
+
+.disabled .svg {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* ── MIDI pickup flash ── */
+@keyframes pickupFlash {
+  0%   { filter: drop-shadow(0 0 6px var(--knob-color, rgb(52 211 153))); }
+  100% { filter: none; }
+}
+
+.pickupFlash .svg {
+  animation: pickupFlash 0.4s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ctaLearnActive { animation: none; }
+}

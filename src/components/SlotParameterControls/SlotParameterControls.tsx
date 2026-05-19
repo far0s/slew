@@ -14,6 +14,7 @@ import {
   type AudioMappingIndicator,
   type ModulationIndicator,
 } from "../ParameterSlider";
+import { KnobInput } from "../KnobInput";
 import { ParameterSelect } from "../ParameterSelect";
 import {
   type AudioMapping,
@@ -793,7 +794,7 @@ export function SlotParameterControls({
             if (el) rowRefs.current.set(baseId, el);
             else rowRefs.current.delete(baseId);
           }}
-          className={`${styles.colorParamRow} ${index > 0 ? styles.colorParamRowSpaced : ""}`}
+          className={`${styles.colorParamRow} ${styles.fullWidthRow} ${index > 0 ? styles.colorParamRowSpaced : ""}`}
           onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
         >
           <div className={styles.colorParamHeader}>
@@ -863,6 +864,7 @@ export function SlotParameterControls({
       return (
         <div
           key={paramId}
+          className={styles.fullWidthRow}
           ref={(el) => {
             if (el) rowRefs.current.set(paramId, el);
             else rowRefs.current.delete(paramId);
@@ -892,8 +894,45 @@ export function SlotParameterControls({
       );
     }
 
-    // Default: slider input
+    // Default: slider for transition/global params (fader-style); knob for sketch params
     const { onChange: sliderOnChange, onCommit: sliderOnCommit } = createChangeHandler(slotIndex, template, setValue);
+    const useSlider = template.group === "transition" || template.group === "global" || template.inputType === "slider";
+    if (useSlider) {
+      return (
+        <div
+          key={paramId}
+          className={styles.fullWidthRow}
+          ref={(el) => {
+            if (el) rowRefs.current.set(paramId, el);
+            else rowRefs.current.delete(paramId);
+          }}
+          onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
+        >
+          <ParameterSlider
+            id={`slot-${slotIndex}-${template.templateId}`}
+            label={template.label}
+            value={getValue(paramId)}
+            min={template.min}
+            max={template.max}
+            step={template.step}
+            color={template.color ?? "emerald"}
+            showSpacing={index > 0}
+            description={undefined}
+            onChange={(v) => { isUserInteractingRef.current = true; sliderOnChange(v); }}
+            onCommit={(after, before) => { isUserInteractingRef.current = false; sliderOnCommit(after, before); }}
+            audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
+            modulationIndicator={getModulationIndicator(paramId, modulationTargets, lfos)}
+            isMidiControlled={hasMidiMapping}
+            pickupState={midiPickupStates?.get(paramId)}
+            midiParameterId={paramId}
+            onQuickBeat={onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined}
+            onQuickLfo={onQuickLfo ? () => onQuickLfo(paramId) : undefined}
+            onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined}
+            onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined}
+          />
+        </div>
+      );
+    }
     return (
       <div
         key={paramId}
@@ -903,7 +942,7 @@ export function SlotParameterControls({
         }}
         onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
       >
-        <ParameterSlider
+        <KnobInput
           id={`slot-${slotIndex}-${template.templateId}`}
           label={template.label}
           value={getValue(paramId)}
@@ -911,8 +950,6 @@ export function SlotParameterControls({
           max={template.max}
           step={template.step}
           color={template.color ?? "emerald"}
-          showSpacing={index > 0}
-          description={undefined}
           onChange={(v) => { isUserInteractingRef.current = true; sliderOnChange(v); }}
           onCommit={(after, before) => { isUserInteractingRef.current = false; sliderOnCommit(after, before); }}
           audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
@@ -982,8 +1019,12 @@ export function SlotParameterControls({
                       <span className={styles.groupLabel}>{label}</span>
                     </button>
                   )}
-                  {!isCollapsed && groupTemplates.map((template, index) =>
-                    renderParameter(template, index)
+                  {!isCollapsed && (
+                    <div className={styles.paramGroupKnobs}>
+                      {groupTemplates.map((template, index) =>
+                        renderParameter(template, index)
+                      )}
+                    </div>
                   )}
                 </div>
               );

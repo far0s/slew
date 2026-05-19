@@ -113,9 +113,11 @@
 }
 
 .controls {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem 0.3rem;
+  align-items: start;
+  justify-items: center;
 }
 
 .errorMessage {
@@ -145,10 +147,29 @@
   border-color: var(--border-default);
 }
 
+/* Full-width row — sliders, selects, color pickers always span all 3 columns */
+.fullWidthRow {
+  grid-column: 1 / -1;
+  width: 100%;
+  justify-self: stretch;
+}
+
 /* Parameter group */
 .paramGroup {
   display: flex;
   flex-direction: column;
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  width: 100%;
+}
+
+/* Knob grid within a group — max 3 knobs per row */
+.paramGroupKnobs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem 0.3rem;
+  align-items: start;
+  justify-items: center;
 }
 
 .groupHeader {

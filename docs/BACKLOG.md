@@ -84,6 +84,38 @@ Support external images/videos as input textures for sketches.
 
 ---
 
+### 🟡 Integer Step Input Component `feature`
+
+Replace knob/slider with a purpose-built integer stepper for parameters that only take whole-number values (e.g. Line Count, Ray Steps, segment counts, iteration counts).
+
+**Context**: A continuous knob or slider has no value for integer-only parameters — there's nothing to sweep between steps. A compact `<StepInput>` cell with a centred number and ±1 buttons above/below is clearer, faster, and more accurate. These parameters are typically set once before a sketch goes live, so no MIDI/beat/LFO wiring is needed.
+
+**Component spec**:
+
+- Fits in the same 3-column knob grid cell (`width: 100%`)
+- Centred display: current integer value in a click-to-edit `<input type="number">`
+- `+` button above the value, `−` button below (or flanking, TBD during design)
+- Keyboard: `↑`/`↓` increment/decrement; `Shift` for ×10 coarse step; clamp at `min`/`max`
+- Use number-flow lib (https://github.com/barvian/number-flow) for an easy drop-in animated number input solution
+- No scroll-adjust, no MIDI learn, no beat/LFO CTAs
+- Same label-at-bottom convention as `KnobInput`
+- `onCommit(after, before)` for undo history, same as other controls
+
+**Integration**:
+
+- Add `inputType: "integer"` (or reuse existing `"number"` + detect `step === 1 && Number.isInteger(min) && Number.isInteger(max)`) to `ParameterTemplate`
+- In `SlotParameterControls.renderParameter`, route integer params to `<StepInput>` instead of `<KnobInput>`
+
+**Subtasks**:
+
+- [ ] Build `<StepInput>` component (`src/components/StepInput/`)
+- [ ] Add tests (render, keyboard, click-to-edit, clamp)
+- [ ] Add `inputType: "integer"` to `ParameterTemplate` type (or decide on auto-detection)
+- [ ] Wire into `SlotParameterControls` render path
+- [ ] Audit all existing sketches and update parameters that should use `StepInput` — candidates include any param with `step >= 1` and a small integer range (Line Count, Ray Steps, segment counts, octave counts, iteration limits, etc.)
+
+---
+
 ### 🟡 Parameter Randomization `feature`
 
 Add parameter randomization for experimentation.
@@ -433,23 +465,6 @@ Complete Windows distribution pipeline testing.
 ---
 
 ## Future Consideration / Inspiration
-
-### 🎨 Knob-Style Parameter Controls `polish`
-
-Replace the current horizontal sliders with compact rotary-knob widgets, inspired by hardware mixers (Midimix) and apps like Modulaser.
-
-**Context**: Modulaser uses a circular-arc knob input that maps visually to physical hardware knobs, shows the current value as a number you can click to edit directly, and responds to left/right scroll (or drag) to adjust. This is significantly more space-efficient than sliders and more intuitive for users familiar with hardware controllers.
-
-**Ideas**:
-
-- [ ] Build a `<KnobInput>` component: SVG arc showing value, click-to-edit number field, scroll/drag to change — wire `useScrollAdjust` from `src/inputs/shared` onto the knob container (`ref={scrollAdjust.ref}`) for consistent scroll-to-adjust behaviour (hook already exists)
-- [ ] Value displayed in center of knob; arc sweeps from ~7 o'clock to ~5 o'clock (270°)
-- [ ] Holds a MIDI Learn indicator (dot or ring color) when a mapping is active
-- [ ] Renders at a compact size (~40px) so 3 knobs fit in a single sketch column
-- [ ] Replace existing `<SlotParameterControls>` sliders with knobs for numeric parameters
-- [ ] Keep a label beneath each knob
-
----
 
 ### 🎨 IOSurface Zero-Copy (macOS) `feature`
 

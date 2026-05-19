@@ -206,6 +206,17 @@ pub(crate) fn handle_midi_message(
                 state.mappings.push(mapping.clone());
                 state.learn_state.is_learning = false;
                 state.learn_state.parameter_id = None;
+
+                // Ensure the first CC after learn requires a proper crossing
+                // (same treatment as first CC after reconnect)
+                let key = (channel, control);
+                let pickup = state
+                    .pickup_state
+                    .entry(key)
+                    .or_insert_with(super::types::PickupState::default);
+                pickup.picked_up = false;
+                pickup.last_cc = Some(value as u8);
+                pickup.ignore_next = false;
             }
 
             save_mappings_to_disk();
