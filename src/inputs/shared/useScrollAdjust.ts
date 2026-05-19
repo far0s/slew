@@ -8,10 +8,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
  * in modern browsers and cannot stop parent scroll containers.
  *
  * Scroll direction conventions:
- *   - Scroll up / right  → increment
- *   - Scroll down / left → decrement
- *   Uses whichever axis has larger magnitude, so a pure horizontal trackpad
- *   swipe also works.
+ *   - Horizontal only: scroll right → increment, scroll left → decrement
+ *   - Vertical scroll is intentionally ignored so the parent column can
+ *     scroll up/down freely without interference.
  *
  * Modifier keys:
  *   - Shift:    ÷10 step  (fine)
@@ -61,6 +60,11 @@ export function useScrollAdjust(
     const handleWheel = (e: WheelEvent) => {
       if (disabledRef.current) return;
       if (!isHoveredRef.current) return;
+
+      // Only respond to horizontal scroll — vertical scroll is reserved for the
+      // column's natural up/down scrolling and must not be intercepted here.
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+
       e.preventDefault();
       e.stopPropagation();
 
@@ -68,12 +72,7 @@ export function useScrollAdjust(
       if (e.shiftKey) multiplier = 0.1;
       else if (e.ctrlKey || e.metaKey) multiplier = 10;
 
-      // Use the axis with larger magnitude so horizontal trackpad swipes work.
-      const axisDelta =
-        Math.abs(e.deltaX) > Math.abs(e.deltaY) ? -e.deltaX : -e.deltaY;
-      const delta = axisDelta > 0 ? 1 : axisDelta < 0 ? -1 : 0;
-      if (delta === 0) return;
-
+      const delta = e.deltaX > 0 ? -1 : 1; // scroll right → increment, left → decrement
       const raw = valueRef.current + delta * stepRef.current * multiplier;
       const next = Math.min(
         maxRef.current,
