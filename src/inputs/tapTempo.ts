@@ -266,6 +266,13 @@ export function useTapTempo(): TapTempoState {
     };
   }, []);
 
+  // Keep hook state in sync with any external notifyBpm call (e.g. scroll-nudge)
+  useEffect(() => {
+    return subscribeBpm((newBpm) => {
+      setBpm(newBpm);
+    });
+  }, []);
+
   const tap = useCallback(() => {
     const now = performance.now();
     const timestamps = timestampsRef.current;
@@ -323,4 +330,26 @@ export function useTapTempo(): TapTempoState {
   }, [tap]);
 
   return { bpm, tapCount, isPulsing, tap, reset };
+}
+
+/**
+ * Directly set BPM from an external input (e.g. typed value or ÷2/×2 buttons).
+ * Clears tap history so the new value wins cleanly, then notifies all listeners
+ * and fires a beat-phase resync (same as a manual tap at time=now).
+ */
+export function setManualBpmDirect(bpm: number): void {
+  const clamped = Math.max(MIN_BPM, Math.min(MAX_BPM, Math.round(bpm)));
+  notifyBpm(clamped);
+  void invoke("set_manual_bpm", { bpm: clamped });
+  notifyTap(); // snap phase to now
+}
+
+/**
+ * Resync beat phase to now without changing BPM.
+ * If no BPM is active this is a no-op.
+ */
+export function resyncBeatPhase(): void {
+  if (_bpm === null) return;
+  void invoke("set_manual_bpm", { bpm: _bpm });
+  notifyTap();
 }

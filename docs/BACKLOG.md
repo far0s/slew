@@ -451,22 +451,6 @@ Replace the current horizontal sliders with compact rotary-knob widgets, inspire
 
 ---
 
-### 🎨 BPM Section Redesign — Editable BPM Field + Beat Grid `polish`
-
-Rework the BPM toolbar area to be more functional and compact, inspired by Modulaser's layout.
-
-**Context**: Currently Slew shows a Tap button and a read-only BPM readout. Modulaser adds: a 2×2 tempo grid (half/double buttons), a directly editable BPM text field, and a Resync button. The Link badge is already there but buried.
-
-**Ideas**:
-
-- [ ] Make the BPM display a click-to-edit `<input type="number">` field (type a value, press Enter/blur to commit via `set_manual_bpm`) — also wire `useScrollAdjust` from `src/inputs/shared` onto the field container for scroll-to-nudge BPM (hook already exists; use a step of 1, min 20, max 300 or similar)
-- [ ] Add ÷2 / ×2 half/double tempo buttons flanking the BPM field
-- [ ] Add a **Resync** button that snaps the internal phase to beat 1 (triggers `reset_bpm_phase` or equivalent)
-- [ ] Tighten the whole section: Tap | ÷2 | [BPM input] | ×2 | Resync | Link badge
-- [ ] Visual beat flash on the tap button (already partially implemented — refine into a smooth pulse ring)
-
----
-
 ### 🎨 IOSurface Zero-Copy (macOS) `feature`
 
 Bypass CPU entirely for ultimate video output performance.
