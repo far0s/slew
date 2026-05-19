@@ -393,16 +393,6 @@ export function KnobInput({
         </svg>
       </div>
 
-      {/* Pickup direction badge — shown when MIDI hasn't picked up yet */}
-      {showGhostMarker && pickupState.direction && (
-        <div className={styles.pickupBadge}>
-          <span className={styles.pickupArrow}>
-            {pickupState.direction === "right" ? "▸" : "◂"}
-          </span>
-          pickup
-        </div>
-      )}
-
       {/* Label + CTA row — together at bottom */}
       {showCtaRow ? (
         <div className={styles.labelCtaGroup}>
