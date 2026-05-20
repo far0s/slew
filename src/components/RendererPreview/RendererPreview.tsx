@@ -226,6 +226,8 @@ export function RendererPreview({
   const [hasReceivedFrame, setHasReceivedFrame] = useState(false);
   // Whether initial connection failed (fall back to local rendering)
   const [initialConnectionFailed, setInitialConnectionFailed] = useState(false);
+  // Key to force StreamedPreview remount on manual refresh
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Called when StreamedPreview receives its first frame
   const handleFirstFrame = useCallback(() => {
@@ -244,12 +246,20 @@ export function RendererPreview({
     }, STREAMING_FALLBACK_TIMEOUT_MS);
 
     return () => clearTimeout(timeout);
-  }, [streamingEnabled, hasReceivedFrame]);
+  }, [streamingEnabled, hasReceivedFrame, refreshKey]);
 
   // Use streaming if enabled and either we've received frames OR we're still waiting
   const shouldStream = streamingEnabled && !initialConnectionFailed;
   // Visual indicator: streaming is active if we've received at least one frame
   const isStreaming = shouldStream && hasReceivedFrame;
+
+  // Only allow refresh when preview is not live
+  const handleLabelClick = useCallback(() => {
+    if (isStreaming) return;
+    setHasReceivedFrame(false);
+    setInitialConnectionFailed(false);
+    setRefreshKey((k) => k + 1);
+  }, [isStreaming]);
 
   const containerStyle = {
     "--renderer-aspect-ratio": aspectRatio,
@@ -267,6 +277,7 @@ export function RendererPreview({
           {/* Always render StreamedPreview when should stream - it shows last valid frame */}
           {shouldStream ? (
             <StreamedPreview
+              key={refreshKey}
               source="composited"
               onFirstFrame={handleFirstFrame}
             />
@@ -281,7 +292,20 @@ export function RendererPreview({
           )}
         </WebGPUCanvas>
       </Suspense>
-      <div className={styles.label}>
+      <div
+        className={`${styles.label} ${!isStreaming ? styles.labelClickable : ""}`}
+        onClick={handleLabelClick}
+        title={!isStreaming ? "Click to reconnect preview" : undefined}
+        role={!isStreaming ? "button" : undefined}
+        tabIndex={!isStreaming ? 0 : undefined}
+        onKeyDown={
+          !isStreaming
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") handleLabelClick();
+              }
+            : undefined
+        }
+      >
         <span
           className={
             isStreaming ? styles.streamDotActive : styles.streamDotInactive

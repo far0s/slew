@@ -88,18 +88,12 @@
   display: block;
 }
 
-/* Wrapper for SlotPreview to enable click-to-refresh */
+/* Wrapper for SlotPreview */
 .slotPreviewWrapper {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  cursor: pointer;
-}
-
-.slotPreviewWrapper:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
 }
 
 .slotPreviewWrapper > div {
@@ -205,6 +199,16 @@
   background: rgb(6 182 212 / 0.8);
   color: rgb(255 255 255);
   box-shadow: 0 0 8px rgb(6 182 212 / 0.5);
+}
+
+/* Clickable state for badge when preview is not live */
+.slotBadgeClickable {
+  cursor: pointer;
+}
+
+.slotBadgeClickable:hover {
+  background: rgb(0 0 0 / 0.85);
+  color: rgb(255 255 255);
 }
 
 .macropadIndicator {

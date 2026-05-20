@@ -612,6 +612,13 @@ export function SlotColumn({
 }: SlotColumnProps) {
   const [isSlotStreaming, setIsSlotStreaming] = useState(false);
   const [isPreviewHidden, setIsPreviewHidden] = useState(false);
+  const [slotRefreshKey, setSlotRefreshKey] = useState(0);
+
+  const handleSlotBadgeClick = useCallback(() => {
+    if (isSlotStreaming) return;
+    setIsSlotStreaming(false);
+    setSlotRefreshKey((k) => k + 1);
+  }, [isSlotStreaming]);
 
   useEffect(() => {
     emit("slot-preview-visibility-changed", {
@@ -702,6 +709,7 @@ export function SlotColumn({
                 params={previewParams ?? params}
                 colors={colors}
                 onStreamingChange={setIsSlotStreaming}
+                externalRefreshKey={slotRefreshKey}
               />
             </Suspense>
           ) : (
@@ -724,8 +732,13 @@ export function SlotColumn({
               )}
             </div>
           <div
-            className={`${styles.slotBadge} ${isMacropadSelected ? styles.slotBadgeSelected : ""}`}
-            title={isSlotStreaming ? "Streamed from Renderer" : "Local preview"}
+            className={`${styles.slotBadge} ${isMacropadSelected ? styles.slotBadgeSelected : ""} ${!isSlotStreaming ? styles.slotBadgeClickable : ""}`}
+            title={isSlotStreaming ? "Streamed from Renderer" : "Click to reconnect preview"}
+            onClick={handleSlotBadgeClick}
+            onPointerDown={!isSlotStreaming ? (e) => e.stopPropagation() : undefined}
+            role={!isSlotStreaming ? "button" : undefined}
+            tabIndex={!isSlotStreaming ? 0 : undefined}
+            onKeyDown={!isSlotStreaming ? (e) => { if (e.key === "Enter" || e.key === " ") handleSlotBadgeClick(); } : undefined}
           >
             <span
               className={
@@ -855,12 +868,14 @@ function SlotPreview({
   params,
   colors,
   onStreamingChange,
+  externalRefreshKey = 0,
 }: {
   slotIndex: number;
   SketchComponent: React.ComponentType<SketchProps>;
   params?: SketchProps["params"];
   colors?: SketchProps["colors"];
   onStreamingChange?: (isStreaming: boolean) => void;
+  externalRefreshKey?: number;
 }) {
   // Whether streaming is enabled in backend config
   const [streamingEnabled, setStreamingEnabled] = useState(false);
@@ -871,12 +886,13 @@ function SlotPreview({
 
   const source = useMemo(() => `slot-${slotIndex}` as const, [slotIndex]);
 
-  // Handle click to refresh - remount StreamedPreview to reconnect
-  const handleRefreshClick = useCallback(() => {
+  // React to external refresh trigger (from parent badge click)
+  useEffect(() => {
+    if (externalRefreshKey === 0) return;
     setHasReceivedFrame(false);
     onStreamingChange?.(false);
     setRefreshKey((k) => k + 1);
-  }, [onStreamingChange]);
+  }, [externalRefreshKey, onStreamingChange]);
 
   // Check backend config periodically
   useEffect(() => {
@@ -906,7 +922,7 @@ function SlotPreview({
   const handleFirstFrame = useCallback(() => {
     setHasReceivedFrame(true);
     onStreamingChange?.(true);
-  }, [onStreamingChange]);
+  }, [onStreamingChange, slotIndex]);
 
   // Use streamed preview once we've received a frame and streaming is enabled
   const useStreamedPreview = streamingEnabled && hasReceivedFrame;
@@ -914,17 +930,9 @@ function SlotPreview({
   return (
     <div
       className={styles.slotPreviewWrapper}
-      onClick={handleRefreshClick}
-      title="Click to refresh preview"
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          handleRefreshClick();
-        }
-      }}
     >
       <WebGPUCanvas
+        key={refreshKey}
         camera={{ position: [0, 0, 4], fov: 50 }}
         frameloop="always"
         dpr={1}

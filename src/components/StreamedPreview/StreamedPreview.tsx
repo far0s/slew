@@ -176,12 +176,12 @@ export function StreamedPreview({
 
   // Listen for frame events
   useEffect(() => {
-    let unlisten: UnlistenFn | null = null;
     let mounted = true;
+    let unlistenFn: UnlistenFn | null = null;
 
     const setupListener = async () => {
       try {
-        unlisten = await listen<FrameMetadata>(eventName, (event) => {
+        const fn = await listen<FrameMetadata>(eventName, (event) => {
           if (!mounted) return;
 
           const { width, height, data, source: frameSource } = event.payload;
@@ -248,6 +248,12 @@ export function StreamedPreview({
             }
           }
         });
+        // If unmounted before listen resolved, immediately unlisten
+        if (!mounted) {
+          fn();
+        } else {
+          unlistenFn = fn;
+        }
       } catch {
         // Listener setup failed - component will show placeholder
       }
@@ -257,7 +263,7 @@ export function StreamedPreview({
 
     return () => {
       mounted = false;
-      unlisten?.();
+      unlistenFn?.();
     };
   }, [eventName, expectedSlotIndex, source]);
 

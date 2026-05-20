@@ -47,6 +47,16 @@
   user-select: none;
 }
 
+.labelClickable {
+  pointer-events: all;
+  cursor: pointer;
+}
+
+.labelClickable:hover {
+  color: rgb(255 255 255 / 0.95);
+  background: rgb(0 0 0 / 0.7);
+}
+
 .streamDotActive,
 .streamDotInactive {
   display: block;
