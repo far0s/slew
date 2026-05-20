@@ -168,9 +168,6 @@ function buildSlotParams(
  * @param crossfade - Current crossfade value (0 = fully active, 1 = fully target)
  * @param alpha - The slot's master opacity (0-1)
  */
-// Debug: track last logged state to detect flash transitions
-let _dbgLastOpacity: Record<number, number> = {};
-
 function calculateSlotOpacity(
   slotIndex: number,
   activeSlotIndex: number,
@@ -200,13 +197,6 @@ function calculateSlotOpacity(
     // For all other slots (not in crossfade), just use their alpha directly
     opacity = clampedAlpha;
   }
-
-  // Debug: log when opacity jumps up significantly (potential flash)
-  const prev = _dbgLastOpacity[slotIndex] ?? 0;
-  if (opacity > prev + 0.1 && prev < 0.1) {
-    console.log(`[RENDERER FLASH DBG] slot=${slotIndex} opacity ${prev.toFixed(3)}->${opacity.toFixed(3)} | active=${activeSlotIndex} target=${crossfadeTargetIndex} crossfade=${crossfade.toFixed(3)} alpha=${alpha.toFixed(3)} isActive=${isActive} isTarget=${isTarget}`);
-  }
-  _dbgLastOpacity[slotIndex] = opacity;
 
   return opacity;
 }

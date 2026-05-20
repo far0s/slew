@@ -123,7 +123,15 @@ pub fn init_link_engine(app_handle: AppHandle) {
                         });
                         // Always forward current BPM to the modulation engine so
                         // LFOs stay in sync even between beats.
-                        crate::bpm::report_beat(BpmSourceKind::Link, Some(bpm), None);
+                        // Only call report_beat here if a beat is NOT also firing this
+                        // tick — the beat branch below will handle that case and we
+                        // don't want to invoke it twice with the same value.
+                        let beat_will_fire = last_phase >= 0.0
+                            && last_phase > QUANTUM * 0.75
+                            && phase < QUANTUM * 0.25;
+                        if !beat_will_fire {
+                            crate::bpm::report_beat(BpmSourceKind::Link, Some(bpm), None);
+                        }
                         if let Some(h) = app_handle {
                             let _ = h.emit("link_status_changed", status);
                         }

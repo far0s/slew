@@ -209,9 +209,11 @@ pub fn report_manual_bpm(bpm: Option<f64>) {
         arbitrate(state, BpmSourceKind::Manual);
     });
 
-    // Always forward — manual takes effect immediately regardless of arbitration
-    // (matches original behaviour).
-    crate::modulation::update_bpm(bpm);
+    // After arbitration the winning source's BPM is in state.active_bpm.
+    // Forward that value so we don't overwrite the promoted source's BPM
+    // with None when clearing manual while Link (or another source) is active.
+    let winning_bpm = with_bpm_source(|state| state.active_bpm);
+    crate::modulation::update_bpm(winning_bpm);
 }
 
 /// Return the currently winning source.

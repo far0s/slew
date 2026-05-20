@@ -7,6 +7,7 @@
 use midir::{Ignore, MidiInput, MidiInputConnection};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter};
@@ -48,7 +49,7 @@ struct MidiClockState {
     connection: Option<MidiInputConnection<()>>,
     app_handle: Option<AppHandle>,
     /// Ring buffer of the last RING_BUF_SIZE pulse timestamps.
-    pulse_times: Vec<Instant>,
+    pulse_times: VecDeque<Instant>,
     /// How many pulses seen since the last beat report.
     pulse_count: u32,
     /// Last computed BPM (for status queries).
@@ -61,7 +62,7 @@ impl MidiClockState {
             device_id: None,
             connection: None,
             app_handle: None,
-            pulse_times: Vec::with_capacity(RING_BUF_SIZE),
+            pulse_times: VecDeque::with_capacity(RING_BUF_SIZE),
             pulse_count: 0,
             current_bpm: None,
         }
@@ -241,9 +242,9 @@ fn handle_clock_message(engine: &Arc<Mutex<MidiClockState>>, message: &[u8]) {
 
         // Push timestamp into ring buffer (keep last RING_BUF_SIZE entries).
         if state.pulse_times.len() >= RING_BUF_SIZE {
-            state.pulse_times.remove(0);
+            state.pulse_times.pop_front();
         }
-        state.pulse_times.push(now);
+        state.pulse_times.push_back(now);
 
         // Compute BPM from median interval if we have at least 2 timestamps.
         maybe_bpm = compute_bpm(&state.pulse_times);
@@ -270,14 +271,16 @@ fn handle_clock_message(engine: &Arc<Mutex<MidiClockState>>, message: &[u8]) {
 }
 
 /// Compute BPM from a slice of pulse timestamps using median interval.
-fn compute_bpm(times: &[Instant]) -> Option<f64> {
+fn compute_bpm(times: &VecDeque<Instant>) -> Option<f64> {
     if times.len() < 2 {
         return None;
     }
 
     let mut intervals: Vec<f64> = times
+        .iter()
+        .collect::<Vec<_>>()
         .windows(2)
-        .map(|w| w[1].duration_since(w[0]).as_secs_f64())
+        .map(|w| w[1].duration_since(*w[0]).as_secs_f64())
         .filter(|&d| d > 0.0)
         .collect();
 

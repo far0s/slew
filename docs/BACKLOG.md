@@ -28,10 +28,10 @@ Work is grouped into three tiers — bugs first, then design/smell fixes, then t
 
 #### Tier 1 — Bugs & Correctness (fix first)
 
-- [ ] **`midi_clock.rs:198` — O(n) ring buffer** · `pulse_times` is a `Vec<Instant>` that calls `remove(0)` (shifts all elements) inside the hot MIDI callback at up to 120×/sec at 300 BPM. Replace with `VecDeque<Instant>` + `pop_front()` / `push_back()` for O(1) and reduced timing jitter.
-- [ ] **`bpm.rs:213` — BPM dropout on manual-clear while Link is active** · `report_manual_bpm(None)` calls `arbitrate(state, BpmSourceKind::Manual)` (correctly promotes Link), then unconditionally calls `modulation::update_bpm(None)`, overwriting the just-promoted source's BPM. After clearing manual, read the winning source's BPM from state and pass that value instead.
-- [ ] **`link.rs:124–139` — Double `report_beat` in same poll tick** · When a beat edge and a tempo change coincide (common), `modulation::update_bpm` is invoked twice with the same value. Guard with a check so the second call is skipped when `bpm_changed` is already covered by the beat-fired path.
-- [ ] **`RendererRoot.tsx:172,205–209` — Debug code left in render path** · `let _dbgLastOpacity: Record<number, number> = {}` and the surrounding `[RENDERER FLASH DBG]` console.log block inside the per-frame opacity path. Remove the variable and the entire debug block — this bypasses `logger.ts` and fires in the hot render loop.
+- [x] **`midi_clock.rs:198` — O(n) ring buffer** · `pulse_times` is a `Vec<Instant>` that calls `remove(0)` (shifts all elements) inside the hot MIDI callback at up to 120×/sec at 300 BPM. Replace with `VecDeque<Instant>` + `pop_front()` / `push_back()` for O(1) and reduced timing jitter.
+- [x] **`bpm.rs:213` — BPM dropout on manual-clear while Link is active** · `report_manual_bpm(None)` calls `arbitrate(state, BpmSourceKind::Manual)` (correctly promotes Link), then unconditionally calls `modulation::update_bpm(None)`, overwriting the just-promoted source's BPM. After clearing manual, read the winning source's BPM from state and pass that value instead.
+- [x] **`link.rs:124–139` — Double `report_beat` in same poll tick** · When a beat edge and a tempo change coincide (common), `modulation::update_bpm` is invoked twice with the same value. Guard with a check so the second call is skipped when `bpm_changed` is already covered by the beat-fired path.
+- [x] **`RendererRoot.tsx:172,205–209` — Debug code left in render path** · `let _dbgLastOpacity: Record<number, number> = {}` and the surrounding `[RENDERER FLASH DBG]` console.log block inside the per-frame opacity path. Remove the variable and the entire debug block — this bypasses `logger.ts` and fires in the hot render loop.
 
 #### Tier 2 — Design / Code Smell
 
