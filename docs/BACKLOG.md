@@ -55,9 +55,9 @@ Work is grouped into three tiers — bugs first, then design/smell fixes, then t
 
 #### Tier 3 — Test Coverage
 
-- [ ] **`KnobInput` — New features have no tests** · The following props added in recent sprints are untested: `pickupState` ghost-marker branch, `modulationIndicator` ring, `audioMapping` indicator, and all four quick-action callbacks (`onQuickBeat`, `onQuickLfo`, `onUnlinkBeat`, `onUnlinkLfo`).
-- [ ] **`ShortcutsModal` — No test file** · Non-trivial interactive component (subscription cleanup, `Escape` keyboard trap, backdrop vs. inner click, conditional render) with zero coverage. Regression risk is high given its event-subscription teardown.
-- [ ] **`tapTempo.ts` — Shortcut functions untested** · `setTapShortcut`, `subscribeTapShortcut`, and `formatTapShortcut` (all recently added) have no tests. Cover: localStorage persist/load round-trip, subscriber notification on change, `formatTapShortcut` edge cases (modifier keys, non-printable keys, Space).
+- [x] **`KnobInput` — New features have no tests** · The following props added in recent sprints are untested: `pickupState` ghost-marker branch, `modulationIndicator` ring, `audioMapping` indicator, and all four quick-action callbacks (`onQuickBeat`, `onQuickLfo`, `onUnlinkBeat`, `onUnlinkLfo`).
+- [x] **`ShortcutsModal` — No test file** · Non-trivial interactive component (subscription cleanup, `Escape` keyboard trap, backdrop vs. inner click, conditional render) with zero coverage. Regression risk is high given its event-subscription teardown.
+- [x] **`tapTempo.ts` — Shortcut functions untested** · `setTapShortcut`, `subscribeTapShortcut`, and `formatTapShortcut` (all recently added) have no tests. Cover: localStorage persist/load round-trip, subscriber notification on change, `formatTapShortcut` edge cases (modifier keys, non-printable keys, Space).
 
 **Sizing**: ~3–4 days total. Tier 1 is ~half a day. Tiers 2–3 can be parallelised.
 
