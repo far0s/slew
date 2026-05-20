@@ -442,8 +442,6 @@ function ChromaLoop({ slotIndex, templateId, getValue, setValue, onActiveChange 
     return () => cancelAnimationFrame(rafRef.current);
   }, [active, presetIndex, bpm, slotIndex, templateId, setValue]);
 
-  const preset = LOOP_PRESETS[presetIndex];
-
   return (
     <>
       <button
