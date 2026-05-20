@@ -3,6 +3,7 @@
   position: relative;
   isolation: isolate;
   border-radius: 0.35rem;
+  height: 100%;
 }
 
 .paramRow::before {
@@ -35,8 +36,8 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .colorParamRow:last-child {
@@ -45,14 +46,14 @@
 }
 
 .colorParamRowSpaced {
-  padding-top: 0.5rem;
+  padding-top: 0.3rem;
 }
 
 .colorParamHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.1rem 0 0.2rem 0;
+  gap: 0.4rem;
+  padding: 0.05rem 0 0.15rem 0;
 }
 
 .colorParamLabel {
@@ -60,14 +61,30 @@
   font-weight: 500;
   color: var(--text-secondary);
   letter-spacing: 0.01em;
+  flex-shrink: 0;
+  margin-right: auto;
 }
 
-/* Chroma loop row */
+/* Chroma loop row — now lives inline in the color header */
 .chromaLoop {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.15rem 0 0.25rem;
+}
+
+/* Collapsible RGB slider container */
+.colorSliders {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.22s ease;
+}
+
+.colorSliders[data-collapsed="true"] {
+  grid-template-rows: 0fr;
+}
+
+.colorSlidersInner {
+  overflow: hidden;
 }
 
 .chromaLoopToggle {
@@ -132,11 +149,7 @@
   border-color: var(--border-default);
 }
 
-.chromaLoopNoBpm {
-  font-size: 0.65rem;
-  color: rgb(251 191 36 / 0.75);
-  font-style: italic;
-}
+
 
 .controls {
   display: grid;

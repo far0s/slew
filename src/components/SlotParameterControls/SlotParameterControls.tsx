@@ -351,9 +351,10 @@ interface ChromaLoopProps {
   templateId: string;
   getValue: (id: string) => number;
   setValue: (id: string, value: number) => void;
+  onActiveChange?: (active: boolean) => void;
 }
 
-function ChromaLoop({ slotIndex, templateId, getValue, setValue }: ChromaLoopProps) {
+function ChromaLoop({ slotIndex, templateId, getValue, setValue, onActiveChange }: ChromaLoopProps) {
   const [active, setActive] = useState(false);
   const [presetIndex, setPresetIndex] = useState(3); // "32 beats" default
   const [bpm, setBpm] = useState<number | null>(null);
@@ -377,12 +378,14 @@ function ChromaLoop({ slotIndex, templateId, getValue, setValue }: ChromaLoopPro
     phaseRef.current = 0;
     lastTimeRef.current = performance.now();
     setActive(true);
-  }, [slotIndex, templateId, getValue]);
+    onActiveChange?.(true);
+  }, [slotIndex, templateId, getValue, onActiveChange]);
 
   const stopLoop = useCallback(() => {
     setActive(false);
     cancelAnimationFrame(rafRef.current);
-  }, []);
+    onActiveChange?.(false);
+  }, [onActiveChange]);
 
   // rAF loop
   useEffect(() => {
@@ -440,10 +443,9 @@ function ChromaLoop({ slotIndex, templateId, getValue, setValue }: ChromaLoopPro
   }, [active, presetIndex, bpm, slotIndex, templateId, setValue]);
 
   const preset = LOOP_PRESETS[presetIndex];
-  const needsBpm = preset.beats !== null && bpm === null;
 
   return (
-    <div className={styles.chromaLoop}>
+    <>
       <button
         type="button"
         className={`${styles.chromaLoopToggle} ${active ? styles.chromaLoopActive : ""}`}
@@ -475,10 +477,8 @@ function ChromaLoop({ slotIndex, templateId, getValue, setValue }: ChromaLoopPro
         ))}
       </select>
 
-      {needsBpm && active && (
-        <span className={styles.chromaLoopNoBpm}>tap BPM</span>
-      )}
-    </div>
+
+    </>
   );
 }
 
@@ -506,6 +506,9 @@ export function SlotParameterControls({
   const [hiddenParams, setHiddenParams] = useState<Set<string>>(() =>
     loadHiddenParams(sketchId),
   );
+
+  // Track which color params have chroma loop active (to collapse RGB sliders)
+  const [chromaActiveMap, setChromaActiveMap] = useState<Record<string, boolean>>({});
 
   // Collapsed groups, persisted per sketch ID
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() =>
@@ -802,6 +805,15 @@ export function SlotParameterControls({
         >
           <div className={styles.colorParamHeader}>
             <span className={styles.colorParamLabel}>{template.label}</span>
+            <ChromaLoop
+              slotIndex={slotIndex}
+              templateId={template.templateId}
+              getValue={getValue}
+              setValue={setValue}
+              onActiveChange={(isActive) =>
+                setChromaActiveMap((prev) => ({ ...prev, [template.templateId]: isActive }))
+              }
+            />
             <ColorPicker
               label={template.label}
               value={hexValue}
@@ -811,49 +823,50 @@ export function SlotParameterControls({
               }
             />
           </div>
-          <ChromaLoop
-            slotIndex={slotIndex}
-            templateId={template.templateId}
-            getValue={getValue}
-            setValue={setValue}
-          />
-          {channels.map(({ ch, label: chLabel, value: chVal, color: chColor }) => {
-            const chId = `${baseId}_${ch}`;
-            const hasMidiMappingCh = midiMappings?.some((m) => m.parameter_id === chId);
-            return (
-              <ParameterSlider
-                key={chId}
-                id={`slot-${slotIndex}-${template.templateId}-${ch}`}
-                label={chLabel}
-                value={chVal}
-                min={0}
-                max={255}
-                step={1}
-                color={chColor}
-                inline
-                onChange={(val) => {
-                  isUserInteractingRef.current = true;
-                  const newR = ch === "r" ? val : r;
-                  const newG = ch === "g" ? val : g;
-                  const newB = ch === "b" ? val : b;
-                  handleColorParamChange(slotIndex, template.templateId, rgbToHex(newR, newG, newB), setValue);
-                }}
-                onCommit={(after, before) => {
-                  isUserInteractingRef.current = false;
-                  if (after !== before) pushUndoEntry(chId, before, after);
-                }}
-                audioMapping={getAudioMappingIndicator(chId, audioMappings)}
-                modulationIndicator={getModulationIndicator(chId, modulationTargets, lfos)}
-                isMidiControlled={hasMidiMappingCh}
-                pickupState={midiPickupStates?.get(chId)}
-                midiParameterId={chId}
-                onQuickBeat={onQuickBeat ? () => onQuickBeat(chId, 255) : undefined}
-                onQuickLfo={onQuickLfo ? () => onQuickLfo(chId, 0, 255) : undefined}
-                onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(chId) : undefined}
-                onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(chId) : undefined}
-              />
-            );
-          })}
+          <div
+            className={styles.colorSliders}
+            data-collapsed={chromaActiveMap[template.templateId] ? "true" : "false"}
+          >
+            <div className={styles.colorSlidersInner}>
+              {channels.map(({ ch, label: chLabel, value: chVal, color: chColor }) => {
+              const chId = `${baseId}_${ch}`;
+              const hasMidiMappingCh = midiMappings?.some((m) => m.parameter_id === chId);
+              return (
+                <ParameterSlider
+                  key={chId}
+                  id={`slot-${slotIndex}-${template.templateId}-${ch}`}
+                  label={chLabel}
+                  value={chVal}
+                  min={0}
+                  max={255}
+                  step={1}
+                  color={chColor}
+                  inline
+                  onChange={(val) => {
+                    isUserInteractingRef.current = true;
+                    const newR = ch === "r" ? val : r;
+                    const newG = ch === "g" ? val : g;
+                    const newB = ch === "b" ? val : b;
+                    handleColorParamChange(slotIndex, template.templateId, rgbToHex(newR, newG, newB), setValue);
+                  }}
+                  onCommit={(after, before) => {
+                    isUserInteractingRef.current = false;
+                    if (after !== before) pushUndoEntry(chId, before, after);
+                  }}
+                  audioMapping={getAudioMappingIndicator(chId, audioMappings)}
+                  modulationIndicator={getModulationIndicator(chId, modulationTargets, lfos)}
+                  isMidiControlled={hasMidiMappingCh}
+                  pickupState={midiPickupStates?.get(chId)}
+                  midiParameterId={chId}
+                  onQuickBeat={onQuickBeat ? () => onQuickBeat(chId, 255) : undefined}
+                  onQuickLfo={onQuickLfo ? () => onQuickLfo(chId, 0, 255) : undefined}
+                  onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(chId) : undefined}
+                  onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(chId) : undefined}
+                />
+              );
+            })}
+            </div>
+          </div>
         </div>
       );
     }
