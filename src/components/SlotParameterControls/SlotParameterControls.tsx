@@ -554,6 +554,11 @@ export function SlotParameterControls({
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   // Track whether the user is actively dragging a slider to avoid self-triggering
   const isUserInteractingRef = useRef(false);
+  // Keep latest modulation data in refs so the event listener can check without re-subscribing
+  const modulationTargetsRef = useRef(modulationTargets);
+  const lfosRef = useRef(lfos);
+  useEffect(() => { modulationTargetsRef.current = modulationTargets; }, [modulationTargets]);
+  useEffect(() => { lfosRef.current = lfos; }, [lfos]);
   // Safety reset: if the pointer is released anywhere (or cancelled), clear the flag.
   // This prevents isUserInteractingRef from getting stuck `true` if the user lifts
   // the mouse outside the slider thumb, which would block all MIDI auto-scroll.
@@ -587,6 +592,15 @@ export function SlotParameterControls({
       if (isUserInteractingRef.current) return;
       if (Date.now() - lastManualScrollRef.current < 1000) return;
       const { id } = event.payload;
+      // Skip auto-scroll for parameters driven by an active LFO
+      const targets = modulationTargetsRef.current;
+      const lfos = lfosRef.current;
+      if (targets && lfos) {
+        const hasActiveLfo = targets.some(
+          (t) => t.parameter_id === id && lfos.some((l) => l.id === t.source_id && l.enabled),
+        );
+        if (hasActiveLfo) return;
+      }
       const row = rowRefs.current.get(id);
       if (row) {
         // Walk up the DOM to find the nearest scrolling ancestor
