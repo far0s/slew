@@ -588,49 +588,54 @@ pub fn setup_midimix_default_mappings() {
     super::mappings::install_default_cc_mappings(&MIDIMIX_FADER_CCS);
 }
 
-/// Get the first 3 parameter IDs for a sketch (excluding alpha which is slot-level).
-fn get_sketch_first_params(sketch_id: &str, slot_index: usize) -> Vec<String> {
-    // Map sketch IDs to their parameter template IDs
-    let params: Vec<&str> = match sketch_id {
-        "blueCube" => vec!["rotation_speed", "scale", "color_shift"],
-        "orangeCube" => vec!["rotation_speed", "scale", "color_shift"],
-        "greenPulse" => vec!["pulse_speed", "intensity", "color_hue"],
-        "tslText3D" => vec!["rotation_speed", "text_scale", "color_mix"],
-        "tslNoiseBlob" => vec!["noise_scale", "noise_speed", "color_mix"],
-        _ => vec![],
-    };
+/// System parameter suffixes that should be excluded from knob mappings.
+/// These are managed at the slot level, not per-sketch.
+const SYSTEM_PARAM_SUFFIXES: &[&str] = &[
+    "_alpha",
+    "_brightness",
+    "_audio_reactivity",
+];
 
+/// Get the first 3 controllable parameter IDs for a slot by querying the live
+/// parameter store.  This replaces the old sketch-ID look-up table which
+/// silently drifted whenever sketches changed.
+///
+/// Parameters are sorted alphabetically for deterministic ordering, then
+/// system params (alpha, brightness, audio_reactivity) are excluded.
+fn get_sketch_first_params(_sketch_id: &str, slot_index: usize) -> Vec<String> {
+    let prefix = format!("slot_{}_", slot_index);
+
+    let mut params: Vec<String> = crate::with_parameter_store(|store| {
+        store
+            .get_all()
+            .into_iter()
+            .map(|p| p.id)
+            .filter(|id| {
+                if !id.starts_with(&prefix) {
+                    return false;
+                }
+                // Exclude system parameters
+                !SYSTEM_PARAM_SUFFIXES
+                    .iter()
+                    .any(|suffix| id.ends_with(suffix))
+            })
+            .collect()
+    });
+
+    params.sort();
+    params.truncate(3);
     params
-        .into_iter()
-        .take(3)
-        .map(|p| format!("slot_{}_{}", slot_index, p))
-        .collect()
 }
 
-/// Get the parameter range for a sketch parameter.
-fn get_sketch_param_range(sketch_id: &str, param_id: &str) -> (f64, f64) {
-    // Extract template ID from param_id (format: slot_N_templateId)
-    let template_id = param_id.split('_').skip(2).collect::<Vec<_>>().join("_");
-
-    // Default ranges for known parameters
-    match (sketch_id, template_id.as_str()) {
-        // TslNoiseBlob
-        ("tslNoiseBlob", "noise_scale") => (0.1, 5.0),
-        ("tslNoiseBlob", "noise_speed") => (0.0, 3.0),
-        ("tslNoiseBlob", "color_mix") => (0.0, 1.0),
-        // BlueCube / OrangeCube
-        (_, "rotation_speed") => (0.0, 5.0),
-        (_, "scale") => (0.1, 3.0),
-        (_, "color_shift") => (0.0, 1.0),
-        // GreenPulse
-        ("greenPulse", "pulse_speed") => (0.0, 5.0),
-        ("greenPulse", "intensity") => (0.0, 2.0),
-        ("greenPulse", "color_hue") => (0.0, 1.0),
-        // TslText3D
-        ("tslText3D", "text_scale") => (0.1, 3.0),
-        // Default
-        _ => (0.0, 1.0),
-    }
+/// Return the parameter range for a knob mapping.
+///
+/// The canonical min/max for a parameter lives in the TypeScript sketch
+/// descriptors, not in the Rust parameter store.  Rather than maintaining a
+/// second copy here that can drift, we use the standard normalised range
+/// (0.0–1.0).  The MIDI mapping layer already normalises CC values into
+/// whatever range is set here, so 0–1 is the safe universal default.
+fn get_sketch_param_range(_sketch_id: &str, _param_id: &str) -> (f64, f64) {
+    (0.0, 1.0)
 }
 
 // ============================================================================

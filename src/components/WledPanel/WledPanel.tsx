@@ -1,13 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import {
-  getWledConfig,
-  setWledConfig,
-  testWledConnection,
-  type WledConfig,
+  useWled,
   type WledSegmentMapping,
 } from "../../inputs/wled";
 import styles from "./WledPanel.module.css";
-import { logger } from "../../lib/logger";
 
 const COLOR_PARAM_OPTIONS = [
   { value: "color_primary", label: "Primary Color" },
@@ -27,47 +23,16 @@ const SLOT_OPTIONS = Array.from({ length: 8 }, (_, i) => ({
 }));
 
 export function WledPanel() {
-  const [config, setLocalConfig] = useState<WledConfig | null>(null);
-  const [isTesting, setIsTesting] = useState(false);
+  const { config, isLoading, isTesting, updateConfig, testConnection } = useWled();
   const [testResult, setTestResult] = useState<{
     ok: boolean;
     message: string;
   } | null>(null);
 
-  useEffect(() => {
-    getWledConfig()
-      .then((c) => setLocalConfig(c))
-      .catch((err) => logger.error("WLED", "Failed to load config", err));
-  }, []);
-
-  const updateConfig = useCallback(
-    async (updates: Partial<WledConfig>) => {
-      if (!config) return;
-      const next = { ...config, ...updates };
-      setLocalConfig(next);
-      try {
-        await setWledConfig(next);
-      } catch (err) {
-        logger.error("WLED", "Failed to save config", err);
-      }
-    },
-    [config],
-  );
-
   const handleTestConnection = async () => {
-    setIsTesting(true);
     setTestResult(null);
-    try {
-      const msg = await testWledConnection();
-      setTestResult({ ok: true, message: msg });
-    } catch (err) {
-      setTestResult({
-        ok: false,
-        message: err instanceof Error ? err.message : "Connection failed",
-      });
-    } finally {
-      setIsTesting(false);
-    }
+    const result = await testConnection();
+    setTestResult(result);
   };
 
   const addMapping = () => {
@@ -93,7 +58,7 @@ export function WledPanel() {
     void updateConfig({ mappings: config.mappings.filter((_, i) => i !== index) });
   };
 
-  if (!config) {
+  if (isLoading || !config) {
     return (
       <div className={styles.container}>
         <p className={styles.emptyText}>Loading…</p>
