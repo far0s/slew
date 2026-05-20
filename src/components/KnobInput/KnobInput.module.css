@@ -49,7 +49,7 @@
 }
 
 .svg:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--knob-color, rgb(52 211 153)) 70%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--knob-color, var(--accent-primary)) 70%, transparent);
   outline-offset: 3px;
 }
 
@@ -62,7 +62,7 @@
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    color-mix(in srgb, var(--knob-color, rgb(52 211 153)) 18%, transparent) 0%,
+    color-mix(in srgb, var(--knob-color, var(--accent-primary)) 18%, transparent) 0%,
     transparent 65%
   );
   pointer-events: none;
@@ -75,12 +75,12 @@
 }
 
 .fill {
-  stroke: var(--knob-color, rgb(52 211 153));
+  stroke: var(--knob-color, var(--accent-primary));
   transition: stroke 0.1s ease;
 }
 
 .dot {
-  fill: var(--knob-color, rgb(52 211 153));
+  fill: var(--knob-color, var(--accent-primary));
 }
 
 .ghostDot {
@@ -93,16 +93,17 @@
 
 
 /* ── Color variants ── */
-.color_emerald { --knob-color: rgb(52 211 153); }
-.color_indigo  { --knob-color: rgb(129 140 248); }
-.color_cyan    { --knob-color: rgb(34 211 238); }
-.color_amber   { --knob-color: rgb(251 191 36); }
-.color_rose    { --knob-color: rgb(251 113 133); }
-.color_violet  { --knob-color: rgb(167 139 250); }
-.color_lime    { --knob-color: rgb(163 230 53); }
-.color_orange  { --knob-color: rgb(251 146 60); }
-.color_sky     { --knob-color: rgb(56 189 248); }
-.color_fuchsia { --knob-color: rgb(232 121 249); }
+/* Knob color — all variants use active theme accent */
+.color_emerald,
+.color_indigo,
+.color_cyan,
+.color_amber,
+.color_rose,
+.color_violet,
+.color_lime,
+.color_orange,
+.color_sky,
+.color_fuchsia { --knob-color: var(--accent-primary); }
 
 /* ── Value centered in knob (click-to-edit) ── */
 .centerValue {

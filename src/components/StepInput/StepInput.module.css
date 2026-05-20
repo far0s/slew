@@ -34,8 +34,8 @@
 }
 
 .wrapper:focus-visible .stepper {
-  border-color: var(--knob-color, rgb(52 211 153));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--knob-color, rgb(52 211 153)) 40%, transparent);
+  border-color: var(--knob-color, var(--accent-primary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--knob-color, var(--accent-primary)) 40%, transparent);
 }
 
 /* ── +/− buttons ──────────────────────────────────────────────────────── */
@@ -71,13 +71,13 @@
 }
 
 .btn:hover {
-  background: color-mix(in srgb, var(--knob-color, rgb(52 211 153)) 12%, transparent);
-  color: var(--knob-color, rgb(52 211 153));
+  background: color-mix(in srgb, var(--knob-color, var(--accent-primary)) 12%, transparent);
+  color: var(--knob-color, var(--accent-primary));
 }
 
 .btn:active {
-  background: color-mix(in srgb, var(--knob-color, rgb(52 211 153)) 22%, transparent);
-  color: var(--knob-color, rgb(52 211 153));
+  background: color-mix(in srgb, var(--knob-color, var(--accent-primary)) 22%, transparent);
+  color: var(--knob-color, var(--accent-primary));
 }
 
 /* ── Value area ───────────────────────────────────────────────────────── */
@@ -94,7 +94,7 @@
 }
 
 .valueArea:hover {
-  background: color-mix(in srgb, var(--knob-color, rgb(52 211 153)) 6%, transparent);
+  background: color-mix(in srgb, var(--knob-color, var(--accent-primary)) 6%, transparent);
 }
 
 /* NumberFlow element */
@@ -102,7 +102,7 @@
   font-family: var(--font-mono, monospace);
   font-size: 1.05rem;
   font-weight: 600;
-  color: var(--knob-color, rgb(52 211 153));
+  color: var(--knob-color, var(--accent-primary));
   line-height: 1;
   pointer-events: none;
   user-select: none;
@@ -113,7 +113,7 @@
   font-family: var(--font-mono, monospace);
   font-size: 1.05rem;
   font-weight: 600;
-  color: var(--knob-color, rgb(52 211 153));
+  color: var(--knob-color, var(--accent-primary));
   background: transparent;
   border: none;
   text-align: center;
@@ -150,13 +150,14 @@
 
 /* ── Color variants (mirrors KnobInput) ──────────────────────────────── */
 
-.color_emerald { --knob-color: rgb(52 211 153); }
-.color_indigo  { --knob-color: rgb(129 140 248); }
-.color_cyan    { --knob-color: rgb(34 211 238); }
-.color_amber   { --knob-color: rgb(251 191 36); }
-.color_rose    { --knob-color: rgb(251 113 133); }
-.color_violet  { --knob-color: rgb(167 139 250); }
-.color_lime    { --knob-color: rgb(163 230 53); }
-.color_orange  { --knob-color: rgb(251 146 60); }
-.color_sky     { --knob-color: rgb(56 189 248); }
-.color_fuchsia { --knob-color: rgb(232 121 249); }
+/* Knob color — all variants use active theme accent */
+.color_emerald,
+.color_indigo,
+.color_cyan,
+.color_amber,
+.color_rose,
+.color_violet,
+.color_lime,
+.color_orange,
+.color_sky,
+.color_fuchsia { --knob-color: var(--accent-primary); }

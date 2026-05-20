@@ -229,45 +229,18 @@
   height: 100%;
 }
 
-/* Color variants for the range */
-.rangeEmerald {
-  background: rgb(52 211 153);
-}
-
-.rangeIndigo {
-  background: rgb(129 140 248);
-}
-
-.rangeCyan {
-  background: rgb(34 211 238);
-}
-
-.rangeAmber {
-  background: rgb(251 191 36);
-}
-
-.rangeSky {
-  background: rgb(56 189 248);
-}
-
-.rangeRose {
-  background: rgb(251 113 133);
-}
-
-.rangeViolet {
-  background: rgb(167 139 250);
-}
-
-.rangeLime {
-  background: rgb(163 230 53);
-}
-
-.rangeOrange {
-  background: rgb(251 146 60);
-}
-
+/* Range color — uses active theme accent */
+.rangeEmerald,
+.rangeIndigo,
+.rangeCyan,
+.rangeAmber,
+.rangeSky,
+.rangeRose,
+.rangeViolet,
+.rangeLime,
+.rangeOrange,
 .rangeFuchsia {
-  background: rgb(232 121 249);
+  background: var(--accent-primary);
 }
 
 .sliderThumb {
@@ -282,49 +255,22 @@
 .sliderThumb:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 2px var(--thumb-ring-color, rgb(52 211 153)),
+    0 0 0 2px var(--thumb-ring-color, var(--accent-primary)),
     0 0 0 4px rgb(2 6 23);
 }
 
-/* Ring color variants */
-.thumbEmerald {
-  --thumb-ring-color: rgb(52 211 153);
-}
-
-.thumbIndigo {
-  --thumb-ring-color: rgb(129 140 248);
-}
-
-.thumbCyan {
-  --thumb-ring-color: rgb(34 211 238);
-}
-
-.thumbAmber {
-  --thumb-ring-color: rgb(251 191 36);
-}
-
-.thumbSky {
-  --thumb-ring-color: rgb(56 189 248);
-}
-
-.thumbRose {
-  --thumb-ring-color: rgb(251 113 133);
-}
-
-.thumbViolet {
-  --thumb-ring-color: rgb(167 139 250);
-}
-
-.thumbLime {
-  --thumb-ring-color: rgb(163 230 53);
-}
-
-.thumbOrange {
-  --thumb-ring-color: rgb(251 146 60);
-}
-
+/* Thumb ring color — uses active theme accent */
+.thumbEmerald,
+.thumbIndigo,
+.thumbCyan,
+.thumbAmber,
+.thumbSky,
+.thumbRose,
+.thumbViolet,
+.thumbLime,
+.thumbOrange,
 .thumbFuchsia {
-  --thumb-ring-color: rgb(232 121 249);
+  --thumb-ring-color: var(--accent-primary);
 }
 
 /* Description is now in popover, this class kept for backwards compatibility */
