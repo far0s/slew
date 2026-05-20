@@ -1,3 +1,29 @@
+/* Per-parameter highlight — animated border when an LFO/target editor references this param */
+.paramRow {
+  position: relative;
+  isolation: isolate;
+  border-radius: 0.35rem;
+}
+
+.paramRow::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 0.4rem;
+  border: 1.5px solid color-mix(in srgb, var(--accent-primary) 50%, transparent);
+  background: color-mix(in srgb, var(--accent-primary) 6%, transparent);
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0;
+  transform: scale(0.93);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.paramHighlighted::before {
+  opacity: 1;
+  transform: scale(1);
+}
+
 .container {
   display: flex;
   flex-direction: column;

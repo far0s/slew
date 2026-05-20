@@ -46,15 +46,27 @@
   cursor: ns-resize; /* drag up/down */
   outline: none;
   border-radius: 50%;
-  transition: filter 0.1s ease;
 }
 
 .svg:focus-visible {
-  filter: drop-shadow(0 0 4px var(--knob-color, rgb(52 211 153)));
+  outline: 2px solid color-mix(in srgb, var(--knob-color, rgb(52 211 153)) 70%, transparent);
+  outline-offset: 3px;
 }
 
-.hovered .svg {
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--knob-color, rgb(52 211 153)) 60%, transparent));
+
+
+.hovered .knobArea::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--knob-color, rgb(52 211 153)) 18%, transparent) 0%,
+    transparent 65%
+  );
+  pointer-events: none;
+  transition: opacity 0.15s ease;
 }
 
 /* ── SVG elements ── */
@@ -244,8 +256,9 @@
 
 /* ── MIDI pickup flash ── */
 @keyframes pickupFlash {
-  0%   { filter: drop-shadow(0 0 6px var(--knob-color, rgb(52 211 153))); }
-  100% { filter: none; }
+  0%   { opacity: 1; }
+  50%  { opacity: 0.55; }
+  100% { opacity: 1; }
 }
 
 .pickupFlash .svg {

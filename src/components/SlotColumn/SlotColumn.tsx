@@ -54,7 +54,7 @@ interface PanelConfig {
   id: PanelId;
   label: string;
   shortLabel: string;
-  render: (slots: Array<Slot & { sketchId: SketchId }>) => ReactElement;
+  render: (slots: Array<Slot & { sketchId: SketchId }>, onHighlightParams?: (ids: Set<string>) => void) => ReactElement;
 }
 
 const PANEL_CONFIGS: PanelConfig[] = [
@@ -80,7 +80,7 @@ const PANEL_CONFIGS: PanelConfig[] = [
     id: "mod",
     label: "Modulation",
     shortLabel: "Mod",
-    render: (slots) => <ModulationPanel slots={slots} />,
+    render: (slots, onHighlightParams) => <ModulationPanel slots={slots} onHighlightParams={onHighlightParams} />,
   },
   {
     id: "hid",
@@ -168,6 +168,7 @@ function PanelSlotContent({
   panelId,
   filledSlots,
   onClose,
+  onHighlightParams,
   isDragging = false,
   dragOffsetX = 0,
   onDragStart,
@@ -176,6 +177,7 @@ function PanelSlotContent({
   panelId: PanelId;
   filledSlots: Array<Slot & { sketchId: SketchId }>;
   onClose: () => void;
+  onHighlightParams?: (ids: Set<string>) => void;
   isDragging?: boolean;
   dragOffsetX?: number;
   onDragStart?: (e: React.PointerEvent) => void;
@@ -208,7 +210,7 @@ function PanelSlotContent({
         </button>
       </div>
       <div className={styles.panelColumnBody} data-nodrag>
-        {config?.render(filledSlots)}
+        {config?.render(filledSlots, onHighlightParams)}
       </div>
     </motion.article>
   );
@@ -247,6 +249,8 @@ export interface SlotColumnProps {
   onQuickLfo?: (parameterId: string, paramMin: number, paramMax: number) => void;
   onUnlinkBeat?: (parameterId: string) => void;
   onUnlinkLfo?: (parameterId: string) => void;
+  highlightedParamIds?: Set<string>;
+  onHighlightParams?: (ids: Set<string>) => void;
   panelId?: PanelId | null;
   onOpenPanel?: (panelId: PanelId) => void;
   onClosePanel?: () => void;
@@ -597,6 +601,8 @@ export function SlotColumn({
   onQuickLfo,
   onUnlinkBeat,
   onUnlinkLfo,
+  highlightedParamIds,
+  onHighlightParams,
   panelId,
   onOpenPanel,
   onClosePanel,
@@ -621,6 +627,7 @@ export function SlotColumn({
         panelId={panelId}
         filledSlots={filledSlots ?? []}
         onClose={onClosePanel ?? (() => {})}
+        onHighlightParams={onHighlightParams}
         isDragging={isDragging}
         dragOffsetX={dragOffsetX}
         onDragStart={onDragStart}
@@ -822,6 +829,7 @@ export function SlotColumn({
           lfos={lfos}
           midiMappings={midiMappings}
           midiPickupStates={midiPickupStates}
+          highlightedParamIds={highlightedParamIds}
           onQuickBeat={onQuickBeat}
           onQuickLfo={onQuickLfo}
           onUnlinkBeat={onUnlinkBeat}

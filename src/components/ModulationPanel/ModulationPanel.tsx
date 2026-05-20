@@ -37,11 +37,13 @@ import {
 } from "../../inputs/audio";
 import {
   getAllSlotParameterIds,
+  getSlotParameterIds,
   getParameterDropdownLabel,
   getParameterDescriptor,
   parseSlotParameterId,
   type ParameterId,
 } from "../../slots/slotTypes";
+import { getSketchDescriptor } from "../../sketches";
 import type { Slot } from "../../slots/useSlots";
 import styles from "./ModulationPanel.module.css";
 import { ModulationMap } from "./ModulationMap";
@@ -187,33 +189,48 @@ export function WaveformDisplay({
 
 interface LfoRowProps {
   lfo: LfoSource;
+  lfos: LfoSource[];
   value: number;
   targets: ModulationTarget[];
   slots: Slot[];
-  onEdit: () => void;
+  isExpanded: boolean;
+  expandedTargetId: string | null;
+  onExpand: () => void;
+  onCollapse: () => void;
   onToggle: () => void;
   onDelete: () => void;
   onPin: () => void;
   onAddTarget: (lfoId: string) => void;
-  onEditTarget: (target: ModulationTarget) => void;
+  onExpandTarget: (target: ModulationTarget) => void;
+  onCollapseTarget: () => void;
   onToggleTarget: (target: ModulationTarget) => void;
   onDeleteTarget: (id: string) => void;
+  onLiveUpdateLfo: (lfo: LfoSource) => void;
+  onLiveUpdateTarget: (target: ModulationTarget) => void;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   isDragging?: boolean;
 }
 
 function LfoRow({
   lfo,
+  lfos,
   value: _value,
   targets,
-  onEdit,
+  slots,
+  isExpanded,
+  expandedTargetId,
+  onExpand,
+  onCollapse,
   onToggle,
   onDelete,
   onPin,
   onAddTarget,
-  onEditTarget,
+  onExpandTarget,
+  onCollapseTarget,
   onToggleTarget,
   onDeleteTarget,
+  onLiveUpdateLfo,
+  onLiveUpdateTarget,
   dragHandleProps,
   isDragging,
 }: LfoRowProps) {
@@ -221,7 +238,7 @@ function LfoRow({
 
   return (
     <div
-      className={`${styles.lfoCard} ${!lfo.enabled ? styles.lfoDisabled : ""} ${isDragging ? styles.lfoDragging : ""} ${lfo.pinned ? styles.lfoPinned : ""}`}
+      className={`${styles.lfoCard} ${!lfo.enabled ? styles.lfoDisabled : ''} ${isDragging ? styles.lfoDragging : ''} ${lfo.pinned ? styles.lfoPinned : ''}`}
     >
       {/* LFO header row */}
       <div className={styles.lfoRow}>
@@ -235,35 +252,33 @@ function LfoRow({
 
         <button
           type="button"
-          className={`${styles.lfoToggle} ${lfo.enabled ? styles.enabled : ""}`}
+          className={`${styles.lfoToggle} ${lfo.enabled ? styles.enabled : ''}`}
           onClick={onToggle}
-          aria-label={lfo.enabled ? "Disable LFO" : "Enable LFO"}
-        >
-          {lfo.enabled ? "●" : "○"}
-        </button>
+          aria-label={lfo.enabled ? 'Disable LFO' : 'Enable LFO'}
+        />
 
         <LfoShapeIcon
           shape={lfo.shape}
           width={18}
         />
 
-        <button type="button" className={styles.lfoInfo} onClick={onEdit}>
+        <button type="button" className={styles.lfoInfo} onClick={isExpanded ? onCollapse : onExpand}>
           <span className={styles.lfoName}>{lfo.name}</span>
           <span className={styles.lfoRate}>
             {lfo.sync_to_bpm
               ? lfo.bpm_division >= 4
-                ? `${lfo.bpm_division / 4} bar${lfo.bpm_division >= 8 ? "s" : ""}`
-                : `${lfo.bpm_division} beat${lfo.bpm_division !== 1 ? "s" : ""}`
+                ? `${lfo.bpm_division / 4} bar${lfo.bpm_division >= 8 ? 's' : ''}`
+                : `${lfo.bpm_division} beat${lfo.bpm_division !== 1 ? 's' : ''}`
               : formatPeriod(lfo.rate)}
           </span>
         </button>
 
         <button
           type="button"
-          className={`${styles.lfoPinButton} ${lfo.pinned ? styles.pinned : ""}`}
+          className={`${styles.lfoPinButton} ${lfo.pinned ? styles.pinned : ''}`}
           onClick={onPin}
-          aria-label={lfo.pinned ? "Unpin LFO" : "Pin LFO"}
-          title={lfo.pinned ? "Pinned — survives Clear All" : "Pin LFO"}
+          aria-label={lfo.pinned ? 'Unpin LFO' : 'Pin LFO'}
+          title={lfo.pinned ? 'Pinned — survives Clear All' : 'Pin LFO'}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
             <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
@@ -280,6 +295,19 @@ function LfoRow({
         </button>
       </div>
 
+      {/* Inline LFO form */}
+      <div className={`${styles.inlineFormWrapper} ${isExpanded ? styles.inlineFormOpen : ''}`}>
+        <div className={styles.inlineFormInner}>
+          <LfoForm
+            editingLfo={lfo}
+            mode="inline"
+            onLiveChange={isExpanded ? onLiveUpdateLfo : undefined}
+            onSave={() => onCollapse()}
+            onCancel={onCollapse}
+          />
+        </div>
+      </div>
+
       {/* Inline targets */}
       {lfoTargets.length > 0 && (
         <div className={styles.lfoTargetsList}>
@@ -287,39 +315,53 @@ function LfoRow({
             const paramLabel = getParameterDropdownLabel(
               target.parameter_id as ParameterId,
             );
+            const isTargetExpanded = expandedTargetId === target.id;
             return (
-              <div
-                key={target.id}
-                className={`${styles.inlineTargetRow} ${!target.enabled ? styles.targetDisabled : ""}`}
-              >
-                <button
-                  type="button"
-                  className={`${styles.targetToggle} ${target.enabled ? styles.enabled : ""}`}
-                  onClick={() => onToggleTarget(target)}
-                  aria-label={target.enabled ? "Disable" : "Enable"}
+              <div key={target.id}>
+                <div
+                  className={`${styles.inlineTargetRow} ${!target.enabled ? styles.targetDisabled : ''}`}
                 >
-                  {target.enabled ? "●" : "○"}
-                </button>
-                <button
-                  type="button"
-                  className={styles.inlineTargetInfo}
-                  onClick={() => onEditTarget(target)}
-                >
-                  <span className={styles.targetArrow}>→</span>
-                  <span className={styles.targetParam}>{paramLabel}</span>
-                  <span className={styles.targetDepth}>
-                    {target.bipolar ? "±" : ""}
-                    {(target.depth * 100).toFixed(0)}%
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className={styles.targetDelete}
-                  onClick={() => onDeleteTarget(target.id)}
-                  aria-label="Remove target"
-                >
-                  ×
-                </button>
+                  <div className={styles.targetToggleSpacer} />
+                  <button
+                    type="button"
+                    className={`${styles.targetToggle} ${target.enabled ? styles.enabled : ''}`}
+                    onClick={() => onToggleTarget(target)}
+                    aria-label={target.enabled ? 'Disable' : 'Enable'}
+                  />
+                  <button
+                    type="button"
+                    className={styles.inlineTargetInfo}
+                    onClick={() => isTargetExpanded ? onCollapseTarget() : onExpandTarget(target)}
+                  >
+                    <span className={styles.targetArrow}>→</span>
+                    <span className={styles.targetParam}>{paramLabel}</span>
+                    <span className={styles.targetDepth}>
+                      {target.bipolar ? '±' : ''}
+                      {(target.depth * 100).toFixed(0)}%
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.targetDelete}
+                    onClick={() => onDeleteTarget(target.id)}
+                    aria-label="Remove target"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className={`${styles.inlineFormWrapper} ${isTargetExpanded ? styles.inlineFormOpen : ''}`}>
+                  <div className={styles.inlineFormInner}>
+                    <TargetForm
+                      lfos={lfos}
+                      slots={slots}
+                      editingTarget={target}
+                      mode="inline"
+                      onLiveChange={isTargetExpanded ? onLiveUpdateTarget : undefined}
+                      onSave={() => onCollapseTarget()}
+                      onCancel={onCollapseTarget}
+                    />
+                  </div>
+                </div>
               </div>
             );
           })}
@@ -380,18 +422,19 @@ interface LfoFormProps {
   editingLfo: LfoSource | null;
   onSave: (lfo: LfoSource) => void;
   onCancel: () => void;
+  mode?: 'inline' | 'modal';
+  onLiveChange?: (lfo: LfoSource) => void;
 }
 
-function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
+function LfoForm({ editingLfo, onSave, onCancel, mode = 'modal', onLiveChange }: LfoFormProps) {
   const isEditing = editingLfo !== null;
+  const isInline = mode === 'inline';
 
-  const [shape, setShape] = useState<LfoShape>(editingLfo?.shape ?? "sine");
+  const [shape, setShape] = useState<LfoShape>(editingLfo?.shape ?? 'sine');
   const [rate, setRate] = useState(editingLfo?.rate ?? 0.5);
-  // For a new LFO, auto-generate name from shape+rate. For editing, use saved name.
   const [name, setName] = useState(
-    editingLfo?.name ?? generateLfoName(editingLfo?.shape ?? "sine", editingLfo?.rate ?? 0.5),
+    editingLfo?.name ?? generateLfoName(editingLfo?.shape ?? 'sine', editingLfo?.rate ?? 0.5),
   );
-  // Track whether the user has manually edited the name so we stop auto-updating it
   const [nameManuallyEdited, setNameManuallyEdited] = useState(isEditing);
   const [depth, setDepth] = useState(editingLfo?.depth ?? 1.0);
   const [offset, setOffset] = useState(editingLfo?.offset ?? 0.0);
@@ -401,12 +444,35 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
     editingLfo?.bpm_division ?? 4.0,
   );
 
+  const isMountedRef = useRef(false);
+
   // Auto-update name when shape or rate changes (only for new LFOs with unedited name)
   useEffect(() => {
     if (!nameManuallyEdited) {
       setName(generateLfoName(shape, rate));
     }
   }, [shape, rate, nameManuallyEdited]);
+
+  // Live update in inline mode
+  useEffect(() => {
+    if (!isInline || !onLiveChange || !editingLfo) return;
+    if (!isMountedRef.current) { isMountedRef.current = true; return; }
+    onLiveChange({
+      id: editingLfo.id,
+      name,
+      shape,
+      rate,
+      depth,
+      offset,
+      phase,
+      enabled: editingLfo.enabled,
+      sync_to_bpm: syncToBpm,
+      bpm_division: bpmDivision,
+      order: editingLfo.order,
+      pinned: editingLfo.pinned,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shape, rate, name, depth, offset, phase, syncToBpm, bpmDivision]);
 
   const rateScroll = useScrollAdjust(hzToSlider(rate), (v) => setRate(sliderToHz(v)), 0.001, 0, 1, syncToBpm);
   const depthScroll = useScrollAdjust(depth, setDepth, 0.01, 0, 1);
@@ -415,7 +481,7 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
 
   const handleSubmit = () => {
     const lfo: LfoSource = {
-      id: editingLfo?.id ?? "",
+      id: editingLfo?.id ?? '',
       name,
       shape,
       rate,
@@ -433,9 +499,11 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
 
   return (
     <div className={styles.lfoForm}>
-      <div className={styles.formHeader}>
-        {isEditing ? "Edit LFO" : "New LFO"}
-      </div>
+      {!isInline && (
+        <div className={styles.formHeader}>
+          {isEditing ? 'Edit LFO' : 'New LFO'}
+        </div>
+      )}
 
       <div className={styles.formRow}>
         <div className={styles.shapeNameRow}>
@@ -569,20 +637,32 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
       </div>
 
       <div className={styles.formActions}>
-        <button
-          type="button"
-          className={styles.cancelButton}
-          onClick={onCancel}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          className={styles.submitButton}
-          onClick={handleSubmit}
-        >
-          {isEditing ? "Save" : "Add LFO"}
-        </button>
+        {isInline ? (
+          <button
+            type="button"
+            className={styles.cancelButton}
+            onClick={onCancel}
+          >
+            Done
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              className={styles.cancelButton}
+              onClick={onCancel}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={styles.submitButton}
+              onClick={handleSubmit}
+            >
+              {isEditing ? 'Save' : 'Add LFO'}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -594,17 +674,17 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
 
 interface LfosSectionProps {
   slots: Slot[];
+  addLfoFnRef?: React.MutableRefObject<(() => Promise<void>) | null>;
+  onHighlightParams?: (ids: Set<string>) => void;
 }
 
-function LfosSection({ slots }: LfosSectionProps) {
+function LfosSection({ slots, addLfoFnRef, onHighlightParams }: LfosSectionProps) {
   const { lfos, add, update, remove } = useLfos();
   const { targets, add: addTarget, remove: removeTarget } = useModulationTargets();
   const { values } = useLfoValues();
 
-  const [editingLfo, setEditingLfo] = useState<LfoSource | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  // Target form state: null = closed, string = lfoId to pre-select, ModulationTarget = editing
-  const [targetFormState, setTargetFormState] = useState<null | string | ModulationTarget>(null);
+  const [expandedLfoId, setExpandedLfoId] = useState<string | null>(null);
+  const [expandedTargetId, setExpandedTargetId] = useState<string | null>(null);
 
   // Local drag-reorder state (display order of lfo ids)
   const [dragOrder, setDragOrder] = useState<string[]>([]);
@@ -612,14 +692,14 @@ function LfosSection({ slots }: LfosSectionProps) {
   const dragRef = useRef<{ id: string; startY: number; currentY: number } | null>(null);
   const itemHeights = useRef<Map<string, number>>(new Map());
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const liveUpdateLfoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveUpdateTargetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep dragOrder in sync with lfos (preserve existing order, add new ones at end)
   useEffect(() => {
     setDragOrder((prev) => {
       const lfoIds = lfos.map((l) => l.id);
-      // Remove ids that no longer exist
       const filtered = prev.filter((id) => lfoIds.includes(id));
-      // Add new ids at the end
       const added = lfoIds.filter((id) => !filtered.includes(id));
       return [...filtered, ...added];
     });
@@ -635,23 +715,81 @@ function LfosSection({ slots }: LfosSectionProps) {
     return [...pinned, ...unpinned];
   }, [dragOrder, lfos]);
 
-  const handleSaveLfo = async (lfo: LfoSource) => {
-    try {
-      if (lfo.id) {
-        await update(lfo);
-      } else {
-        const newLfo = createLfo({ ...lfo, order: lfos.length });
-        await add(newLfo);
-      }
-      setEditingLfo(null);
-      setShowForm(false);
-    } catch {
-      // UI state already reflects failure
+  // Highlight params based on expanded LFO/target
+  useEffect(() => {
+    if (!onHighlightParams) {
+      console.debug('[LfosSection] onHighlightParams is undefined — highlight skipped');
+      return;
     }
+    if (expandedTargetId) {
+      const target = targets.find((t) => t.id === expandedTargetId);
+      const ids = target ? new Set([target.parameter_id]) : new Set<string>();
+      console.debug('[LfosSection] expandedTargetId', expandedTargetId, '→ highlighting', [...ids]);
+      onHighlightParams(ids);
+    } else if (expandedLfoId) {
+      const lfoTargets = targets.filter((t) => t.source_id === expandedLfoId);
+      const ids = new Set(lfoTargets.map((t) => t.parameter_id));
+      console.debug('[LfosSection] expandedLfoId', expandedLfoId, '→ targets:', lfoTargets.length, '→ highlighting', [...ids]);
+      onHighlightParams(ids);
+    } else {
+      console.debug('[LfosSection] nothing expanded → clearing highlight');
+      onHighlightParams(new Set());
+    }
+  }, [expandedLfoId, expandedTargetId, targets, onHighlightParams]);
+
+  // Expose addLfo via ref
+  const handleAddLfo = async () => {
+    try {
+      const newLfo = createLfo({ order: lfos.length });
+      const added = await add(newLfo);
+      setExpandedLfoId(added.id);
+    } catch {
+      // ignore
+    }
+  };
+  if (addLfoFnRef) {
+    addLfoFnRef.current = handleAddLfo;
+  }
+
+  const handleAddTarget = async (lfoId: string) => {
+    try {
+      // Default to first slot parameter (skip 'crossfade') so the highlight is visible
+      const activeSlots = slots
+        .filter((s) => s.sketchId !== null)
+        .map((s) => ({ index: s.index, sketchId: s.sketchId as string }));
+      const allIds = getAllSlotParameterIds(activeSlots);
+      const firstSlotParam = allIds.find((id: ParameterId) => id !== 'crossfade') ?? 'crossfade';
+      const added = await addTarget({
+        id: '',
+        source_id: lfoId,
+        parameter_id: firstSlotParam,
+        depth: 0.5,
+        bipolar: true,
+        enabled: true,
+      });
+      setExpandedTargetId(added.id);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleLiveUpdateLfo = (lfo: LfoSource) => {
+    if (liveUpdateLfoTimerRef.current) clearTimeout(liveUpdateLfoTimerRef.current);
+    liveUpdateLfoTimerRef.current = setTimeout(() => {
+      void update(lfo);
+    }, 150);
+  };
+
+  const handleLiveUpdateTarget = (target: ModulationTarget) => {
+    if (liveUpdateTargetTimerRef.current) clearTimeout(liveUpdateTargetTimerRef.current);
+    liveUpdateTargetTimerRef.current = setTimeout(() => {
+      void addTarget(target);
+    }, 150);
   };
 
   const handleDelete = async (id: string) => {
     try {
+      if (expandedLfoId === id) setExpandedLfoId(null);
       await remove(id);
     } catch {
       // UI state already reflects failure
@@ -674,15 +812,6 @@ function LfosSection({ slots }: LfosSectionProps) {
     }
   };
 
-  const handleSaveTarget = async (target: ModulationTarget) => {
-    try {
-      await addTarget(target);
-      setTargetFormState(null);
-    } catch {
-      // UI state already reflects failure
-    }
-  };
-
   const handleToggleTarget = async (target: ModulationTarget) => {
     try {
       await addTarget({ ...target, enabled: !target.enabled });
@@ -693,6 +822,7 @@ function LfosSection({ slots }: LfosSectionProps) {
 
   const handleDeleteTarget = async (id: string) => {
     try {
+      if (expandedTargetId === id) setExpandedTargetId(null);
       await removeTarget(id);
     } catch {
       // UI state already reflects failure
@@ -715,6 +845,8 @@ function LfosSection({ slots }: LfosSectionProps) {
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = { id, startY: e.clientY, currentY: e.clientY };
     setDraggingId(id);
+    setExpandedLfoId(null);
+    setExpandedTargetId(null);
   };
 
   const handleDragMove = (e: React.PointerEvent) => {
@@ -729,7 +861,6 @@ function LfosSection({ slots }: LfosSectionProps) {
     const fromIdx = currentOrder.indexOf(dragRef.current.id);
     if (fromIdx === -1) return;
 
-    // Estimate rows by accumulated heights
     let accumulated = 0;
     let toIdx = fromIdx;
     for (let i = 0; i < currentOrder.length; i++) {
@@ -762,34 +893,6 @@ function LfosSection({ slots }: LfosSectionProps) {
     void persistOrder(finalOrder);
   };
 
-  if (showForm || editingLfo) {
-    return (
-      <LfoForm
-        editingLfo={editingLfo}
-        onSave={handleSaveLfo}
-        onCancel={() => {
-          setEditingLfo(null);
-          setShowForm(false);
-        }}
-      />
-    );
-  }
-
-  if (targetFormState !== null) {
-    const editingTarget = typeof targetFormState === "object" ? targetFormState : null;
-    const preselectedLfoId = typeof targetFormState === "string" ? targetFormState : undefined;
-    return (
-      <TargetForm
-        lfos={sortedLfos}
-        slots={slots}
-        editingTarget={editingTarget}
-        preselectedLfoId={preselectedLfoId}
-        onSave={handleSaveTarget}
-        onCancel={() => setTargetFormState(null)}
-      />
-    );
-  }
-
   return (
     <div
       className={styles.lfosSection}
@@ -815,17 +918,24 @@ function LfosSection({ slots }: LfosSectionProps) {
             >
               <LfoRow
                 lfo={lfo}
+                lfos={sortedLfos}
                 value={values[lfo.id] ?? 0}
                 targets={targets}
                 slots={slots}
-                onEdit={() => setEditingLfo(lfo)}
+                isExpanded={expandedLfoId === lfo.id}
+                expandedTargetId={expandedTargetId}
+                onExpand={() => { setExpandedLfoId(lfo.id); setExpandedTargetId(null); }}
+                onCollapse={() => setExpandedLfoId(null)}
                 onToggle={() => handleToggle(lfo)}
                 onDelete={() => handleDelete(lfo.id)}
                 onPin={() => handlePin(lfo)}
-                onAddTarget={(lfoId) => setTargetFormState(lfoId)}
-                onEditTarget={(target) => setTargetFormState(target)}
+                onAddTarget={handleAddTarget}
+                onExpandTarget={(target) => setExpandedTargetId(target.id)}
+                onCollapseTarget={() => setExpandedTargetId(null)}
                 onToggleTarget={handleToggleTarget}
                 onDeleteTarget={handleDeleteTarget}
+                onLiveUpdateLfo={handleLiveUpdateLfo}
+                onLiveUpdateTarget={handleLiveUpdateTarget}
                 isDragging={draggingId === lfo.id}
                 dragHandleProps={{
                   onPointerDown: (e) => handleDragStart(lfo.id, e),
@@ -850,6 +960,8 @@ interface TargetFormProps {
   preselectedLfoId?: string;
   onSave: (target: ModulationTarget) => void;
   onCancel: () => void;
+  mode?: 'inline' | 'modal';
+  onLiveChange?: (target: ModulationTarget) => void;
 }
 
 function TargetForm({
@@ -859,17 +971,22 @@ function TargetForm({
   preselectedLfoId,
   onSave,
   onCancel,
+  mode = 'modal',
+  onLiveChange,
 }: TargetFormProps) {
   const isEditing = editingTarget !== null;
+  const isInline = mode === 'inline';
 
   const [sourceId, setSourceId] = useState(
-    editingTarget?.source_id ?? preselectedLfoId ?? lfos[0]?.id ?? "",
+    editingTarget?.source_id ?? preselectedLfoId ?? lfos[0]?.id ?? '',
   );
   const [parameterId, setParameterId] = useState<string>(
-    editingTarget?.parameter_id ?? "",
+    editingTarget?.parameter_id ?? '',
   );
   const [depth, setDepth] = useState(editingTarget?.depth ?? 0.5);
   const [bipolar, setBipolar] = useState(editingTarget?.bipolar ?? true);
+
+  const isMountedRef = useRef(false);
 
   // Resolve parameter descriptor to show depth in native units
   const paramDescriptor = useMemo(() => {
@@ -881,22 +998,33 @@ function TargetForm({
     return getParameterDescriptor(parameterId, sketchId ?? undefined);
   }, [parameterId, slots]);
 
-  // Get parameter IDs only for active slots (filter out empty slots)
-  const allParameterIds = useMemo(
-    () =>
-      getAllSlotParameterIds(
-        slots
-          .filter((s) => s.sketchId !== null)
-          .map((s) => ({ index: s.index, sketchId: s.sketchId as string })),
-      ),
+  // Get active slots for grouped parameter select
+  const activeSlots = useMemo(
+    () => slots.filter((s) => s.sketchId !== null),
     [slots],
   );
+
+  // Live update in inline mode
+  useEffect(() => {
+    if (!isInline || !onLiveChange || !editingTarget) return;
+    if (!isMountedRef.current) { isMountedRef.current = true; return; }
+    if (!sourceId || !parameterId) return;
+    onLiveChange({
+      id: editingTarget.id,
+      source_id: sourceId,
+      parameter_id: parameterId,
+      depth,
+      bipolar,
+      enabled: editingTarget.enabled,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceId, parameterId, depth, bipolar]);
 
   const handleSubmit = () => {
     if (!sourceId || !parameterId) return;
 
     const target: ModulationTarget = {
-      id: editingTarget?.id ?? "",
+      id: editingTarget?.id ?? '',
       source_id: sourceId,
       parameter_id: parameterId,
       depth,
@@ -908,26 +1036,30 @@ function TargetForm({
 
   return (
     <div className={styles.targetForm}>
-      <div className={styles.formHeader}>
-        {isEditing ? "Edit Modulation Target" : "New Modulation Target"}
-      </div>
+      {!isInline && (
+        <div className={styles.formHeader}>
+          {isEditing ? 'Edit Modulation Target' : 'New Modulation Target'}
+        </div>
+      )}
 
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>
-          <span className={styles.formLabelText}>Source LFO</span>
-          <select
-            className={styles.formSelect}
-            value={sourceId}
-            onChange={(e) => setSourceId(e.target.value)}
-          >
-            {lfos.map((lfo) => (
-              <option key={lfo.id} value={lfo.id}>
-                {lfo.name} ({LFO_SHAPE_LABELS[lfo.shape]})
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      {!isInline && (
+        <div className={styles.formRow}>
+          <label className={styles.formLabel}>
+            <span className={styles.formLabelText}>Source LFO</span>
+            <select
+              className={styles.formSelect}
+              value={sourceId}
+              onChange={(e) => setSourceId(e.target.value)}
+            >
+              {lfos.map((lfo) => (
+                <option key={lfo.id} value={lfo.id}>
+                  {lfo.name} ({LFO_SHAPE_LABELS[lfo.shape]})
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
 
       <div className={styles.formRow}>
         <label className={styles.formLabel}>
@@ -938,11 +1070,27 @@ function TargetForm({
             onChange={(e) => setParameterId(e.target.value)}
           >
             <option value="">Select parameter…</option>
-            {allParameterIds.map((id) => (
-              <option key={id} value={id}>
-                {getParameterDropdownLabel(id)}
-              </option>
-            ))}
+            <optgroup label="Global">
+              <option value="crossfade">Crossfade</option>
+            </optgroup>
+            {activeSlots.map((slot) => {
+              const sketchId = slot.sketchId as string;
+              const descriptor = getSketchDescriptor(sketchId as Parameters<typeof getSketchDescriptor>[0]);
+              const slotLabel = `Slot ${slot.index + 1} \u2014 ${descriptor?.label ?? sketchId}`;
+              const paramIds = getSlotParameterIds(slot.index, sketchId as Parameters<typeof getSlotParameterIds>[1]);
+              return (
+                <optgroup key={slot.index} label={slotLabel}>
+                  {paramIds.map((id) => {
+                    const parsed = parseSlotParameterId(id);
+                    const paramDesc = parsed ? getParameterDescriptor(id, sketchId) : undefined;
+                    const label = paramDesc?.label ?? parsed?.templateId ?? id;
+                    return (
+                      <option key={id} value={id}>{label}</option>
+                    );
+                  })}
+                </optgroup>
+              );
+            })}
           </select>
         </label>
       </div>
@@ -980,21 +1128,33 @@ function TargetForm({
       </div>
 
       <div className={styles.formActions}>
-        <button
-          type="button"
-          className={styles.cancelButton}
-          onClick={onCancel}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          className={styles.submitButton}
-          onClick={handleSubmit}
-          disabled={!sourceId || !parameterId}
-        >
-          {isEditing ? "Save" : "Add Target"}
-        </button>
+        {isInline ? (
+          <button
+            type="button"
+            className={styles.cancelButton}
+            onClick={onCancel}
+          >
+            Done
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              className={styles.cancelButton}
+              onClick={onCancel}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={styles.submitButton}
+              onClick={handleSubmit}
+              disabled={!sourceId || !parameterId}
+            >
+              {isEditing ? 'Save' : 'Add Target'}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -1326,35 +1486,29 @@ function AudioModulationsSection() {
 export interface ModulationPanelProps {
   className?: string;
   slots?: Slot[];
+  onHighlightParams?: (ids: Set<string>) => void;
 }
 
 export function ModulationPanel({
   className,
   slots = [],
+  onHighlightParams,
 }: ModulationPanelProps) {
   const [lfosOpen, setLfosOpen] = useState(true);
   const [audioModsOpen, setAudioModsOpen] = useState(true);
-  const [showAddLfo, setShowAddLfo] = useState(false);
   const [showAddAudioMod, setShowAddAudioMod] = useState(false);
   const [confirmClearLfos, setConfirmClearLfos] = useState(false);
   const [confirmClearAudioMods, setConfirmClearAudioMods] = useState(false);
   const [showMap, setShowMap] = useState(false);
 
-  const { lfos, add: addLfo, clear: clearLfos } = useLfos();
+  const addLfoFnRef = useRef<(() => Promise<void>) | null>(null);
+
+  const { lfos, clear: clearLfos } = useLfos();
   const {
     audioModulations,
     add: addAudioMod,
     clear: clearAudioMods,
   } = useAudioModulations();
-
-  const handleAddLfo = async (lfo: LfoSource) => {
-    try {
-      await addLfo(lfo.id ? lfo : createLfo(lfo));
-      setShowAddLfo(false);
-    } catch {
-      // UI state already reflects failure
-    }
-  };
 
   const handleAddAudioMod = async (mod: AudioModulation) => {
     try {
@@ -1403,8 +1557,8 @@ export function ModulationPanel({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setShowAddLfo(true);
               setLfosOpen(true);
+              void addLfoFnRef.current?.();
             }}
             className={styles.headerAddButton}
             aria-label="Add LFO"
@@ -1443,15 +1597,7 @@ export function ModulationPanel({
           )}
         </div>
         <Collapsible.Content className={styles.sectionContent}>
-          {showAddLfo ? (
-            <LfoForm
-              editingLfo={null}
-              onSave={handleAddLfo}
-              onCancel={() => setShowAddLfo(false)}
-            />
-          ) : (
-            <LfosSection slots={slots} />
-          )}
+          <LfosSection slots={slots} addLfoFnRef={addLfoFnRef} onHighlightParams={onHighlightParams} />
         </Collapsible.Content>
       </Collapsible.Root>
 

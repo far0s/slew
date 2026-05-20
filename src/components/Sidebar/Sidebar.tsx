@@ -49,6 +49,8 @@ export interface SidebarProps {
   // Undo/redo callbacks
   onUndo?: () => void;
   onRedo?: () => void;
+  // Highlight params when editing modulation
+  onHighlightParams?: (ids: Set<string>) => void;
 }
 
 /**
@@ -377,6 +379,7 @@ export function Sidebar({
   setValue,
   onUndo,
   onRedo,
+  onHighlightParams,
 }: SidebarProps) {
   const { canUndo, canRedo } = useUndoHistory();
   // Window manager for restart and fullscreen functionality
@@ -552,7 +555,7 @@ export function Sidebar({
         </Tabs.Content>
 
         <Tabs.Content value="mod" className={styles.tabContent}>
-          <ModulationPanel slots={slots} />
+          <ModulationPanel slots={slots} onHighlightParams={onHighlightParams} />
         </Tabs.Content>
 
         <Tabs.Content value="wled" className={styles.tabContent}>

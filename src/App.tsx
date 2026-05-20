@@ -56,7 +56,6 @@ function App() {
   // Parameter store (replaces individual useState calls)
   const paramStore = useParameterStore();
 
-  // Color palette store - stores colors per slot
   const [slotColors, setSlotColors] = useState<
     Map<
       number,
@@ -917,6 +916,9 @@ function App() {
     [paramStore.set],
   );
 
+  // Highlighted parameter IDs for modulation editing
+  const [highlightedParamIds, setHighlightedParamIds] = useState<Set<string>>(new Set());
+
   // Get active slot info for preview
   const activeSlotIndex = slotState.activeIndex;
 
@@ -1015,6 +1017,8 @@ function App() {
               onQuickLfo={handleQuickLfo}
               onUnlinkBeat={handleUnlinkBeat}
               onUnlinkLfo={handleUnlinkLfo}
+              highlightedParamIds={highlightedParamIds}
+              onHighlightParams={setHighlightedParamIds}
             />
           </motion.div>
 
@@ -1046,6 +1050,7 @@ function App() {
               setValue={setValue}
               onUndo={handleUndo}
               onRedo={handleRedo}
+              onHighlightParams={setHighlightedParamIds}
             />
           </motion.aside>
         </main>

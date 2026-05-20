@@ -39,6 +39,7 @@ export interface SlotParameterControlsProps {
   lfos?: LfoSource[];
   midiMappings?: MidiMapping[];
   midiPickupStates?: Map<string, MidiPickupState>;
+  highlightedParamIds?: Set<string>;
   onQuickBeat?: (parameterId: string, paramMax: number) => void;
   onQuickLfo?: (parameterId: string, paramMin: number, paramMax: number) => void;
   onUnlinkBeat?: (parameterId: string) => void;
@@ -493,6 +494,7 @@ export function SlotParameterControls({
   lfos,
   midiMappings,
   midiPickupStates,
+  highlightedParamIds,
   onQuickBeat,
   onQuickLfo,
   onUnlinkBeat,
@@ -795,7 +797,7 @@ export function SlotParameterControls({
             if (el) rowRefs.current.set(baseId, el);
             else rowRefs.current.delete(baseId);
           }}
-          className={`${styles.colorParamRow} ${styles.fullWidthRow} ${index > 0 ? styles.colorParamRowSpaced : ""}`}
+          className={`${styles.colorParamRow} ${styles.fullWidthRow} ${styles.paramRow} ${index > 0 ? styles.colorParamRowSpaced : ''} ${highlightedParamIds?.has(makeSlotParameterId(slotIndex, template.templateId)) ? styles.paramHighlighted : ''}`}
           onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
         >
           <div className={styles.colorParamHeader}>
@@ -865,7 +867,7 @@ export function SlotParameterControls({
       return (
         <div
           key={paramId}
-          className={styles.fullWidthRow}
+          className={`${styles.fullWidthRow} ${styles.paramRow} ${highlightedParamIds?.has(paramId) ? styles.paramHighlighted : ''}`}
           ref={(el) => {
             if (el) rowRefs.current.set(paramId, el);
             else rowRefs.current.delete(paramId);
@@ -901,6 +903,7 @@ export function SlotParameterControls({
       return (
         <div
           key={paramId}
+          className={`${styles.paramRow} ${highlightedParamIds?.has(paramId) ? styles.paramHighlighted : ''}`}
           ref={(el) => {
             if (el) rowRefs.current.set(paramId, el);
             else rowRefs.current.delete(paramId);
@@ -929,7 +932,7 @@ export function SlotParameterControls({
       return (
         <div
           key={paramId}
-          className={styles.fullWidthRow}
+          className={`${styles.fullWidthRow} ${styles.paramRow} ${highlightedParamIds?.has(paramId) ? styles.paramHighlighted : ''}`}
           ref={(el) => {
             if (el) rowRefs.current.set(paramId, el);
             else rowRefs.current.delete(paramId);
@@ -943,7 +946,7 @@ export function SlotParameterControls({
             min={template.min}
             max={template.max}
             step={template.step}
-            color={template.color ?? "emerald"}
+            color={template.color ?? 'emerald'}
             showSpacing={index > 0}
             description={undefined}
             onChange={(v) => { isUserInteractingRef.current = true; sliderOnChange(v); }}
@@ -964,6 +967,7 @@ export function SlotParameterControls({
     return (
       <div
         key={paramId}
+        className={`${styles.paramRow} ${highlightedParamIds?.has(paramId) ? styles.paramHighlighted : ''}`}
         ref={(el) => {
           if (el) rowRefs.current.set(paramId, el);
           else rowRefs.current.delete(paramId);
@@ -1035,7 +1039,10 @@ export function SlotParameterControls({
               const isCollapsed = group ? collapsedGroups.has(group) : false;
               const label = group ? (GROUP_LABELS[group] ?? group) : undefined;
               return (
-                <div key={group ?? "__ungrouped__"} className={styles.paramGroup}>
+                <div
+                  key={group ?? "__ungrouped__"}
+                  className={styles.paramGroup}
+                >
                   {label && (
                     <button
                       type="button"

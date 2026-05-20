@@ -135,6 +135,8 @@ export interface SlotsAreaProps {
   onQuickLfo?: (parameterId: string, paramMin: number, paramMax: number) => void;
   onUnlinkBeat?: (parameterId: string) => void;
   onUnlinkLfo?: (parameterId: string) => void;
+  highlightedParamIds?: Set<string>;
+  onHighlightParams?: (ids: Set<string>) => void;
 }
 
 // Horizontally scrollable container for slot columns.
@@ -166,6 +168,8 @@ export function SlotsArea({
   onQuickLfo,
   onUnlinkBeat,
   onUnlinkLfo,
+  highlightedParamIds,
+  onHighlightParams,
 }: SlotsAreaProps) {
   const filledSlots = slots.filter(
     (s): s is Slot & { sketchId: SketchId } => s.sketchId !== null,
@@ -362,6 +366,8 @@ export function SlotsArea({
                     onQuickLfo={onQuickLfo}
                     onUnlinkBeat={onUnlinkBeat}
                     onUnlinkLfo={onUnlinkLfo}
+                    highlightedParamIds={highlightedParamIds}
+                    onHighlightParams={onHighlightParams}
                   />
                 );
               })}
