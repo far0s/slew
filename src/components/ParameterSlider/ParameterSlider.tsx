@@ -291,8 +291,8 @@ export function ParameterSlider({
               type="button"
               className={styles.quickBeatButton}
               onClick={onQuickBeat}
-              title="Quick-wire Beat trigger"
-              aria-label="Quick-wire Beat trigger"
+              title="Pulse on beat"
+              aria-label="Link to beat trigger — pulses on detected beat"
             >
               ♩
             </button>
@@ -302,8 +302,8 @@ export function ParameterSlider({
               type="button"
               className={styles.quickLfoButton}
               onClick={onQuickLfo}
-              title="Quick-wire LFO"
-              aria-label="Quick-wire LFO"
+              title="Link to LFO — continuous oscillation"
+              aria-label="Link to LFO — continuous oscillation"
             >
               ~
             </button>

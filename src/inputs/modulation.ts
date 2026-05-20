@@ -75,8 +75,8 @@ export const DEFAULT_LFO: Omit<LfoSource, "id"> = {
   depth: 1.0,
   offset: 0.0,
   enabled: true,
-  sync_to_bpm: false,
-  bpm_division: 1.0,
+  sync_to_bpm: true,
+  bpm_division: 4.0,
   order: 0,
   pinned: false,
 };

@@ -209,12 +209,15 @@ function App() {
   );
 
   const handleQuickLfo = useCallback(
-    async (parameterId: string) => {
+    async (parameterId: string, paramMin: number, paramMax: number) => {
       const lfoName = getParameterDropdownLabel(parameterId as ParameterId);
       const lfo = createLfo({ name: lfoName });
       const savedLfo = await addLfo(lfo);
+      // Depth = 25% of the parameter's native range so the oscillation stays
+      // within a comfortable swing without clipping.
+      const depth = 0.25 * (paramMax - paramMin);
       const target = createTarget(savedLfo.id, parameterId, {
-        depth: 0.5,
+        depth,
         bipolar: true,
       });
       await addModulationTarget(target);

@@ -157,12 +157,12 @@ describe("KnobInput", () => {
 
     it("shows LFO button with 'Link to LFO' title when modulationIndicator is absent", () => {
       render(<KnobInput {...defaultProps} onQuickLfo={vi.fn()} />);
-      expect(screen.getByTitle("Link to LFO")).toBeInTheDocument();
+      expect(screen.getByTitle("Link to LFO — continuous oscillation")).toBeInTheDocument();
     });
 
     it("does not render LFO button when neither onQuickLfo nor onUnlinkLfo is provided", () => {
       render(<KnobInput {...defaultProps} />);
-      expect(screen.queryByTitle("Link to LFO")).not.toBeInTheDocument();
+      expect(screen.queryByTitle("Link to LFO — continuous oscillation")).not.toBeInTheDocument();
     });
   });
 
@@ -181,12 +181,12 @@ describe("KnobInput", () => {
 
     it("shows beat button with 'Link to beat' title when audioMapping is absent", () => {
       render(<KnobInput {...defaultProps} onQuickBeat={vi.fn()} />);
-      expect(screen.getByTitle("Link to beat")).toBeInTheDocument();
+      expect(screen.getByTitle("Link to beat — pulses on detected beat")).toBeInTheDocument();
     });
 
     it("does not render beat button when neither onQuickBeat nor onUnlinkBeat is provided", () => {
       render(<KnobInput {...defaultProps} />);
-      expect(screen.queryByTitle("Link to beat")).not.toBeInTheDocument();
+      expect(screen.queryByTitle("Link to beat — pulses on detected beat")).not.toBeInTheDocument();
     });
   });
 
@@ -194,7 +194,7 @@ describe("KnobInput", () => {
     it("calls onQuickBeat when beat button is clicked (no audioMapping)", () => {
       const onQuickBeat = vi.fn();
       render(<KnobInput {...defaultProps} onQuickBeat={onQuickBeat} />);
-      fireEvent.click(screen.getByTitle("Link to beat"));
+      fireEvent.click(screen.getByTitle("Link to beat — pulses on detected beat"));
       expect(onQuickBeat).toHaveBeenCalledOnce();
     });
 
@@ -214,7 +214,7 @@ describe("KnobInput", () => {
     it("calls onQuickLfo when LFO button is clicked (no modulationIndicator)", () => {
       const onQuickLfo = vi.fn();
       render(<KnobInput {...defaultProps} onQuickLfo={onQuickLfo} />);
-      fireEvent.click(screen.getByTitle("Link to LFO"));
+      fireEvent.click(screen.getByTitle("Link to LFO — continuous oscillation"));
       expect(onQuickLfo).toHaveBeenCalledOnce();
     });
 

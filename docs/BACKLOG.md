@@ -228,7 +228,7 @@ Save/load parameter configurations per sketch.
 
 ---
 
-### 🟡 LFO UX Overhaul `feature` `polish`
+### ✅ LFO UX Overhaul `feature` `polish`
 
 The LFO creation flow and depth/offset defaults create friction and clipping issues in live use. This task covers a set of tightly related improvements.
 
@@ -246,18 +246,84 @@ The LFO creation flow and depth/offset defaults create friction and clipping iss
 4. **Phase has no obvious musical meaning in the UI** — "Phase" shown as 0–1 is confusing. Consider labelling it "Phase offset" and showing `0°–360°` or beats offset.
 
 **Acceptance criteria:**
-- [ ] `DEFAULT_LFO.sync_to_bpm` set to `true`, `bpm_division` defaults to `4.0` (one full cycle per 4 beats)
-- [ ] `handleQuickLfo` passes `offset` = current param value and `depth` = 25% of `(max - min)`
-- [ ] Beat and LFO CTAs have descriptive tooltips / aria labels distinguishing the two
-- [ ] LFO panel editor shows depth in native parameter units alongside normalised value
-- [ ] Phase control labelled as degrees or musical offset
-- [ ] Existing modulation tests updated to reflect new defaults
+- [x] `DEFAULT_LFO.sync_to_bpm` set to `true`, `bpm_division` defaults to `4.0` (one full cycle per 4 beats)
+- [x] `handleQuickLfo` passes `depth` = 25% of `(max - min)` in native parameter units; `bipolar: true` so LFO oscillates around the cached base value
+- [x] Beat and LFO CTAs have descriptive tooltips / aria labels distinguishing the two
+- [x] LFO panel editor shows depth in native parameter units alongside normalised value (TargetForm resolves `getParameterDescriptor` from selected `parameter_id`)
+- [x] Phase control labelled "Phase offset" with degrees
+- [x] Existing modulation tests updated to reflect new defaults (477 JS tests, 118 Rust tests, TypeScript clean)
 
-**Notes:**
-- The Beat CTA appears functional end-to-end (wired correctly through `SlotsArea → SlotParameterControls → KnobInput`). If it appears to "do nothing", it may be that the beat trigger fires correctly but the visual change is too brief to notice, or the audio beat detector isn't firing (threshold too high). Worth a focused test session before assuming it's broken — but improve the tooltip to set expectations.
-- Changing `DEFAULT_LFO` will be a small breaking change: existing saved LFOs are unaffected (they have their own persisted values), but newly created ones will behave differently. Document in CHANGELOG.
+**Implementation notes:**
+- `onQuickLfo` callback signature widened to `(parameterId, paramMin, paramMax)` and threaded through `SlotsArea → SlotColumn → SlotParameterControls`; color channel params use `(0, 255)`
+- Rust `LfoSource::Default` updated to match; `test_lfo_source_default` updated
+- `LfoForm` UI defaults (`syncToBpm`, `bpmDivision`) aligned with `DEFAULT_LFO`
+- Changing `DEFAULT_LFO` is a small breaking change for newly created LFOs; existing saved LFOs are unaffected (they have their own persisted values)
 
 **Sizing:** Medium (1 day). Mostly frontend changes to defaults and the LFO creation path; no Rust changes needed for the core improvements.
+
+---
+
+### 🟡 LFO Panel UX Polish `feature` `polish`
+
+Follow-up to *LFO UX Overhaul*. Focuses on interaction quality and visual refinement of the LFO list and inline editor inside the Modulation panel.
+
+#### Sub-task A — Visual spacing & toggle redesign
+
+Pure CSS + minimal JSX. No behaviour changes.
+
+- Increase `.lfoRow` padding and min-height for larger click targets (~36px rows vs current ~28px)
+- Increase `.inlineTargetRow` padding to match
+- Align target toggles with LFO toggles: drag-handle + toggle column is fixed width; target rows skip the drag-handle column so their toggle lands at the same x-position
+- Replace `●`/`○` text glyphs on both `.lfoToggle` and `.targetToggle` with CSS-only circles: inactive = transparent fill + 1.5px solid border (muted color); active = solid filled using `var(--accent-primary)` / `var(--accent-success)` respectively
+- More breathing room in form rows: increase `formRow` gap, input height, and label font size
+
+#### Sub-task B — Inline expand editing + live updates
+
+These are tightly coupled — live updates naturally fall out of inline editing.
+
+- `LfosSection` tracks `expandedLfoId: string | null` and `expandedTargetId: string | null`
+- `LfoRow` receives `isExpanded`; when true the form renders *inside* the card via a `max-height` CSS transition (list stays visible, no layout replacement)
+- Same pattern for each target row
+- `LfoForm` and `TargetForm` switch from “local state + Save” to **live debounced updates**: each field `onChange` immediately calls `update(lfo)` / `addTarget(target)` (~150ms debounce). Save/Cancel buttons replaced by a small “Done” close affordance
+- “Add LFO” / “+ Add Target”: creates the record first with defaults, then expands its inline editor — no blank modal
+- An expanded LFO collapses before drag starts
+
+#### Sub-task C — Parameter highlight on edit
+
+When an LFO or target editor is open, the affected parameter rows in the sketch panel pulse/highlight.
+
+- `ModulationPanel` derives `highlightedParamIds: Set<string>` from the currently expanded LFO’s targets (all their `parameter_id` values) or the expanded target’s `parameter_id`
+- Surfaced via a new `onHighlightParams(ids: Set<string>)` callback prop on `ModulationPanel`
+- Threaded down: `App.tsx → SlotsArea → SlotColumn → SlotParameterControls → KnobInput`/`ParameterSlider` as `highlightedParamIds?: Set<string>`
+- A highlighted param row gets a subtle left-border or background tint using `var(--accent-primary)` at low opacity (matches the existing modulation indicator color)
+
+#### Sub-task D — Target parameter select as grouped tree
+
+- Replace the flat `<select>` of parameter IDs in `TargetForm` with `<optgroup label="Slot N — SketchName">` groups (sketch name resolved from the `slots` prop)
+- Parameters within each group use their plain label (no “Slot N:” prefix — the group provides context)
+- Global/crossfade parameters go in a “Global” optgroup at the top
+
+#### Sub-task E — BPM division as visual radio grid
+
+Replace the `<select bpm_division>` with a compact two-row radio grid styled like the shape selector.
+
+- Row 1 **Beats**: `1`, `2`, `4`, `8` (bpm_division = 1, 2, 4, 8)
+- Row 2 **Bars**: `1`, `2`, `4`, `8` (bpm_division = 4, 8, 16, 32)
+- Each cell is a small pill button; active state uses the existing shape-selector active style
+- Row labels (“Beats” / “Bars”) as small inline labels on the left
+
+**Acceptance criteria:**
+- [ ] LFO rows and target rows have ≥36px effective click height
+- [ ] Toggle buttons are CSS circles (no text glyphs) — inactive = border only, active = filled accent color
+- [ ] Target toggles align vertically with LFO toggle column
+- [ ] Opening an LFO or target editor animates open inline; list remains visible
+- [ ] Changing any field in an open editor immediately updates the running LFO (no Save needed)
+- [ ] When an LFO or target editor is open, the relevant param rows in the sketch panel are highlighted
+- [ ] Parameter select uses `<optgroup>` grouping by slot with plain parameter labels
+- [ ] BPM division uses a visual 2-row radio grid (Beats / Bars)
+- [ ] All existing tests pass
+
+**Sizing:** Medium–Large (~1.5 days). Sub-tasks A, D, E are independent. B is the largest and should land first. C depends on B.
 
 ---
 

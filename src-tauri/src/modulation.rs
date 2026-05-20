@@ -95,8 +95,8 @@ impl Default for LfoSource {
             depth: 1.0,
             offset: 0.0,
             enabled: true,
-            sync_to_bpm: false,
-            bpm_division: 1.0,
+            sync_to_bpm: true,
+            bpm_division: 4.0,
             order: 0,
             pinned: false,
             current_phase: 0.0,
@@ -1464,7 +1464,8 @@ mod tests {
         assert_eq!(lfo.depth, 1.0);
         assert_eq!(lfo.offset, 0.0);
         assert!(lfo.enabled);
-        assert!(!lfo.sync_to_bpm);
+        assert!(lfo.sync_to_bpm);
+        assert_eq!(lfo.bpm_division, 4.0);
     }
 
     #[test]

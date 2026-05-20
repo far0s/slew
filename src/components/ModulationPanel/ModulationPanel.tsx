@@ -38,6 +38,8 @@ import {
 import {
   getAllSlotParameterIds,
   getParameterDropdownLabel,
+  getParameterDescriptor,
+  parseSlotParameterId,
   type ParameterId,
 } from "../../slots/slotTypes";
 import type { Slot } from "../../slots/useSlots";
@@ -394,9 +396,9 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
   const [depth, setDepth] = useState(editingLfo?.depth ?? 1.0);
   const [offset, setOffset] = useState(editingLfo?.offset ?? 0.0);
   const [phase, setPhase] = useState(editingLfo?.phase ?? 0.0);
-  const [syncToBpm, setSyncToBpm] = useState(editingLfo?.sync_to_bpm ?? false);
+  const [syncToBpm, setSyncToBpm] = useState(editingLfo?.sync_to_bpm ?? true);
   const [bpmDivision, setBpmDivision] = useState(
-    editingLfo?.bpm_division ?? 1.0,
+    editingLfo?.bpm_division ?? 4.0,
   );
 
   // Auto-update name when shape or rate changes (only for new LFOs with unedited name)
@@ -552,7 +554,7 @@ function LfoForm({ editingLfo, onSave, onCancel }: LfoFormProps) {
       <div className={styles.formRow}>
         <label ref={phaseScroll.ref} className={`${styles.formLabel} ${phaseScroll.isHovered ? styles.formLabelScrollFocus : ""}`}>
           <span className={styles.formLabelText}>
-            Phase ({(phase * 360).toFixed(0)}°)
+            Phase offset ({(phase * 360).toFixed(0)}°)
           </span>
           <input
             type="range"
@@ -869,6 +871,16 @@ function TargetForm({
   const [depth, setDepth] = useState(editingTarget?.depth ?? 0.5);
   const [bipolar, setBipolar] = useState(editingTarget?.bipolar ?? true);
 
+  // Resolve parameter descriptor to show depth in native units
+  const paramDescriptor = useMemo(() => {
+    if (!parameterId) return undefined;
+    const parsed = parseSlotParameterId(parameterId);
+    const sketchId = parsed
+      ? (slots.find((s) => s.index === parsed.slotIndex)?.sketchId ?? undefined)
+      : undefined;
+    return getParameterDescriptor(parameterId, sketchId ?? undefined);
+  }, [parameterId, slots]);
+
   // Get parameter IDs only for active slots (filter out empty slots)
   const allParameterIds = useMemo(
     () =>
@@ -938,8 +950,11 @@ function TargetForm({
       <div className={styles.formRow}>
         <label className={styles.formLabel}>
           <span className={styles.formLabelText}>
-            Depth ({bipolar ? "±" : ""}
-            {(depth * 100).toFixed(0)}%)
+            Depth ({bipolar ? "±" : ""}{(depth * 100).toFixed(0)}%
+            {paramDescriptor && (
+              <> · {bipolar ? "±" : ""}{depth.toFixed(paramDescriptor.step < 0.01 ? 3 : 2)}</>
+            )}
+            )
           </span>
           <input
             type="range"

@@ -40,7 +40,7 @@ export interface SlotParameterControlsProps {
   midiMappings?: MidiMapping[];
   midiPickupStates?: Map<string, MidiPickupState>;
   onQuickBeat?: (parameterId: string, paramMax: number) => void;
-  onQuickLfo?: (parameterId: string) => void;
+  onQuickLfo?: (parameterId: string, paramMin: number, paramMax: number) => void;
   onUnlinkBeat?: (parameterId: string) => void;
   onUnlinkLfo?: (parameterId: string) => void;
 }
@@ -846,7 +846,7 @@ export function SlotParameterControls({
                 pickupState={midiPickupStates?.get(chId)}
                 midiParameterId={chId}
                 onQuickBeat={onQuickBeat ? () => onQuickBeat(chId, 255) : undefined}
-                onQuickLfo={onQuickLfo ? () => onQuickLfo(chId) : undefined}
+                onQuickLfo={onQuickLfo ? () => onQuickLfo(chId, 0, 255) : undefined}
                 onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(chId) : undefined}
                 onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(chId) : undefined}
               />
@@ -887,7 +887,7 @@ export function SlotParameterControls({
             modulationIndicator={getModulationIndicator(paramId, modulationTargets, lfos)}
             isMidiControlled={hasMidiMapping}
             onQuickBeat={onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined}
-            onQuickLfo={onQuickLfo ? () => onQuickLfo(paramId) : undefined}
+            onQuickLfo={onQuickLfo ? () => onQuickLfo(paramId, template.min, template.max) : undefined}
             onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined}
             onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined}
           />
@@ -954,7 +954,7 @@ export function SlotParameterControls({
             pickupState={midiPickupStates?.get(paramId)}
             midiParameterId={paramId}
             onQuickBeat={onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined}
-            onQuickLfo={onQuickLfo ? () => onQuickLfo(paramId) : undefined}
+            onQuickLfo={onQuickLfo ? () => onQuickLfo(paramId, template.min, template.max) : undefined}
             onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined}
             onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined}
           />
@@ -986,13 +986,13 @@ export function SlotParameterControls({
           pickupState={midiPickupStates?.get(paramId)}
           midiParameterId={paramId}
           onQuickBeat={onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined}
-          onQuickLfo={onQuickLfo ? () => onQuickLfo(paramId) : undefined}
+          onQuickLfo={onQuickLfo ? () => onQuickLfo(paramId, template.min, template.max) : undefined}
           onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined}
           onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined}
         />
       </div>
     );
-  };
+};
 
   // Group parameters by their group field for rendering
   const groupedParameters = (() => {

@@ -432,7 +432,7 @@ export function KnobInput({
               title={
                 beatActive
                   ? `Beat-mapped: ${audioMapping?.sourceLabel ?? ""}. Click to unlink.`
-                  : "Link to beat"
+                  : "Link to beat — pulses on detected beat"
               }
             >
               ♩
@@ -450,7 +450,7 @@ export function KnobInput({
                   ? (modulationIndicator?.count && modulationIndicator.count > 1
                     ? `Modulated by ${modulationIndicator.count} LFOs. Click to unlink.`
                     : `Modulated by ${modulationIndicator?.lfoName ?? "LFO"}. Click to unlink.`)
-                  : "Link to LFO"
+                  : "Link to LFO — continuous oscillation"
               }
             >
               {lfoActive && modulationIndicator?.lfoShape ? (

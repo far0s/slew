@@ -244,7 +244,7 @@ export interface SlotColumnProps {
   onRemove: () => void;
   onCopyToSlot?: (sourceSlotIndex: number) => void;
   onQuickBeat?: (parameterId: string, paramMax: number) => void;
-  onQuickLfo?: (parameterId: string) => void;
+  onQuickLfo?: (parameterId: string, paramMin: number, paramMax: number) => void;
   onUnlinkBeat?: (parameterId: string) => void;
   onUnlinkLfo?: (parameterId: string) => void;
   panelId?: PanelId | null;
