@@ -139,6 +139,8 @@ export interface SlotsAreaProps {
   onHighlightParams?: (ids: Set<string>) => void;
 }
 
+const PANEL_SLOTS_KEY = "slew-panel-slots"; // localStorage — survives webview reloads
+
 // Horizontally scrollable container for slot columns.
 // Designed to show ~3.5 columns at once with the 4th peeking in.
 export function SlotsArea({
@@ -183,14 +185,29 @@ export function SlotsArea({
     [displayOrder, slots],
   );
 
-  const [panelSlots, setPanelSlots] = useState<Record<number, PanelId | null>>({});
+  const [panelSlots, setPanelSlots] = useState<Record<number, PanelId | null>>(() => {
+    try {
+      const stored = localStorage.getItem(PANEL_SLOTS_KEY);
+      return stored ? (JSON.parse(stored) as Record<number, PanelId | null>) : {};
+    } catch {
+      return {};
+    }
+  });
 
   const handleOpenPanel = useCallback((slotIndex: number, panelId: PanelId) => {
-    setPanelSlots((prev) => ({ ...prev, [slotIndex]: panelId }));
+    setPanelSlots((prev) => {
+      const next = { ...prev, [slotIndex]: panelId };
+      try { localStorage.setItem(PANEL_SLOTS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
   }, []);
 
   const handleClosePanel = useCallback((slotIndex: number) => {
-    setPanelSlots((prev) => ({ ...prev, [slotIndex]: null }));
+    setPanelSlots((prev) => {
+      const next = { ...prev, [slotIndex]: null };
+      try { localStorage.setItem(PANEL_SLOTS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
   }, []);
 
   const columnsWrapperRef = useRef<HTMLDivElement>(null);
