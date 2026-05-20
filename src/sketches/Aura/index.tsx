@@ -33,7 +33,6 @@ import { descriptor } from "./descriptor";
 export { descriptor };
 import {
   screenAspectUV,
-  tanh,
   reinhardTonemap,
   uncharted2Tonemap,
   acesTonemap,
@@ -211,9 +210,7 @@ function createAuraMaterial(
 
     // Raymarch loop
     Loop({ start: 0, end: raySteps }, () => {
-      const p = vec3(0.0, 0.0, 4.0)
-        .add(rayDir.mul(d))
-        .mul(tanh(_time.mul(0.2)));
+      const p = vec3(0.0, 0.0, 4.0).add(rayDir.mul(d));
 
       const rz = mapSdf(p, _time, uSpeed, uComplexity, uDistance, uSeed);
       const rzOffset = mapSdf(
