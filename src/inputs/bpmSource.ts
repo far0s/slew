@@ -14,7 +14,7 @@ import { useEventListener, useFetchOnMount } from "./shared";
 // ============================================================================
 
 /** The possible BPM input sources, matching the Rust `BpmSourceKind` enum. */
-export type BpmSourceKind = "manual" | "osc" | "midi_clock" | "microphone" | "link";
+export type BpmSourceKind = "idle" | "manual" | "osc" | "midi_clock" | "microphone" | "link";
 
 /** Event payload emitted when the active BPM source or BPM value changes. */
 export interface BpmSourceChangedEvent {
@@ -62,6 +62,7 @@ export interface MidiDeviceInfo {
 
 /** Human-readable labels for each BPM source kind. */
 export const BPM_SOURCE_LABELS: Record<BpmSourceKind, string> = {
+  idle: "—",
   manual: "Tap / Manual",
   osc: "OSC",
   midi_clock: "MIDI Clock",

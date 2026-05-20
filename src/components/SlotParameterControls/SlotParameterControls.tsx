@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { subscribeBpm } from "../../inputs/tapTempo";
-import { pushUndoEntry } from "../../controls/useUndoHistory";
+import { pushUndoEntry } from "../../hooks/useUndoHistory";
 import type { SketchId, ParameterTemplate } from "../../sketches";
 import { getSketchDescriptor } from "../../sketches";
 import {

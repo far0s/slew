@@ -11,8 +11,7 @@ import {
   resyncBeatPhase,
   type TapShortcut,
 } from "../../inputs/tapTempo";
-import { useLinkStatus } from "../../inputs/bpmSource";
-import { useActiveBpmSource } from "../../inputs/bpmSource";
+import { useLinkStatus, useActiveBpmSource } from "../../inputs/bpmSource";
 import { useScrollAdjust } from "../../inputs/shared/useScrollAdjust";
 import styles from "./Toolbar.module.css";
 
@@ -73,7 +72,7 @@ export function ToolbarTapBpm() {
   useEffect(() => {
     return subscribeTapShortcut((s) => {
       setShortcutLabel(formatTapShortcut(s));
-      setShortcutIsDefault(s.key === " " && !s.ctrlKey && !s.metaKey && !s.altKey && !s.shiftKey);
+      setShortcutIsDefault(isTapShortcutDefault());
     });
   }, []);
 

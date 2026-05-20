@@ -154,6 +154,13 @@
   margin: 0;
 }
 
+.settingsNoteError {
+  font-size: 0.7rem;
+  color: var(--color-error, #f87171);
+  font-style: italic;
+  margin: 0;
+}
+
 /* Theme Toggle */
 .themeToggle {
   display: inline-flex;

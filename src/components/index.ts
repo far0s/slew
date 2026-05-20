@@ -39,3 +39,11 @@ export { Sidebar, type SidebarProps } from "./Sidebar";
 
 // Update
 export { UpdateBanner } from "./UpdateBanner";
+
+// Additional components
+export { WledPanel } from "./WledPanel";
+export { ShortcutsModal } from "./ShortcutsModal/ShortcutsModal";
+export { KnobInput, type KnobInputProps, type KnobColorVariant } from "./KnobInput";
+export { StepInput, type StepInputProps } from "./StepInput";
+export { SpectrumAnalyzer, type SpectrumAnalyzerProps, type VisualizerMode } from "./SpectrumAnalyzer";
+export { AudioIndicator } from "./AudioIndicator";

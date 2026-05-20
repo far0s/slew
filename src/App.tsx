@@ -10,7 +10,7 @@ import {
   buildSlotSceneParamsInterpolated,
   type BackendParameter,
   type SlotConfig,
-} from "./controls/useParameterStore";
+} from "./hooks/useParameterStore";
 import type { SketchId, SketchProps } from "./sketches";
 import { getSketchDescriptor } from "./sketches";
 import { makeSlotParameterId, buildSlotDefaultParameters, getParameterDropdownLabel, type ParameterId } from "./slots/slotTypes";
@@ -19,7 +19,7 @@ import { ToolbarUndoRedo, ToolbarTapBpm, PerformanceChip, ToolbarShortcutsButton
 import { ShortcutsModal } from "./components/ShortcutsModal/ShortcutsModal";
 
 import { AudioIndicator } from "./components/AudioIndicator";
-import { useUndoHistory, applyUndo, applyRedo } from "./controls/useUndoHistory";
+import { useUndoHistory, applyUndo, applyRedo } from "./hooks/useUndoHistory";
 import { useMacropad, DEFAULT_SENSITIVITY } from "./inputs/hid";
 import { useAudioMappings, generateMappingId, type AudioMapping } from "./inputs/audio";
 import { useLfos, useModulationTargets, createLfo, createTarget } from "./inputs/modulation";
@@ -935,7 +935,7 @@ function App() {
   // Show a one-time toast when OSC takes over as the BPM source for the first time
   return (
     <div className={styles.root}>
-      <UpdateBanner state={updateState} onInstall={installUpdate} onDismiss={dismissUpdate} />
+      <UpdateBanner state={updateState} onInstall={installUpdate} onClose={dismissUpdate} />
       <ShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
       {showOscBeatToast && (
         <div className={styles.oscBeatToast} role="status">

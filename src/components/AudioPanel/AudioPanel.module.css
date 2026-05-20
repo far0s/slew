@@ -1052,6 +1052,10 @@
   color: #3b82f6;
 }
 
+.midiClockBpmLink {
+  color: var(--accent-warning, #f59e0b);
+}
+
 [data-theme="dark"] .midiClockBpm {
   color: rgb(147 197 253);
 }

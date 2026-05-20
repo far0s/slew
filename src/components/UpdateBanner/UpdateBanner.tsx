@@ -4,17 +4,17 @@ import styles from "./UpdateBanner.module.css";
 interface UpdateBannerProps {
   state: UpdateState;
   onInstall: () => void;
-  onDismiss: () => void;
+  onClose: () => void;
 }
 
-export function UpdateBanner({ state, onInstall, onDismiss }: UpdateBannerProps) {
+export function UpdateBanner({ state, onInstall, onClose }: UpdateBannerProps) {
   if (state.type === "idle") return null;
 
   if (state.type === "error") {
     return (
       <div className={`${styles.banner} ${styles.error}`} role="alert">
         <span className={styles.message}>Update check failed: {state.message}</span>
-        <button className={styles.dismiss} onClick={onDismiss} aria-label="Dismiss">
+        <button className={styles.dismiss} onClick={onClose} aria-label="Dismiss">
           ✕
         </button>
       </div>
@@ -47,7 +47,7 @@ export function UpdateBanner({ state, onInstall, onDismiss }: UpdateBannerProps)
         <button className={styles.install} onClick={onInstall}>
           Install &amp; Restart
         </button>
-        <button className={styles.dismiss} onClick={onDismiss} aria-label="Dismiss">
+        <button className={styles.dismiss} onClick={onClose} aria-label="Dismiss">
           ✕
         </button>
       </div>

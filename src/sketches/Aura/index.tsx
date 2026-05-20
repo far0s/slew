@@ -197,77 +197,6 @@ function createAuraMaterial(
   );
 
   /**
-   * estimateNormal: Finite-difference normal calculation
-   * (Currently unused but kept for potential debug modes)
-   */
-  // @ts-ignore - Reserved for future debug modes
-  const estimateNormal = Fn(
-    ([p, t, speed, complexity, distance, seed, eps]: [
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-    ]) => {
-      const e = eps;
-      const dx = mapSdf(
-        vec3(p.x.add(e), p.y, p.z),
-        t,
-        speed,
-        complexity,
-        distance,
-        seed,
-      ).sub(
-        mapSdf(
-          vec3(p.x.sub(e), p.y, p.z),
-          t,
-          speed,
-          complexity,
-          distance,
-          seed,
-        ),
-      );
-      const dy = mapSdf(
-        vec3(p.x, p.y.add(e), p.z),
-        t,
-        speed,
-        complexity,
-        distance,
-        seed,
-      ).sub(
-        mapSdf(
-          vec3(p.x, p.y.sub(e), p.z),
-          t,
-          speed,
-          complexity,
-          distance,
-          seed,
-        ),
-      );
-      const dz = mapSdf(
-        vec3(p.x, p.y, p.z.add(e)),
-        t,
-        speed,
-        complexity,
-        distance,
-        seed,
-      ).sub(
-        mapSdf(
-          vec3(p.x, p.y, p.z.sub(e)),
-          t,
-          speed,
-          complexity,
-          distance,
-          seed,
-        ),
-      );
-      return normalize(vec3(dx, dy, dz));
-    },
-  );
-
-  /**
    * Main Aura shader function
    */
   const auraShader = Fn(() => {
@@ -279,8 +208,6 @@ function createAuraMaterial(
     const accum = vec3(0.0).toVar();
     const stepCount = float(0.0).toVar();
     const d = float(2.5).toVar();
-    // @ts-ignore - Reserved for future debug modes
-    const normalEps = float(0.01);
 
     // Raymarch loop
     Loop({ start: 0, end: raySteps }, () => {

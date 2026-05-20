@@ -22,6 +22,7 @@ use tauri::{AppHandle, Emitter};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BpmSourceKind {
+    Idle,
     Manual,
     Osc,
     Link,
@@ -33,6 +34,7 @@ impl BpmSourceKind {
     /// Lower number = higher priority.
     fn priority(self) -> u8 {
         match self {
+            BpmSourceKind::Idle      => 255,
             BpmSourceKind::Manual    => 1,
             BpmSourceKind::Osc      => 2,
             BpmSourceKind::Link     => 3,
@@ -79,7 +81,7 @@ impl BpmSourceState {
         ];
         Self {
             sources,
-            active_source: BpmSourceKind::Microphone,
+            active_source: BpmSourceKind::Idle,
             active_bpm: None,
             app_handle: None,
         }
@@ -90,7 +92,7 @@ static BPM_SOURCE: Lazy<Arc<Mutex<BpmSourceState>>> =
     Lazy::new(|| Arc::new(Mutex::new(BpmSourceState::new())));
 
 fn with_bpm_source<T, F: FnOnce(&mut BpmSourceState) -> T>(f: F) -> T {
-    let mut state = BPM_SOURCE.lock().unwrap();
+    let mut state = BPM_SOURCE.lock().unwrap_or_else(|p| p.into_inner());
     f(&mut state)
 }
 
@@ -141,7 +143,7 @@ fn winning_source(sources: &[SourceRecord]) -> Option<&SourceRecord> {
 fn arbitrate(state: &mut BpmSourceState, candidate: BpmSourceKind) -> bool {
     let (new_winner, new_bpm) = match winning_source(&state.sources) {
         Some(r) => (r.kind, r.bpm),
-        None => (BpmSourceKind::Microphone, None),
+        None => (BpmSourceKind::Idle, None),
     };
 
     let changed = new_winner != state.active_source || new_bpm != state.active_bpm;

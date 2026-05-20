@@ -227,7 +227,7 @@ function AbletonLinkSection() {
         />
         <span className={styles.midiClockTitle}>Ableton Link</span>
         {status.enabled && status.bpm !== null && (
-          <span className={styles.midiClockBpm} style={{ color: "#f59e0b" }}>
+          <span className={`${styles.midiClockBpm} ${styles.midiClockBpmLink}`}>
             {status.bpm} BPM
           </span>
         )}

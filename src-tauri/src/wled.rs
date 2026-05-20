@@ -57,6 +57,8 @@ struct WledState {
     pending: HashMap<(u8, u8), [u8; 3]>,
     /// When we last flushed to the device
     last_push: Instant,
+    /// Reusable HTTP client (connection pooling, configured timeout)
+    client: reqwest::blocking::Client,
 }
 
 impl Default for WledState {
@@ -65,6 +67,10 @@ impl Default for WledState {
             config: WledConfig::default(),
             pending: HashMap::new(),
             last_push: Instant::now(),
+            client: reqwest::blocking::Client::builder()
+                .timeout(Duration::from_secs(3))
+                .build()
+                .expect("[WLED] Failed to build HTTP client"),
         }
     }
 }
@@ -73,7 +79,7 @@ static WLED_STATE: Lazy<Arc<Mutex<WledState>>> =
     Lazy::new(|| Arc::new(Mutex::new(WledState::default())));
 
 fn with_wled_state<T, F: FnOnce(&mut WledState) -> T>(f: F) -> T {
-    let mut state = WLED_STATE.lock().unwrap();
+    let mut state = WLED_STATE.lock().unwrap_or_else(|p| p.into_inner());
     f(&mut state)
 }
 
@@ -84,7 +90,7 @@ fn with_wled_state<T, F: FnOnce(&mut WledState) -> T>(f: F) -> T {
 pub fn init() {
     // Eagerly initialise the lazy static so the lock is ready before any
     // Tauri command arrives.
-    drop(WLED_STATE.lock().unwrap());
+    drop(WLED_STATE.lock().unwrap_or_else(|p| p.into_inner()));
     log::debug!("[WLED] Module initialised");
 }
 
@@ -181,7 +187,9 @@ fn flush() {
     let payload = json!({ "seg": seg_array });
     let url = format!("http://{}:{}/json/state", ip, port);
 
-    match do_post(&url, &payload) {
+    let client = with_wled_state(|state| state.client.clone());
+
+    match do_post(&client, &url, &payload) {
         Ok(_) => {
             with_wled_state(|state| {
                 state.pending.clear();
@@ -197,12 +205,12 @@ fn flush() {
 
 /// Test the connection by sending `{"v": true}` and returning the `info` field.
 fn test_connection() -> Result<String, String> {
-    let (ip, port) = with_wled_state(|state| (state.config.ip.clone(), state.config.port));
+    let (client, ip, port) = with_wled_state(|state| (state.client.clone(), state.config.ip.clone(), state.config.port));
 
     let url = format!("http://{}:{}/json/state", ip, port);
     let payload = json!({ "v": true });
 
-    let body = do_post(&url, &payload)?;
+    let body = do_post(&client, &url, &payload)?;
 
     // WLED returns a JSON object; try to pull out `info.ver` for a friendly msg.
     let version = body
@@ -215,12 +223,7 @@ fn test_connection() -> Result<String, String> {
 }
 
 /// Shared blocking HTTP POST helper.
-fn do_post(url: &str, payload: &Value) -> Result<Value, String> {
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(3))
-        .build()
-        .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
-
+fn do_post(client: &reqwest::blocking::Client, url: &str, payload: &Value) -> Result<Value, String> {
     let response = client
         .post(url)
         .json(payload)

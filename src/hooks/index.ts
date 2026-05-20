@@ -5,6 +5,8 @@ export { useWindowManager } from "./useWindowManager";
 export { useRendererSettings } from "./useRendererSettings";
 export { useLayoutPreferences } from "./useLayoutPreferences";
 export { useTheme } from "./useTheme";
+export { useContrast, type ContrastLevel, type UseContrastResult } from "./useContrast";
+export { useUpdater, type UpdateState, type UpdateInfo } from "./useUpdater";
 export type {
   WindowStatus,
   AllWindowStatus,

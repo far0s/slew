@@ -1,20 +1,7 @@
 import { useRef, useState, useCallback, KeyboardEvent } from "react";
 import NumberFlow from "@number-flow/react";
 import styles from "./StepInput.module.css";
-
-// ── Types ──────────────────────────────────────────────────────────────────
-
-export type KnobColorVariant =
-  | "emerald"
-  | "indigo"
-  | "cyan"
-  | "amber"
-  | "rose"
-  | "violet"
-  | "lime"
-  | "orange"
-  | "sky"
-  | "fuchsia";
+import type { KnobColorVariant } from "../KnobInput";
 
 export interface StepInputProps {
   id: string;

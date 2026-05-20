@@ -1063,9 +1063,8 @@ pub fn get_modulation_audio_modulations() -> Vec<AudioModulation> {
 }
 
 #[tauri::command]
-#[allow(non_snake_case)]
-pub fn add_modulation_audio_modulation(audioMod: AudioModulation) -> AudioModulation {
-    add_audio_modulation(audioMod)
+pub fn add_modulation_audio_modulation(audio_mod: AudioModulation) -> AudioModulation {
+    add_audio_modulation(audio_mod)
 }
 
 #[tauri::command]

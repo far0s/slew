@@ -7,6 +7,7 @@ import {
   type WledSegmentMapping,
 } from "../../inputs/wled";
 import styles from "./WledPanel.module.css";
+import { logger } from "../../lib/logger";
 
 const COLOR_PARAM_OPTIONS = [
   { value: "color_primary", label: "Primary Color" },
@@ -36,7 +37,7 @@ export function WledPanel() {
   useEffect(() => {
     getWledConfig()
       .then((c) => setLocalConfig(c))
-      .catch((err) => console.error("[WLED] Failed to load config", err));
+      .catch((err) => logger.error("WLED", "Failed to load config", err));
   }, []);
 
   const updateConfig = useCallback(
@@ -47,7 +48,7 @@ export function WledPanel() {
       try {
         await setWledConfig(next);
       } catch (err) {
-        console.error("[WLED] Failed to save config", err);
+        logger.error("WLED", "Failed to save config", err);
       }
     },
     [config],

@@ -88,7 +88,7 @@ pub(crate) struct ActiveOutputConnection {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct SlotState {
+pub(crate) struct MidiSlotSnapshot {
     pub index: usize,
     pub exists: bool,
     pub sketch_id: Option<String>,
@@ -133,7 +133,7 @@ pub(crate) struct MidiEngineState {
     pub auto_reconnect_enabled: bool,
     pub output_config: MidiOutputConfig,
     pub last_sent_cc: HashMap<String, HashMap<(u8, u8), u8>>,
-    pub active_slots: Vec<SlotState>,
+    pub active_slots: Vec<MidiSlotSnapshot>,
     pub last_master_value: Option<f64>,
     pub pickup_state: HashMap<(u8, u8), PickupState>,
     /// Throttle state for pickup events per parameter

@@ -25,7 +25,7 @@ import {
 } from "../../hooks";
 import { useContrast } from "../../hooks/useContrast";
 import styles from "./Sidebar.module.css";
-import { useUndoHistory } from "../../controls/useUndoHistory";
+import { useUndoHistory } from "../../hooks/useUndoHistory";
 import { useUpdater } from "../../hooks/useUpdater";
 import {
   getTapShortcut,
@@ -318,7 +318,7 @@ function UpdateSection() {
   return (
     <div className={styles.actionsList}>
       {state.type === "error" && (
-        <p className={styles.settingsNote} style={{ color: "var(--color-error, #f87171)" }}>
+        <p className={styles.settingsNoteError}>
           {state.message}
         </p>
       )}

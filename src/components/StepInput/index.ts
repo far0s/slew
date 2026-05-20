@@ -1,2 +1,3 @@
-export { StepInput, type StepInputProps, type KnobColorVariant } from "./StepInput";
+export { StepInput, type StepInputProps } from "./StepInput";
+export type { KnobColorVariant } from "../KnobInput";
 export { default } from "./StepInput";

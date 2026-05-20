@@ -20,7 +20,7 @@ pub fn start_reading_thread(device: HidDevice) {
         let mut buf = [0u8; 64];
 
         loop {
-            if *should_stop.lock().unwrap() {
+            if *should_stop.lock().unwrap_or_else(|p| p.into_inner()) {
                 break;
             }
 
@@ -32,7 +32,7 @@ pub fn start_reading_thread(device: HidDevice) {
                 Err(e) => {
                     log::error!("[HID] Read error: {}", e);
                     let remaining = {
-                        let mut count = active_readers.lock().unwrap();
+                        let mut count = active_readers.lock().unwrap_or_else(|p| p.into_inner());
                         if *count > 0 {
                             *count -= 1;
                         }
@@ -40,8 +40,8 @@ pub fn start_reading_thread(device: HidDevice) {
                     };
 
                     if remaining == 0 {
-                        let mut state = engine.lock().unwrap();
-                        let is_searching = *state.auto_connect_enabled.lock().unwrap();
+                        let mut state = engine.lock().unwrap_or_else(|p| p.into_inner());
+                        let is_searching = *state.auto_connect_enabled.lock().unwrap_or_else(|p| p.into_inner());
                         state.status = HidStatus {
                             is_connected: false,
                             device: None,
@@ -62,7 +62,7 @@ pub fn start_reading_thread(device: HidDevice) {
         }
 
         {
-            let mut count = active_readers.lock().unwrap();
+            let mut count = active_readers.lock().unwrap_or_else(|p| p.into_inner());
             if *count > 0 {
                 *count -= 1;
             }
@@ -82,7 +82,7 @@ fn handle_hid_report(data: &[u8], engine: &Arc<Mutex<HidEngineState>>) {
 
     // Emit raw report for debugging
     {
-        let state = engine.lock().unwrap();
+        let state = engine.lock().unwrap_or_else(|p| p.into_inner());
         if let Some(handle) = &state.app_handle {
             let hex = data
                 .iter()
@@ -101,7 +101,7 @@ fn handle_hid_report(data: &[u8], engine: &Arc<Mutex<HidEngineState>>) {
 
     // Try encoder events first
     if let Some(event) = parse_encoder_event(data, timestamp) {
-        let state = engine.lock().unwrap();
+        let state = engine.lock().unwrap_or_else(|p| p.into_inner());
         if let Some(handle) = &state.app_handle {
             let _ = handle.emit("hid_encoder", &event);
         }

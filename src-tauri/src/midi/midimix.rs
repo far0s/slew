@@ -17,8 +17,8 @@ use super::events::emit_pickup_state_changed;
 use super::mappings::save_mappings_to_disk;
 use super::output::{send_note_off, send_note_on};
 use super::types::{
-    MidiEngineState, MidiMapping, MidiPickupStateUpdate, PickupEventThrottle, PickupState,
-    SlotState,
+    MidiEngineState, MidiMapping, MidiPickupStateUpdate, MidiSlotSnapshot, PickupEventThrottle,
+    PickupState,
 };
 
 // ============================================================================
@@ -417,9 +417,9 @@ pub fn set_active_slots(slots: Vec<(usize, bool, String)>) {
     let old_slots = with_midi_engine(|state| state.active_slots.clone());
 
     // Build new slot states
-    let new_slots: Vec<SlotState> = slots
+    let new_slots: Vec<MidiSlotSnapshot> = slots
         .into_iter()
-        .map(|(index, exists, sketch_id)| SlotState {
+        .map(|(index, exists, sketch_id)| MidiSlotSnapshot {
             index,
             exists,
             sketch_id: if exists { Some(sketch_id) } else { None },
