@@ -107,15 +107,22 @@ function buildMaterial(
     const seed = hash11(idx.mul(3.7));
     const baseAngle = seed.mul(6.283);
     // rotation speed varies per line, scaled by rotationChaos
-    const rotSpeed = hash11(idx.mul(7.3)).mul(uRotationChaos).mul(0.6).add(0.05);
+    const rotSpeed = hash11(idx.mul(7.3))
+      .mul(uRotationChaos)
+      .mul(0.6)
+      .add(0.05);
     return baseAngle.add(t.mul(rotSpeed));
   });
 
   const lineOffset = Fn(([idx, t]: [any, any]) => {
     const sx = hash11(idx.mul(5.1));
     const sy = hash11(idx.mul(9.3));
-    const driftX = sin(t.mul(sx.mul(0.4).add(0.15)).add(sx.mul(6.283))).mul(0.6);
-    const driftY = cos(t.mul(sy.mul(0.35).add(0.1)).add(sy.mul(6.283))).mul(0.45);
+    const driftX = sin(t.mul(sx.mul(0.4).add(0.15)).add(sx.mul(6.283))).mul(
+      0.6,
+    );
+    const driftY = cos(t.mul(sy.mul(0.35).add(0.1)).add(sy.mul(6.283))).mul(
+      0.45,
+    );
     return vec2(driftX, driftY);
   });
 
@@ -125,8 +132,16 @@ function buildMaterial(
   const hue2rgb = Fn(([h]: [any]) => {
     const hv = fract(float(h));
     const r = clamp(abs(hv.mul(6.0).sub(3.0)).sub(1.0), float(0.0), float(1.0));
-    const g = clamp(float(2.0).sub(abs(hv.mul(6.0).sub(2.0))), float(0.0), float(1.0));
-    const b = clamp(float(2.0).sub(abs(hv.mul(6.0).sub(4.0))), float(0.0), float(1.0));
+    const g = clamp(
+      float(2.0).sub(abs(hv.mul(6.0).sub(2.0))),
+      float(0.0),
+      float(1.0),
+    );
+    const b = clamp(
+      float(2.0).sub(abs(hv.mul(6.0).sub(4.0))),
+      float(0.0),
+      float(1.0),
+    );
     return vec3(r, g, b);
   });
 
@@ -135,136 +150,194 @@ function buildMaterial(
    * Line i: origin offset[i], direction dir[i]
    * Returns a float (large if lines are parallel).
    */
-  const intersectionDist = Fn(([p, ang1, off1, ang2, off2]: [any, any, any, any, any]) => {
-    const d1 = vec2(cos(ang1), sin(ang1));
-    const d2 = vec2(cos(ang2), sin(ang2));
-    // Solve o1 + t*d1 = o2 + s*d2 for t
-    // cross product of d1, d2
-    const cross = d1.x.mul(d2.y).sub(d1.y.mul(d2.x));
-    // Avoid degenerate (parallel) case
-    const safeCross = cross.add(float(0.0001).mul(sign2(cross)));
-    const delta = vec2(off2).sub(vec2(off1));
-    const t = delta.x.mul(d2.y).sub(delta.y.mul(d2.x)).div(safeCross);
-    const isect = vec2(off1).add(d1.mul(t));
-    return length(vec2(p).sub(isect));
-  });
+  const intersectionDist = Fn(
+    ([p, ang1, off1, ang2, off2]: [any, any, any, any, any]) => {
+      const d1 = vec2(cos(ang1), sin(ang1));
+      const d2 = vec2(cos(ang2), sin(ang2));
+      // Solve o1 + t*d1 = o2 + s*d2 for t
+      // cross product of d1, d2
+      const cross = d1.x.mul(d2.y).sub(d1.y.mul(d2.x));
+      // Avoid degenerate (parallel) case
+      const safeCross = cross.add(float(0.0001).mul(sign2(cross)));
+      const delta = vec2(off2).sub(vec2(off1));
+      const t = delta.x.mul(d2.y).sub(delta.y.mul(d2.x)).div(safeCross);
+      const isect = vec2(off1).add(d1.mul(t));
+      return length(vec2(p).sub(isect));
+    },
+  );
 
   // sign helper (TSL doesn't export sign directly for scalars in all versions)
-  const sign2 = (x: any) => float(x).greaterThan(0.0).select(float(1.0), float(-1.0));
+  const sign2 = (x: any) =>
+    float(x).greaterThan(0.0).select(float(1.0), float(-1.0));
 
   /**
    * Contribution of a single line to the pixel.
    * Returns (color * brightness) as vec3.
    */
-  const lineContrib = Fn(([p, idx, t, colorA, colorB, lineGlow, lineBrightness, smokeDensity, pulseAmount, chromaticSpread]: [
-    any, any, any, any, any, any, any, any, any, any
-  ]) => {
-    const angle = lineAngle(idx, t);
-    const offset = lineOffset(idx, t);
+  const lineContrib = Fn(
+    ([
+      p,
+      idx,
+      t,
+      colorA,
+      colorB,
+      lineGlow,
+      lineBrightness,
+      smokeDensity,
+      pulseAmount,
+      chromaticSpread,
+    ]: [any, any, any, any, any, any, any, any, any, any]) => {
+      const angle = lineAngle(idx, t);
+      const offset = lineOffset(idx, t);
 
-    // Direction vector of the line
-    const dir = vec2(cos(angle), sin(angle));
+      // Direction vector of the line
+      const dir = vec2(cos(angle), sin(angle));
 
-    // Shift p by line offset, then compute perp distance
-    const lp = vec2(p).sub(offset);
+      // Shift p by line offset, then compute perp distance
+      const lp = vec2(p).sub(offset);
 
-    // Chromatic aberration: R offset outward along normal, B inward
-    const perp = vec2(dir.y.negate(), dir.x); // perpendicular to line
-    const lpR = lp.add(perp.mul(float(chromaticSpread)));
-    const lpB = lp.sub(perp.mul(float(chromaticSpread)));
+      // Chromatic aberration: R offset outward along normal, B inward
+      const perp = vec2(dir.y.negate(), dir.x); // perpendicular to line
+      const lpR = lp.add(perp.mul(float(chromaticSpread)));
+      const lpB = lp.sub(perp.mul(float(chromaticSpread)));
 
-    const distCenter = distToLine(lp, dir);
-    const distR = distToLine(lpR, dir);
-    const distB2 = distToLine(lpB, dir);
+      const distCenter = distToLine(lp, dir);
+      const distR = distToLine(lpR, dir);
+      const distB2 = distToLine(lpB, dir);
 
-    const brightness = float(lineBrightness);
-    const glowWidth = float(lineGlow);
+      const brightness = float(lineBrightness);
+      const glowWidth = float(lineGlow);
 
-    // Fog-scattered glow: Beer-Lambert falloff (scalar, then colored)
-    const glowScalar = exp(float(distCenter).div(glowWidth).mul(float(-3.0))).mul(brightness);
-    const glowR = exp(float(distR).div(glowWidth).mul(float(-3.0))).mul(brightness);
-    const glowB2 = exp(float(distB2).div(glowWidth).mul(float(-3.0))).mul(brightness);
+      // Fog-scattered glow: Beer-Lambert falloff (scalar, then colored)
+      const glowScalar = exp(
+        float(distCenter).div(glowWidth).mul(float(-3.0)),
+      ).mul(brightness);
+      const glowR = exp(float(distR).div(glowWidth).mul(float(-3.0))).mul(
+        brightness,
+      );
+      const glowB2 = exp(float(distB2).div(glowWidth).mul(float(-3.0))).mul(
+        brightness,
+      );
 
-    // Smoke scatter: secondary wider halo (scalar)
-    const smokeHalo = exp(float(distCenter).div(glowWidth.mul(float(8.0))).mul(float(-1.0)))
-      .mul(float(smokeDensity)).mul(brightness).mul(0.25);
+      // Smoke scatter: secondary wider halo (scalar)
+      const smokeHalo = exp(
+        float(distCenter)
+          .div(glowWidth.mul(float(8.0)))
+          .mul(float(-1.0)),
+      )
+        .mul(float(smokeDensity))
+        .mul(brightness)
+        .mul(0.25);
 
-    // Per-line color: alternate A/B based on index parity
-    const parity = mod(idx, float(2.0));
-    const lineCol = mix(vec3(colorA), vec3(colorB), smoothstep(float(0.3), float(0.7), parity));
+      // Per-line color: alternate A/B based on index parity
+      const parity = mod(idx, float(2.0));
+      const lineCol = mix(
+        vec3(colorA),
+        vec3(colorB),
+        smoothstep(float(0.3), float(0.7), parity),
+      );
 
-    // Per-line pulse
-    const pulseSeed = hash11(idx.mul(4.7));
-    const pulse = float(1.0).add(
-      sin(t.mul(float(1.5).add(pulseSeed.mul(1.0)))).mul(float(pulseAmount)).mul(0.5)
-    );
+      // Per-line pulse
+      const pulseSeed = hash11(idx.mul(4.7));
+      const pulse = float(1.0).add(
+        sin(t.mul(float(1.5).add(pulseSeed.mul(1.0))))
+          .mul(float(pulseAmount))
+          .mul(0.5),
+      );
 
-    // Chromatic R/B channels via scalar multiply
-    const colR = lineCol.mul(glowR).mul(pulse);
-    const colG = lineCol.mul(glowScalar).mul(pulse);
-    const colB2 = lineCol.mul(glowB2).mul(pulse);
-    // Blend: mostly center, with slight R/B offset for prism edge
-    const caBlend = float(0.5);
-    const rgbGlow = colG.add(colR.sub(colG).mul(caBlend).mul(vec3(1.0, 0.0, 0.0)))
-                       .add(colB2.sub(colG).mul(caBlend).mul(vec3(0.0, 0.0, 1.0)));
-    const smokeContrib = lineCol.mul(smokeHalo).mul(pulse);
+      // Chromatic R/B channels via scalar multiply
+      const colR = lineCol.mul(glowR).mul(pulse);
+      const colG = lineCol.mul(glowScalar).mul(pulse);
+      const colB2 = lineCol.mul(glowB2).mul(pulse);
+      // Blend: mostly center, with slight R/B offset for prism edge
+      const caBlend = float(0.5);
+      const rgbGlow = colG
+        .add(
+          colR
+            .sub(colG)
+            .mul(caBlend)
+            .mul(vec3(1.0, 0.0, 0.0)),
+        )
+        .add(
+          colB2
+            .sub(colG)
+            .mul(caBlend)
+            .mul(vec3(0.0, 0.0, 1.0)),
+        );
+      const smokeContrib = lineCol.mul(smokeHalo).mul(pulse);
 
-    return rgbGlow.add(smokeContrib);
-  });
+      return rgbGlow.add(smokeContrib);
+    },
+  );
 
   /**
    * Prism flare at intersection of lines i and j.
    * Rainbow hue rotates around the intersection point.
    */
-  const prismFlare = Fn(([p, idx1, idx2, t, prismIntensity, prismSpread, prismTint]: [
-    any, any, any, any, any, any, any
-  ]) => {
-    const ang1 = lineAngle(idx1, t);
-    const off1 = lineOffset(idx1, t);
-    const ang2 = lineAngle(idx2, t);
-    const off2 = lineOffset(idx2, t);
+  const prismFlare = Fn(
+    ([p, idx1, idx2, t, prismIntensity, prismSpread, prismTint]: [
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+    ]) => {
+      const ang1 = lineAngle(idx1, t);
+      const off1 = lineOffset(idx1, t);
+      const ang2 = lineAngle(idx2, t);
+      const off2 = lineOffset(idx2, t);
 
-    // Angle between lines (determines how "head-on" the collision is)
-    const relAngle = abs(sin(ang1.sub(ang2)));
-    // Low relative angle = nearly parallel, flare is weak
-    const collisionStrength = smoothstep(float(0.05), float(0.4), relAngle);
+      // Angle between lines (determines how "head-on" the collision is)
+      const relAngle = abs(sin(ang1.sub(ang2)));
+      // Low relative angle = nearly parallel, flare is weak
+      const collisionStrength = smoothstep(float(0.05), float(0.4), relAngle);
 
-    // Distance to intersection point
-    const dIsect = intersectionDist(p, ang1, off1, ang2, off2);
+      // Distance to intersection point
+      const dIsect = intersectionDist(p, ang1, off1, ang2, off2);
 
-    // Radial rainbow: hue varies by angle from intersection center
-    const d1 = vec2(cos(ang1), sin(ang1));
-    const d2 = vec2(cos(ang2), sin(ang2));
-    const cross = d1.x.mul(d2.y).sub(d1.y.mul(d2.x));
-    const safeCross = cross.add(float(0.0001).mul(sign2(cross)));
-    const delta = off2.sub(off1);
-    const tParam = delta.x.mul(d2.y).sub(delta.y.mul(d2.x)).div(safeCross);
-    const isectPt = off1.add(d1.mul(tParam));
+      // Radial rainbow: hue varies by angle from intersection center
+      const d1 = vec2(cos(ang1), sin(ang1));
+      const d2 = vec2(cos(ang2), sin(ang2));
+      const cross = d1.x.mul(d2.y).sub(d1.y.mul(d2.x));
+      const safeCross = cross.add(float(0.0001).mul(sign2(cross)));
+      const delta = off2.sub(off1);
+      const tParam = delta.x.mul(d2.y).sub(delta.y.mul(d2.x)).div(safeCross);
+      const isectPt = off1.add(d1.mul(tParam));
 
-    const toP = vec2(p).sub(isectPt);
-    const hue = atan(toP.y, toP.x).mul(float(1.0 / (2.0 * Math.PI))).add(t.mul(0.15));
+      const toP = vec2(p).sub(isectPt);
+      const hue = atan(toP.y, toP.x)
+        .mul(float(1.0 / (2.0 * Math.PI)))
+        .add(t.mul(0.15));
 
-    // Rainbow color at this angle
-    const rainbow = hue2rgb(hue);
+      // Rainbow color at this angle
+      const rainbow = hue2rgb(hue);
 
-    // Blend prism tint with rainbow
-    const flareColor = mix(rainbow, vec3(prismTint), float(0.25));
+      // Blend prism tint with rainbow
+      const flareColor = mix(rainbow, vec3(prismTint), float(0.25));
 
-    // Falloff from intersection point — prismSpread controls the fan width
-    const flareRadius = float(prismSpread).mul(0.5).add(0.05);
-    const flareFalloff = exp(float(dIsect).div(flareRadius).mul(float(-3.5)));
+      // Falloff from intersection point — prismSpread controls the fan width
+      const flareRadius = float(prismSpread).mul(0.5).add(0.05);
+      const flareFalloff = exp(float(dIsect).div(flareRadius).mul(float(-3.5)));
 
-    // Additional angular burst: spiky rays at intersection
-    const rayAngle = atan(toP.y, toP.x);
-    const numSpikes = float(6.0);
-    const spikes = sin(rayAngle.mul(numSpikes).add(t.mul(0.8))).mul(0.5).add(0.5);
-    const spikeRadius = float(prismSpread).mul(0.3).add(0.03);
-    const spikeFalloff = exp(float(dIsect).div(spikeRadius).mul(float(-5.0)));
+      // Additional angular burst: spiky rays at intersection
+      const rayAngle = atan(toP.y, toP.x);
+      const numSpikes = float(6.0);
+      const spikes = sin(rayAngle.mul(numSpikes).add(t.mul(0.8)))
+        .mul(0.5)
+        .add(0.5);
+      const spikeRadius = float(prismSpread).mul(0.3).add(0.03);
+      const spikeFalloff = exp(float(dIsect).div(spikeRadius).mul(float(-5.0)));
 
-    const flareTotal = flareFalloff.add(spikes.mul(spikeFalloff).mul(0.5));
+      const flareTotal = flareFalloff.add(spikes.mul(spikeFalloff).mul(0.5));
 
-    return flareColor.mul(flareTotal).mul(float(prismIntensity)).mul(collisionStrength);
-  });
+      return flareColor
+        .mul(flareTotal)
+        .mul(float(prismIntensity))
+        .mul(collisionStrength);
+    },
+  );
 
   // ─── Main shader ───────────────────────────────────────────────────────────
 
@@ -277,9 +350,16 @@ function buildMaterial(
     // Line contributions
     for (let i = 0; i < lineCount; i++) {
       const c = lineContrib(
-        uv, float(i), t,
-        uColorA, uColorB,
-        uLineGlow, uLineBrightness, uSmokeDensity, uPulseAmount, uChromaticSpread
+        uv,
+        float(i),
+        t,
+        uColorA,
+        uColorB,
+        uLineGlow,
+        uLineBrightness,
+        uSmokeDensity,
+        uPulseAmount,
+        uChromaticSpread,
       );
       accum.addAssign(c);
     }
@@ -288,8 +368,13 @@ function buildMaterial(
     for (let i = 0; i < lineCount; i++) {
       for (let j = i + 1; j < lineCount; j++) {
         const f = prismFlare(
-          uv, float(i), float(j), t,
-          uPrismIntensity, uPrismSpread, uColorPrism
+          uv,
+          float(i),
+          float(j),
+          t,
+          uPrismIntensity,
+          uPrismSpread,
+          uColorPrism,
         );
         accum.addAssign(f);
       }
@@ -336,7 +421,11 @@ function buildMaterial(
  * At each intersection, a prismatic rainbow flare bursts outward.
  * Fog scatter creates wide soft halos along the beams.
  */
-export function PrismLines({ opacity, params }: SketchProps) {
+export function PrismLines({
+  opacity,
+  params,
+  setOpacityOverride,
+}: SketchProps) {
   const { viewport } = useThree();
 
   const lineGlow = params?.lineGlow ?? 0.018;
@@ -371,16 +460,42 @@ export function PrismLines({ opacity, params }: SketchProps) {
     [lineCount],
   );
 
-  useEffect(() => { uniforms.lineGlow.value = lineGlow; }, [lineGlow, uniforms]);
-  useEffect(() => { uniforms.prismIntensity.value = prismIntensity; }, [prismIntensity, uniforms]);
-  useEffect(() => { uniforms.lineBrightness.value = lineBrightness; }, [lineBrightness, uniforms]);
-  useEffect(() => { uniforms.plSpeed.value = plSpeed; }, [plSpeed, uniforms]);
-  useEffect(() => { uniforms.smokeDensity.value = smokeDensity; }, [smokeDensity, uniforms]);
-  useEffect(() => { uniforms.prismSpread.value = prismSpread; }, [prismSpread, uniforms]);
-  useEffect(() => { uniforms.rotationChaos.value = rotationChaos; }, [rotationChaos, uniforms]);
-  useEffect(() => { uniforms.chromaticSpread.value = chromaticSpread; }, [chromaticSpread, uniforms]);
-  useEffect(() => { uniforms.pulseAmount.value = pulseAmount; }, [pulseAmount, uniforms]);
-  useEffect(() => { uniforms.opacity.value = opacity; }, [opacity, uniforms]);
+  useEffect(() => {
+    uniforms.lineGlow.value = lineGlow;
+  }, [lineGlow, uniforms]);
+  useEffect(() => {
+    uniforms.prismIntensity.value = prismIntensity;
+  }, [prismIntensity, uniforms]);
+  useEffect(() => {
+    uniforms.lineBrightness.value = lineBrightness;
+  }, [lineBrightness, uniforms]);
+  useEffect(() => {
+    uniforms.plSpeed.value = plSpeed;
+  }, [plSpeed, uniforms]);
+  useEffect(() => {
+    uniforms.smokeDensity.value = smokeDensity;
+  }, [smokeDensity, uniforms]);
+  useEffect(() => {
+    uniforms.prismSpread.value = prismSpread;
+  }, [prismSpread, uniforms]);
+  useEffect(() => {
+    uniforms.rotationChaos.value = rotationChaos;
+  }, [rotationChaos, uniforms]);
+  useEffect(() => {
+    uniforms.chromaticSpread.value = chromaticSpread;
+  }, [chromaticSpread, uniforms]);
+  useEffect(() => {
+    uniforms.pulseAmount.value = pulseAmount;
+  }, [pulseAmount, uniforms]);
+  useEffect(() => {
+    uniforms.opacity.value = opacity;
+  }, [opacity, uniforms]);
+
+  useEffect(() => {
+    setOpacityOverride?.((v) => {
+      uniforms.opacity.value = v;
+    });
+  }, [setOpacityOverride, uniforms]);
 
   const colorsKey = JSON.stringify([colorA, colorB, colorPrism]);
   useEffect(() => {

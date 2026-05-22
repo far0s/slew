@@ -153,6 +153,9 @@ export interface SketchGroup {
 
 export interface SketchProps {
   opacity: number;
+  /** Called once on mount with a function that overrides the rendered opacity.
+   *  Used by SlotPreviewCapture to force opacity=1 during preview capture. */
+  setOpacityOverride?: (setter: (opacity: number) => void) => void;
   params?: Partial<{
     // Common parameters
     brightness: number;

@@ -20,7 +20,6 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   CopyIcon,
-
 } from "@radix-ui/react-icons";
 import { motion, AnimatePresence } from "motion/react";
 import type { SketchId, SketchProps, SketchGroup } from "../../sketches";
@@ -54,7 +53,10 @@ interface PanelConfig {
   id: PanelId;
   label: string;
   shortLabel: string;
-  render: (slots: Array<Slot & { sketchId: SketchId }>, onHighlightParams?: (ids: Set<string>) => void) => ReactElement;
+  render: (
+    slots: Array<Slot & { sketchId: SketchId }>,
+    onHighlightParams?: (ids: Set<string>) => void,
+  ) => ReactElement;
 }
 
 const PANEL_CONFIGS: PanelConfig[] = [
@@ -80,7 +82,9 @@ const PANEL_CONFIGS: PanelConfig[] = [
     id: "mod",
     label: "Modulation",
     shortLabel: "Mod",
-    render: (slots, onHighlightParams) => <ModulationPanel slots={slots} onHighlightParams={onHighlightParams} />,
+    render: (slots, onHighlightParams) => (
+      <ModulationPanel slots={slots} onHighlightParams={onHighlightParams} />
+    ),
   },
   {
     id: "hid",
@@ -158,7 +162,6 @@ function filterSketchGroups(
     }))
     .filter((group) => group.sketches.length > 0);
 }
-
 // ============================================================================
 // PanelSlotContent
 // ============================================================================
@@ -190,16 +193,24 @@ function PanelSlotContent({
       className={`${styles.panelColumn}${isDragging ? " " + styles.dragging : ""}`}
       aria-label={`Slot ${displayNumber} - ${config?.label ?? panelId} panel`}
       initial={{ opacity: 0, scale: 0.95 }}
-      animate={isDragging ? { opacity: 1, scale: 1, x: dragOffsetX } : { opacity: 1, scale: 1, x: 0 }}
+      animate={
+        isDragging
+          ? { opacity: 1, scale: 1, x: dragOffsetX }
+          : { opacity: 1, scale: 1, x: 0 }
+      }
       exit={{ opacity: 0, scale: 0.95 }}
-      transition={isDragging ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
+      transition={
+        isDragging ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }
+      }
       layout={!isDragging}
       style={{ zIndex: isDragging ? 10 : undefined }}
       onPointerDown={onDragStart}
     >
       <div className={styles.panelColumnHeader}>
         <div className={styles.inlineSlotBadge}>{displayNumber}</div>
-        <span className={styles.panelColumnTitle}>{config?.label ?? panelId}</span>
+        <span className={styles.panelColumnTitle}>
+          {config?.label ?? panelId}
+        </span>
         <button
           type="button"
           className={styles.panelColumnClose}
@@ -246,7 +257,11 @@ export interface SlotColumnProps {
   onRemove: () => void;
   onCopyToSlot?: (sourceSlotIndex: number) => void;
   onQuickBeat?: (parameterId: string, paramMax: number) => void;
-  onQuickLfo?: (parameterId: string, paramMin: number, paramMax: number) => void;
+  onQuickLfo?: (
+    parameterId: string,
+    paramMin: number,
+    paramMax: number,
+  ) => void;
   onUnlinkBeat?: (parameterId: string) => void;
   onUnlinkLfo?: (parameterId: string) => void;
   highlightedParamIds?: Set<string>;
@@ -408,9 +423,15 @@ function InlineSketchBrowser({
       className={`${styles.emptyColumn}${isDragging ? " " + styles.dragging : ""}`}
       aria-label={`Slot ${displayNumber} - choose a sketch`}
       initial={{ opacity: 0, scale: 0.95 }}
-      animate={isDragging ? { opacity: 1, scale: 1, x: dragOffsetX } : { opacity: 1, scale: 1, x: 0 }}
+      animate={
+        isDragging
+          ? { opacity: 1, scale: 1, x: dragOffsetX }
+          : { opacity: 1, scale: 1, x: 0 }
+      }
       exit={{ opacity: 0, scale: 0.95 }}
-      transition={isDragging ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
+      transition={
+        isDragging ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }
+      }
       layout={!isDragging}
       style={{ zIndex: isDragging ? 10 : undefined }}
       onPointerDown={onDragStart}
@@ -615,10 +636,9 @@ export function SlotColumn({
   const [slotRefreshKey, setSlotRefreshKey] = useState(0);
 
   const handleSlotBadgeClick = useCallback(() => {
-    if (isSlotStreaming) return;
     setIsSlotStreaming(false);
     setSlotRefreshKey((k) => k + 1);
-  }, [isSlotStreaming]);
+  }, []);
 
   useEffect(() => {
     emit("slot-preview-visibility-changed", {
@@ -691,145 +711,156 @@ export function SlotColumn({
       className={columnClassNames}
       aria-label={`Slot ${displayNumber}${isMacropadSelected ? " (macropad selected)" : ""}`}
       initial={{ opacity: 0, scale: 0.95 }}
-      animate={isDragging ? { opacity: 1, scale: 1, x: dragOffsetX } : { opacity: 1, scale: 1, x: 0 }}
+      animate={
+        isDragging
+          ? { opacity: 1, scale: 1, x: dragOffsetX }
+          : { opacity: 1, scale: 1, x: 0 }
+      }
       exit={{ opacity: 0, scale: 0.95 }}
-      transition={isDragging ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
+      transition={
+        isDragging ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }
+      }
       layout={!isDragging}
       style={{ zIndex: isDragging ? 10 : undefined }}
       onPointerDown={onDragStart}
     >
       <PreviewContainer aspectRatio={rendererAspectRatio}>
-          {isPreviewHidden ? (
-            <div className={styles.previewHiddenPlaceholder} />
-          ) : SketchComponent ? (
-            <Suspense fallback={<div className={styles.fallback}>Loading…</div>}>
-              <SlotPreview
-                slotIndex={slotIndex}
-                SketchComponent={SketchComponent}
-                params={previewParams ?? params}
-                colors={colors}
-                onStreamingChange={setIsSlotStreaming}
-                externalRefreshKey={slotRefreshKey}
-              />
-            </Suspense>
-          ) : (
-            <div className={styles.fallback}>Unknown sketch: {sketchId}</div>
-          )}
-          <div className={styles.alphaOverlay}>
-              <button
-                className={styles.previewToggleButton}
-                onClick={(e) => { e.stopPropagation(); setIsPreviewHidden((v) => !v); }}
-                title={isPreviewHidden ? "Show preview" : "Hide preview"}
-                aria-label={isPreviewHidden ? "Show preview" : "Hide preview"}
-              >
-                {isPreviewHidden ? <EyeOpenIcon /> : <EyeClosedIcon />}
-              </button>
-
-              {alpha < 0.99 && (
-                <span className={styles.alphaValue}>
-                  {Math.round(alpha * 100)}%
-                </span>
-              )}
-            </div>
-          <div
-            className={`${styles.slotBadge} ${isMacropadSelected ? styles.slotBadgeSelected : ""} ${!isSlotStreaming ? styles.slotBadgeClickable : ""}`}
-            title={isSlotStreaming ? "Streamed from Renderer" : "Click to reconnect preview"}
-            onClick={handleSlotBadgeClick}
-            onPointerDown={!isSlotStreaming ? (e) => e.stopPropagation() : undefined}
-            role={!isSlotStreaming ? "button" : undefined}
-            tabIndex={!isSlotStreaming ? 0 : undefined}
-            onKeyDown={!isSlotStreaming ? (e) => { if (e.key === "Enter" || e.key === " ") handleSlotBadgeClick(); } : undefined}
-          >
-            <span
-              className={
-                isSlotStreaming
-                  ? styles.streamDotActive
-                  : styles.streamDotInactive
-              }
+        {isPreviewHidden ? (
+          <div className={styles.previewHiddenPlaceholder} />
+        ) : SketchComponent ? (
+          <Suspense fallback={<div className={styles.fallback}>Loading…</div>}>
+            <SlotPreview
+              slotIndex={slotIndex}
+              SketchComponent={SketchComponent}
+              params={previewParams ?? params}
+              colors={colors}
+              onStreamingChange={setIsSlotStreaming}
+              externalRefreshKey={slotRefreshKey}
             />
-            {displayNumber}
-            {isMacropadSelected && (
-              <span className={styles.macropadIndicator}>⎈</span>
-            )}
-          </div>
-          <div className={styles.bottomOverlay}>
-            <div className={styles.selectorWrapper}>
-              <Select.Root
-                value={sketchId}
-                disabled={isSelectDisabled}
-                onValueChange={(v) => onSketchChange(v as SketchId)}
-              >
-                <Select.Trigger
-                  className={styles.selectTrigger}
-                  aria-label={`Slot ${displayNumber} sketch selection`}
-                >
-                  <Select.Value>{displayLabel}</Select.Value>
-                  <Select.Icon className={styles.selectIcon}>
-                    <ChevronDownIcon />
-                  </Select.Icon>
-                </Select.Trigger>
-                <Select.Portal>
-                  <Select.Content
-                    className={styles.selectContent}
-                    position="popper"
-                    sideOffset={4}
-                  >
-                    <Select.Viewport className={styles.selectViewport}>
-                      {SKETCH_GROUPS.map((group) => (
-                        <Select.Group key={group.id}>
-                          <Select.Label className={styles.selectGroupLabel}>
-                            {group.label}
-                          </Select.Label>
-                          {group.sketches.map((descriptor) => {
-                            const isExcluded =
-                              descriptor.id !== sketchId &&
-                              excludeSketchIds.includes(
-                                descriptor.id as SketchId,
-                              );
-                            if (isExcluded) return null;
-                            return (
-                              <Select.Item
-                                key={descriptor.id}
-                                value={descriptor.id}
-                                className={styles.selectItem}
-                              >
-                                <Select.ItemText>
-                                  {descriptor.shortLabel}
-                                </Select.ItemText>
-                              </Select.Item>
-                            );
-                          })}
-                        </Select.Group>
-                      ))}
-                    </Select.Viewport>
-                  </Select.Content>
-                </Select.Portal>
-              </Select.Root>
-            </div>
+          </Suspense>
+        ) : (
+          <div className={styles.fallback}>Unknown sketch: {sketchId}</div>
+        )}
+        <div className={styles.alphaOverlay}>
+          <button
+            className={styles.previewToggleButton}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsPreviewHidden((v) => !v);
+            }}
+            title={isPreviewHidden ? "Show preview" : "Hide preview"}
+            aria-label={isPreviewHidden ? "Show preview" : "Hide preview"}
+          >
+            {isPreviewHidden ? <EyeOpenIcon /> : <EyeClosedIcon />}
+          </button>
 
-            <div className={styles.actionsWrapper}>
+          {alpha < 0.99 && (
+            <span className={styles.alphaValue}>
+              {Math.round(alpha * 100)}%
+            </span>
+          )}
+        </div>
+        <div
+          className={`${styles.slotBadge} ${isMacropadSelected ? styles.slotBadgeSelected : ""} ${styles.slotBadgeClickable}`}
+          title="Click to reconnect preview"
+          onClick={handleSlotBadgeClick}
+          onPointerDown={(e) => e.stopPropagation()}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") handleSlotBadgeClick();
+          }}
+        >
+          <span
+            className={
+              isSlotStreaming
+                ? styles.streamDotActive
+                : styles.streamDotInactive
+            }
+          />
+          {displayNumber}
+          {isMacropadSelected && (
+            <span className={styles.macropadIndicator}>⎈</span>
+          )}
+        </div>
+        <div className={styles.bottomOverlay}>
+          <div className={styles.selectorWrapper}>
+            <Select.Root
+              value={sketchId}
+              disabled={isSelectDisabled}
+              onValueChange={(v) => onSketchChange(v as SketchId)}
+            >
+              <Select.Trigger
+                className={styles.selectTrigger}
+                aria-label={`Slot ${displayNumber} sketch selection`}
+              >
+                <Select.Value>{displayLabel}</Select.Value>
+                <Select.Icon className={styles.selectIcon}>
+                  <ChevronDownIcon />
+                </Select.Icon>
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Content
+                  className={styles.selectContent}
+                  position="popper"
+                  sideOffset={4}
+                >
+                  <Select.Viewport className={styles.selectViewport}>
+                    {SKETCH_GROUPS.map((group) => (
+                      <Select.Group key={group.id}>
+                        <Select.Label className={styles.selectGroupLabel}>
+                          {group.label}
+                        </Select.Label>
+                        {group.sketches.map((descriptor) => {
+                          const isExcluded =
+                            descriptor.id !== sketchId &&
+                            excludeSketchIds.includes(
+                              descriptor.id as SketchId,
+                            );
+                          if (isExcluded) return null;
+                          return (
+                            <Select.Item
+                              key={descriptor.id}
+                              value={descriptor.id}
+                              className={styles.selectItem}
+                            >
+                              <Select.ItemText>
+                                {descriptor.shortLabel}
+                              </Select.ItemText>
+                            </Select.Item>
+                          );
+                        })}
+                      </Select.Group>
+                    ))}
+                  </Select.Viewport>
+                </Select.Content>
+              </Select.Portal>
+            </Select.Root>
+          </div>
+
+          <div className={styles.actionsWrapper}>
+            <button
+              type="button"
+              className={`${styles.crossfadeButton} ${isActive ? styles.crossfadeActive : ""} ${isCrossfadeTarget ? styles.crossfadeTarget : ""}`}
+              onClick={onCrossfade}
+              disabled={isCrossfadeDisabled}
+            >
+              {crossfadeButtonLabel}
+            </button>
+
+            {showRemoveButton && (
               <button
                 type="button"
-                className={`${styles.crossfadeButton} ${isActive ? styles.crossfadeActive : ""} ${isCrossfadeTarget ? styles.crossfadeTarget : ""}`}
-                onClick={onCrossfade}
-                disabled={isCrossfadeDisabled}
+                className={styles.removeButton}
+                onClick={onRemove}
+                aria-label={`Remove slot ${displayNumber}`}
               >
-                {crossfadeButtonLabel}
+                <Cross2Icon />
               </button>
-
-              {showRemoveButton && (
-                <button
-                  type="button"
-                  className={styles.removeButton}
-                  onClick={onRemove}
-                  aria-label={`Remove slot ${displayNumber}`}
-                >
-                  <Cross2Icon />
-                </button>
-              )}
-            </div>
+            )}
           </div>
-        </PreviewContainer>
+        </div>
+      </PreviewContainer>
 
       <div className={styles.controls} data-nodrag>
         <SlotParameterControls
@@ -928,9 +959,7 @@ function SlotPreview({
   const useStreamedPreview = streamingEnabled && hasReceivedFrame;
 
   return (
-    <div
-      className={styles.slotPreviewWrapper}
-    >
+    <div className={styles.slotPreviewWrapper}>
       <WebGPUCanvas
         key={refreshKey}
         camera={{ position: [0, 0, 4], fov: 50 }}

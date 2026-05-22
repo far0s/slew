@@ -19,11 +19,15 @@ function isWebGPURenderer(
 interface SlotPreviewCaptureProps {
   slotGroups: React.MutableRefObject<Map<number, THREE.Group>>;
   visibleSlotIndices: number[];
+  opacitySetters: React.MutableRefObject<Map<number, (v: number) => void>>;
+  opacityValues: React.MutableRefObject<Map<number, number>>;
 }
 
 export function SlotPreviewCapture({
   slotGroups,
   visibleSlotIndices,
+  opacitySetters,
+  opacityValues,
 }: SlotPreviewCaptureProps) {
   const { gl, scene, camera, size } = useThree();
   const isWebGPU = isWebGPURenderer(gl);
@@ -215,6 +219,12 @@ export function SlotPreviewCapture({
     }
 
     lastCaptureTimeRef.current.set(slotIndex, now);
+
+    // Force opacity=1 for the preview capture so previews always show at full brightness
+    const opacitySetter = opacitySetters.current.get(slotIndex);
+    const realOpacity = opacityValues.current.get(slotIndex) ?? 1;
+    opacitySetter?.(1);
+
     const originalVisibility = new Map<number, boolean>();
     for (const [index, group] of groups) {
       originalVisibility.set(index, group.visible);
@@ -241,6 +251,9 @@ export function SlotPreviewCapture({
         prevTarget as THREE.WebGLRenderTarget | null,
       );
     }
+
+    // Restore real opacity immediately after the synchronous render
+    opacitySetter?.(realOpacity);
 
     for (const [index, visible] of originalVisibility) {
       const group = groups.get(index);

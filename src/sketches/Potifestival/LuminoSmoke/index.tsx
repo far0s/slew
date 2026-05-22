@@ -174,7 +174,9 @@ function buildMaterial(
     const phaseY = seed.y.mul(6.283);
 
     const x = sin(t.mul(freqX).add(phaseX)).mul(0.72);
-    const y = cos(t.mul(freqY).add(phaseY)).mul(0.5).add(sin(t.mul(freqX.mul(0.31))).mul(0.2));
+    const y = cos(t.mul(freqY).add(phaseY))
+      .mul(0.5)
+      .add(sin(t.mul(freqX.mul(0.31))).mul(0.2));
 
     return vec2(x, y);
   });
@@ -184,9 +186,20 @@ function buildMaterial(
    * Returns RGB contribution
    */
   const lightContrib = Fn(
-    ([p, lightIdx, t, colorA, colorB, colorC, smokeDensity, haloRadius, lightIntensity, scatterFalloff, pulseAmount, smokeTurbulence]: [
-      any, any, any, any, any, any, any, any, any, any, any, any
-    ]) => {
+    ([
+      p,
+      lightIdx,
+      t,
+      colorA,
+      colorB,
+      colorC,
+      smokeDensity,
+      haloRadius,
+      lightIntensity,
+      scatterFalloff,
+      pulseAmount,
+      smokeTurbulence,
+    ]: [any, any, any, any, any, any, any, any, any, any, any, any]) => {
       const lpos = lightPos(lightIdx, t);
 
       // Pick color based on light index mod 3
@@ -201,26 +214,41 @@ function buildMaterial(
       // Per-light pulse
       const pulseSeed = hash21(vec2(lightIdx.mul(5.1), float(0.0)));
       const pulse = float(1.0).add(
-        sin(t.mul(float(1.8).add(pulseSeed.mul(1.2)))).mul(pulseAmount).mul(0.5),
+        sin(t.mul(float(1.8).add(pulseSeed.mul(1.2))))
+          .mul(pulseAmount)
+          .mul(0.5),
       );
 
       // Turbulence offset on the light position
       const turbOffset = vec2(
         fbm(p.add(vec2(t.mul(0.12), lightIdx.mul(0.37)))).sub(0.5),
         fbm(p.add(vec2(lightIdx.mul(0.53), t.mul(0.09)))).sub(0.5),
-      ).mul(smokeTurbulence).mul(0.18);
+      )
+        .mul(smokeTurbulence)
+        .mul(0.18);
 
       const dp = p.sub(lpos).sub(turbOffset);
       const dist = length(dp);
 
       // Core halo — Gaussian-like scatter through smoke
       // Beer-Lambert: light is attenuated exponentially through fog
-      const beerLambert = exp(float(dist).mul(float(smokeDensity)).mul(float(-3.5)));
-      const haloFalloff = pow(max(float(1.0).sub(float(dist).div(float(haloRadius))), float(0.0)), float(scatterFalloff));
-      const scatter = beerLambert.mul(haloFalloff).mul(lightIntensity).mul(pulse);
+      const beerLambert = exp(
+        float(dist).mul(float(smokeDensity)).mul(float(-3.5)),
+      );
+      const haloFalloff = pow(
+        max(float(1.0).sub(float(dist).div(float(haloRadius))), float(0.0)),
+        float(scatterFalloff),
+      );
+      const scatter = beerLambert
+        .mul(haloFalloff)
+        .mul(lightIntensity)
+        .mul(pulse);
 
       // Soft core glow (bright center point)
-      const coreGlow = float(0.012).div(max(dist.mul(dist), float(0.0001))).mul(lightIntensity).mul(0.15);
+      const coreGlow = float(0.012)
+        .div(max(dist.mul(dist), float(0.0001)))
+        .mul(lightIntensity)
+        .mul(0.15);
 
       const total = scatter.add(coreGlow);
 
@@ -240,7 +268,20 @@ function buildMaterial(
     // Accumulate all lights — single pass, no per-light CA loop
     for (let i = 0; i < lightCount; i++) {
       const idx = float(i);
-      const c = lightContrib(uv, idx, t, uColorA, uColorB, uColorC, uSmokeDensity, uHaloRadius, uLightIntensity, uScatterFalloff, uPulseAmount, uSmokeTurbulence);
+      const c = lightContrib(
+        uv,
+        idx,
+        t,
+        uColorA,
+        uColorB,
+        uColorC,
+        uSmokeDensity,
+        uHaloRadius,
+        uLightIntensity,
+        uScatterFalloff,
+        uPulseAmount,
+        uSmokeTurbulence,
+      );
       accum.addAssign(c);
     }
 
@@ -294,7 +335,11 @@ function buildMaterial(
  * through simulated smoke/fog. Includes god rays, chromatic aberration, turbulence,
  * and Mie-inspired scatter for a realistic "light through smoke" look.
  */
-export function LuminoSmoke({ opacity, params }: SketchProps) {
+export function LuminoSmoke({
+  opacity,
+  params,
+  setOpacityOverride,
+}: SketchProps) {
   const { viewport } = useThree();
 
   // Parameters with defaults
@@ -327,22 +372,45 @@ export function LuminoSmoke({ opacity, params }: SketchProps) {
 
   // Rebuild when lightCount changes (baked into shader)
   const { material, uniforms } = useMemo(
-    () =>
-      buildMaterial(lightCount, { colorA, colorB, colorC }),
+    () => buildMaterial(lightCount, { colorA, colorB, colorC }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [lightCount],
   );
 
   // Update uniforms
-  useEffect(() => { uniforms.smokeDensity.value = smokeDensity; }, [smokeDensity, uniforms]);
-  useEffect(() => { uniforms.haloRadius.value = haloRadius; }, [haloRadius, uniforms]);
-  useEffect(() => { uniforms.lightIntensity.value = lightIntensity; }, [lightIntensity, uniforms]);
-  useEffect(() => { uniforms.lsSpeed.value = lsSpeed; }, [lsSpeed, uniforms]);
-  useEffect(() => { uniforms.scatterFalloff.value = scatterFalloff; }, [scatterFalloff, uniforms]);
-  useEffect(() => { uniforms.smokeTurbulence.value = smokeTurbulence; }, [smokeTurbulence, uniforms]);
-  useEffect(() => { uniforms.chromaticSpread.value = chromaticSpread; }, [chromaticSpread, uniforms]);
-  useEffect(() => { uniforms.pulseAmount.value = pulseAmount; }, [pulseAmount, uniforms]);
-  useEffect(() => { uniforms.opacity.value = opacity; }, [opacity, uniforms]);
+  useEffect(() => {
+    uniforms.smokeDensity.value = smokeDensity;
+  }, [smokeDensity, uniforms]);
+  useEffect(() => {
+    uniforms.haloRadius.value = haloRadius;
+  }, [haloRadius, uniforms]);
+  useEffect(() => {
+    uniforms.lightIntensity.value = lightIntensity;
+  }, [lightIntensity, uniforms]);
+  useEffect(() => {
+    uniforms.lsSpeed.value = lsSpeed;
+  }, [lsSpeed, uniforms]);
+  useEffect(() => {
+    uniforms.scatterFalloff.value = scatterFalloff;
+  }, [scatterFalloff, uniforms]);
+  useEffect(() => {
+    uniforms.smokeTurbulence.value = smokeTurbulence;
+  }, [smokeTurbulence, uniforms]);
+  useEffect(() => {
+    uniforms.chromaticSpread.value = chromaticSpread;
+  }, [chromaticSpread, uniforms]);
+  useEffect(() => {
+    uniforms.pulseAmount.value = pulseAmount;
+  }, [pulseAmount, uniforms]);
+  useEffect(() => {
+    uniforms.opacity.value = opacity;
+  }, [opacity, uniforms]);
+
+  useEffect(() => {
+    setOpacityOverride?.((v) => {
+      uniforms.opacity.value = v;
+    });
+  }, [setOpacityOverride, uniforms]);
 
   const colorsKey = JSON.stringify([colorA, colorB, colorC]);
   useEffect(() => {

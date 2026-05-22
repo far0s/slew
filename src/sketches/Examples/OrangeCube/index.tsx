@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import type { SketchProps } from "../../types";
@@ -19,11 +19,28 @@ export { descriptor };
  * - params.tint: 0..1, shifts color between red (0) and yellow (1)
  * - params.scale: 0.5..2, size multiplier for the cube
  */
-export function OrangeCube({ opacity, params }: SketchProps) {
+export function OrangeCube({
+  opacity,
+  params,
+  setOpacityOverride,
+}: SketchProps) {
   const meshRef = React.useRef<THREE.Mesh | null>(null);
+  const materialRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const brightnessRef = useRef(params?.brightness ?? 1);
 
   // Extract params with defaults
   const brightness = params?.brightness ?? 1;
+
+  useEffect(() => {
+    brightnessRef.current = brightness;
+  }, [brightness]);
+
+  useEffect(() => {
+    setOpacityOverride?.((v) => {
+      if (materialRef.current)
+        materialRef.current.opacity = v * brightnessRef.current;
+    });
+  }, [setOpacityOverride]);
   const rotationSpeed = params?.rotationSpeed ?? 0.4;
   const tint = params?.tint ?? 0.5;
   const scale = params?.scale ?? 1;
@@ -60,6 +77,7 @@ export function OrangeCube({ opacity, params }: SketchProps) {
     <mesh ref={meshRef} rotation={[0.3, -0.4, 0]} scale={scale}>
       <boxGeometry args={[1.2, 1.2, 1.2]} />
       <meshStandardMaterial
+        ref={materialRef}
         color={baseColor}
         metalness={0.4}
         roughness={0.25}

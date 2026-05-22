@@ -20,7 +20,11 @@ export { descriptor };
  * - params.hueShift: 0..1, shifts base color through the hue spectrum
  * - params.glowIntensity: 0..2, controls emissive pulse strength
  */
-export function TslText3D({ opacity, params }: SketchProps) {
+export function TslText3D({
+  opacity,
+  params,
+  setOpacityOverride,
+}: SketchProps) {
   const groupRef = useRef<THREE.Group>(null);
   const materialRef = useRef<THREE.MeshStandardMaterial>(null);
   const timeRef = useRef(0);
@@ -109,6 +113,12 @@ export function TslText3D({ opacity, params }: SketchProps) {
       materialRef.current.opacity = opacity;
     }
   });
+
+  useEffect(() => {
+    setOpacityOverride?.((v) => {
+      if (materialRef.current) materialRef.current.opacity = v;
+    });
+  }, [setOpacityOverride]);
 
   // Don't render until geometry is ready
   if (!geometry) {

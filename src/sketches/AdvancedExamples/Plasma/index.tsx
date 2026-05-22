@@ -1,7 +1,20 @@
 import { useMemo, useEffect } from "react";
 import * as THREE from "three";
 import { MeshBasicNodeMaterial } from "three/webgpu";
-import { Fn, uniform, uv, vec2, vec3, vec4, float, sin, add, mul, time, screenSize } from "three/tsl";
+import {
+  Fn,
+  uniform,
+  uv,
+  vec2,
+  vec3,
+  vec4,
+  float,
+  sin,
+  add,
+  mul,
+  time,
+  screenSize,
+} from "three/tsl";
 import { useFrame, useThree } from "@react-three/fiber";
 import type { SketchProps } from "../../types";
 import { descriptor } from "./descriptor";
@@ -93,7 +106,7 @@ function createPlasmaMaterial(): {
   };
 }
 
-export function Plasma({ opacity, params }: SketchProps) {
+export function Plasma({ opacity, params, setOpacityOverride }: SketchProps) {
   const speed = params?.plasmaSpeed ?? 1;
   const scale = params?.plasmaScale ?? 8;
   const complexity = params?.plasmaComplexity ?? 3;
@@ -124,6 +137,12 @@ export function Plasma({ opacity, params }: SketchProps) {
   useEffect(() => {
     uniforms.opacity.value = opacity;
   }, [opacity, uniforms]);
+
+  useEffect(() => {
+    setOpacityOverride?.((v) => {
+      uniforms.opacity.value = v;
+    });
+  }, [setOpacityOverride, uniforms]);
 
   useEffect(() => {
     return () => {

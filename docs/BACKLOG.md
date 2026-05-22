@@ -20,32 +20,6 @@ Prioritized list of potential work items for Slew.
 
 ## Active / High Priority
 
-### 🔴 Slot Preview Badge Refresh — Stream Not Reconnecting `issue`
-
-Clicking the slot number badge (top-left corner of a slot preview) when in "Local Preview" mode triggers the refresh logic correctly, but `StreamedPreview` never receives frames after remount and `handleFirstFrame` is never called.
-
-**Symptoms**: Badge click registered, `externalRefreshKey` propagates to `SlotPreview`, `StreamedPreview` unmounts and remounts, Tauri event listener re-registers — but no `preview-frame-slot` events ever arrive in the Controls window after reconnect.
-
-**What was ruled out**:
-- Click interception by drag handler — fixed with `e.stopPropagation()` on `onPointerDown`
-- Zombie Tauri listeners from async `listen()` race on unmount — fixed in `StreamedPreview.tsx` (store resolved `UnlistenFn`, call immediately if already unmounted)
-- Stale `refreshKey` not remounting the canvas — fixed by putting `key={refreshKey}` on `WebGPUCanvas`
-- Slot alpha being 0 (confirmed > 0 during testing)
-
-**Suspected root cause**: The Renderer window's `SlotPreviewCapture` may not be sending frames for the slot at the time `StreamedPreview` remounts. Need to open the **Renderer window devtools** and confirm whether `distribute_frame` is being invoked for that slot index. Possible sub-causes:
-- `slotGroups` ref doesn't contain the slot group at capture time
-- `visibleSlotIndices` prop is stale or excludes the slot
-- The `invoke('distribute_frame', ...)` call is silently failing
-- The Tauri backend isn't routing the frame event to the Controls window after the listener re-registers
-
-**Relevant files**:
-- `src/renderer/SlotPreviewCapture.tsx` — captures and distributes slot frames from Renderer window
-- `src/components/StreamedPreview/StreamedPreview.tsx` — listens for `preview-frame-slot` events
-- `src/components/SlotColumn/SlotColumn.tsx` — `SlotPreview` component, badge click handler, `externalRefreshKey` prop
-
----
-
-
 ### 🔴 App Icon `chore`
 
 Design and implement proper app icon for Slew.

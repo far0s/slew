@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import type { SketchProps } from "../../types";
@@ -20,8 +20,9 @@ export { descriptor };
  * - params.tint: 0..1, blends base blue → cyan for color/emissive
  * - params.tintLfoDepth: 0..1, LFO modulation depth for tint
  */
-export function BlueCube({ opacity, params }: SketchProps) {
+export function BlueCube({ opacity, params, setOpacityOverride }: SketchProps) {
   const meshRef = React.useRef<THREE.Mesh | null>(null);
+  const materialRef = React.useRef<THREE.MeshStandardMaterial | null>(null);
   const timeRef = React.useRef(0);
 
   // Derive per-sketch values from the optional params bag, with sensible defaults.
@@ -50,6 +51,12 @@ export function BlueCube({ opacity, params }: SketchProps) {
   const clampedBrightness = Math.max(0, Math.min(2, brightness));
   const clampedTint = Math.max(0, Math.min(1, tint));
 
+  useEffect(() => {
+    setOpacityOverride?.((v) => {
+      if (materialRef.current) materialRef.current.opacity = v;
+    });
+  }, [setOpacityOverride]);
+
   const baseColor = new THREE.Color("#38bdf8");
   const tintedColor = new THREE.Color("#22d3ee");
   const finalColor = baseColor.clone().lerp(tintedColor, clampedTint);
@@ -62,6 +69,7 @@ export function BlueCube({ opacity, params }: SketchProps) {
     <mesh ref={meshRef} rotation={[0.5, 0.8, 0]}>
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial
+        ref={materialRef}
         color={finalColor}
         metalness={0.2}
         roughness={0.1}

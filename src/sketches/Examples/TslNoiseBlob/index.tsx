@@ -125,7 +125,11 @@ function createTslNoiseBlobMaterial(): {
   };
 }
 
-export function TslNoiseBlob({ opacity, params }: SketchProps) {
+export function TslNoiseBlob({
+  opacity,
+  params,
+  setOpacityOverride,
+}: SketchProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const timeRef = useRef(0);
 
@@ -152,6 +156,12 @@ export function TslNoiseBlob({ opacity, params }: SketchProps) {
   useEffect(() => {
     uniforms.opacity.value = opacity;
   }, [opacity, uniforms]);
+
+  useEffect(() => {
+    setOpacityOverride?.((v) => {
+      uniforms.opacity.value = v;
+    });
+  }, [setOpacityOverride, uniforms]);
 
   useFrame((_, delta) => {
     const clampedDelta = Math.min(delta, 1 / 30);

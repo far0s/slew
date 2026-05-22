@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import type { SketchProps } from "../../types";
@@ -19,12 +19,29 @@ export { descriptor };
  * - params.rotationSpeed: 0..5, how fast the cube rotates
  * - params.tint: 0..1, shifts color from cyan (0) to lime (1)
  */
-export function GreenPulse({ opacity, params }: SketchProps) {
+export function GreenPulse({
+  opacity,
+  params,
+  setOpacityOverride,
+}: SketchProps) {
   const meshRef = React.useRef<THREE.Mesh | null>(null);
+  const materialRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const brightnessRef = useRef(params?.brightness ?? 1);
   const timeRef = React.useRef(0);
 
   // Extract params with defaults
   const brightness = params?.brightness ?? 1;
+
+  useEffect(() => {
+    brightnessRef.current = brightness;
+  }, [brightness]);
+
+  useEffect(() => {
+    setOpacityOverride?.((v) => {
+      if (materialRef.current)
+        materialRef.current.opacity = v * brightnessRef.current;
+    });
+  }, [setOpacityOverride]);
   const pulseSpeed = params?.pulseSpeed ?? 1.5;
   const rotationSpeed = params?.rotationSpeed ?? 0.4;
   const tint = params?.tint ?? 0.5;
@@ -53,6 +70,7 @@ export function GreenPulse({ opacity, params }: SketchProps) {
     <mesh ref={meshRef} rotation={[0.2, -0.6, 0]}>
       <boxGeometry args={[1.1, 1.1, 1.1]} />
       <meshStandardMaterial
+        ref={materialRef}
         color={baseColor}
         metalness={0.3}
         roughness={0.3}

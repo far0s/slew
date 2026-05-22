@@ -158,7 +158,7 @@ function createWaveformMaterial(): {
   };
 }
 
-export function Waveform({ opacity, params }: SketchProps) {
+export function Waveform({ opacity, params, setOpacityOverride }: SketchProps) {
   const speed = params?.waveSpeed ?? 1;
   const amplitude = params?.waveAmplitude ?? 0.4;
   const frequency = params?.waveFrequency ?? 4;
@@ -189,6 +189,12 @@ export function Waveform({ opacity, params }: SketchProps) {
   useEffect(() => {
     uniforms.opacity.value = opacity;
   }, [opacity, uniforms]);
+
+  useEffect(() => {
+    setOpacityOverride?.((v) => {
+      uniforms.opacity.value = v;
+    });
+  }, [setOpacityOverride, uniforms]);
 
   useFrame(() => {
     // Material handles animation via time uniform

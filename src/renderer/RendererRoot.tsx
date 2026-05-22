@@ -187,7 +187,11 @@ function calculateSlotOpacity(
   // If this slot is both active and target (same slot), just use alpha
   if (isActive && isTarget) {
     opacity = clampedAlpha;
-  } else if (isActive && crossfadeTargetIndex !== null && clampedCrossfade > 0.001) {
+  } else if (
+    isActive &&
+    crossfadeTargetIndex !== null &&
+    clampedCrossfade > 0.001
+  ) {
     // If this is the active slot and we're crossfading, fade out
     opacity = (1 - clampedCrossfade) * clampedAlpha;
   } else if (isTarget && clampedCrossfade > 0.001) {
@@ -315,6 +319,10 @@ function RendererContent({
 }: RendererContentProps) {
   const [tintLfoPhase, setTintLfoPhase] = useState(0);
   const slotGroupsRef = useRef<Map<number, THREE.Group>>(new Map());
+  const slotOpacitySettersRef = useRef<Map<number, (v: number) => void>>(
+    new Map(),
+  );
+  const slotOpacityValuesRef = useRef<Map<number, number>>(new Map());
   const [hiddenPreviewSlots, setHiddenPreviewSlots] = useState<Set<number>>(
     new Set(),
   );
@@ -380,30 +388,42 @@ function RendererContent({
       <directionalLight position={[4, 6, 3]} intensity={1.1} />
       <directionalLight position={[-4, -4, -2]} intensity={0.4} />
 
-      {/* Per-slot preview capture for streaming to Controls window */}
+      {/* Per-slot preview capture for streaming to Controls window.
+           Uses all loaded slots (not just visible ones) so that slots with
+           alpha=0 still stream preview frames to the Controls window. */}
       <SlotPreviewCapture
         slotGroups={slotGroupsRef}
-        visibleSlotIndices={slotsToRender
+        visibleSlotIndices={allSlots
           .map((s) => s.index)
           .filter((i) => !hiddenPreviewSlots.has(i))}
+        opacitySetters={slotOpacitySettersRef}
+        opacityValues={slotOpacityValuesRef}
       />
 
-      {/* Render all visible slots in index order */}
-      {slotsToRender.map((slot) => {
+      {/* Render all loaded slots. Slots not in slotsToRender are hidden from
+           the main scene (visible=false) but their groups are still registered
+           in slotGroupsRef so SlotPreviewCapture can capture their frames. */}
+      {allSlots.map((slot) => {
         const SketchComponent = SKETCH_COMPONENT_REGISTRY[slot.sketchId];
         if (!SketchComponent) return null;
+
+        const isVisible = slotsToRender.some((s) => s.index === slot.index);
 
         // Get the slot's alpha (master opacity) parameter
         const alphaParamId = makeSlotParameterId(slot.index, "alpha");
         const alpha = paramStore.get(alphaParamId) ?? 0;
 
-        const opacity = calculateSlotOpacity(
-          slot.index,
-          activeSlotIndex,
-          crossfadeTargetIndex,
-          crossfade,
-          alpha,
-        );
+        // Use real opacity for the main scene composite; invisible slots render
+        // at opacity=1 so SlotPreviewCapture captures them at full brightness.
+        const opacity = isVisible
+          ? calculateSlotOpacity(
+              slot.index,
+              activeSlotIndex,
+              crossfadeTargetIndex,
+              crossfade,
+              alpha,
+            )
+          : 1;
 
         const sketchParams = buildSlotParams(
           slot.index,
@@ -412,11 +432,15 @@ function RendererContent({
           tintLfoPhase,
         );
 
+        // Store the real opacity value so SlotPreviewCapture can restore it after capture
+        slotOpacityValuesRef.current.set(slot.index, opacity);
+
         const colors = slotColors.get(slot.index);
 
         return (
           <group
             key={`slot-${slot.index}`}
+            visible={isVisible}
             ref={(group) => {
               if (group) {
                 slotGroupsRef.current.set(slot.index, group);
@@ -430,6 +454,9 @@ function RendererContent({
                 opacity={opacity}
                 params={sketchParams}
                 colors={colors}
+                setOpacityOverride={(setter) =>
+                  slotOpacitySettersRef.current.set(slot.index, setter)
+                }
               />
             </Suspense>
           </group>
