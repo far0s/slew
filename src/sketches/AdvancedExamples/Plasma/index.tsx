@@ -1,20 +1,7 @@
 import { useMemo, useEffect } from "react";
 import * as THREE from "three";
 import { MeshBasicNodeMaterial } from "three/webgpu";
-import {
-  Fn,
-  uniform,
-  uv,
-  vec2,
-  vec3,
-  vec4,
-  float,
-  sin,
-  add,
-  mul,
-  time,
-  screenSize,
-} from "three/tsl";
+import { Fn, uniform, uv, vec2, vec3, vec4, float, sin, add, mul, time, screenSize } from "three/tsl";
 import { useFrame, useThree } from "@react-three/fiber";
 import type { SketchProps } from "../../types";
 import { descriptor } from "./descriptor";
@@ -137,6 +124,12 @@ export function Plasma({ opacity, params }: SketchProps) {
   useEffect(() => {
     uniforms.opacity.value = opacity;
   }, [opacity, uniforms]);
+
+  useEffect(() => {
+    return () => {
+      material.dispose();
+    };
+  }, [material]);
 
   useFrame(() => {
     // Material handles animation via time uniform

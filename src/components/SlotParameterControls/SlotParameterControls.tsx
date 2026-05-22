@@ -1,27 +1,16 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { subscribeBpm } from "../../inputs/tapTempo";
+import { useEventListener } from "../../inputs/shared/useEventListener";
 import { pushUndoEntry } from "../../hooks/useUndoHistory";
 import type { SketchId, ParameterTemplate } from "../../sketches";
 import { getSketchDescriptor } from "../../sketches";
-import {
-  makeSlotParameterId,
-  SLOT_PARAMETER_TEMPLATES,
-} from "../../slots/slotTypes";
-import {
-  ParameterSlider,
-  type AudioMappingIndicator,
-  type ModulationIndicator,
-} from "../ParameterSlider";
+import { makeSlotParameterId, SLOT_PARAMETER_TEMPLATES } from "../../slots/slotTypes";
+import { ParameterSlider, type AudioMappingIndicator, type ModulationIndicator } from "../ParameterSlider";
 import { KnobInput } from "../KnobInput";
 import { StepInput } from "../StepInput";
 import { ParameterSelect } from "../ParameterSelect";
-import {
-  type AudioMapping,
-  AUDIO_SOURCE_SHORT_LABELS,
-  AUDIO_SOURCE_COLORS,
-} from "../../inputs/audio";
+import { type AudioMapping, AUDIO_SOURCE_SHORT_LABELS, AUDIO_SOURCE_COLORS } from "../../inputs/audio";
 import type { ModulationTarget, LfoSource } from "../../inputs/modulation";
 import type { MidiMapping, MidiPickupState } from "../../inputs/midi";
 import { ColorPalette } from "../ColorPalette";
@@ -67,10 +56,7 @@ function loadCollapsedGroups(sketchId: string): Set<string> {
 
 function saveCollapsedGroups(sketchId: string, collapsed: Set<string>): void {
   try {
-    localStorage.setItem(
-      `${COLLAPSED_GROUPS_STORAGE_PREFIX}${sketchId}`,
-      JSON.stringify([...collapsed]),
-    );
+    localStorage.setItem(`${COLLAPSED_GROUPS_STORAGE_PREFIX}${sketchId}`, JSON.stringify([...collapsed]));
   } catch {
     // ignore
   }
@@ -112,10 +98,7 @@ function loadHiddenParams(sketchId: string): Set<string> {
 
 function saveHiddenParams(sketchId: string, hidden: Set<string>): void {
   try {
-    localStorage.setItem(
-      `${HIDDEN_PARAMS_STORAGE_PREFIX}${sketchId}`,
-      JSON.stringify([...hidden]),
-    );
+    localStorage.setItem(`${HIDDEN_PARAMS_STORAGE_PREFIX}${sketchId}`, JSON.stringify([...hidden]));
   } catch {
     // ignore
   }
@@ -126,12 +109,7 @@ function saveHiddenParams(sketchId: string, hidden: Set<string>): void {
 // ---------------------------------------------------------------------------
 
 function rgbToHex(r: number, g: number, b: number): string {
-  return (
-    "#" +
-    [r, g, b]
-      .map((v) => Math.round(v).toString(16).padStart(2, "0"))
-      .join("")
-  );
+  return "#" + [r, g, b].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -142,11 +120,7 @@ function hexToRgb(hex: string): [number, number, number] {
 /** Transition speed (seconds) used when picking a new color via the color picker swatch. */
 const COLOR_PICK_TRANSITION = 0.35;
 
-async function setParameterWithTransition(
-  id: string,
-  value: number,
-  transitionSpeed: number,
-): Promise<void> {
+async function setParameterWithTransition(id: string, value: number, transitionSpeed: number): Promise<void> {
   await invoke("set_parameter_with_transition", { id, value, transitionSpeed });
 }
 
@@ -209,10 +183,7 @@ async function setParameter(id: string, value: number): Promise<void> {
   await invoke("set_parameter", { id, value, app: undefined });
 }
 
-async function forwardControlsEvent(
-  event: string,
-  value: number,
-): Promise<void> {
+async function forwardControlsEvent(event: string, value: number): Promise<void> {
   await invoke("forward_controls_event", {
     event,
     payload: JSON.stringify({ value }),
@@ -249,15 +220,10 @@ function createChangeHandler(
   return { onChange, onCommit };
 }
 
-function getAudioMappingIndicator(
-  parameterId: string,
-  audioMappings?: AudioMapping[],
-): AudioMappingIndicator | null {
+function getAudioMappingIndicator(parameterId: string, audioMappings?: AudioMapping[]): AudioMappingIndicator | null {
   if (!audioMappings) return null;
 
-  const mapping = audioMappings.find(
-    (m) => m.parameter_id === parameterId && m.enabled,
-  );
+  const mapping = audioMappings.find((m) => m.parameter_id === parameterId && m.enabled);
 
   if (!mapping) return null;
 
@@ -274,9 +240,7 @@ function getModulationIndicator(
 ): ModulationIndicator | null {
   if (!modulationTargets || !lfos) return null;
 
-  const activeTargets = modulationTargets.filter(
-    (t) => t.parameter_id === parameterId && t.enabled,
-  );
+  const activeTargets = modulationTargets.filter((t) => t.parameter_id === parameterId && t.enabled);
 
   if (activeTargets.length === 0) return null;
 
@@ -298,23 +262,26 @@ function getModulationIndicator(
 
 /** Pre-defined loop period options shown in the UI */
 const LOOP_PRESETS: { label: string; beats: number | null; seconds: number | null }[] = [
-  { label: "4 beats",  beats: 4,    seconds: null },
-  { label: "8 beats",  beats: 8,    seconds: null },
-  { label: "16 beats", beats: 16,   seconds: null },
-  { label: "32 beats", beats: 32,   seconds: null },
-  { label: "64 beats", beats: 64,   seconds: null },
-  { label: "30 s",     beats: null, seconds: 30   },
-  { label: "1 min",    beats: null, seconds: 60   },
-  { label: "5 min",    beats: null, seconds: 300  },
-  { label: "15 min",   beats: null, seconds: 900  },
-  { label: "30 min",   beats: null, seconds: 1800 },
-  { label: "60 min",   beats: null, seconds: 3600 },
+  { label: "4 beats", beats: 4, seconds: null },
+  { label: "8 beats", beats: 8, seconds: null },
+  { label: "16 beats", beats: 16, seconds: null },
+  { label: "32 beats", beats: 32, seconds: null },
+  { label: "64 beats", beats: 64, seconds: null },
+  { label: "30 s", beats: null, seconds: 30 },
+  { label: "1 min", beats: null, seconds: 60 },
+  { label: "5 min", beats: null, seconds: 300 },
+  { label: "15 min", beats: null, seconds: 900 },
+  { label: "30 min", beats: null, seconds: 1800 },
+  { label: "60 min", beats: null, seconds: 3600 },
 ];
 
 /** Convert RGB (0-255) to HSL (h 0-360, s 0-1, l 0-1) */
 function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
-  const rn = r / 255, gn = g / 255, bn = b / 255;
-  const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+  const rn = r / 255,
+    gn = g / 255,
+    bn = b / 255;
+  const max = Math.max(rn, gn, bn),
+    min = Math.min(rn, gn, bn);
   const l = (max + min) / 2;
   if (max === min) return [0, 0, l];
   const d = max - min;
@@ -331,18 +298,18 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   const hue2rgb = (p: number, q: number, t: number) => {
     if (t < 0) t += 1;
     if (t > 1) t -= 1;
-    if (t < 1/6) return p + (q - p) * 6 * t;
-    if (t < 1/2) return q;
-    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
     return p;
   };
   const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
   const p = 2 * l - q;
   const hn = h / 360;
   return [
-    Math.round(hue2rgb(p, q, hn + 1/3) * 255),
+    Math.round(hue2rgb(p, q, hn + 1 / 3) * 255),
     Math.round(hue2rgb(p, q, hn) * 255),
-    Math.round(hue2rgb(p, q, hn - 1/3) * 255),
+    Math.round(hue2rgb(p, q, hn - 1 / 3) * 255),
   ];
 }
 
@@ -358,7 +325,7 @@ function ChromaLoop({ slotIndex, templateId, getValue, setValue, onActiveChange 
   const [active, setActive] = useState(false);
   const [presetIndex, setPresetIndex] = useState(3); // "32 beats" default
   const [bpm, setBpm] = useState<number | null>(null);
-  const phaseRef = useRef(0);           // 0-1 hue phase within the loop
+  const phaseRef = useRef(0); // 0-1 hue phase within the loop
   const lastTimeRef = useRef<number>(0);
   const rafRef = useRef<number>(0);
   const baseHsl = useRef<[number, number, number]>([0, 1, 0.5]);
@@ -432,7 +399,9 @@ function ChromaLoop({ slotIndex, templateId, getValue, setValue, onActiveChange 
             b,
             transitionSpeed: 0, // instant — we're driving the animation ourselves
           });
-        } catch { /* best-effort */ }
+        } catch {
+          /* best-effort */
+        }
       })();
 
       rafRef.current = requestAnimationFrame(tick);
@@ -450,7 +419,15 @@ function ChromaLoop({ slotIndex, templateId, getValue, setValue, onActiveChange 
         onClick={active ? stopLoop : startLoop}
         title={active ? "Stop chroma loop" : "Start chroma loop (hue rotation)"}
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.chromaLoopIcon}>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={styles.chromaLoopIcon}
+        >
           <circle cx="12" cy="12" r="10" />
           <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.4" />
           <path d="M12 6v6l4 2" />
@@ -471,11 +448,11 @@ function ChromaLoop({ slotIndex, templateId, getValue, setValue, onActiveChange 
         title="Loop period"
       >
         {LOOP_PRESETS.map((p, i) => (
-          <option key={i} value={i}>{p.label}</option>
+          <option key={i} value={i}>
+            {p.label}
+          </option>
         ))}
       </select>
-
-
     </>
   );
 }
@@ -501,17 +478,13 @@ export function SlotParameterControls({
   const descriptor = getSketchDescriptor(sketchId);
 
   // Hidden parameters, persisted per sketch ID
-  const [hiddenParams, setHiddenParams] = useState<Set<string>>(() =>
-    loadHiddenParams(sketchId),
-  );
+  const [hiddenParams, setHiddenParams] = useState<Set<string>>(() => loadHiddenParams(sketchId));
 
   // Track which color params have chroma loop active (to collapse RGB sliders)
   const [chromaActiveMap, setChromaActiveMap] = useState<Record<string, boolean>>({});
 
   // Collapsed groups, persisted per sketch ID
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() =>
-    loadCollapsedGroups(sketchId),
-  );
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => loadCollapsedGroups(sketchId));
 
   const toggleGroup = useCallback(
     (group: string) => {
@@ -557,13 +530,19 @@ export function SlotParameterControls({
   // Keep latest modulation data in refs so the event listener can check without re-subscribing
   const modulationTargetsRef = useRef(modulationTargets);
   const lfosRef = useRef(lfos);
-  useEffect(() => { modulationTargetsRef.current = modulationTargets; }, [modulationTargets]);
-  useEffect(() => { lfosRef.current = lfos; }, [lfos]);
+  useEffect(() => {
+    modulationTargetsRef.current = modulationTargets;
+  }, [modulationTargets]);
+  useEffect(() => {
+    lfosRef.current = lfos;
+  }, [lfos]);
   // Safety reset: if the pointer is released anywhere (or cancelled), clear the flag.
   // This prevents isUserInteractingRef from getting stuck `true` if the user lifts
   // the mouse outside the slider thumb, which would block all MIDI auto-scroll.
   useEffect(() => {
-    const reset = () => { isUserInteractingRef.current = false; };
+    const reset = () => {
+      isUserInteractingRef.current = false;
+    };
     window.addEventListener("pointerup", reset);
     window.addEventListener("pointercancel", reset);
     return () => {
@@ -587,54 +566,51 @@ export function SlotParameterControls({
     };
   }, []);
 
-  useEffect(() => {
-    const unlisten = listen<{ id: string; value: number; target: number }>("parameter_changed", (event) => {
-      if (isUserInteractingRef.current) return;
-      if (Date.now() - lastManualScrollRef.current < 1000) return;
-      const { id } = event.payload;
-      // Skip auto-scroll for parameters driven by an active LFO
-      const targets = modulationTargetsRef.current;
-      const lfos = lfosRef.current;
-      if (targets && lfos) {
-        const hasActiveLfo = targets.some(
-          (t) => t.parameter_id === id && lfos.some((l) => l.id === t.source_id && l.enabled),
-        );
-        if (hasActiveLfo) return;
-      }
-      const row = rowRefs.current.get(id);
-      if (row) {
-        // Walk up the DOM to find the nearest scrolling ancestor
-        const scroller = findScrollParent(row);
-        if (scroller) {
-          // Lazily attach manual-scroll listener to the scroller the first time we see it
-          if (scrollerListenerRef.current?.el !== scroller) {
-            if (scrollerListenerRef.current) {
-              const { el, handler } = scrollerListenerRef.current;
-              el.removeEventListener("wheel", handler);
-              el.removeEventListener("touchstart", handler);
-            }
-            const handler = () => { lastManualScrollRef.current = Date.now(); };
-            scroller.addEventListener("wheel", handler, { passive: true });
-            scroller.addEventListener("touchstart", handler, { passive: true });
-            scrollerListenerRef.current = { el: scroller, handler };
+  useEventListener<{ id: string; value: number; target: number }>("parameter_changed", (payload) => {
+    if (isUserInteractingRef.current) return;
+    if (Date.now() - lastManualScrollRef.current < 1000) return;
+    const { id } = payload;
+    // Skip auto-scroll for parameters driven by an active LFO
+    const targets = modulationTargetsRef.current;
+    const lfos = lfosRef.current;
+    if (targets && lfos) {
+      const hasActiveLfo = targets.some(
+        (t) => t.parameter_id === id && lfos.some((l) => l.id === t.source_id && l.enabled),
+      );
+      if (hasActiveLfo) return;
+    }
+    const row = rowRefs.current.get(id);
+    if (row) {
+      // Walk up the DOM to find the nearest scrolling ancestor
+      const scroller = findScrollParent(row);
+      if (scroller) {
+        // Lazily attach manual-scroll listener to the scroller the first time we see it
+        if (scrollerListenerRef.current?.el !== scroller) {
+          if (scrollerListenerRef.current) {
+            const { el, handler } = scrollerListenerRef.current;
+            el.removeEventListener("wheel", handler);
+            el.removeEventListener("touchstart", handler);
           }
+          const handler = () => {
+            lastManualScrollRef.current = Date.now();
+          };
+          scroller.addEventListener("wheel", handler, { passive: true });
+          scroller.addEventListener("touchstart", handler, { passive: true });
+          scrollerListenerRef.current = { el: scroller, handler };
+        }
 
-          const rowTop = getOffsetRelativeTo(row, scroller);
-          const rowBottom = rowTop + row.offsetHeight;
-          const scrollTop = scroller.scrollTop;
-          const containerHeight = scroller.clientHeight;
-          if (rowTop < scrollTop) {
-            scroller.scrollTo({ top: rowTop, behavior: "smooth" });
-          } else if (rowBottom > scrollTop + containerHeight) {
-            scroller.scrollTo({ top: rowBottom - containerHeight, behavior: "smooth" });
-          }
+        const rowTop = getOffsetRelativeTo(row, scroller);
+        const rowBottom = rowTop + row.offsetHeight;
+        const scrollTop = scroller.scrollTop;
+        const containerHeight = scroller.clientHeight;
+        if (rowTop < scrollTop) {
+          scroller.scrollTo({ top: rowTop, behavior: "smooth" });
+        } else if (rowBottom > scrollTop + containerHeight) {
+          scroller.scrollTo({ top: rowBottom - containerHeight, behavior: "smooth" });
         }
       }
-    });
-    return () => {
-      void unlisten.then((fn) => fn());
-    };
-  }, [slotIndex, sketchId]);
+    }
+  });
 
   if (!descriptor) {
     return (
@@ -646,15 +622,11 @@ export function SlotParameterControls({
 
   // Combine slot-level parameters (alpha, etc.) with sketch-specific parameters
   const allParameters = [...SLOT_PARAMETER_TEMPLATES, ...descriptor.parameters];
-  const sortedParameters = allParameters.sort(
-    (a, b) => (a.orderHint ?? 0) - (b.orderHint ?? 0),
-  );
+  const sortedParameters = allParameters.sort((a, b) => (a.orderHint ?? 0) - (b.orderHint ?? 0));
 
   // Show the legacy ColorPalette section only for sketches that have colorPalette
   // but haven't yet migrated to the new color param system.
-  const hasColorParams = descriptor.parameters.some(
-    (p) => p.inputType === "color",
-  );
+  const hasColorParams = descriptor.parameters.some((p) => p.inputType === "color");
 
   // State for color palette
   const [colors, setColors] = useState<{
@@ -721,10 +693,7 @@ export function SlotParameterControls({
 
     // Emit color change events for each color
     ["startColor", "midColor", "endColor"].forEach((colorType) => {
-      const color =
-        descriptor.colorPalette![
-          colorType as "startColor" | "midColor" | "endColor"
-        ];
+      const color = descriptor.colorPalette![colorType as "startColor" | "midColor" | "endColor"];
       const event = new CustomEvent("sketch-color-changed", {
         detail: {
           slotIndex,
@@ -781,9 +750,7 @@ export function SlotParameterControls({
 
   const renderParameter = (template: ParameterTemplate, index: number) => {
     const paramId = makeSlotParameterId(slotIndex, template.templateId);
-    const hasMidiMapping = midiMappings?.some(
-      (m) => m.parameter_id === paramId,
-    );
+    const hasMidiMapping = midiMappings?.some((m) => m.parameter_id === paramId);
 
     // Render color picker group for parameters with inputType: "color"
     if (template.inputType === "color") {
@@ -812,8 +779,11 @@ export function SlotParameterControls({
             if (el) rowRefs.current.set(baseId, el);
             else rowRefs.current.delete(baseId);
           }}
-          className={`${styles.colorParamRow} ${styles.fullWidthRow} ${styles.paramRow} ${index > 0 ? styles.colorParamRowSpaced : ''} ${highlightedParamIds?.has(makeSlotParameterId(slotIndex, template.templateId)) ? styles.paramHighlighted : ''}`}
-          onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
+          className={`${styles.colorParamRow} ${styles.fullWidthRow} ${styles.paramRow} ${index > 0 ? styles.colorParamRowSpaced : ""} ${highlightedParamIds?.has(makeSlotParameterId(slotIndex, template.templateId)) ? styles.paramHighlighted : ""}`}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            hideParam(template.templateId);
+          }}
         >
           <div className={styles.colorParamHeader}>
             <span className={styles.colorParamLabel}>{template.label}</span>
@@ -835,48 +805,45 @@ export function SlotParameterControls({
               }
             />
           </div>
-          <div
-            className={styles.colorSliders}
-            data-collapsed={chromaActiveMap[template.templateId] ? "true" : "false"}
-          >
+          <div className={styles.colorSliders} data-collapsed={chromaActiveMap[template.templateId] ? "true" : "false"}>
             <div className={styles.colorSlidersInner}>
               {channels.map(({ ch, label: chLabel, value: chVal, color: chColor }) => {
-              const chId = `${baseId}_${ch}`;
-              const hasMidiMappingCh = midiMappings?.some((m) => m.parameter_id === chId);
-              return (
-                <ParameterSlider
-                  key={chId}
-                  id={`slot-${slotIndex}-${template.templateId}-${ch}`}
-                  label={chLabel}
-                  value={chVal}
-                  min={0}
-                  max={255}
-                  step={1}
-                  color={chColor}
-                  inline
-                  onChange={(val) => {
-                    isUserInteractingRef.current = true;
-                    const newR = ch === "r" ? val : r;
-                    const newG = ch === "g" ? val : g;
-                    const newB = ch === "b" ? val : b;
-                    handleColorParamChange(slotIndex, template.templateId, rgbToHex(newR, newG, newB), setValue);
-                  }}
-                  onCommit={(after, before) => {
-                    isUserInteractingRef.current = false;
-                    if (after !== before) pushUndoEntry(chId, before, after);
-                  }}
-                  audioMapping={getAudioMappingIndicator(chId, audioMappings)}
-                  modulationIndicator={getModulationIndicator(chId, modulationTargets, lfos)}
-                  isMidiControlled={hasMidiMappingCh}
-                  pickupState={midiPickupStates?.get(chId)}
-                  midiParameterId={chId}
-                  onQuickBeat={onQuickBeat ? () => onQuickBeat(chId, 255) : undefined}
-                  onQuickLfo={onQuickLfo ? () => onQuickLfo(chId, 0, 255) : undefined}
-                  onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(chId) : undefined}
-                  onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(chId) : undefined}
-                />
-              );
-            })}
+                const chId = `${baseId}_${ch}`;
+                const hasMidiMappingCh = midiMappings?.some((m) => m.parameter_id === chId);
+                return (
+                  <ParameterSlider
+                    key={chId}
+                    id={`slot-${slotIndex}-${template.templateId}-${ch}`}
+                    label={chLabel}
+                    value={chVal}
+                    min={0}
+                    max={255}
+                    step={1}
+                    color={chColor}
+                    inline
+                    onChange={(val) => {
+                      isUserInteractingRef.current = true;
+                      const newR = ch === "r" ? val : r;
+                      const newG = ch === "g" ? val : g;
+                      const newB = ch === "b" ? val : b;
+                      handleColorParamChange(slotIndex, template.templateId, rgbToHex(newR, newG, newB), setValue);
+                    }}
+                    onCommit={(after, before) => {
+                      isUserInteractingRef.current = false;
+                      if (after !== before) pushUndoEntry(chId, before, after);
+                    }}
+                    audioMapping={getAudioMappingIndicator(chId, audioMappings)}
+                    modulationIndicator={getModulationIndicator(chId, modulationTargets, lfos)}
+                    isMidiControlled={hasMidiMappingCh}
+                    pickupState={midiPickupStates?.get(chId)}
+                    midiParameterId={chId}
+                    onQuickBeat={onQuickBeat ? () => onQuickBeat(chId, 255) : undefined}
+                    onQuickLfo={onQuickLfo ? () => onQuickLfo(chId, 0, 255) : undefined}
+                    onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(chId) : undefined}
+                    onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(chId) : undefined}
+                  />
+                );
+              })}
             </div>
           </div>
         </div>
@@ -892,12 +859,15 @@ export function SlotParameterControls({
       return (
         <div
           key={paramId}
-          className={`${styles.fullWidthRow} ${styles.paramRow} ${highlightedParamIds?.has(paramId) ? styles.paramHighlighted : ''}`}
+          className={`${styles.fullWidthRow} ${styles.paramRow} ${highlightedParamIds?.has(paramId) ? styles.paramHighlighted : ""}`}
           ref={(el) => {
             if (el) rowRefs.current.set(paramId, el);
             else rowRefs.current.delete(paramId);
           }}
-          onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            hideParam(template.templateId);
+          }}
         >
           <ParameterSelect
             id={`slot-${slotIndex}-${template.templateId}`}
@@ -928,12 +898,15 @@ export function SlotParameterControls({
       return (
         <div
           key={paramId}
-          className={`${styles.paramRow} ${highlightedParamIds?.has(paramId) ? styles.paramHighlighted : ''}`}
+          className={`${styles.paramRow} ${highlightedParamIds?.has(paramId) ? styles.paramHighlighted : ""}`}
           ref={(el) => {
             if (el) rowRefs.current.set(paramId, el);
             else rowRefs.current.delete(paramId);
           }}
-          onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            hideParam(template.templateId);
+          }}
         >
           <StepInput
             id={`slot-${slotIndex}-${template.templateId}`}
@@ -943,8 +916,14 @@ export function SlotParameterControls({
             max={template.max}
             step={template.step}
             color={template.color ?? "emerald"}
-            onChange={(v) => { isUserInteractingRef.current = true; stepOnChange(v); }}
-            onCommit={(after, before) => { isUserInteractingRef.current = false; stepOnCommit(after, before); }}
+            onChange={(v) => {
+              isUserInteractingRef.current = true;
+              stepOnChange(v);
+            }}
+            onCommit={(after, before) => {
+              isUserInteractingRef.current = false;
+              stepOnCommit(after, before);
+            }}
           />
         </div>
       );
@@ -957,12 +936,15 @@ export function SlotParameterControls({
       return (
         <div
           key={paramId}
-          className={`${styles.fullWidthRow} ${styles.paramRow} ${highlightedParamIds?.has(paramId) ? styles.paramHighlighted : ''}`}
+          className={`${styles.fullWidthRow} ${styles.paramRow} ${highlightedParamIds?.has(paramId) ? styles.paramHighlighted : ""}`}
           ref={(el) => {
             if (el) rowRefs.current.set(paramId, el);
             else rowRefs.current.delete(paramId);
           }}
-          onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            hideParam(template.templateId);
+          }}
         >
           <ParameterSlider
             id={`slot-${slotIndex}-${template.templateId}`}
@@ -971,11 +953,17 @@ export function SlotParameterControls({
             min={template.min}
             max={template.max}
             step={template.step}
-            color={template.color ?? 'emerald'}
+            color={template.color ?? "emerald"}
             showSpacing={index > 0}
             description={undefined}
-            onChange={(v) => { isUserInteractingRef.current = true; sliderOnChange(v); }}
-            onCommit={(after, before) => { isUserInteractingRef.current = false; sliderOnCommit(after, before); }}
+            onChange={(v) => {
+              isUserInteractingRef.current = true;
+              sliderOnChange(v);
+            }}
+            onCommit={(after, before) => {
+              isUserInteractingRef.current = false;
+              sliderOnCommit(after, before);
+            }}
             audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
             modulationIndicator={getModulationIndicator(paramId, modulationTargets, lfos)}
             isMidiControlled={hasMidiMapping}
@@ -992,12 +980,15 @@ export function SlotParameterControls({
     return (
       <div
         key={paramId}
-        className={`${styles.paramRow} ${highlightedParamIds?.has(paramId) ? styles.paramHighlighted : ''}`}
+        className={`${styles.paramRow} ${highlightedParamIds?.has(paramId) ? styles.paramHighlighted : ""}`}
         ref={(el) => {
           if (el) rowRefs.current.set(paramId, el);
           else rowRefs.current.delete(paramId);
         }}
-        onContextMenu={(e) => { e.preventDefault(); hideParam(template.templateId); }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          hideParam(template.templateId);
+        }}
       >
         <KnobInput
           id={`slot-${slotIndex}-${template.templateId}`}
@@ -1007,8 +998,14 @@ export function SlotParameterControls({
           max={template.max}
           step={template.step}
           color={template.color ?? "emerald"}
-          onChange={(v) => { isUserInteractingRef.current = true; sliderOnChange(v); }}
-          onCommit={(after, before) => { isUserInteractingRef.current = false; sliderOnCommit(after, before); }}
+          onChange={(v) => {
+            isUserInteractingRef.current = true;
+            sliderOnChange(v);
+          }}
+          onCommit={(after, before) => {
+            isUserInteractingRef.current = false;
+            sliderOnCommit(after, before);
+          }}
           audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
           modulationIndicator={getModulationIndicator(paramId, modulationTargets, lfos)}
           isMidiControlled={hasMidiMapping}
@@ -1021,7 +1018,7 @@ export function SlotParameterControls({
         />
       </div>
     );
-};
+  };
 
   // Group parameters by their group field for rendering
   const groupedParameters = (() => {
@@ -1064,10 +1061,7 @@ export function SlotParameterControls({
               const isCollapsed = group ? collapsedGroups.has(group) : false;
               const label = group ? (GROUP_LABELS[group] ?? group) : undefined;
               return (
-                <div
-                  key={group ?? "__ungrouped__"}
-                  className={styles.paramGroup}
-                >
+                <div key={group ?? "__ungrouped__"} className={styles.paramGroup}>
                   {label && (
                     <button
                       type="button"
@@ -1075,29 +1069,24 @@ export function SlotParameterControls({
                       onClick={() => group && toggleGroup(group)}
                       aria-expanded={!isCollapsed}
                     >
-                      <span className={`${styles.groupChevron} ${isCollapsed ? styles.groupChevronCollapsed : ""}`}>▾</span>
+                      <span className={`${styles.groupChevron} ${isCollapsed ? styles.groupChevronCollapsed : ""}`}>
+                        ▾
+                      </span>
                       <span className={styles.groupLabel}>{label}</span>
                     </button>
                   )}
                   {!isCollapsed && (
                     <div className={styles.paramGroupKnobs}>
-                      {groupTemplates.map((template, index) =>
-                        renderParameter(template, index)
-                      )}
+                      {groupTemplates.map((template, index) => renderParameter(template, index))}
                     </div>
                   )}
                 </div>
               );
             })
-          : sortedParameters.map((template, index) => renderParameter(template, index))
-        }
+          : sortedParameters.map((template, index) => renderParameter(template, index))}
       </div>
       {hiddenCount > 0 && (
-        <button
-          type="button"
-          className={styles.showHiddenChip}
-          onClick={showAllParams}
-        >
+        <button type="button" className={styles.showHiddenChip} onClick={showAllParams}>
           Show hidden ({hiddenCount})
         </button>
       )}

@@ -134,66 +134,52 @@ function createAuraMaterial(
    * mapSdf: Combines inline 2D rotation, warp transform, and compact noise
    * Returns pseudo-distance for volumetric raymarch
    */
-  const mapSdf = Fn(
-    ([p, t, speed, complexity, distance, seed]: [
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-    ]) => {
-      // Inline rotate2D helper
-      const rotate2D = (pt: any, angle: any) =>
-        vec2(
-          pt.x.mul(cos(angle)).sub(pt.y.mul(sin(angle))),
-          pt.x.mul(sin(angle)).add(pt.y.mul(cos(angle))),
-        );
+  const mapSdf = Fn(([p, t, speed, complexity, distance, seed]: [any, any, any, any, any, any]) => {
+    // Inline rotate2D helper
+    const rotate2D = (pt: any, angle: any) =>
+      vec2(pt.x.mul(cos(angle)).sub(pt.y.mul(sin(angle))), pt.x.mul(sin(angle)).add(pt.y.mul(cos(angle))));
 
-      // Warp: apply time-driven rotations in XZ and XY
-      const tt = t.mul(speed);
-      const pv = vec3(p).toVar();
+    // Warp: apply time-driven rotations in XZ and XY
+    const tt = t.mul(speed);
+    const pv = vec3(p).toVar();
 
-      // Rotation offset based on seed (different phase from frequency)
-      const rotationSeedOffset = cos(seed.mul(0.08)).sub(1.0).mul(3.14159);
+    // Rotation offset based on seed (different phase from frequency)
+    const rotationSeedOffset = cos(seed.mul(0.08)).sub(1.0).mul(3.14159);
 
-      // Wrap rotation angles to prevent precision loss (0-2π range)
-      const angXZ = sin(mod(tt.mul(0.1).add(rotationSeedOffset), 6.283185));
-      const angXY = cos(
-        mod(tt.mul(0.4).add(rotationSeedOffset.mul(0.73)), 6.283185),
-      );
+    // Wrap rotation angles to prevent precision loss (0-2π range)
+    const angXZ = sin(mod(tt.mul(0.1).add(rotationSeedOffset), 6.283185));
+    const angXY = cos(mod(tt.mul(0.4).add(rotationSeedOffset.mul(0.73)), 6.283185));
 
-      // Apply rotations
-      const rxz = rotate2D(pv.xz, angXZ);
-      pv.x.assign(rxz.x);
-      pv.z.assign(rxz.y);
-      const rxy = rotate2D(pv.xy, angXY);
-      pv.x.assign(rxy.x);
-      pv.y.assign(rxy.y);
+    // Apply rotations
+    const rxz = rotate2D(pv.xz, angXZ);
+    pv.x.assign(rxz.x);
+    pv.z.assign(rxz.y);
+    const rxy = rotate2D(pv.xy, angXY);
+    pv.x.assign(rxy.x);
+    pv.y.assign(rxy.y);
 
-      // Compact noise (formerly baseNoise)
-      // Wrap tt to reasonable range for noise precision
-      const wrappedTT = mod(tt, 100.0);
+    // Compact noise (formerly baseNoise)
+    // Wrap tt to reasonable range for noise precision
+    const wrappedTT = mod(tt, 100.0);
 
-      // Frequency variation based on seed
-      const frequencySeed = float(1.0)
-        .add(sin(seed.mul(0.05)).mul(1.2))
-        .add(cos(seed.mul(0.11)).sub(1.0).mul(0.4));
+    // Frequency variation based on seed
+    const frequencySeed = float(1.0)
+      .add(sin(seed.mul(0.05)).mul(1.2))
+      .add(cos(seed.mul(0.11)).sub(1.0).mul(0.4));
 
-      const q = pv.mul(complexity).mul(frequencySeed).add(wrappedTT);
+    const q = pv.mul(complexity).mul(frequencySeed).add(wrappedTT);
 
-      // Time-based offset
-      const timeOffset = mod(wrappedTT.mul(0.06), 6.283185);
-      const sinOffset = vec3(sin(timeOffset));
-      const posLen = length(pv.add(sinOffset));
-      const lenPos = length(pv);
-      const logComp = log(lenPos.add(0.9));
-      const cosNoise = cos(q.x.add(sin(q.z.add(cos(q.y))))).mul(0.5);
-      const n = posLen.mul(logComp).add(cosNoise);
+    // Time-based offset
+    const timeOffset = mod(wrappedTT.mul(0.06), 6.283185);
+    const sinOffset = vec3(sin(timeOffset));
+    const posLen = length(pv.add(sinOffset));
+    const lenPos = length(pv);
+    const logComp = log(lenPos.add(0.9));
+    const cosNoise = cos(q.x.add(sin(q.z.add(cos(q.y))))).mul(0.5);
+    const n = posLen.mul(logComp).add(cosNoise);
 
-      return n.sub(distance);
-    },
-  );
+    return n.sub(distance);
+  });
 
   /**
    * Main Aura shader function
@@ -213,14 +199,7 @@ function createAuraMaterial(
       const p = vec3(0.0, 0.0, 4.0).add(rayDir.mul(d));
 
       const rz = mapSdf(p, _time, uSpeed, uComplexity, uDistance, uSeed);
-      const rzOffset = mapSdf(
-        p.add(uSampleOffset),
-        _time,
-        uSpeed,
-        uComplexity,
-        uDistance,
-        uSeed,
-      );
+      const rzOffset = mapSdf(p.add(uSampleOffset), _time, uSpeed, uComplexity, uDistance, uSeed);
 
       const f = clamp(rz.sub(rzOffset).mul(0.5), -0.1, 0.1);
 
@@ -237,20 +216,12 @@ function createAuraMaterial(
       stepCount.addAssign(active);
 
       const stepSize = min(rz.abs(), 1.0);
-      const safeStep = select(
-        stepSize.lessThan(0.0001),
-        float(0.001),
-        stepSize,
-      );
+      const safeStep = select(stepSize.lessThan(0.0001), float(0.001), stepSize);
       d.addAssign(safeStep);
     });
 
     const hdr = vec3(min(vec3(1.0), accum));
-    const finalComposite = vec3(
-      max(uBackground.x, hdr.x),
-      max(uBackground.y, hdr.y),
-      max(uBackground.z, hdr.z),
-    );
+    const finalComposite = vec3(max(uBackground.x, hdr.x), max(uBackground.y, hdr.y), max(uBackground.z, hdr.z));
 
     // Apply tonemapping based on mode
     const outColor = vec3(finalComposite).toVar();
@@ -274,9 +245,7 @@ function createAuraMaterial(
     // Add static grain texture using mathematical noise
     // Uses _uv (screenAspectUV) to match original seb.cat implementation
     // Now that mesh no longer rotates, the grain will be static
-    const grain = fract(
-      sin(dot(_uv, vec2(12.9898, 78.233))).mul(43758.5453123),
-    );
+    const grain = fract(sin(dot(_uv, vec2(12.9898, 78.233))).mul(43758.5453123));
     const g = grain.mul(uGrainIntensity).mul(0.5);
     const finalColor = outColor.add(g);
 
@@ -424,13 +393,14 @@ export function Aura({ opacity, params, colors }: SketchProps) {
     uniforms.startColor.value.set(startColor[0], startColor[1], startColor[2]);
     uniforms.midColor.value.set(midColor[0], midColor[1], midColor[2]);
     uniforms.endColor.value.set(endColor[0], endColor[1], endColor[2]);
-    uniforms.background.value.set(
-      background[0],
-      background[1],
-      background[2],
-      background[3] ?? 1.0,
-    );
+    uniforms.background.value.set(background[0], background[1], background[2], background[3] ?? 1.0);
   }, [colorsKey, uniforms]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    return () => {
+      material.dispose();
+    };
+  }, [material]);
 
   return (
     <mesh>

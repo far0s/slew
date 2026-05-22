@@ -14,17 +14,17 @@ pub mod common;
 pub mod config;
 pub mod frame_distribution;
 pub mod hid;
+pub mod link;
 pub mod midi;
 pub mod midi_clock;
-pub mod link;
 pub mod modulation;
 pub mod osc;
-pub mod wled;
 #[cfg(target_os = "macos")]
 pub mod syphon;
 pub mod updater;
 pub mod video_out;
 pub mod window_manager;
+pub mod wled;
 
 // =============================================================================
 // Parameter Server
@@ -400,7 +400,10 @@ fn set_color_channels(
     // For non-zero transition, emit as-is so the tick loop can animate smoothly.
     let make_immediate = |p: Parameter| -> Parameter {
         if transition_speed <= 0.0 {
-            Parameter { value: p.target, ..p }
+            Parameter {
+                value: p.target,
+                ..p
+            }
         } else {
             p
         }
@@ -656,7 +659,12 @@ fn initialize_slot_parameters(
 /// This first clears ALL existing parameters for the slot, then reinitializes from defaults.
 /// This ensures a clean slate when switching between sketches.
 #[tauri::command]
-fn reset_slot_parameters(app: AppHandle, slot_index: usize, sketch_id: String, initial_alpha: Option<f64>) -> Vec<Parameter> {
+fn reset_slot_parameters(
+    app: AppHandle,
+    slot_index: usize,
+    sketch_id: String,
+    initial_alpha: Option<f64>,
+) -> Vec<Parameter> {
     let prefix = format!("slot_{}_", slot_index);
     let defaults = get_sketch_defaults(&sketch_id);
     let mut result: Vec<Parameter> = Vec::new();
@@ -806,6 +814,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .setup(|app| {
+            #[cfg(debug_assertions)]
+            app.handle().plugin(tauri_plugin_mcp_bridge::init())?;
             load_parameters_from_disk(app);
             load_slots_from_disk(app);
 

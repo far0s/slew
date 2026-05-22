@@ -1,22 +1,7 @@
 import { useMemo, useEffect } from "react";
 import * as THREE from "three";
 import { MeshBasicNodeMaterial } from "three/webgpu";
-import {
-  Fn,
-  uniform,
-  uv,
-  vec2,
-  vec3,
-  vec4,
-  float,
-  sin,
-  sqrt,
-  atan,
-  log2,
-  mod,
-  time,
-  screenSize,
-} from "three/tsl";
+import { Fn, uniform, uv, vec2, vec3, vec4, float, sin, sqrt, atan, log2, mod, time, screenSize } from "three/tsl";
 import { useFrame, useThree } from "@react-three/fiber";
 import type { SketchProps } from "../../types";
 import { descriptor } from "./descriptor";
@@ -59,9 +44,7 @@ function createTunnelMaterial(): {
     const centeredUV = vec2(baseUV.x.mul(aspect), baseUV.y);
 
     // Convert to polar coordinates
-    const radius = sqrt(
-      centeredUV.x.mul(centeredUV.x).add(centeredUV.y.mul(centeredUV.y)),
-    );
+    const radius = sqrt(centeredUV.x.mul(centeredUV.x).add(centeredUV.y.mul(centeredUV.y)));
     const angle = atan(centeredUV.y, centeredUV.x);
 
     // Create infinite zoom effect using log of radius
@@ -85,9 +68,7 @@ function createTunnelMaterial(): {
       .add(0.5);
 
     // Combine patterns with layer phase for depth variation
-    const combined = pattern1
-      .mul(layerPhase)
-      .add(pattern2.mul(float(1.0).sub(layerPhase)));
+    const combined = pattern1.mul(layerPhase).add(pattern2.mul(float(1.0).sub(layerPhase)));
 
     // Color cycling based on depth and time
     const colorTime = t.mul(uColorSpeed);
@@ -161,6 +142,12 @@ export function FeedbackTunnel({ opacity, params }: SketchProps) {
   useEffect(() => {
     uniforms.opacity.value = opacity;
   }, [opacity, uniforms]);
+
+  useEffect(() => {
+    return () => {
+      material.dispose();
+    };
+  }, [material]);
 
   useFrame(() => {
     // Material handles animation via time uniform

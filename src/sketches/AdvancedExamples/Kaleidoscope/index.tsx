@@ -61,9 +61,7 @@ function createKaleidoscopeMaterial(): {
     const centeredUV = vec2(baseUV.x.mul(aspect), baseUV.y);
 
     // Convert to polar coordinates
-    const radius = sqrt(
-      centeredUV.x.mul(centeredUV.x).add(centeredUV.y.mul(centeredUV.y)),
-    );
+    const radius = sqrt(centeredUV.x.mul(centeredUV.x).add(centeredUV.y.mul(centeredUV.y)));
     const angle = atan(centeredUV.y, centeredUV.x);
 
     // Add rotation over time
@@ -76,9 +74,7 @@ function createKaleidoscopeMaterial(): {
     // Mirror every other segment
     const segmentIndex = floor(rotatedAngle.div(segmentAngle));
     const isOdd = mod(segmentIndex, float(2.0));
-    const mirroredAngle = foldedAngle
-      .mul(isOdd.mul(-2.0).add(1.0))
-      .add(isOdd.mul(segmentAngle));
+    const mirroredAngle = foldedAngle.mul(isOdd.mul(-2.0).add(1.0)).add(isOdd.mul(segmentAngle));
 
     // Convert back to cartesian for pattern sampling
     const patternX = cos(mirroredAngle).mul(radius).mul(uZoom);
@@ -88,15 +84,10 @@ function createKaleidoscopeMaterial(): {
     const pt = t.mul(uPatternSpeed);
 
     // Layer 1: Flowing waves
-    const wave1 = sin(patternX.mul(3.0).add(pt.mul(1.2))).mul(
-      cos(patternY.mul(2.5).sub(pt)),
-    );
+    const wave1 = sin(patternX.mul(3.0).add(pt.mul(1.2))).mul(cos(patternY.mul(2.5).sub(pt)));
 
     // Layer 2: Circular ripples
-    const patternDist = patternX
-      .mul(patternX)
-      .add(patternY.mul(patternY))
-      .sqrt();
+    const patternDist = patternX.mul(patternX).add(patternY.mul(patternY)).sqrt();
     const ripple = sin(patternDist.mul(5.0).sub(pt.mul(2.0)));
 
     // Layer 3: Diagonal stripes
@@ -163,6 +154,12 @@ export function Kaleidoscope({ opacity, params }: SketchProps) {
   useEffect(() => {
     uniforms.opacity.value = opacity;
   }, [opacity, uniforms]);
+
+  useEffect(() => {
+    return () => {
+      material.dispose();
+    };
+  }, [material]);
 
   useFrame(() => {
     // Material handles animation via time uniform

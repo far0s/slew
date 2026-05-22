@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Slew",
   "version": "0.12.0",
-    "identifier": "com.seb.slew",
+  "identifier": "com.seb.slew",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -11,6 +11,7 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "label": "renderer",
@@ -44,9 +45,7 @@
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDk2ODJENEJFNDQ3OThDOTQKUldTVWpIbEV2dFNDbHRYZGZiNzg2UnJCSUVNVzNqb05uQXpjNkZUQ2o5cE56c0dzQjVzUFJsK2YK",
-      "endpoints": [
-        "https://github.com/far0s/slew/releases/latest/download/latest.json"
-      ],
+      "endpoints": ["https://github.com/far0s/slew/releases/latest/download/latest.json"],
       "dialog": false
     }
   },
@@ -54,13 +53,7 @@
     "active": true,
     "createUpdaterArtifacts": true,
     "targets": "all",
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
     "category": "Entertainment",
     "shortDescription": "VJ software for creative coders",
     "longDescription": "Slew is a modular VJ engine for real-time visual performance. Features include dual-window architecture (renderer + controls), scene system with crossfading, MIDI/OSC/HID input, audio-reactive parameters with FFT analysis, LFO modulation, and video output via Syphon (macOS) and NDI.",
