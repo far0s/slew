@@ -5,7 +5,7 @@
  * Components are lazy-loaded via LazySketchRegistry when actually used.
  */
 
-import type { SketchGroup } from "../types";
+import type { SketchGroup } from "@/sketches/types";
 
 // Import descriptors from separate files (no component code included)
 import { descriptor as plasmaDescriptor } from "./Plasma/descriptor";

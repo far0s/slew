@@ -1,4 +1,4 @@
-import type { SketchDescriptor } from "../../types";
+import type { SketchDescriptor } from "@/sketches/types";
 
 export const descriptor: SketchDescriptor = {
   id: "vortexBeam",

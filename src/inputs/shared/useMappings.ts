@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useEventListener } from "./useEventListener";
 import type { MappingHookConfig, MappingHookResult } from "./types";
-import { logger } from "../../lib/logger";
+import { logger } from "@/lib/logger";
 
 export interface UseMappingsOptions<TMapping> {
   initialValue?: TMapping[];

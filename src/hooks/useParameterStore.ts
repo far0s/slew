@@ -1,14 +1,14 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import type { SketchId, ParameterTemplateId } from "../sketches";
-import { getSketchDescriptor, templateIdToPropsKey } from "../sketches";
-import type { ParameterId, SlotParameterId } from "../slots/slotTypes";
+import type { SketchId, ParameterTemplateId } from "@/sketches";
+import { getSketchDescriptor, templateIdToPropsKey } from "@/sketches";
+import type { ParameterId, SlotParameterId } from "@/slots/slotTypes";
 import {
   buildSlotDefaultParameters,
   buildAllSlotsDefaultParameters,
   copySlotParameters,
   makeSlotParameterId,
   parseSlotParameterId,
-} from "../slots/slotTypes";
+} from "@/slots/slotTypes";
 
 /**
  * Backend parameter shape (from Rust Parameter Server).

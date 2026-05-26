@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useState, useEffect, useCallback } from "react";
-import { logger } from "../lib/logger";
+import { logger } from "@/lib/logger";
 
 export interface WledSegmentMapping {
   segment_id: number;

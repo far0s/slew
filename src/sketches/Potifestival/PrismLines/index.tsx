@@ -24,11 +24,11 @@ import {
   mod,
 } from "three/tsl";
 
-import type { SketchProps } from "../../types";
+import type { SketchProps } from "@/sketches/types";
 import { descriptor } from "./descriptor";
 
 export { descriptor };
-import { screenAspectUV } from "../../../lib/tsl/utils";
+import { screenAspectUV } from "@/lib/tsl/utils";
 
 interface PrismLinesUniforms {
   colorA: { value: THREE.Vector3 };

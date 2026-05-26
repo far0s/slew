@@ -1,49 +1,52 @@
+// Parameter widgets
+export { ParameterControl, type ParameterControlProps } from "./parameters/ParameterControl";
+
 // UI Components
 export {
   Button,
   type ButtonProps,
   type ButtonVariant,
   type ButtonSize,
-} from "./Button";
-export { ColorPicker, type ColorPickerProps } from "./ColorPicker";
+} from "./layout/Button";
+export { ColorPicker, type ColorPickerProps } from "./parameters/ColorPicker";
 export {
   ParameterSlider,
   type ParameterSliderProps,
   type SliderColorVariant,
   type AudioMappingIndicator,
-} from "./ParameterSlider";
+} from "./parameters/ParameterSlider";
 
 // Slot Components
 export {
   SlotParameterControls,
   type SlotParameterControlsProps,
-} from "./SlotParameterControls";
-export { SlotColumn, type SlotColumnProps } from "./SlotColumn";
-export { SlotsArea, type SlotsAreaProps } from "./SlotsArea";
+} from "./slots/SlotParameterControls";
+export { SlotColumn, type SlotColumnProps } from "./slots/SlotColumn";
+export { SlotsArea, type SlotsAreaProps } from "./slots/SlotsArea";
 
 // Preview Components
-export { RendererPreview, type RendererPreviewProps } from "./RendererPreview";
-export { StreamedPreview } from "./StreamedPreview";
+export { RendererPreview, type RendererPreviewProps } from "./preview/RendererPreview";
+export { StreamedPreview } from "./preview/StreamedPreview";
 
 // Input Panel Components
-export { MidiPanel, type MidiPanelProps } from "./MidiPanel";
-export { MidiLearnButton, type MidiLearnButtonProps } from "./MidiLearnButton";
-export { OscPanel, type OscPanelProps } from "./OscPanel";
-export { AudioPanel, type AudioPanelProps } from "./AudioPanel";
-export { HidPanel, type HidPanelProps } from "./HidPanel";
-export { ModulationPanel, type ModulationPanelProps } from "./ModulationPanel";
-export { VideoOutputPanel } from "./VideoOutputPanel";
+export { MidiPanel, type MidiPanelProps } from "./panels/MidiPanel";
+export { MidiLearnButton, type MidiLearnButtonProps } from "./parameters/MidiLearnButton";
+export { OscPanel, type OscPanelProps } from "./panels/OscPanel";
+export { AudioPanel, type AudioPanelProps } from "./panels/AudioPanel";
+export { HidPanel, type HidPanelProps } from "./panels/HidPanel";
+export { ModulationPanel, type ModulationPanelProps } from "./panels/ModulationPanel";
+export { VideoOutputPanel } from "./panels/VideoOutputPanel";
 
 // Sidebar Component
-export { Sidebar, type SidebarProps } from "./Sidebar";
+export { Sidebar, type SidebarProps } from "./layout/Sidebar";
 
 // Update
-export { UpdateBanner } from "./UpdateBanner";
+export { UpdateBanner } from "./layout/UpdateBanner";
 
 // Additional components
-export { WledPanel } from "./WledPanel";
-export { ShortcutsModal } from "./ShortcutsModal/ShortcutsModal";
-export { KnobInput, type KnobInputProps, type KnobColorVariant } from "./KnobInput";
-export { StepInput, type StepInputProps } from "./StepInput";
-export { SpectrumAnalyzer, type SpectrumAnalyzerProps, type VisualizerMode } from "./SpectrumAnalyzer";
-export { AudioIndicator } from "./AudioIndicator";
+export { WledPanel } from "./panels/WledPanel";
+export { ShortcutsModal } from "./layout/ShortcutsModal/ShortcutsModal";
+export { KnobInput, type KnobInputProps, type KnobColorVariant } from "./parameters/KnobInput";
+export { StepInput, type StepInputProps } from "./parameters/StepInput";
+export { SpectrumAnalyzer, type SpectrumAnalyzerProps, type VisualizerMode } from "./panels/SpectrumAnalyzer";
+export { AudioIndicator } from "./panels/AudioIndicator";

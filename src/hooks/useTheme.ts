@@ -1,5 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
-import { createSimpleStorage } from "../lib/storage";
+import { createSimpleStorage } from "@/lib/storage";
 
 // ==========================================================================
 // Types

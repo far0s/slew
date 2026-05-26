@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
-import { toggleFullscreen } from "../hooks/useWindowManager";
+import { toggleFullscreen } from "@/hooks/useWindowManager";
 import * as THREE from "three";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -7,7 +7,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { WebGPUCanvas } from "./WebGPUCanvas";
 import { VideoOutputCapture } from "./VideoOutputCapture";
 import { SlotPreviewCapture } from "./SlotPreviewCapture";
-import { logger } from "../lib/logger";
+import { logger } from "@/lib/logger";
 import {
   SKETCH_COMPONENT_REGISTRY,
   SketchLoadingFallback,
@@ -15,15 +15,15 @@ import {
   type SketchId,
   getSketchDescriptor,
   templateIdToPropsKey,
-} from "../sketches";
-import { makeSlotParameterId } from "../slots/slotTypes";
-import { useRendererSettings } from "../hooks";
-import type { RendererInfo, RendererStats } from "../hooks";
+} from "@/sketches";
+import { makeSlotParameterId } from "@/slots/slotTypes";
+import { useRendererSettings } from "@/hooks";
+import type { RendererInfo, RendererStats } from "@/hooks";
 import {
   HEARTBEAT_INTERVAL_MS,
   FPS_SAMPLE_COUNT,
   STATS_REPORT_INTERVAL_MS,
-} from "../config";
+} from "@/config";
 import styles from "./RendererRoot.module.css";
 
 // =============================================================================

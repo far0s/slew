@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Slot } from "../slots/useSlots";
-import type { SketchId } from "../sketches";
-import { buildSlotDefaultParameters } from "../slots/slotTypes";
-import { logger } from "../lib/logger";
+import type { Slot } from "@/slots/useSlots";
+import type { SketchId } from "@/sketches";
+import { buildSlotDefaultParameters } from "@/slots/slotTypes";
+import { logger } from "@/lib/logger";
 import type { ParameterStoreState, BackendParameter, SlotConfig } from "./useParameterStore";
 
 interface UseParameterBackendSyncParams {

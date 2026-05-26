@@ -12,7 +12,7 @@ import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useMessageActivity } from "./shared";
-import { logger } from "../lib/logger";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // Types (matching Rust structs)

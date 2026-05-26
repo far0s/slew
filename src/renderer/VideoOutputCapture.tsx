@@ -26,7 +26,7 @@ import * as THREE from "three";
 import * as THREEWebGPU from "three/webgpu";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { logger } from "../lib/logger";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // Types

@@ -18,7 +18,7 @@ export type {
   ParameterTemplate,
   ParameterTemplateId,
   SliderColor,
-} from "../sketches";
+} from "@/sketches";
 
 export {
   SKETCH_REGISTRY,
@@ -26,7 +26,7 @@ export {
   getSketchDescriptor,
   getSketchParameterTemplateIds,
   getSketchParameterTemplate,
-} from "../sketches";
+} from "@/sketches";
 
 import {
   type SketchId,
@@ -37,7 +37,7 @@ import {
   getSketchDescriptor,
   getSketchParameterTemplate,
   getSketchParameterTemplateIds,
-} from "../sketches";
+} from "@/sketches";
 
 // ============================================================================
 // Slot-Level Parameter Templates

@@ -1,0 +1,94 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem 0.3rem;
+  align-items: start;
+  justify-items: center;
+}
+
+.errorMessage {
+  color: rgb(239 68 68 / 0.9);
+  font-size: 0.8rem;
+  padding: 0.5rem;
+}
+
+.showHiddenChip {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 0.18rem 0.5rem;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+  margin-top: 0.1rem;
+}
+
+.showHiddenChip:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-default);
+}
+
+.paramGroup {
+  display: flex;
+  flex-direction: column;
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  width: 100%;
+}
+
+.paramGroupKnobs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem 0.3rem;
+  align-items: start;
+  justify-items: center;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0 0.35rem 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.67rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  transition: color 0.12s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.groupHeader:hover {
+  color: var(--text-secondary);
+}
+
+.groupChevron {
+  font-size: 0.7rem;
+  display: inline-block;
+  transition: transform 0.15s ease;
+  line-height: 1;
+  margin-top: 0.05rem;
+}
+
+.groupChevronCollapsed {
+  transform: rotate(-90deg);
+}
+
+.groupLabel {
+  line-height: 1;
+}

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { globalTapTempo, matchesTapShortcut } from "../inputs/tapTempo";
+import { globalTapTempo, matchesTapShortcut } from "@/inputs/tapTempo";
 
 interface UseGlobalKeyboardParams {
   isMidiLearning: boolean;

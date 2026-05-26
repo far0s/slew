@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { logger } from "../lib/logger";
-import { HEARTBEAT_INTERVAL_MS, STATUS_POLL_INTERVAL_MS } from "../config";
+import { logger } from "@/lib/logger";
+import { HEARTBEAT_INTERVAL_MS, STATUS_POLL_INTERVAL_MS } from "@/config";
 
 // =============================================================================
 // Types

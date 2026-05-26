@@ -1,0 +1,140 @@
+.paramRow {
+  position: relative;
+  isolation: isolate;
+  border-radius: 0.35rem;
+  height: 100%;
+}
+
+.paramRow::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 0.4rem;
+  border: 1.5px solid color-mix(in srgb, var(--accent-primary) 50%, transparent);
+  background: color-mix(in srgb, var(--accent-primary) 6%, transparent);
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0;
+  transform: scale(0.93);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.paramHighlighted::before {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.fullWidthRow {
+  grid-column: 1 / -1;
+  width: 100%;
+  justify-self: stretch;
+}
+
+.colorParamRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.colorParamRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.colorParamRowSpaced {
+  padding-top: 0.3rem;
+}
+
+.colorParamHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.05rem 0 0.15rem 0;
+}
+
+.colorParamLabel {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+  flex-shrink: 0;
+  margin-right: auto;
+}
+
+.colorSliders {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.22s ease;
+}
+
+.colorSliders[data-collapsed="true"] {
+  grid-template-rows: 0fr;
+}
+
+.colorSlidersInner {
+  overflow: hidden;
+}
+
+.chromaLoopToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.5rem 0.18rem 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+  letter-spacing: 0.02em;
+}
+
+.chromaLoopToggle:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-default);
+}
+
+.chromaLoopActive {
+  color: rgb(167 139 250) !important;
+  border-color: rgb(139 92 246 / 0.6) !important;
+  background: rgb(139 92 246 / 0.12) !important;
+  animation: chromaPulse 2s ease-in-out infinite;
+}
+
+@keyframes chromaPulse {
+  0%, 100% { border-color: rgb(139 92 246 / 0.6); }
+  50%       { border-color: rgb(167 139 250 / 0.9); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chromaLoopActive {
+    animation: none;
+  }
+}
+
+.chromaLoopIcon {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+}
+
+.chromaLoopSelect {
+  font-size: 0.68rem;
+  padding: 0.18rem 0.3rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.12s ease;
+}
+
+.chromaLoopSelect:hover,
+.chromaLoopSelect:focus {
+  border-color: var(--border-default);
+}

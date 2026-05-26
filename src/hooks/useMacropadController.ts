@@ -1,10 +1,10 @@
 import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { SlotsState } from "../slots/useSlots";
-import { useMacropad, DEFAULT_SENSITIVITY } from "../inputs/hid";
-import { makeSlotParameterId } from "../slots/slotTypes";
-import { getSketchDescriptor } from "../sketches";
-import { logger } from "../lib/logger";
+import type { SlotsState } from "@/slots/useSlots";
+import { useMacropad, DEFAULT_SENSITIVITY } from "@/inputs/hid";
+import { makeSlotParameterId } from "@/slots/slotTypes";
+import { getSketchDescriptor } from "@/sketches";
+import { logger } from "@/lib/logger";
 import type { ParameterStoreState } from "./useParameterStore";
 
 interface UseMacropadControllerParams {

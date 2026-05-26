@@ -47,9 +47,8 @@ Promote color from a static sketch config value into a live, MIDI-learnable, LFO
 
 - [ ] Add `"color"` to the `inputType` union on `ParameterTemplate` (`src/sketches/types.ts`)
 - [ ] Expand color params into R/G/B sub-params in `buildSlotDefaultParameters` / `buildSlotParameterDescriptors` using a `slot_{n}_{id}_r/g/b` suffix convention; add `colorChannel?: "r"|"g"|"b"` and `colorGroup?: string` to `SlotParameterDescriptor`
-- [ ] Add `color_primary`, `color_secondary`, `color_bg` to `ParameterTemplateId`
 - [ ] Pack the three sub-params into `[r, g, b]` tuples in `SketchProps.params` so sketches receive a typed color value
-- [ ] `SlotParameterControls`: render a single `ColorPicker` row for the first channel of each color group; skip the `_g` / `_b` rows (already consumed)
+- [ ] `ParameterControl`: render a single `ColorPicker` row for the first channel of each color group; skip the `_g` / `_b` rows (already consumed)
 - [ ] Migrate existing sketches (`Aura` presets, etc.) from static `colorPalette` entries to proper `color` parameter descriptors; keep `colorPalette` as a source of default values only
 - [ ] MIDI-learn: support per-channel CC assignment (three `MidiLearnButton` instances in expanded view)
 

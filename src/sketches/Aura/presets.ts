@@ -9,7 +9,7 @@
  * Imports descriptor from separate file to enable lazy loading of the Aura component.
  */
 
-import type { SketchGroup, SketchDescriptor } from "../types";
+import type { SketchGroup, SketchDescriptor } from "@/sketches/types";
 import { descriptor as baseDescriptor } from "./descriptor";
 
 /**

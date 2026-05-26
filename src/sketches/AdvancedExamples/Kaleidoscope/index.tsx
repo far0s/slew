@@ -19,7 +19,7 @@ import {
   screenSize,
 } from "three/tsl";
 import { useFrame, useThree } from "@react-three/fiber";
-import type { SketchProps } from "../../types";
+import type { SketchProps } from "@/sketches/types";
 import { descriptor } from "./descriptor";
 
 // Re-export descriptor for backward compatibility

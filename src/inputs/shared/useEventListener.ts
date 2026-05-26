@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { listen, type UnlistenFn, type Event } from "@tauri-apps/api/event";
-import { logger } from "../../lib/logger";
+import { logger } from "@/lib/logger";
 
 export interface UseEventListenerOptions {
   enabled?: boolean;

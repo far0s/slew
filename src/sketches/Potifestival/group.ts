@@ -2,7 +2,7 @@
  * Potifestival Sketch Group
  */
 
-import type { SketchGroup } from "../types";
+import type { SketchGroup } from "@/sketches/types";
 import { descriptor as luminoSmokeDescriptor } from "./LuminoSmoke/descriptor";
 import { descriptor as prismLinesDescriptor } from "./PrismLines/descriptor";
 import { descriptor as starTrailsDescriptor } from "./StarTrails/descriptor";

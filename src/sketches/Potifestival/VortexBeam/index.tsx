@@ -25,11 +25,11 @@ import {
   max,
 } from "three/tsl";
 
-import type { SketchProps } from "../../types";
+import type { SketchProps } from "@/sketches/types";
 import { descriptor } from "./descriptor";
 
 export { descriptor };
-import { screenAspectUV } from "../../../lib/tsl/utils";
+import { screenAspectUV } from "@/lib/tsl/utils";
 
 interface VortexBeamUniforms {
   colorBeam: { value: THREE.Vector3 };

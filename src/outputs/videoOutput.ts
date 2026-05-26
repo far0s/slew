@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { BUFFER_POOL_STATS_INTERVAL_MS } from "../config";
+import { BUFFER_POOL_STATS_INTERVAL_MS } from "@/config";
 
 // ============================================================================
 // Types (matching Rust structs)

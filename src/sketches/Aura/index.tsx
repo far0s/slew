@@ -26,7 +26,7 @@ import {
   dot,
 } from "three/tsl";
 
-import type { SketchProps } from "../types";
+import type { SketchProps } from "@/sketches/types";
 import { descriptor } from "./descriptor";
 
 // Re-export descriptor for backward compatibility
@@ -40,7 +40,7 @@ import {
   bleachBypassTonemap,
   technicolorTonemap,
   cinematicTonemap,
-} from "../../lib/tsl/utils";
+} from "@/lib/tsl/utils";
 
 interface AuraUniforms {
   speed: { value: number };

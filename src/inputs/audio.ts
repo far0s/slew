@@ -10,8 +10,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, emit, type UnlistenFn } from "@tauri-apps/api/event";
 import { useEventListener, useFetchOnMount } from "./shared";
-import { logger } from "../lib/logger";
-import { BPM_HISTORY_SIZE, MIN_BPM, MAX_BPM } from "../config";
+import { logger } from "@/lib/logger";
+import { BPM_HISTORY_SIZE, MIN_BPM, MAX_BPM } from "@/config";
 
 // ============================================================================
 // Types (matching Rust structs)

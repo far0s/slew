@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { emit, listen } from "@tauri-apps/api/event";
-import { logger } from "../lib/logger";
-import { createVersionedStorage } from "../lib/storage";
-import { DEFAULT_DPR, DEFAULT_PREVIEW_FPS, MIN_DPR, MAX_DPR } from "../config";
+import { logger } from "@/lib/logger";
+import { createVersionedStorage } from "@/lib/storage";
+import { DEFAULT_DPR, DEFAULT_PREVIEW_FPS, MIN_DPR, MAX_DPR } from "@/config";
 
 /**
  * Renderer settings that can be configured from the Controls window

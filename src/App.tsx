@@ -11,9 +11,9 @@ import {
 import type { SketchId } from "./sketches";
 import { makeSlotParameterId, getParameterDropdownLabel, type ParameterId } from "./slots/slotTypes";
 import { SlotsArea, RendererPreview, Sidebar, UpdateBanner } from "./components";
-import { ToolbarUndoRedo, ToolbarTapBpm, PerformanceChip, ToolbarShortcutsButton } from "./components/Toolbar";
-import { ShortcutsModal } from "./components/ShortcutsModal/ShortcutsModal";
-import { AudioIndicator } from "./components/AudioIndicator";
+import { ToolbarUndoRedo, ToolbarTapBpm, PerformanceChip, ToolbarShortcutsButton } from "./components/layout/Toolbar";
+import { ShortcutsModal } from "./components/layout/ShortcutsModal/ShortcutsModal";
+import { AudioIndicator } from "./components/panels/AudioIndicator";
 import { useUndoHistory, applyUndo, applyRedo } from "./hooks/useUndoHistory";
 import { useAudioMappings, generateMappingId, type AudioMapping } from "./inputs/audio";
 import { useLfos, useModulationTargets, createLfo, createTarget } from "./inputs/modulation";

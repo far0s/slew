@@ -5,6 +5,7 @@
 - **CSS Modules + CSS Variables** — never Tailwind (removed in v0.8.0)
 - **No JSDoc** — types are self-documenting
 - **Strict mode** — `strict: true` in tsconfig
+- **Import alias** — use `@/` for all cross-directory imports (`@/hooks/useFoo`, `@/lib/color`); keep `./` for same-directory imports only
 
 Styles: `.module.css` files, theme tokens in `src/globals.css`, colors as `--color-{name}-{shade}`.
 
@@ -28,7 +29,7 @@ Parameters auto-generate UI via `SlotParameterControls`.
 
 1. Rust module: `src-tauri/src/{system}/` with submodules
 2. TypeScript hook: `src/inputs/{system}.ts` using `shared/` infra
-3. UI panel: `src/components/{System}Panel/`
+3. UI panel: `src/components/panels/{System}Panel/`
 4. Register commands in `src-tauri/src/lib.rs`
 
 Follow MIDI/OSC/Audio/HID patterns.

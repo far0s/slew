@@ -13,7 +13,7 @@ import {
   useMessageActivity,
   useMessageHistory,
 } from "./shared";
-import { logger } from "../lib/logger";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // Types (matching Rust structs)

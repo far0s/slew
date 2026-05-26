@@ -184,18 +184,22 @@ Stream rendered frames from Renderer to Controls window for pixel-perfect previe
           index.tsx         # Component + SketchDescriptor
       index.ts              # SKETCH_GROUPS, SKETCH_REGISTRY
       types.ts              # SketchDescriptor, SketchGroup, SketchProps
-    /components/            # React UI components
-      /ColorPicker/         # Rich color picker (React Aria)
-      /SlotColumn/          # Slot column with inline browser
-      /StreamedPreview/     # Streamed frame display for preview streaming
-    /controls/              # useParameterStore hook
+    /components/            # React UI components (grouped by concern)
+      /parameters/          # Parameter editing widgets (sliders, knobs, color pickers, etc.)
+      /slots/               # Slot management UI (SlotsArea, SlotColumn, SlotParameterControls)
+      /panels/              # Sidebar panels (MIDI, OSC, Audio, HID, Modulation, Video, WLED)
+      /preview/             # Preview components (RendererPreview, StreamedPreview)
+      /layout/              # App-level layout (Sidebar, Toolbar, Button, ShortcutsModal, UpdateBanner)
+      index.ts              # Public barrel — import all components from here
     /inputs/                # MIDI, OSC, Audio, HID hooks
       /shared/              # Reusable hook infrastructure
+    /outputs/               # Video output hooks (Syphon/Spout/NDI, WLED)
+    /hooks/                 # Shared React hooks (useParameterStore, useSlotColors, etc.)
+    /lib/                   # Pure utility modules (color.ts, storage.ts, logger.ts)
     /renderer/              # Renderer window (RendererRoot, VideoOutputCapture, SlotPreviewCapture)
     /slots/                 # Slot system utilities
       slotTypes.ts          # Parameter ID utilities
       useSlots.ts           # Slot state management
-    /hooks/                 # Shared React hooks
   /src-tauri/               # Rust backend
     /src/
       lib.rs                # Parameter server, tick loop, commands
@@ -243,12 +247,12 @@ See [`docs/CONVENTIONS.md`](CONVENTIONS.md).
 | `src/sketches/`                       | Grouped sketch modules                              |
 | `src/slots/useSlots.ts`               | Slot management hook                                |
 | `src/inputs/shared/`                  | Reusable hook infrastructure                        |
-| `src/controls/useParameterStore.ts`   | Parameter state                                     |
+| `src/hooks/useParameterStore.ts`      | Parameter state                                     |
 | `src/renderer/RendererRoot.tsx`       | Multi-slot rendering loop                           |
 | `src/renderer/SlotPreviewCapture.tsx` | Per-slot frame capture for preview streaming        |
 | `src/renderer/VideoOutputCapture.tsx` | Frame capture for Syphon/Spout/NDI + composited preview |
-| `src/components/StreamedPreview/`     | Streamed frame display in Controls window           |
-| `src/components/SlotColumn/`          | Slot UI with inline sketch browser                  |
+| `src/components/preview/StreamedPreview/` | Streamed frame display in Controls window       |
+| `src/components/slots/SlotColumn/`   | Slot UI with inline sketch browser                  |
 
 ---
 

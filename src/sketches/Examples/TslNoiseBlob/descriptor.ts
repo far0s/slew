@@ -1,4 +1,4 @@
-import type { SketchDescriptor } from "../../types";
+import type { SketchDescriptor } from "@/sketches/types";
 
 /**
  * TslNoiseBlob Sketch Descriptor

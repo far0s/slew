@@ -1,8 +1,8 @@
 import { useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { SlotsState } from "../slots/useSlots";
-import { makeSlotParameterId } from "../slots/slotTypes";
-import { logger } from "../lib/logger";
+import type { SlotsState } from "@/slots/useSlots";
+import { makeSlotParameterId } from "@/slots/slotTypes";
+import { logger } from "@/lib/logger";
 import type { ParameterStoreState } from "./useParameterStore";
 
 interface UseCrossfadeParams {

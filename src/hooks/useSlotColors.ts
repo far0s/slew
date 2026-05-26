@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { Slot } from "../slots/useSlots";
-import type { SketchProps } from "../sketches";
-import { getSketchDescriptor } from "../sketches";
-import { logger } from "../lib/logger";
+import type { Slot } from "@/slots/useSlots";
+import type { SketchProps } from "@/sketches";
+import { getSketchDescriptor } from "@/sketches";
+import { logger } from "@/lib/logger";
 
 type SlotColor = {
   startColor?: [number, number, number];
