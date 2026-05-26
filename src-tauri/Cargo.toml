@@ -51,8 +51,13 @@ objc2 = "0.6"                    # Objective-C runtime (must match Tauri's versi
 block2 = "0.6"                   # Objective-C blocks support
 
 # Video Output (Windows Spout)
-[target.'cfg(target_os = "windows")'.dependencies]
-rust-spout2 = "0.1"               # Spout2 GPU texture sharing (builds from source)
+# rust-spout2 and spout-rs both have CI build issues as of May 2026:
+# - spout-rs requires SPOUT2_LIB_DIR (no auto-build)
+# - rust-spout2 builds from source but autocxx-bindgen 0.65.1 panics on
+#   _Float16 complex types from LLVM 20 headers on windows-2025 runners
+# Revisit when autocxx-bindgen is updated or a more stable crate appears.
+# [target.'cfg(target_os = "windows")'.dependencies]
+# rust-spout2 = "0.1"
 
 # Video Output (NDI - cross-platform, optional)
 [dependencies.grafton-ndi]

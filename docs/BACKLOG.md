@@ -35,21 +35,6 @@ Design and implement proper app icon for Slew.
 
 ---
 
-### 🔴 Spout Video Output (Windows) `feature`
-
-Implement Spout backend for Windows video output.
-
-**Context**: Currently blocks professional Windows deployment. Syphon works on macOS, NDI works cross-platform, but Windows-native Spout is stubbed out (`video_out.rs:369` has TODO). Windows VJs need Spout to route output to Resolume, MadMapper, etc.
-
-**Subtasks**:
-
-- [x] Research Rust Spout bindings (check if `spout-rs` or similar exists)
-- [x] Implement SpoutBackend (mirror SyphonBackend pattern)
-- [x] Update documentation
-- [ ] Test with Spout receivers on Windows
-
----
-
 ## Medium Priority
 
 ### 🟡 Color Parameters `feature`
@@ -542,6 +527,28 @@ Complete Windows distribution pipeline testing.
 ---
 
 ## Future Consideration / Inspiration
+
+### 🎨 Spout Video Output (Windows) `feature`
+
+Implement Spout backend for Windows video output.
+
+**Context**: Windows VJs need Spout to route output to Resolume, MadMapper, etc. The `spout.rs` module and `SpoutBackend` in `video_out.rs` are already wired up correctly — the stub compiles and the Windows exe ships. Blocked on the Rust/Spout2 crate ecosystem.
+
+**Blocker (May 2026)**: Both available crates fail in CI:
+- `spout-rs` v0.1.3 — link-only wrapper; requires `SPOUT2_LIB_DIR` pointing at a pre-built SDK.
+- `rust-spout2` v0.1.3 — builds Spout2 from source via cmake (works!), but `autocxx-bindgen` 0.65.1 panics on `_Float16` complex types emitted by LLVM 20 headers on `windows-2025` runners.
+
+**To unblock**: uncomment `rust-spout2` in `Cargo.toml` and replace the no-ops in `spout.rs` once `autocxx-bindgen` is updated or a new Spout crate appears.
+
+**Subtasks**:
+
+- [x] Research Rust Spout bindings
+- [x] Implement SpoutBackend (mirror SyphonBackend pattern)
+- [x] Update documentation
+- [ ] Unblock: wait for `autocxx-bindgen` fix or new Spout crate, then replace stub
+- [ ] Test with Spout receivers on Windows
+
+---
 
 ### 🎨 IOSurface Zero-Copy (macOS) `feature`
 

@@ -363,8 +363,10 @@ impl VideoOutputBackend for SpoutBackend {
     }
 
     fn is_available(&self) -> bool {
-        // Spout is always available on Windows
-        true
+        // Spout implementation is currently a stub — return false so the
+        // backend is shown as unavailable in the UI until a working Spout
+        // crate is available. See src/spout.rs for details.
+        false
     }
 
     fn initialize(&mut self, config: &BackendConfig) -> Result<(), String> {

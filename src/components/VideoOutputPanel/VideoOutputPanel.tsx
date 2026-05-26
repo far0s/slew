@@ -43,7 +43,7 @@ const BACKEND_META: Record<
   },
   spout: {
     description: "Share frames with other apps on Windows",
-    unavailableReason: "Spout is only available on Windows",
+    unavailableReason: "Spout coming soon — not yet available in this build",
   },
 };
 
