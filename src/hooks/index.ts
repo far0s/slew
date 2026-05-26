@@ -1,4 +1,9 @@
 
+export { useSlotColors } from "./useSlotColors";
+export { useCrossfade } from "./useCrossfade";
+export { useParameterBackendSync } from "./useParameterBackendSync";
+export { useGlobalKeyboard } from "./useGlobalKeyboard";
+export { useMacropadController } from "./useMacropadController";
 export { usePerformanceMonitor } from "./usePerformanceMonitor";
 export type { PerformanceMonitorStats } from "./usePerformanceMonitor";
 export { useWindowManager } from "./useWindowManager";

@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   useWled,
   type WledSegmentMapping,
-} from "../../inputs/wled";
+} from "../../outputs/wled";
 import styles from "./WledPanel.module.css";
 
 const COLOR_PARAM_OPTIONS = [

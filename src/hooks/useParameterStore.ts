@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import type { SketchId, ParameterTemplateId } from "../sketches";
-import { getSketchDescriptor, TEMPLATE_ID_TO_PROPS_KEY } from "../sketches";
+import { getSketchDescriptor, templateIdToPropsKey } from "../sketches";
 import type { ParameterId, SlotParameterId } from "../slots/slotTypes";
 import {
   buildSlotDefaultParameters,
@@ -627,7 +627,7 @@ export function buildSlotSceneParams(
   const params: Record<string, number> = {};
 
   for (const template of sketch.parameters) {
-    const propsKey = TEMPLATE_ID_TO_PROPS_KEY[template.templateId];
+    const propsKey = templateIdToPropsKey(template.templateId);
     if (!propsKey) continue;
 
     if (template.inputType === "color") {
@@ -664,7 +664,7 @@ export function buildSlotSceneParamsInterpolated(
   const params: Record<string, number> = {};
 
   for (const template of sketch.parameters) {
-    const propsKey = TEMPLATE_ID_TO_PROPS_KEY[template.templateId];
+    const propsKey = templateIdToPropsKey(template.templateId);
     if (!propsKey) continue;
 
     if (template.inputType === "color") {

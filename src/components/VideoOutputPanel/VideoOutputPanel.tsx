@@ -21,7 +21,7 @@ import {
   useVideoOutputBackends,
   useBufferPoolStats,
   type BackendStatus,
-} from "../../inputs/videoOutput";
+} from "../../outputs/videoOutput";
 import { useRendererSettings } from "../../hooks";
 import styles from "./VideoOutputPanel.module.css";
 

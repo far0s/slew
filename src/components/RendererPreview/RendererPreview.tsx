@@ -11,7 +11,7 @@ import {
   SKETCH_COMPONENT_REGISTRY,
   SketchLoadingFallback,
   getSketchDescriptor,
-  TEMPLATE_ID_TO_PROPS_KEY,
+  templateIdToPropsKey,
 } from "../../sketches";
 import { makeSlotParameterId } from "../../slots/slotTypes";
 import { WebGPUCanvas } from "../../renderer/WebGPUCanvas";
@@ -63,7 +63,7 @@ function buildSlotParams(
 
   for (const template of descriptor.parameters) {
     const paramId = makeSlotParameterId(slotIndex, template.templateId);
-    const propsKey = TEMPLATE_ID_TO_PROPS_KEY[template.templateId];
+    const propsKey = templateIdToPropsKey(template.templateId);
     if (propsKey) {
       const value = getParam(paramId);
       params[propsKey] = value;

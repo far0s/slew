@@ -25,7 +25,7 @@ import { examplesGroup } from "./Examples";
 import { advancedExamplesGroup } from "./AdvancedExamples";
 import { auraGroup } from "./Aura/presets";
 import { potifestivalGroup } from "./Potifestival/group";
-import { TEMPLATE_ID_TO_PROPS_KEY } from "./parameterMappings";
+import { templateIdToPropsKey } from "./parameterMappings";
 import {
   LAZY_SKETCH_REGISTRY,
   getLazySketchComponent,
@@ -146,5 +146,5 @@ export type {
 };
 
 // Utilities
-export { TEMPLATE_ID_TO_PROPS_KEY };
+export { templateIdToPropsKey };
 export { SketchLoader, SketchLoadingFallback };
