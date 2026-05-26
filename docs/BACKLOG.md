@@ -43,10 +43,10 @@ Implement Spout backend for Windows video output.
 
 **Subtasks**:
 
-- [ ] Research Rust Spout bindings (check if `spout-rs` or similar exists)
-- [ ] Implement SpoutBackend (mirror SyphonBackend pattern)
+- [x] Research Rust Spout bindings (check if `spout-rs` or similar exists)
+- [x] Implement SpoutBackend (mirror SyphonBackend pattern)
+- [x] Update documentation
 - [ ] Test with Spout receivers on Windows
-- [ ] Update documentation
 
 ---
 

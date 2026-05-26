@@ -19,6 +19,8 @@ pub mod midi;
 pub mod midi_clock;
 pub mod modulation;
 pub mod osc;
+#[cfg(target_os = "windows")]
+pub mod spout;
 #[cfg(target_os = "macos")]
 pub mod syphon;
 pub mod updater;

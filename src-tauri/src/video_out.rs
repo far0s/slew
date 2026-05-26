@@ -20,6 +20,8 @@
 //! For optimal performance, use `publish_video_frame_binary` which accepts raw
 //! pixel data via `tauri::ipc::Request`, bypassing JSON serialization entirely.
 
+#[cfg(target_os = "windows")]
+use crate::spout;
 #[cfg(target_os = "macos")]
 use crate::syphon;
 
@@ -316,13 +318,13 @@ impl VideoOutputBackend for SyphonBackend {
 }
 
 // ============================================================================
-// Spout Backend (Windows) — Stub
+// Spout Backend (Windows)
 // ============================================================================
 
 /// Spout video output backend for Windows
 ///
-/// Uses the Spout library to share textures with other applications.
-/// Currently a stub implementation — full implementation requires Windows testing.
+/// Uses the `spout-rs` crate to share rendered frames with other applications
+/// via the Spout protocol (Resolume, TouchDesigner, MadMapper, etc.).
 #[cfg(target_os = "windows")]
 pub struct SpoutBackend {
     config: Option<BackendConfig>,
@@ -366,36 +368,77 @@ impl VideoOutputBackend for SpoutBackend {
     }
 
     fn initialize(&mut self, config: &BackendConfig) -> Result<(), String> {
-        // TODO: Create Spout sender
-        self.config = Some(config.clone());
-        self.active = true;
-        self.frames_published = 0;
-        self.last_error = None;
+        log::debug!("[Spout] Initializing with name: {}", config.name);
 
-        log::debug!("[Spout] Started '{}' (stub)", config.name);
-        Ok(())
+        match spout::init_spout_sender(&config.name) {
+            Ok(()) => {
+                self.config = Some(config.clone());
+                self.active = true;
+                self.frames_published = 0;
+                self.last_error = None;
+                log::info!("[Spout] Started '{}'", config.name);
+                Ok(())
+            }
+            Err(e) => {
+                self.last_error = Some(e.clone());
+                log::error!("[Spout] Failed to initialize: {}", e);
+                Err(e)
+            }
+        }
     }
 
     fn shutdown(&mut self) -> Result<(), String> {
-        self.active = false;
-        self.config = None;
-        Ok(())
+        match spout::shutdown_spout_sender() {
+            Ok(()) => {
+                self.active = false;
+                self.config = None;
+                log::info!("[Spout] Stopped");
+                Ok(())
+            }
+            Err(e) => {
+                self.last_error = Some(e.clone());
+                log::error!("[Spout] Failed to shut down: {}", e);
+                Err(e)
+            }
+        }
     }
 
     fn publish_frame(&mut self, frame: &VideoFrame) -> Result<(), String> {
+        use std::time::Instant;
+
         if !self.active {
             return Err("Spout backend is not active".to_string());
         }
 
         frame.validate()?;
-        self.frames_published += 1;
 
-        // Stub: Just count frames
-        if self.frames_published % 300 == 0 {
-            log::debug!("[Spout] Stub: {} frames received", self.frames_published);
+        let publish_start = Instant::now();
+
+        match spout::publish_spout_frame(&frame.data, frame.width, frame.height) {
+            Ok(()) => {
+                let publish_time = publish_start.elapsed();
+                self.frames_published += 1;
+
+                if self.frames_published % 1800 == 0 && self.frames_published > 0 {
+                    log::debug!(
+                        "[Spout] {} frames ({}x{}), last_publish: {:.2}ms",
+                        self.frames_published,
+                        frame.width,
+                        frame.height,
+                        publish_time.as_secs_f64() * 1000.0
+                    );
+                }
+
+                Ok(())
+            }
+            Err(e) => {
+                if self.frames_published % 300 == 0 {
+                    log::warn!("[Spout] Frame publish error: {}", e);
+                }
+                self.last_error = Some(e.clone());
+                Err(e)
+            }
         }
-
-        Ok(())
     }
 
     fn status(&self) -> BackendStatus {

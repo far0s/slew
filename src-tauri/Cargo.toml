@@ -50,6 +50,10 @@ rusty_link = "0.4"              # Ableton Link (bundles its own C++ SDK via cmak
 objc2 = "0.6"                    # Objective-C runtime (must match Tauri's version)
 block2 = "0.6"                   # Objective-C blocks support
 
+# Video Output (Windows Spout)
+[target.'cfg(target_os = "windows")'.dependencies]
+spout-rs = "0.1"                 # Spout2 GPU texture sharing
+
 # Video Output (NDI - cross-platform, optional)
 [dependencies.grafton-ndi]
 version = "0.9"

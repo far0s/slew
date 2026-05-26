@@ -25,7 +25,7 @@ The Rust backend handles input processing (OSC, MIDI, Audio, HID), state managem
 | 3D Rendering      | Three.js via react-three-fiber                                 |
 | Shaders           | TSL (Three.js Shading Language) for WebGPU                     |
 | GPU Backend       | WebGPU (Metal on macOS), WebGL2 fallback                       |
-| Video Output      | Syphon (macOS), NDI (cross-platform)                           |
+| Video Output      | Syphon (macOS), Spout (Windows), NDI (cross-platform)          |
 | Input             | MIDI (midir), OSC (rosc), Audio (cpal + rustfft), HID (hidapi) |
 
 ---
@@ -126,7 +126,7 @@ High-performance frame capture from WebGPU/WebGL sent to Rust backends (`video_o
 
 - **Syphon** (macOS): Native bindings via `objc2` + CGL
 - **NDI** (cross-platform): `grafton-ndi` crate
-- **Spout** (Windows): Stub implementation
+- **Spout** (Windows): `spout-rs` crate (wraps Spout2 via `cxx` C++ bridge)
 
 **Optimizations (see `docs/finished/VIDEO_OUTPUT_OPTIMIZATION.md`):**
 
@@ -211,6 +211,7 @@ Stream rendered frames from Renderer to Controls window for pixel-perfect previe
       video_out.rs          # Video output backends
       frame_distribution.rs # Preview frame distribution to Controls
       syphon.rs             # Native Syphon bindings (macOS)
+      spout.rs              # Spout sender wrapper via spout-rs (Windows)
   /docs/                    # Documentation
     /finished/              # Archived task documents
   /scripts/                 # Build and setup scripts
@@ -236,6 +237,8 @@ See [`docs/CONVENTIONS.md`](CONVENTIONS.md).
 | `src-tauri/src/hid/`                  | HID/macropad support                                |
 | `src-tauri/src/modulation.rs`         | LFO engine, modulation matrix                       |
 | `src-tauri/src/video_out.rs`          | Video output backends                               |
+| `src-tauri/src/syphon.rs`             | Native Syphon bindings (macOS)                      |
+| `src-tauri/src/spout.rs`              | Spout sender wrapper via `spout-rs` (Windows)       |
 | `src-tauri/src/frame_distribution.rs` | Preview frame distribution to Controls window       |
 | `src/sketches/`                       | Grouped sketch modules                              |
 | `src/slots/useSlots.ts`               | Slot management hook                                |
@@ -243,7 +246,7 @@ See [`docs/CONVENTIONS.md`](CONVENTIONS.md).
 | `src/controls/useParameterStore.ts`   | Parameter state                                     |
 | `src/renderer/RendererRoot.tsx`       | Multi-slot rendering loop                           |
 | `src/renderer/SlotPreviewCapture.tsx` | Per-slot frame capture for preview streaming        |
-| `src/renderer/VideoOutputCapture.tsx` | Frame capture for Syphon/NDI + composited preview   |
+| `src/renderer/VideoOutputCapture.tsx` | Frame capture for Syphon/Spout/NDI + composited preview |
 | `src/components/StreamedPreview/`     | Streamed frame display in Controls window           |
 | `src/components/SlotColumn/`          | Slot UI with inline sketch browser                  |
 
