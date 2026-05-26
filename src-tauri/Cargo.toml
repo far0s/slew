@@ -52,7 +52,7 @@ block2 = "0.6"                   # Objective-C blocks support
 
 # Video Output (Windows Spout)
 [target.'cfg(target_os = "windows")'.dependencies]
-spout-rs = "0.1"                 # Spout2 GPU texture sharing
+rust-spout2 = "0.1"               # Spout2 GPU texture sharing (builds from source)
 
 # Video Output (NDI - cross-platform, optional)
 [dependencies.grafton-ndi]
