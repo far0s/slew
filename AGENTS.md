@@ -71,6 +71,19 @@ git tag v0.11.8       # WRONG
 
 Verify with `git tag | sort -V | tail -5` before pushing.
 
+## Import Paths
+
+Use the `@/` alias for all cross-directory imports. Same-directory (`./`) imports stay relative.
+
+```ts
+import { rgbToHex } from "@/lib/color";       // ✓
+import { useSlots } from "@/slots/useSlots";   // ✓
+import styles from "./Foo.module.css";          // ✓ same-dir, keep relative
+import { Foo } from "../../lib/color";         // ✗ never use ../
+```
+
+`@/` resolves to `src/`. Configured in `vite.config.ts` and `tsconfig.json`.
+
 ## MCP Gemini Design
 
 For UI/design work, delegate to Gemini MCP tools:
