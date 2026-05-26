@@ -1,37 +1,37 @@
 import { useEffect, useCallback, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { logger } from "./lib/logger";
+import { logger } from "@/lib/logger";
 import { LayoutGroup, motion } from "motion/react";
-import { useSlots } from "./slots/useSlots";
+import { useSlots } from "@/slots/useSlots";
 import {
   useParameterStore,
   buildSlotSceneParams,
   buildSlotSceneParamsInterpolated,
-} from "./hooks/useParameterStore";
-import type { SketchId } from "./sketches";
-import { makeSlotParameterId, getParameterDropdownLabel, type ParameterId } from "./slots/slotTypes";
-import { SlotsArea, RendererPreview, Sidebar, UpdateBanner } from "./components";
-import { ToolbarUndoRedo, ToolbarTapBpm, PerformanceChip, ToolbarShortcutsButton } from "./components/layout/Toolbar";
-import { ShortcutsModal } from "./components/layout/ShortcutsModal/ShortcutsModal";
-import { AudioIndicator } from "./components/panels/AudioIndicator";
-import { useUndoHistory, applyUndo, applyRedo } from "./hooks/useUndoHistory";
-import { useAudioMappings, generateMappingId, type AudioMapping } from "./inputs/audio";
-import { useLfos, useModulationTargets, createLfo, createTarget } from "./inputs/modulation";
-import { useMidiMappings, useMidiDevices, useMidiPickupStates, useMidiLearn, cancelMidiLearn } from "./inputs/midi";
+} from "@/hooks/useParameterStore";
+import type { SketchId } from "@/sketches";
+import { makeSlotParameterId, getParameterDropdownLabel, type ParameterId } from "@/slots/slotTypes";
+import { SlotsArea, RendererPreview, Sidebar, UpdateBanner } from "@/components";
+import { ToolbarUndoRedo, ToolbarTapBpm, PerformanceChip, ToolbarShortcutsButton } from "@/components/layout/Toolbar";
+import { ShortcutsModal } from "@/components/layout/ShortcutsModal/ShortcutsModal";
+import { AudioIndicator } from "@/components/panels/AudioIndicator";
+import { useUndoHistory, applyUndo, applyRedo } from "@/hooks/useUndoHistory";
+import { useAudioMappings, generateMappingId, type AudioMapping } from "@/inputs/audio";
+import { useLfos, useModulationTargets, createLfo, createTarget } from "@/inputs/modulation";
+import { useMidiMappings, useMidiDevices, useMidiPickupStates, useMidiLearn, cancelMidiLearn } from "@/inputs/midi";
 import {
   useWindowManager,
   useLayoutPreferences,
   useRendererSettings,
   usePerformanceMonitor,
-} from "./hooks";
-import { useUpdater } from "./hooks/useUpdater";
-import { useEventListener } from "./inputs/shared";
-import { useSlotColors } from "./hooks/useSlotColors";
-import { useCrossfade } from "./hooks/useCrossfade";
-import { useParameterBackendSync } from "./hooks/useParameterBackendSync";
-import { useGlobalKeyboard } from "./hooks/useGlobalKeyboard";
-import { useMacropadController } from "./hooks/useMacropadController";
-import type { BpmSourceChangedEvent } from "./inputs/bpmSource";
+} from "@/hooks";
+import { useUpdater } from "@/hooks/useUpdater";
+import { useEventListener } from "@/inputs/shared";
+import { useSlotColors } from "@/hooks/useSlotColors";
+import { useCrossfade } from "@/hooks/useCrossfade";
+import { useParameterBackendSync } from "@/hooks/useParameterBackendSync";
+import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
+import { useMacropadController } from "@/hooks/useMacropadController";
+import type { BpmSourceChangedEvent } from "@/inputs/bpmSource";
 import styles from "./App.module.css";
 
 function App() {

@@ -33,8 +33,6 @@ export interface BackendParameter {
 export interface SlotConfig {
   index: number;
   sketchId: SketchId;
-  /** @deprecated Use sketchId. Kept for backend compatibility. */
-  sceneId?: SketchId;
 }
 
 /**

@@ -52,7 +52,7 @@ const mockUseAudioLevels = vi.fn();
 const mockUseAudioMappings = vi.fn();
 
 // Mock bpmSource hooks
-vi.mock("../../../inputs/bpmSource", () => ({
+vi.mock("@/inputs/bpmSource", () => ({
   useActiveBpmSource: () => ({ source: "microphone", bpm: null }),
   useLinkStatus: () => ({
     status: { enabled: false, peer_count: 0, bpm: null, available: false },
@@ -75,8 +75,8 @@ vi.mock("../../../inputs/bpmSource", () => ({
   },
 }));
 
-vi.mock("../../../inputs/audio", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../inputs/audio")>();
+vi.mock("@/inputs/audio", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/inputs/audio")>();
   return {
     ...actual,
     useAudioCapture: () => mockUseAudioCapture(),

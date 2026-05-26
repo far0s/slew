@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ShortcutsModal } from "./ShortcutsModal";
 
-vi.mock("../../../inputs/tapTempo", () => ({
+vi.mock("@/inputs/tapTempo", () => ({
   subscribeTapShortcut: vi.fn((cb: (s: object) => void) => {
     cb({ key: " ", ctrlKey: false, metaKey: false, altKey: false, shiftKey: false });
     return () => {};

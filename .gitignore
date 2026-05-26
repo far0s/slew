@@ -29,3 +29,7 @@ src-tauri/frameworks/Syphon.framework/
 # Test coverage reports
 coverage/
 .osgrep
+
+# Claude Code local state (machine-specific settings + agent worktrees)
+.claude/settings.local.json
+.claude/worktrees/

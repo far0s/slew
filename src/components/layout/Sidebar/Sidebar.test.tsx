@@ -21,32 +21,32 @@ vi.mock("motion/react", () => ({
 }));
 
 // Mock panel components
-vi.mock("../../panels/MidiPanel", () => ({
+vi.mock("@/components/panels/MidiPanel", () => ({
   MidiPanel: () => <div data-testid="midi-panel">MIDI Panel</div>,
 }));
 
-vi.mock("../../panels/OscPanel", () => ({
+vi.mock("@/components/panels/OscPanel", () => ({
   OscPanel: () => <div data-testid="osc-panel">OSC Panel</div>,
 }));
 
-vi.mock("../../panels/AudioPanel", () => ({
+vi.mock("@/components/panels/AudioPanel", () => ({
   AudioPanel: () => <div data-testid="audio-panel">Audio Panel</div>,
 }));
 
-vi.mock("../../panels/HidPanel", () => ({
+vi.mock("@/components/panels/HidPanel", () => ({
   HidPanel: () => <div data-testid="hid-panel">HID Panel</div>,
 }));
 
-vi.mock("../../panels/ModulationPanel", () => ({
+vi.mock("@/components/panels/ModulationPanel", () => ({
   ModulationPanel: () => <div data-testid="modulation-panel">Modulation Panel</div>,
 }));
 
-vi.mock("../../panels/VideoOutputPanel", () => ({
+vi.mock("@/components/panels/VideoOutputPanel", () => ({
   VideoOutputPanel: () => <div data-testid="video-panel">Video Output Panel</div>,
 }));
 
 // Mock ParameterSlider
-vi.mock("../../parameters/ParameterSlider", () => ({
+vi.mock("@/components/parameters/ParameterSlider", () => ({
   ParameterSlider: ({ id, label, value, onChange }: {
     id: string;
     label: string;
@@ -76,7 +76,7 @@ const mockRestartRenderer = vi.fn();
 const mockToggleFullscreenControls = vi.fn();
 const mockToggleFullscreenRenderer = vi.fn();
 
-vi.mock("../../../hooks", () => ({
+vi.mock("@/hooks", () => ({
   useTheme: () => ({
     mode: "dark",
     accent: "standard",

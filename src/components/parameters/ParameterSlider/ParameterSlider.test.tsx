@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { ParameterSlider } from "./ParameterSlider";
 
 // Mock the MidiLearnButton component
-vi.mock("../MidiLearnButton", () => ({
+vi.mock("@/components/parameters/MidiLearnButton", () => ({
   MidiLearnButton: ({ parameterId }: { parameterId: string }) => (
     <button data-testid={`midi-learn-${parameterId}`}>MIDI Learn</button>
   ),

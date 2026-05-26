@@ -40,7 +40,7 @@ vi.mock("@radix-ui/react-icons", () => ({
 const mockUseMidiCombinedDevices = vi.fn();
 const mockUseMidiMappings = vi.fn();
 
-vi.mock("../../../inputs/midi", () => ({
+vi.mock("@/inputs/midi", () => ({
   useMidiCombinedDevices: () => mockUseMidiCombinedDevices(),
   useMidiMappings: () => mockUseMidiMappings(),
 }));

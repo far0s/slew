@@ -25,8 +25,8 @@ vi.mock("motion/react", () => ({
   ),
 }));
 
-vi.mock("../../../sketches", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../sketches")>();
+vi.mock("@/sketches", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/sketches")>();
   const MockSketchComponent = () => <div data-testid="mock-sketch">Mock Sketch</div>;
   return {
     ...actual,
@@ -38,7 +38,7 @@ vi.mock("../../../sketches", async (importOriginal) => {
   };
 });
 
-vi.mock("../../../renderer/WebGPUCanvas", () => ({
+vi.mock("@/renderer/WebGPUCanvas", () => ({
   WebGPUCanvas: ({
     children,
   }: {
@@ -46,7 +46,7 @@ vi.mock("../../../renderer/WebGPUCanvas", () => ({
   }) => <div data-testid="webgpu-canvas">{children}</div>,
 }));
 
-vi.mock("../../preview/StreamedPreview", () => ({
+vi.mock("@/components/preview/StreamedPreview", () => ({
   StreamedPreview: ({
     source,
   }: {
@@ -55,7 +55,7 @@ vi.mock("../../preview/StreamedPreview", () => ({
   }) => <div data-testid={`streamed-preview-${source}`}>Streamed Preview</div>,
 }));
 
-vi.mock("../SlotParameterControls", () => ({
+vi.mock("@/components/slots/SlotParameterControls", () => ({
   SlotParameterControls: ({ slotIndex }: { slotIndex: number }) => (
     <div data-testid={`slot-parameter-controls-${slotIndex}`}>
       Slot Parameter Controls
