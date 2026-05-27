@@ -37,61 +37,6 @@ Design and implement proper app icon for Slew.
 
 ## Medium Priority
 
-### 🟡 Color Parameters `feature`
-
-Promote color from a static sketch config value into a live, MIDI-learnable, LFO-targetable parameter. This is the prerequisite for OSC color forwarding and WLED color control.
-
-**Context**: Sketches currently accept color via a static `colorPalette` preset array. There is no `"color"` `inputType` in the parameter system, so colors cannot be MIDI-mapped, modulated, or changed live without switching presets.
-
-**Subtasks:**
-
-- [ ] Add `"color"` to the `inputType` union on `ParameterTemplate` (`src/sketches/types.ts`)
-- [ ] Expand color params into R/G/B sub-params in `buildSlotDefaultParameters` / `buildSlotParameterDescriptors` using a `slot_{n}_{id}_r/g/b` suffix convention; add `colorChannel?: "r"|"g"|"b"` and `colorGroup?: string` to `SlotParameterDescriptor`
-- [ ] Pack the three sub-params into `[r, g, b]` tuples in `SketchProps.params` so sketches receive a typed color value
-- [ ] `ParameterControl`: render a single `ColorPicker` row for the first channel of each color group; skip the `_g` / `_b` rows (already consumed)
-- [ ] Migrate existing sketches (`Aura` presets, etc.) from static `colorPalette` entries to proper `color` parameter descriptors; keep `colorPalette` as a source of default values only
-- [ ] MIDI-learn: support per-channel CC assignment (three `MidiLearnButton` instances in expanded view)
-
-**Sizing**: Large (~2 days). Prerequisite for OSC Color Forwarding and WLED Color Control.
-
----
-
-### 🟡 OSC Color Forwarding `feature`
-
-Emit live color parameter values over OSC whenever a color param changes, so downstream tools (TouchDesigner, Resolume, etc.) can consume them without polling.
-
-**Depends on**: Color Parameters (above).
-
-**Subtasks:**
-
-- [ ] Add `forward_colors: bool` to `OscOutputConfig` in `src/inputs/osc.ts` and `src-tauri/src/osc.rs`
-- [ ] Add `send_osc_color(slot, template_id, r, g, b)` to the Rust OSC backend, following the `send_osc_beat` / `send_osc_bpm` pattern; address scheme: `/slew/slot/{n}/color/{template_id}  r:Int  g:Int  b:Int`
-- [ ] Hook into the parameter-change event pipeline to emit on color sub-param change, debounced to 30 Hz max
-- [ ] Add a "Forward colors" toggle to the OSC Output section of `OscPanel`
-
-**Sizing**: Small (~half a day) once Color Parameters is done.
-
----
-
-### 🟡 WLED Color Control `feature`
-
-Map slot color parameters directly to WLED LED strip segments via HTTP, bypassing TouchDesigner for LED routing.
-
-**Context**: The WLED HTTP backend (`src-tauri/src/wled.rs`) already exists with config persistence, `test_wled_connection`, and a `do_post` helper. What's missing is the color-parameter → segment mapping layer.
-
-**Depends on**: Color Parameters (above). Independent of OSC Color Forwarding.
-
-**Subtasks:**
-
-- [ ] Add `WledSegmentMapping { segment_id, slot_index, template_id, color_index }` to `WledState` and persist it
-- [ ] On color sub-param change: recompute diff, batch into a single WLED JSON payload (`seg[].col`), post at ≤25 Hz
-- [ ] Fix `do_post` to reuse a persistent `reqwest::Client` (see Stabilisation → Tier 2) rather than constructing one per call
-- [ ] `WledPanel`: add a Segment Mappings table (segment ID, slot, color param, color index) with Add / Remove rows
-
-**Sizing**: Medium (~1 day) once Color Parameters is done.
-
----
-
 ### 🟡 MIDI Panel — Device Schematic & Clock UI `feature` `design`
 
 Overhaul the Mappings section of the MIDI Panel to be visually useful and scalable.
