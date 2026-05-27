@@ -660,13 +660,22 @@ export function useMidiCombinedDevices() {
     };
   }, []);
 
-  // Combine input and output devices by name
+  // Combine input and output devices.
+  //
+  // Strategy: key entries by input device id (or output id for output-only
+  // devices). For each output, find the best unmatched input by exact name
+  // match. This correctly handles multiple devices of the same model (e.g.
+  // two Midimix units) because midir assigns unique names ("MIDI Mix",
+  // "MIDI Mix 2", …) — they are kept as distinct entries.
   const combinedDevices: MidiCombinedDeviceInfo[] = (() => {
-    const deviceMap = new Map<string, MidiCombinedDeviceInfo>();
+    // Map from entry key → combined info
+    const entries = new Map<string, MidiCombinedDeviceInfo>();
+    // Track which output ids have been matched to an input entry
+    const matchedOutputIds = new Set<string>();
 
-    // Process input devices
+    // Build one entry per input device
     for (const input of inputDevices) {
-      deviceMap.set(input.name, {
+      entries.set(`in:${input.id}`, {
         name: input.name,
         input,
         output: null,
@@ -677,16 +686,24 @@ export function useMidiCombinedDevices() {
       });
     }
 
-    // Process output devices and merge with inputs
+    // Pair outputs to inputs by exact name match.
+    // If multiple inputs share the same name, pair in order (first unmatched).
     for (const output of outputDevices) {
-      const existing = deviceMap.get(output.name);
-      if (existing) {
-        existing.output = output;
-        existing.outputConnected = output.is_connected;
-        existing.isBidirectional = true;
-        existing.feedbackEnabled = feedbackConfig.get(output.name) ?? true;
+      // Find first input entry with same name that doesn't yet have an output
+      const entryKey = [...entries.entries()].find(
+        ([, e]) => e.name === output.name && e.output === null,
+      )?.[0];
+
+      if (entryKey) {
+        const entry = entries.get(entryKey)!;
+        entry.output = output;
+        entry.outputConnected = output.is_connected;
+        entry.isBidirectional = true;
+        entry.feedbackEnabled = feedbackConfig.get(output.name) ?? true;
+        matchedOutputIds.add(output.id);
       } else {
-        deviceMap.set(output.name, {
+        // Output-only device (no matching input)
+        entries.set(`out:${output.id}`, {
           name: output.name,
           input: null,
           output,
@@ -698,7 +715,7 @@ export function useMidiCombinedDevices() {
       }
     }
 
-    return Array.from(deviceMap.values());
+    return Array.from(entries.values());
   })();
 
   const connect = useCallback(
