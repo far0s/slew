@@ -225,6 +225,12 @@ pub fn send_parameter_feedback(parameter_id: &str, value: f64) {
         return;
     };
 
+    // CC feedback only applies to CC mappings
+    let cc_number = match mapping.cc_number {
+        Some(cc) => cc,
+        None => return,
+    };
+
     // Convert parameter value back to CC value (0-127)
     let range = mapping.max_value - mapping.min_value;
     if range.abs() < f64::EPSILON {
@@ -241,14 +247,14 @@ pub fn send_parameter_feedback(parameter_id: &str, value: f64) {
     // For output, we use config.output_device_id (or send to all connected outputs if None).
     let device_id = config.output_device_id.as_deref();
 
-    if let Err(e) = send_cc(device_id, channel, mapping.cc_number, cc_value) {
+    if let Err(e) = send_cc(device_id, channel, cc_number, cc_value) {
         log::debug!("[MIDI] Failed to send feedback for {}: {}", parameter_id, e);
     } else {
         log::debug!(
             "[MIDI] Sent feedback for {} = {} (CC {} = {} on channel {})",
             parameter_id,
             value,
-            mapping.cc_number,
+            cc_number,
             cc_value,
             channel
         );

@@ -157,21 +157,6 @@ Save/load parameter configurations per sketch.
 
 ---
 
-### 🟡 MIDI Note Velocity Support `feature`
-
-Extend MIDI mappings to support note velocity.
-
-**Context**: Some controllers (pads, keyboards) use velocity for expression. Current MIDI implementation only handles CC messages.
-
-**Subtasks**:
-
-- [ ] Extend MidiMapping to include note/velocity mappings
-- [ ] UI for mapping pads to parameters (note number + velocity)
-- [ ] Learn mode support for notes
-- [ ] Trigger vs. continuous modes
-
----
-
 ### 🟡 API Documentation for Sketch Developers `chore`
 
 Create developer guide for building custom sketches.

@@ -18,7 +18,7 @@ use super::midimix::{
     handle_master_solo_button_press, handle_mute_button_press, handle_solo_button_press_for_slot,
 };
 use super::output::send_parameter_feedback;
-use super::types::{MidiEngineState, MidiLearnComplete, MidiMapping, MidiMessage};
+use super::types::{MidiEngineState, MidiLearnComplete, MidiMapping, MidiMessage, NoteMappingMode};
 
 // ============================================================================
 // MIDI Parsing (Pure Functions)
@@ -186,16 +186,32 @@ pub(crate) fn handle_midi_message(
         }
     }
 
-    // Handle MIDI Learn if active and this is a CC message
-    if learn_state.is_learning && type_str == "cc" {
+    // Handle MIDI Learn if active and this is a CC or note_on message
+    if learn_state.is_learning && (type_str == "cc" || (type_str == "note_on" && value > 0)) {
         if let Some(param_id) = learn_state.parameter_id {
-            let mapping = MidiMapping {
-                parameter_id: param_id,
-                channel: Some(channel),
-                cc_number: control,
-                min_value: learn_state.pending_min_value,
-                max_value: learn_state.pending_max_value,
-                device_id: Some(device_id.to_string()),
+            let mapping = if type_str == "cc" {
+                MidiMapping {
+                    parameter_id: param_id,
+                    channel: Some(channel),
+                    cc_number: Some(control),
+                    note_number: None,
+                    note_mode: None,
+                    min_value: learn_state.pending_min_value,
+                    max_value: learn_state.pending_max_value,
+                    device_id: Some(device_id.to_string()),
+                }
+            } else {
+                // note_on
+                MidiMapping {
+                    parameter_id: param_id,
+                    channel: Some(channel),
+                    cc_number: None,
+                    note_number: Some(control),
+                    note_mode: Some(NoteMappingMode::Velocity),
+                    min_value: learn_state.pending_min_value,
+                    max_value: learn_state.pending_max_value,
+                    device_id: Some(device_id.to_string()),
+                }
             };
 
             {
@@ -207,16 +223,17 @@ pub(crate) fn handle_midi_message(
                 state.learn_state.is_learning = false;
                 state.learn_state.parameter_id = None;
 
-                // Ensure the first CC after learn requires a proper crossing
-                // (same treatment as first CC after reconnect)
-                let key = (channel, control);
-                let pickup = state
-                    .pickup_state
-                    .entry(key)
-                    .or_insert_with(super::types::PickupState::default);
-                pickup.picked_up = false;
-                pickup.last_cc = Some(value as u8);
-                pickup.ignore_next = false;
+                // For CC mappings: ensure the first CC after learn requires a proper crossing
+                if type_str == "cc" {
+                    let key = (channel, control);
+                    let pickup = state
+                        .pickup_state
+                        .entry(key)
+                        .or_insert_with(super::types::PickupState::default);
+                    pickup.picked_up = false;
+                    pickup.last_cc = Some(value as u8);
+                    pickup.ignore_next = false;
+                }
             }
 
             save_mappings_to_disk();
@@ -227,7 +244,8 @@ pub(crate) fn handle_midi_message(
             }
 
             log::debug!(
-                "[MIDI] Learn complete: CC {} @ channel {} -> parameter",
+                "[MIDI] Learn complete: {} {} @ channel {} -> parameter",
+                type_str,
                 control,
                 channel
             );
@@ -247,9 +265,12 @@ pub(crate) fn handle_midi_message(
     // Apply mappings for CC messages
     if type_str == "cc" {
         for mapping in &mappings {
+            if !mapping.is_cc() {
+                continue;
+            }
             // Check if this CC matches the mapping
             let channel_match = mapping.channel.map_or(true, |ch| ch == channel);
-            let cc_match = mapping.cc_number == control;
+            let cc_match = mapping.cc_number == Some(control);
             let device_match = mapping.device_id.as_ref().map_or(true, |d| d == device_id);
 
             if channel_match && cc_match && device_match {
@@ -273,6 +294,56 @@ pub(crate) fn handle_midi_message(
                     true,
                 );
             }
+        }
+    }
+
+    // Apply mappings for note messages
+    if type_str == "note_on" || type_str == "note_off" {
+        for mapping in &mappings {
+            if !mapping.is_note() {
+                continue;
+            }
+            let note_number = match mapping.note_number {
+                Some(n) => n,
+                None => continue,
+            };
+            let mode = match &mapping.note_mode {
+                Some(m) => m,
+                None => continue,
+            };
+
+            let channel_match = mapping.channel.map_or(true, |ch| ch == channel);
+            let note_match = note_number == control;
+            let device_match = mapping.device_id.as_ref().map_or(true, |d| d == device_id);
+
+            if !channel_match || !note_match || !device_match {
+                continue;
+            }
+
+            let mapped_value = match mode {
+                NoteMappingMode::Velocity => {
+                    if type_str == "note_off" {
+                        continue;
+                    } // only fires on note_on
+                    let normalized = (value as f64) / 127.0;
+                    mapping.min_value + normalized * (mapping.max_value - mapping.min_value)
+                }
+                NoteMappingMode::Trigger => {
+                    if type_str == "note_on" && value > 0 {
+                        mapping.max_value
+                    } else {
+                        // note_off or note_on with velocity 0
+                        mapping.min_value
+                    }
+                }
+            };
+
+            apply_midi_to_parameter(
+                &mapping.parameter_id,
+                mapped_value,
+                app_handle.as_ref(),
+                true,
+            );
         }
     }
 }

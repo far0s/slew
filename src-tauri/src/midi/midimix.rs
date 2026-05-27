@@ -523,7 +523,7 @@ fn update_midimix_knob_mappings() {
             !MIDIMIX_KNOB_CCS
                 .iter()
                 .flatten()
-                .any(|&cc| m.cc_number == cc && m.channel == Some(0))
+                .any(|&cc| m.cc_number == Some(cc) && m.channel == Some(0))
         });
     });
 
@@ -553,7 +553,9 @@ fn update_midimix_knob_mappings() {
             let mapping = MidiMapping {
                 parameter_id: param_id.clone(),
                 channel: Some(0),
-                cc_number: cc,
+                cc_number: Some(cc),
+                note_number: None,
+                note_mode: None,
                 min_value: min,
                 max_value: max,
                 device_id: None,
@@ -590,11 +592,7 @@ pub fn setup_midimix_default_mappings() {
 
 /// System parameter suffixes that should be excluded from knob mappings.
 /// These are managed at the slot level, not per-sketch.
-const SYSTEM_PARAM_SUFFIXES: &[&str] = &[
-    "_alpha",
-    "_brightness",
-    "_audio_reactivity",
-];
+const SYSTEM_PARAM_SUFFIXES: &[&str] = &["_alpha", "_brightness", "_audio_reactivity"];
 
 /// Get the first 3 controllable parameter IDs for a slot by querying the live
 /// parameter store.  This replaces the old sketch-ID look-up table which
@@ -931,9 +929,14 @@ pub fn get_all_pickup_states() -> Vec<MidiPickupStateUpdate> {
 
         // For each mapping, check if there's a pickup state that isn't picked up
         for mapping in &state.mappings {
+            // Pickup state only applies to CC mappings
+            let cc_number = match mapping.cc_number {
+                Some(cc) => cc,
+                None => continue,
+            };
             // Find the pickup state for this mapping's channel/cc
             let channel = mapping.channel.unwrap_or(0);
-            let key = (channel, mapping.cc_number);
+            let key = (channel, cc_number);
 
             if let Some(pickup) = state.pickup_state.get(&key) {
                 // Only include if we have a last_cc value and haven't picked up

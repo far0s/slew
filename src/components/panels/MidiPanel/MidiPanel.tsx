@@ -12,7 +12,10 @@ import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import {
   useMidiCombinedDevices,
   useMidiMappings,
+  isCcMapping,
+  isNoteMapping,
   type MidiMapping,
+  type NoteMappingMode,
   type MidiCombinedDeviceInfo,
 } from "@/inputs/midi";
 import styles from "./MidiPanel.module.css";
@@ -23,7 +26,36 @@ import styles from "./MidiPanel.module.css";
 function formatMapping(mapping: MidiMapping): string {
   const channel =
     mapping.channel !== null ? `Ch ${mapping.channel + 1}` : "Any Ch";
-  return `CC ${mapping.cc_number} @ ${channel}`;
+  if (isCcMapping(mapping)) {
+    return `CC ${mapping.cc_number} @ ${channel}`;
+  }
+  if (isNoteMapping(mapping)) {
+    const modeLabel = mapping.note_mode === "trigger" ? "Trigger" : "Velocity";
+    return `Note ${mapping.note_number} @ ${channel} (${modeLabel})`;
+  }
+  return channel;
+}
+
+/** Note names for display (C4 = middle C, MIDI note 60). */
+const NOTE_NAMES = [
+  "C",
+  "C#",
+  "D",
+  "D#",
+  "E",
+  "F",
+  "F#",
+  "G",
+  "G#",
+  "A",
+  "A#",
+  "B",
+];
+
+function noteLabel(note: number): string {
+  const name = NOTE_NAMES[note % 12];
+  const octave = Math.floor(note / 12) - 1;
+  return `${name}${octave} (${note})`;
 }
 
 /**
@@ -218,8 +250,10 @@ function DeviceList() {
  * Mappings list showing all current MIDI→parameter bindings.
  */
 function MappingsList() {
-  const { mappings, isLoading, removeMapping } = useMidiMappings();
+  const { mappings, isLoading, removeMapping, addMapping } = useMidiMappings();
   const [removing, setRemoving] = useState<string | null>(null);
+  const [togglingMode, setTogglingMode] = useState<string | null>(null);
+  const [showAddNote, setShowAddNote] = useState(false);
 
   const handleRemove = async (parameterId: string) => {
     setRemoving(parameterId);
@@ -232,42 +266,237 @@ function MappingsList() {
     }
   };
 
+  const handleToggleNoteMode = async (mapping: MidiMapping) => {
+    if (!isNoteMapping(mapping)) return;
+    const newMode: NoteMappingMode =
+      mapping.note_mode === "trigger" ? "velocity" : "trigger";
+    setTogglingMode(mapping.parameter_id);
+    try {
+      await addMapping({ ...mapping, note_mode: newMode });
+    } catch {
+      // UI state already reflects failure
+    } finally {
+      setTogglingMode(null);
+    }
+  };
+
   if (isLoading) {
     return <p className={styles.loadingText}>Loading mappings…</p>;
   }
 
-  if (mappings.length === 0) {
-    return (
-      <p className={styles.emptyText}>
-        No MIDI mappings. Use the Learn button on a parameter to create one.
-      </p>
-    );
-  }
-
   return (
-    <div className={styles.mappingsList}>
-      {mappings.map((mapping) => (
-        <div key={mapping.parameter_id} className={styles.mappingItem}>
-          <div className={styles.mappingInfo}>
-            <span className={styles.mappingParameter}>
-              {mapping.parameter_id}
-            </span>
-            <span className={styles.mappingDetails}>
-              {formatMapping(mapping)}
-            </span>
-          </div>
+    <>
+      <div className={styles.mappingsList}>
+        {mappings.length === 0 ? (
+          <p className={styles.emptyText}>
+            No MIDI mappings. Use the Learn button on a parameter to create one.
+          </p>
+        ) : (
+          mappings.map((mapping) => (
+            <div key={mapping.parameter_id} className={styles.mappingItem}>
+              <div className={styles.mappingInfo}>
+                <span className={styles.mappingParameter}>
+                  {mapping.parameter_id}
+                </span>
+                <span className={styles.mappingDetails}>
+                  {formatMapping(mapping)}
+                </span>
+              </div>
+              <div className={styles.mappingActions}>
+                {isNoteMapping(mapping) && (
+                  <button
+                    type="button"
+                    onClick={() => void handleToggleNoteMode(mapping)}
+                    disabled={togglingMode === mapping.parameter_id}
+                    className={styles.modeToggleButton}
+                    title={`Switch to ${
+                      mapping.note_mode === "trigger" ? "velocity" : "trigger"
+                    } mode`}
+                    aria-label={`Toggle note mode for ${mapping.parameter_id}`}
+                  >
+                    {togglingMode === mapping.parameter_id
+                      ? "…"
+                      : mapping.note_mode === "trigger"
+                        ? "Trig"
+                        : "Vel"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void handleRemove(mapping.parameter_id)}
+                  disabled={removing === mapping.parameter_id}
+                  className={styles.removeButton}
+                  aria-label={`Remove mapping for ${mapping.parameter_id}`}
+                >
+                  {removing === mapping.parameter_id ? "…" : "×"}
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      <div className={styles.addNoteSection}>
+        {showAddNote ? (
+          <AddNoteMappingForm
+            onAdd={async (mapping) => {
+              await addMapping(mapping);
+              setShowAddNote(false);
+            }}
+            onCancel={() => setShowAddNote(false)}
+          />
+        ) : (
           <button
             type="button"
-            onClick={() => void handleRemove(mapping.parameter_id)}
-            disabled={removing === mapping.parameter_id}
-            className={styles.removeButton}
-            aria-label={`Remove mapping for ${mapping.parameter_id}`}
+            className={styles.addNoteButton}
+            onClick={() => setShowAddNote(true)}
           >
-            {removing === mapping.parameter_id ? "…" : "×"}
+            + Add note mapping
           </button>
+        )}
+      </div>
+    </>
+  );
+}
+
+/**
+ * Form for manually creating a note→parameter mapping without Learn mode.
+ */
+function AddNoteMappingForm({
+  onAdd,
+  onCancel,
+}: {
+  onAdd: (mapping: MidiMapping) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [parameterId, setParameterId] = useState("");
+  const [noteNumber, setNoteNumber] = useState(60);
+  const [channel, setChannel] = useState<number | null>(null);
+  const [mode, setMode] = useState<NoteMappingMode>("velocity");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = parameterId.trim();
+    if (!trimmed) {
+      setError("Parameter ID is required");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await onAdd({
+        parameter_id: trimmed,
+        channel,
+        note_number: noteNumber,
+        note_mode: mode,
+        min_value: 0,
+        max_value: 1,
+        device_id: null,
+      });
+    } catch (err) {
+      setError(String(err));
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form className={styles.addNoteForm} onSubmit={(e) => void handleSubmit(e)}>
+      <div className={styles.addNoteRow}>
+        <label className={styles.addNoteLabel} htmlFor="midi-note-param">
+          Parameter
+        </label>
+        <input
+          id="midi-note-param"
+          type="text"
+          className={styles.addNoteInput}
+          placeholder="e.g. slot_0_alpha"
+          value={parameterId}
+          onChange={(e) => setParameterId(e.target.value)}
+          autoFocus
+        />
+      </div>
+      <div className={styles.addNoteRow}>
+        <label className={styles.addNoteLabel} htmlFor="midi-note-number">
+          Note
+        </label>
+        <select
+          id="midi-note-number"
+          className={styles.addNoteSelect}
+          value={noteNumber}
+          onChange={(e) => setNoteNumber(Number(e.target.value))}
+        >
+          {Array.from({ length: 128 }, (_, i) => (
+            <option key={i} value={i}>
+              {noteLabel(i)}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className={styles.addNoteRow}>
+        <label className={styles.addNoteLabel} htmlFor="midi-note-channel">
+          Channel
+        </label>
+        <select
+          id="midi-note-channel"
+          className={styles.addNoteSelect}
+          value={channel ?? ""}
+          onChange={(e) =>
+            setChannel(e.target.value === "" ? null : Number(e.target.value))
+          }
+        >
+          <option value="">Any</option>
+          {Array.from({ length: 16 }, (_, i) => (
+            <option key={i} value={i}>
+              Ch {i + 1}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className={styles.addNoteRow}>
+        <span className={styles.addNoteLabel}>Mode</span>
+        <div className={styles.modeRadioGroup}>
+          <label className={styles.modeRadioLabel}>
+            <input
+              type="radio"
+              name="midi-note-mode"
+              value="velocity"
+              checked={mode === "velocity"}
+              onChange={() => setMode("velocity")}
+            />
+            Velocity
+          </label>
+          <label className={styles.modeRadioLabel}>
+            <input
+              type="radio"
+              name="midi-note-mode"
+              value="trigger"
+              checked={mode === "trigger"}
+              onChange={() => setMode("trigger")}
+            />
+            Trigger
+          </label>
         </div>
-      ))}
-    </div>
+      </div>
+      {error && <p className={styles.addNoteError}>{error}</p>}
+      <div className={styles.addNoteFooter}>
+        <button
+          type="button"
+          className={styles.addNoteCancelButton}
+          onClick={onCancel}
+          disabled={saving}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className={styles.addNoteSaveButton}
+          disabled={saving}
+        >
+          {saving ? "Saving…" : "Add mapping"}
+        </button>
+      </div>
+    </form>
   );
 }
 

@@ -21,17 +21,44 @@ pub struct MidiOutputDeviceInfo {
     pub is_connected: bool,
 }
 
-/// Binds a MIDI CC message to a parameter.
+/// Whether a note mapping uses velocity as continuous value, or triggers on/off.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum NoteMappingMode {
+    /// Velocity (0–127) maps linearly to min_value..max_value
+    Velocity,
+    /// Note-on fires max_value; note-off fires min_value
+    Trigger,
+}
+
+/// Binds a MIDI CC or Note message to a parameter.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MidiMapping {
     pub parameter_id: String,
     /// MIDI channel (0-15, or None for any channel)
     pub channel: Option<u8>,
-    pub cc_number: u8,
+    /// CC number — present for CC mappings
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cc_number: Option<u8>,
+    /// Note number — present for note mappings
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note_number: Option<u8>,
+    /// Note mapping mode — present for note mappings
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note_mode: Option<NoteMappingMode>,
     pub min_value: f64,
     pub max_value: f64,
     /// Device ID this mapping is specific to (None = any device)
     pub device_id: Option<String>,
+}
+
+impl MidiMapping {
+    pub fn is_cc(&self) -> bool {
+        self.cc_number.is_some()
+    }
+    pub fn is_note(&self) -> bool {
+        self.note_number.is_some()
+    }
 }
 
 /// Raw MIDI message for UI display / activity indicators.

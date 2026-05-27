@@ -7,11 +7,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import {
-  useMidiLearn,
-  useMidiMappings,
-  type MidiMapping,
-} from "@/inputs/midi";
+import { useMidiLearn, useMidiMappings, type MidiMapping } from "@/inputs/midi";
 import styles from "./MidiLearnButton.module.css";
 
 /**
@@ -98,7 +94,7 @@ export function MidiLearnButton({
     buttonContent = compact ? (
       <span className={styles.learningIcon}>◎</span>
     ) : (
-      "Twist knob…"
+      "Learning…"
     );
     buttonTitle = "Move any MIDI knob or fader to bind. Click to cancel.";
     buttonClass = `${styles.button} ${styles.learning}`;
@@ -133,7 +129,11 @@ export function MidiLearnButton({
       onMouseLeave={() => setIsHovered(false)}
       disabled={isProcessing || isLearningOther}
       className={`${buttonClass} ${className ?? ""}`}
-      title={isLearningOther ? "Another parameter is being learned — cancel it first (Esc)" : buttonTitle}
+      title={
+        isLearningOther
+          ? "Another parameter is being learned — cancel it first (Esc)"
+          : buttonTitle
+      }
       aria-label={buttonTitle}
     >
       {buttonContent}

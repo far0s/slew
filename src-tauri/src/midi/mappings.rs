@@ -76,7 +76,9 @@ pub fn install_default_cc_mappings(cc_numbers: &[u8]) {
             state.mappings.push(super::types::MidiMapping {
                 parameter_id: param_id.clone(),
                 channel: Some(0),
-                cc_number: cc,
+                cc_number: Some(cc),
+                note_number: None,
+                note_mode: None,
                 min_value: 0.0,
                 max_value: 1.0,
                 device_id: None,

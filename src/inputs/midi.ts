@@ -29,19 +29,37 @@ export interface MidiDeviceInfo {
 }
 
 /** A MIDI mapping that binds a CC message to a parameter. */
+export type NoteMappingMode = "velocity" | "trigger";
+
 export interface MidiMapping {
   /** The parameter ID this mapping controls */
   parameter_id: string;
   /** MIDI channel (0-15, or null for any channel) */
   channel: number | null;
-  /** CC number (0-127) */
-  cc_number: number;
-  /** Minimum output value (maps from CC 0) */
+  /** CC number — present for CC mappings */
+  cc_number?: number;
+  /** Note number — present for note mappings */
+  note_number?: number;
+  /** Note mapping mode — present for note mappings */
+  note_mode?: NoteMappingMode;
+  /** Minimum output value */
   min_value: number;
-  /** Maximum output value (maps from CC 127) */
+  /** Maximum output value */
   max_value: number;
   /** Optional: device ID this mapping is specific to */
   device_id: string | null;
+}
+
+export function isCcMapping(
+  m: MidiMapping,
+): m is MidiMapping & { cc_number: number } {
+  return typeof m.cc_number === "number";
+}
+
+export function isNoteMapping(
+  m: MidiMapping,
+): m is MidiMapping & { note_number: number; note_mode: NoteMappingMode } {
+  return typeof m.note_number === "number";
 }
 
 /** A raw MIDI message for UI display / activity indicators. */

@@ -43,6 +43,8 @@ const mockUseMidiMappings = vi.fn();
 vi.mock("@/inputs/midi", () => ({
   useMidiCombinedDevices: () => mockUseMidiCombinedDevices(),
   useMidiMappings: () => mockUseMidiMappings(),
+  isCcMapping: (m: MidiMapping) => typeof m.cc_number === "number",
+  isNoteMapping: (m: MidiMapping) => typeof m.note_number === "number",
 }));
 
 // Mock window.confirm
@@ -56,6 +58,7 @@ describe("MidiPanel", () => {
   const mockSetAutoReconnect = vi.fn();
   const mockRetryWithDelay = vi.fn().mockResolvedValue(undefined);
   const mockRemoveMapping = vi.fn().mockResolvedValue(undefined);
+  const mockAddMapping = vi.fn().mockResolvedValue(undefined);
   const mockClearAll = vi.fn().mockResolvedValue(undefined);
 
   const defaultDevicesState = {
@@ -73,6 +76,7 @@ describe("MidiPanel", () => {
   const defaultMappingsState = {
     mappings: [] as MidiMapping[],
     isLoading: false,
+    addMapping: mockAddMapping,
     removeMapping: mockRemoveMapping,
     clearAll: mockClearAll,
   };
@@ -1031,6 +1035,236 @@ describe("MidiPanel", () => {
       });
 
       expect(mockClearAll).not.toHaveBeenCalled();
+    });
+  });
+
+  // ===========================================================================
+  // Note mapping mode toggle
+  // ===========================================================================
+
+  describe("note mapping mode toggle", () => {
+    it("shows mode toggle button for note mappings", () => {
+      const mapping: MidiMapping = {
+        parameter_id: "slot_0_brightness",
+        channel: 0,
+        note_number: 60,
+        note_mode: "velocity",
+        min_value: 0,
+        max_value: 1,
+        device_id: null,
+      };
+
+      mockUseMidiMappings.mockReturnValue({
+        ...defaultMappingsState,
+        mappings: [mapping],
+      });
+
+      render(<MidiPanel {...defaultProps} />);
+      expect(
+        screen.getByRole("button", {
+          name: /Toggle note mode for slot_0_brightness/i,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show mode toggle for CC mappings", () => {
+      const mapping: MidiMapping = {
+        parameter_id: "slot_0_brightness",
+        channel: 0,
+        cc_number: 1,
+        min_value: 0,
+        max_value: 1,
+        device_id: null,
+      };
+
+      mockUseMidiMappings.mockReturnValue({
+        ...defaultMappingsState,
+        mappings: [mapping],
+      });
+
+      render(<MidiPanel {...defaultProps} />);
+      expect(
+        screen.queryByRole("button", { name: /Toggle note mode/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows Vel label when mode is velocity", () => {
+      const mapping: MidiMapping = {
+        parameter_id: "slot_0_brightness",
+        channel: 0,
+        note_number: 60,
+        note_mode: "velocity",
+        min_value: 0,
+        max_value: 1,
+        device_id: null,
+      };
+
+      mockUseMidiMappings.mockReturnValue({
+        ...defaultMappingsState,
+        mappings: [mapping],
+      });
+
+      render(<MidiPanel {...defaultProps} />);
+      expect(
+        screen.getByRole("button", {
+          name: /Toggle note mode for slot_0_brightness/i,
+        }),
+      ).toHaveTextContent("Vel");
+    });
+
+    it("shows Trig label when mode is trigger", () => {
+      const mapping: MidiMapping = {
+        parameter_id: "slot_0_brightness",
+        channel: 0,
+        note_number: 60,
+        note_mode: "trigger",
+        min_value: 0,
+        max_value: 1,
+        device_id: null,
+      };
+
+      mockUseMidiMappings.mockReturnValue({
+        ...defaultMappingsState,
+        mappings: [mapping],
+      });
+
+      render(<MidiPanel {...defaultProps} />);
+      expect(
+        screen.getByRole("button", {
+          name: /Toggle note mode for slot_0_brightness/i,
+        }),
+      ).toHaveTextContent("Trig");
+    });
+
+    it("calls addMapping with toggled mode when clicked", async () => {
+      const mockAddMapping = vi.fn().mockResolvedValue(undefined);
+      const mapping: MidiMapping = {
+        parameter_id: "slot_0_brightness",
+        channel: 0,
+        note_number: 60,
+        note_mode: "velocity",
+        min_value: 0,
+        max_value: 1,
+        device_id: null,
+      };
+
+      mockUseMidiMappings.mockReturnValue({
+        ...defaultMappingsState,
+        mappings: [mapping],
+        addMapping: mockAddMapping,
+      });
+
+      render(<MidiPanel {...defaultProps} />);
+      const toggleButton = screen.getByRole("button", {
+        name: /Toggle note mode for slot_0_brightness/i,
+      });
+
+      fireEvent.click(toggleButton);
+
+      await waitFor(() => {
+        expect(mockAddMapping).toHaveBeenCalledWith(
+          expect.objectContaining({ note_mode: "trigger" }),
+        );
+      });
+    });
+  });
+
+  // ===========================================================================
+  // Add note mapping form
+  // ===========================================================================
+
+  describe("add note mapping form", () => {
+    it("shows '+ Add note mapping' button", () => {
+      render(<MidiPanel {...defaultProps} />);
+      expect(
+        screen.getByRole("button", { name: /\+ Add note mapping/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("opens form when button clicked", () => {
+      render(<MidiPanel {...defaultProps} />);
+      fireEvent.click(
+        screen.getByRole("button", { name: /\+ Add note mapping/i }),
+      );
+      expect(screen.getByLabelText(/Parameter/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Note/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Channel/i)).toBeInTheDocument();
+    });
+
+    it("shows velocity and trigger radio options", () => {
+      render(<MidiPanel {...defaultProps} />);
+      fireEvent.click(
+        screen.getByRole("button", { name: /\+ Add note mapping/i }),
+      );
+      expect(
+        screen.getByRole("radio", { name: /Velocity/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("radio", { name: /Trigger/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("defaults to velocity mode", () => {
+      render(<MidiPanel {...defaultProps} />);
+      fireEvent.click(
+        screen.getByRole("button", { name: /\+ Add note mapping/i }),
+      );
+      expect(screen.getByRole("radio", { name: /Velocity/i })).toBeChecked();
+    });
+
+    it("closes form on cancel", () => {
+      render(<MidiPanel {...defaultProps} />);
+      fireEvent.click(
+        screen.getByRole("button", { name: /\+ Add note mapping/i }),
+      );
+      fireEvent.click(screen.getByRole("button", { name: /Cancel/i }));
+      expect(screen.queryByLabelText(/Parameter/i)).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /\+ Add note mapping/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows error when submitting without parameter ID", async () => {
+      render(<MidiPanel {...defaultProps} />);
+      fireEvent.click(
+        screen.getByRole("button", { name: /\+ Add note mapping/i }),
+      );
+      fireEvent.click(screen.getByRole("button", { name: /Add mapping/i }));
+      await waitFor(() => {
+        expect(
+          screen.getByText(/Parameter ID is required/i),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("calls addMapping and closes form on valid submit", async () => {
+      const mockAddMapping = vi.fn().mockResolvedValue(undefined);
+      mockUseMidiMappings.mockReturnValue({
+        ...defaultMappingsState,
+        addMapping: mockAddMapping,
+      });
+
+      render(<MidiPanel {...defaultProps} />);
+      fireEvent.click(
+        screen.getByRole("button", { name: /\+ Add note mapping/i }),
+      );
+
+      fireEvent.change(screen.getByLabelText(/Parameter/i), {
+        target: { value: "slot_2_alpha" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /Add mapping/i }));
+
+      await waitFor(() => {
+        expect(mockAddMapping).toHaveBeenCalledWith(
+          expect.objectContaining({
+            parameter_id: "slot_2_alpha",
+            note_number: 60,
+            note_mode: "velocity",
+          }),
+        );
+      });
+
+      expect(screen.queryByLabelText(/Parameter/i)).not.toBeInTheDocument();
     });
   });
 
