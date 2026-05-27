@@ -2,7 +2,6 @@
  * LfoEditor
  *
  * LFO-related internal components for the ModulationPanel:
- * - WaveformDisplay (exported for external use)
  * - Rate helpers: RATE_MIN_HZ, RATE_MAX_HZ, hzToSlider, sliderToHz, formatPeriod
  * - LfoForm (internal)
  * - TargetForm (internal — used by LfoRow for inline target editing)
@@ -37,140 +36,6 @@ import { getSketchDescriptor } from "@/sketches";
 import type { Slot } from "@/slots/useSlots";
 import styles from "./ModulationPanel.module.css";
 import { LfoShapeIcon } from "./LfoShapeIcon";
-
-// ============================================================================
-// LFO Waveform Visualization
-// ============================================================================
-
-interface WaveformDisplayProps {
-  shape: LfoShape;
-  value: number;
-  color: string;
-  size?: number;
-  rate?: number; // Hz — used to animate phase
-}
-
-// WaveformDisplay is kept for future use (e.g. expanded LFO row, hover preview).
-export function WaveformDisplay({
-  shape,
-  value = 0,
-  color,
-  size = 32,
-  rate = 1,
-}: WaveformDisplayProps) {
-  // Ensure value is a valid number to prevent undefined cx/cy errors
-  const safeValue =
-    typeof value === "number" && !Number.isNaN(value) ? value : 0;
-
-  // Track phase locally via rAF so the dot travels left→right along the waveform
-  const phaseRef = useRef(0);
-  const lastTimeRef = useRef<number | null>(null);
-  const [phase, setPhase] = useState(0);
-  useEffect(() => {
-    let animId: number;
-    const tick = (t: number) => {
-      if (lastTimeRef.current !== null) {
-        const dt = (t - lastTimeRef.current) / 1000;
-        phaseRef.current = (phaseRef.current + rate * dt) % 1;
-        setPhase(phaseRef.current);
-      }
-      lastTimeRef.current = t;
-      animId = requestAnimationFrame(tick);
-    };
-    animId = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(animId);
-      lastTimeRef.current = null;
-    };
-  }, [rate]);
-  // Generate waveform path
-  const points = useMemo(() => {
-    const numPoints = 40;
-    const pts: string[] = [];
-
-    for (let i = 0; i <= numPoints; i++) {
-      const phase = i / numPoints;
-      let y: number;
-
-      switch (shape) {
-        case "sine":
-          y = Math.sin(phase * 2 * Math.PI);
-          break;
-        case "triangle":
-          if (phase < 0.25) y = phase * 4;
-          else if (phase < 0.75) y = 1 - (phase - 0.25) * 4;
-          else y = -1 + (phase - 0.75) * 4;
-          break;
-        case "saw":
-          y = 2 * phase - 1;
-          break;
-        case "square":
-          y = phase < 0.5 ? 1 : -1;
-          break;
-        case "random":
-          y = Math.sin(phase * 8 + i * 0.5) * 0.7;
-          break;
-        case "smooth_random": {
-          // Fake smooth-random preview: sine eased between pseudo-random anchors
-          const seg = Math.floor(phase * 3);
-          const t = (phase * 3) % 1;
-          const ease = (1 - Math.cos(t * Math.PI)) / 2;
-          const anchors = [0.6, -0.8, 0.3, -0.5];
-          y = anchors[seg % 4] + (anchors[(seg + 1) % 4] - anchors[seg % 4]) * ease;
-          break;
-        }
-        default:
-          y = 0;
-      }
-
-      const x = (i / numPoints) * size;
-      const yPos = size / 2 - (y * size) / 2.5;
-      pts.push(`${i === 0 ? "M" : "L"} ${x} ${yPos}`);
-    }
-
-    return pts.join(" ");
-  }, [shape, size]);
-
-  // Dot position: x from local phase (left→right scan), y from actual backend value
-  const indicatorX = phase * size;
-  const indicatorY = size / 2 - (safeValue * size) / 2.5;
-
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      className={styles.waveformSvg}
-    >
-      {/* Grid line */}
-      <line
-        x1={0}
-        y1={size / 2}
-        x2={size}
-        y2={size / 2}
-        stroke="rgba(255,255,255,0.1)"
-        strokeWidth={1}
-      />
-      {/* Waveform path */}
-      <path
-        d={points}
-        fill="none"
-        stroke={color}
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity={0.8}
-      />
-      {/* Current position indicator */}
-      <circle
-        cx={indicatorX}
-        cy={indicatorY}
-        r={3}
-        fill={color}
-      />
-    </svg>
-  );
-}
 
 // ============================================================================
 // Rate Helpers
@@ -918,21 +783,17 @@ export function LfosSection({ slots, addLfoFnRef, onHighlightParams }: LfosSecti
   // Highlight params based on expanded LFO/target
   useEffect(() => {
     if (!onHighlightParams) {
-      console.debug('[LfosSection] onHighlightParams is undefined — highlight skipped');
       return;
     }
     if (expandedTargetId) {
       const target = targets.find((t) => t.id === expandedTargetId);
       const ids = target ? new Set([target.parameter_id]) : new Set<string>();
-      console.debug('[LfosSection] expandedTargetId', expandedTargetId, '→ highlighting', [...ids]);
       onHighlightParams(ids);
     } else if (expandedLfoId) {
       const lfoTargets = targets.filter((t) => t.source_id === expandedLfoId);
       const ids = new Set(lfoTargets.map((t) => t.parameter_id));
-      console.debug('[LfosSection] expandedLfoId', expandedLfoId, '→ targets:', lfoTargets.length, '→ highlighting', [...ids]);
       onHighlightParams(ids);
     } else {
-      console.debug('[LfosSection] nothing expanded → clearing highlight');
       onHighlightParams(new Set());
     }
   }, [expandedLfoId, expandedTargetId, targets, onHighlightParams]);
