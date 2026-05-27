@@ -95,21 +95,6 @@ Define how Slew will be sold before public launch: pricing tiers, trial/free mod
 
 ---
 
-#### 🔴 CI Test Job `chore`
-
-Add automated testing to CI pipeline.
-
-**Context**: GitHub Actions builds but doesn't run tests. Needed as a quality gate before public release.
-
-**Subtasks**:
-
-- [ ] Add `test` job to `release.yml`
-- [ ] Run `npm run test:run` (frontend)
-- [ ] Run `cargo test` (backend)
-- [ ] Fail build if tests fail
-
----
-
 #### 🔴 Video Output Troubleshooting Guide `chore`
 
 Create troubleshooting guide for video output setup.
