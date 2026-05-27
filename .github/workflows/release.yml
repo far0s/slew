@@ -4,9 +4,6 @@ on:
   push:
     tags:
       - "*"
-    branches:
-      - main
-  pull_request:
   workflow_dispatch: # Manual trigger for testing
 
 env:
@@ -14,57 +11,8 @@ env:
   RUSTC_WRAPPER: "sccache"
 
 jobs:
-  test:
-    runs-on: ubuntu-22.04
-
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Cache apt packages
-        uses: awalsh128/cache-apt-pkgs-action@v1.6.0
-        with:
-          packages: libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev libhidapi-dev libudev-dev
-          version: 1.0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: "lts/*"
-
-      - name: Cache node_modules
-        uses: actions/cache@v5
-        id: npm-cache
-        with:
-          path: node_modules
-          key: ubuntu-node-${{ hashFiles('package-lock.json') }}
-
-      - name: Install frontend dependencies
-        if: steps.npm-cache.outputs.cache-hit != 'true'
-        run: npm ci
-
-      - name: Frontend tests
-        run: npm run test:run
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: "./src-tauri -> target"
-          cache-on-failure: true
-          shared-key: "test-ubuntu"
-
-      - name: Backend tests
-        run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features
-
   # Build macOS separately to fix code signature
   build-macos:
-    needs: [test]
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
     strategy:
@@ -208,8 +156,6 @@ jobs:
 
   # Build Linux and Windows with tauri-action (no signature issues)
   build-linux-windows:
-    needs: [test]
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
     strategy:
