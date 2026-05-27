@@ -262,6 +262,100 @@ Create troubleshooting guide for video output setup.
 
 ## Low Priority / Future
 
+### 🟢 Marketing Site — Monorepo Setup `chore`
+
+Scaffold a `site/` workspace inside the repo for the Slew marketing/landing page.
+
+**Context**: When Slew is ready for public release it will need a landing page. Keeping it in the same repo as a separate workspace (`site/`) lets the site share color tokens, typography, changelog data, and screenshots with the app — while staying independently deployable.
+
+**Approach**:
+- Configure npm/pnpm workspaces so `site/` is a first-class package
+- Create `site/package.json` with its own framework choice (Astro recommended for a static marketing site)
+- Extract shared design tokens (CSS variables, color palette) into a `packages/tokens` or inline in `site/` initially
+- Set up a deploy target (Vercel/Netlify) that only triggers on changes to `site/`
+- Document the workspace structure in `docs/ARCHITECTURE.md`
+
+**Subtasks**:
+
+- [ ] Decide: pnpm workspaces or npm workspaces
+- [ ] Scaffold `site/` with Astro (or chosen framework)
+- [ ] Wire up shared tokens/styles from app
+- [ ] Configure CI deploy (Vercel/Netlify) scoped to `site/`
+- [ ] Update `ARCHITECTURE.md` with monorepo structure
+
+---
+
+### 🟢 Marketing Site — Landing Page `feature` `design`
+
+Build the public-facing landing page to present and sell Slew ahead of its public release.
+
+**Context**: Slew needs a homepage that communicates what it is, who it's for, and where to get it. This is the primary conversion surface for new users.
+
+**Sections to include**:
+- Hero — tagline, short description, download CTA
+- Feature highlights — dual-window output, MIDI/OSC control, live shader sketches
+- Screenshot / demo reel — video or animated screenshots of the app in action
+- Sketch gallery — showcase of what's possible
+- Changelog / release history (pulled from `CHANGELOG.md`)
+- Download / pricing section (if applicable)
+- Footer with links (GitHub, docs, contact)
+
+**Ideas**:
+
+- [ ] Write copy: tagline, feature descriptions, about section
+- [ ] Capture screenshots and/or a demo video
+- [ ] Design hero section
+- [ ] Build feature highlights grid
+- [ ] Integrate changelog feed from `CHANGELOG.md`
+- [ ] SEO metadata, Open Graph tags
+- [ ] Analytics (privacy-respecting, e.g. Plausible)
+- [ ] Mobile-responsive layout
+
+---
+
+### 🟢 Selling Strategy & Pricing Model `research`
+
+Define how Slew will be sold before public launch: pricing tiers, trial/free model, and feature gating strategy.
+
+**Context**: Slew targets creative coders and VJs — a niche with high willingness to pay for tools that respect their workflow, but also a strong open-source/free-tool culture (Hydra, TouchDesigner free tier, etc.). Getting this wrong at launch is hard to undo.
+
+**Competitor research** (at minimum):
+
+| App | Model | Price | Notes |
+|---|---|---|---|
+| TouchDesigner | Free tier + Commercial | $600 one-time (Commercial) | Free is watermarked, limited res |
+| Resolume Avenue | One-time | ~€350–450 | No free tier, demo mode |
+| VDMX | One-time | $399 | 30-day trial |
+| CoGe | One-time | €99 | Cheap, niche |
+| Hydra | Free / open-source | $0 | Web-based, community-funded |
+| MadMapper | Subscription or one-time | €$99–399 | Projection-focused |
+| Millumin | One-time | €$299 | Event/installation focus |
+| Modulaser | Free tier + One-time tiers | Free / €179 Standard / €499 Pro (20% early-access discount active) | Laser-focused; indie, macOS/Win/Linux; free tier is 15-min sessions, gates recording & output count — very close model to where Slew might land |
+
+- [ ] Research each competitor's current pricing, trial model, and perceived value
+- [ ] Note which features they gate (resolution, watermark, output count, save/export)
+- [ ] Research community sentiment on pricing (Reddit r/VJing, Discord servers, forums)
+
+**Questions to answer**:
+
+- One-time purchase vs subscription vs perpetual + upgrade pricing?
+- Free tier (feature-limited) vs time-limited trial vs no free tier?
+- Which Slew features are strong enough to gate? (e.g. output resolution, sketch count, MIDI/OSC, recording)
+- Is there a meaningful "hobbyist" tier vs "professional" tier split?
+- App Store vs direct download vs both? (App Store takes 30%, limits some APIs)
+- Early adopter / launch pricing strategy?
+
+**Subtasks**:
+
+- [ ] Complete competitor pricing research table
+- [ ] Survey potential users (VJ communities) on price sensitivity
+- [ ] Draft 2–3 pricing model options with pros/cons
+- [ ] Decide on free/trial approach and what is gated
+- [ ] Decide on distribution channel (direct, Gumroad, App Store, etc.)
+- [ ] Document final decision and rationale
+
+---
+
 ### 🟢 App Launch Sequence & Preloader `polish`
 
 Improve the cold-start experience with a polished launch animation and soft preloader.
