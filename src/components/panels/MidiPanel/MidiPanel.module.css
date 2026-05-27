@@ -258,6 +258,37 @@
   border-color: rgb(239 68 68 / 0.4);
 }
 
+.viewDeviceButton {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(168 85 247 / 0.1);
+  border: 1px solid rgb(168 85 247 / 0.22);
+  border-radius: 0.25rem;
+  color: rgb(216 180 254 / 0.75);
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.viewDeviceButton:hover {
+  background: rgb(168 85 247 / 0.2);
+  border-color: rgb(168 85 247 / 0.4);
+  color: rgb(216 180 254);
+}
+
+.viewDeviceButton:focus-visible {
+  outline: 2px solid rgb(168 85 247 / 0.7);
+  outline-offset: 1px;
+}
+
 /* ==========================================================================
    Mappings List
    ========================================================================== */
@@ -679,4 +710,55 @@
   margin: 0;
   padding-left: 1.25rem;
   line-height: 1.4;
+}
+
+/* ==========================================================================
+   Schematic Browser (debug)
+   ========================================================================== */
+
+.schematicBrowserList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.schematicBrowserItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.3rem;
+  cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease;
+  text-align: left;
+}
+
+.schematicBrowserItem:hover {
+  background: var(--bg-active);
+  border-color: rgb(168 85 247 / 0.3);
+}
+
+.schematicBrowserItem:focus-visible {
+  outline: 2px solid rgb(168 85 247 / 0.7);
+  outline-offset: 1px;
+}
+
+.schematicBrowserName {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.schematicBrowserMeta {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
 }

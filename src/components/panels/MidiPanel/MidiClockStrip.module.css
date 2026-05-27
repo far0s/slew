@@ -1,0 +1,238 @@
+/* ==========================================================================
+   MidiClockStrip.module.css
+   ========================================================================== */
+
+.strip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  background: rgb(59 130 246 / 0.07);
+  border: 1px solid rgb(59 130 246 / 0.18);
+  border-radius: 0.35rem;
+}
+
+/* --------------------------------------------------------------------------
+   Source block (left)
+   -------------------------------------------------------------------------- */
+
+.sourceBlock {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.stripLabel {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: rgb(147 197 253 / 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.sourceButton {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: none;
+  padding: 0.1rem 0.2rem;
+  border-radius: 0.2rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  min-width: 0;
+  max-width: 8rem;
+  transition: color 0.12s ease;
+}
+
+.sourceButton:hover {
+  color: var(--text-primary);
+}
+
+.sourceButton:focus-visible {
+  outline: 2px solid rgb(59 130 246 / 0.7);
+  outline-offset: 1px;
+}
+
+.sourceName {
+  font-size: 0.68rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  font-size: 0.45rem;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   BPM block (centre)
+   -------------------------------------------------------------------------- */
+
+.bpmBlock {
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.bpmValue {
+  font-size: 1rem;
+  font-weight: 700;
+  color: rgb(147 197 253);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.bpmUnit {
+  font-size: 0.55rem;
+  font-weight: 500;
+  color: rgb(147 197 253 / 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bpmDash {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   Status block (right)
+   -------------------------------------------------------------------------- */
+
+.statusBlock {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.syncBadge {
+  font-size: 0.58rem;
+  font-weight: 500;
+  padding: 0.1rem 0.35rem;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+
+.no_signal {
+  background: rgb(100 100 100 / 0.15);
+  color: var(--text-muted);
+  border: 1px solid rgb(100 100 100 / 0.2);
+}
+
+.locked {
+  background: rgb(34 197 94 / 0.15);
+  color: rgb(134 239 172);
+  border: 1px solid rgb(34 197 94 / 0.25);
+}
+
+.drifting {
+  background: rgb(251 191 36 / 0.15);
+  color: rgb(252 211 77);
+  border: 1px solid rgb(251 191 36 / 0.25);
+}
+
+.disconnectButton {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid rgb(239 68 68 / 0.2);
+  border-radius: 0.2rem;
+  color: rgb(252 165 165 / 0.7);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.disconnectButton:hover:not(:disabled) {
+  color: rgb(252 165 165);
+  border-color: rgb(239 68 68 / 0.4);
+}
+
+.disconnectButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* --------------------------------------------------------------------------
+   Source selector dropdown
+   -------------------------------------------------------------------------- */
+
+.selectorDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--bg-panel, #1a1a1f);
+  border: 1px solid var(--border-default, rgb(255 255 255 / 0.1));
+  border-radius: 0.4rem;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.selectorOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle, rgb(255 255 255 / 0.05));
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.selectorOption:last-child {
+  border-bottom: none;
+}
+
+.selectorOption:hover:not(:disabled) {
+  background: var(--bg-hover, rgb(255 255 255 / 0.04));
+  color: var(--text-primary);
+}
+
+.selectorOption:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.selectorSelected {
+  color: var(--text-primary);
+  background: rgb(59 130 246 / 0.08);
+}
+
+.selectorCheck {
+  font-size: 0.62rem;
+  color: #22c55e;
+}
+
+.selectorLoading,
+.selectorEmpty {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  padding: 0.5rem 0.6rem;
+  margin: 0;
+  font-style: italic;
+}

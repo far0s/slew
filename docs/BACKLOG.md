@@ -166,46 +166,24 @@ Improve the cold-start experience with a polished launch animation and soft prel
 
 ### Control & Mapping
 
-#### 🟡 MIDI Panel — Device Schematic & Clock UI `feature` `design`
+#### 🟢 MIDI Panel — Device Schematic & Clock UI `feature` `design`
 
-Overhaul the Mappings section of the MIDI Panel to be visually useful and scalable.
+**Completed** — see `src/components/panels/MidiPanel/`.
 
-**Context**: Flat list of `CC X @ Ch Y → parameter_id` rows becomes unwieldy fast. **Secondary to the Inputs/Outputs Rework** — the design pass for that item should inform how the schematic modal integrates into the new unified model. Pick this up after the Inputs/Outputs data model is settled.
+**What shipped:**
 
-**Part 1 — Device Schematic Modal**
+- `DeviceSchematic` modal — top-down CSS grid of each controller's physical layout; controls highlighted green (mapped) / grey (unmapped); click any control for a mapping popover
+- Layout definitions in `src/inputs/deviceLayouts.ts` for: Akai Midimix, APC Mini mk1, APC Mini mk2, Akai MPD218; unknown devices fall back to auto-generated CC grid
+- `MidiClockStrip` — always-visible horizontal strip in MidiPanel showing clock source (selector dropdown), live BPM, and Locked / Drifting / No Signal badge
+- `⊞` "View Device" button appears on each connected device row
+- `useMidiCombinedDevices` now keys by device `id`, fixing duplicate same-model devices collapsing into one entry
+- Collapsible **Schematic Browser** debug section lists all built-in layouts so you can inspect schematics without hardware connected
 
-Replace the list with a compact summary line (e.g. "8 mappings active") and a **"View Device"** button that opens a modal showing a top-down schematic of the connected controller:
-
-- Knobs, faders, pads, buttons rendered in physical layout
-- Each control highlighted green/grey for whether it has a mapping
-- Clicking a control opens an inline popover to assign/clear mapping
-- Support for multiple connected devices
-
-*Approach*:
-1. Define a `DeviceLayout` data format (JSON: control type, position, CC number, label)
-2. Build a generic `<DeviceSchematic>` renderer consuming that format
-3. Ship definitions for initially-supported models (Akai APC mini, Novation Launch Control, generic 8-knob template)
-4. Unknown devices fall back to an auto-generated grid from emitted CC numbers
-
-*Creative option*: Allow community-contributed layout files (`~/.slew/device-layouts/`) so users can add controllers without a code change.
-
-**Part 2 — MIDI Clock UI**
-
-A dedicated sub-section for MIDI Clock signals:
-
-- **Clock source indicator**: which device is sending clock (or "Internal")
-- **Live BPM display**: large numeric readout from inter-pulse timing, tap-tempo fallback
-- **Sync status badge**: Locked / Drifting / No Signal, colour coded
-- **Phase offset control**: nudge slider to align beat grid to external clock
-- Future: allow Slew to *send* MIDI Clock (master mode)
-
-**Acceptance criteria:**
-- [ ] Mappings list replaced by schematic modal trigger
-- [ ] Modal renders correct physical layout for at least 2 real device models
-- [ ] Unknown devices render auto-generated grid layout
-- [ ] Mapping assign/clear works inside the modal (no regression on learn flow)
-- [ ] MIDI Clock strip shows BPM and sync status when a clock source is present
-- [ ] All existing `MidiPanel` tests updated / extended
+**Remaining / future:**
+- [ ] Phase offset nudge slider on clock strip
+- [ ] MIDI Clock master (send) mode
+- [ ] Community layout files from `~/.slew/device-layouts/`
+- [ ] Mapping assign/clear directly from schematic popover (currently read-only)
 
 ---
 
@@ -219,6 +197,7 @@ Support more hardware controllers.
 
 - [ ] Launchpad support
 - [ ] APC Mini support
+- [ ] Midi Fighter Twister / Spectra / 64 (DJ TechTools)
 - [ ] Generic MIDI template system
 - [ ] MIDI mapping import/export
 

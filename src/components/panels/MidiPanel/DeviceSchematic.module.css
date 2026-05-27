@@ -1,0 +1,330 @@
+/* ==========================================================================
+   DeviceSchematic.module.css
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Overlay / Modal
+   -------------------------------------------------------------------------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgb(0 0 0 / 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--bg-panel, #1a1a1f);
+  border: 1px solid var(--border-default, rgb(255 255 255 / 0.1));
+  border-radius: 0.6rem;
+  box-shadow:
+    0 8px 32px rgb(0 0 0 / 0.5),
+    0 2px 8px rgb(0 0 0 / 0.3);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  min-width: 280px;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.modalTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.genericNote {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  margin: 0.2rem 0 0;
+  font-style: italic;
+}
+
+.modalMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.mappedBadge {
+  padding: 0.15rem 0.45rem;
+  border-radius: 9999px;
+  background: rgb(34 197 94 / 0.15);
+  border: 1px solid rgb(34 197 94 / 0.25);
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: rgb(134 239 172);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.closeButton {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--border-subtle, rgb(255 255 255 / 0.06));
+  border-radius: 0.25rem;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.closeButton:hover {
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+/* --------------------------------------------------------------------------
+   Legend
+   -------------------------------------------------------------------------- */
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legendMapped {
+  background: #22c55e;
+}
+
+.legendUnmapped {
+  background: rgb(100 100 100 / 0.4);
+  border: 1px solid rgb(255 255 255 / 0.1);
+}
+
+/* --------------------------------------------------------------------------
+   Grid
+   -------------------------------------------------------------------------- */
+
+.gridScroll {
+  overflow: auto;
+}
+
+.grid {
+  display: grid;
+  gap: 4px;
+  padding: 0.5rem;
+  background: var(--bg-active, rgb(255 255 255 / 0.03));
+  border-radius: 0.4rem;
+  border: 1px solid var(--border-subtle, rgb(255 255 255 / 0.06));
+}
+
+/* --------------------------------------------------------------------------
+   Cell (base)
+   -------------------------------------------------------------------------- */
+
+.cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.25rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: rgb(255 255 255 / 0.04);
+  cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+  overflow: visible;
+}
+
+.cell:hover {
+  background: rgb(255 255 255 / 0.09);
+  border-color: rgb(255 255 255 / 0.2);
+}
+
+.cell:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+/* --------------------------------------------------------------------------
+   Mapped state
+   -------------------------------------------------------------------------- */
+
+.cell.mapped {
+  background: rgb(34 197 94 / 0.15);
+  border-color: rgb(34 197 94 / 0.35);
+  box-shadow: 0 0 6px rgb(34 197 94 / 0.2);
+}
+
+.cell.mapped:hover {
+  background: rgb(34 197 94 / 0.22);
+  border-color: rgb(34 197 94 / 0.5);
+}
+
+/* --------------------------------------------------------------------------
+   Control type visuals
+   -------------------------------------------------------------------------- */
+
+/* Knob: circular */
+.knob {
+  border-radius: 50%;
+}
+
+.knobDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.mapped .knobDot {
+  background: #22c55e;
+}
+
+/* Fader: tall narrow capsule */
+.fader {
+  border-radius: 0.15rem;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.faderTrack {
+  width: 2px;
+  height: 60%;
+  background: rgb(255 255 255 / 0.15);
+  border-radius: 1px;
+}
+
+.mapped .faderTrack {
+  background: rgb(34 197 94 / 0.5);
+}
+
+/* Pad: square with slightly rounded corners */
+.pad {
+  border-radius: 0.2rem;
+}
+
+/* Button: small square */
+.btn {
+  border-radius: 0.2rem;
+}
+
+/* --------------------------------------------------------------------------
+   Popover
+   -------------------------------------------------------------------------- */
+
+.popover {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 210;
+  min-width: 140px;
+  max-width: 220px;
+  background: var(--bg-panel, #1a1a1f);
+  border: 1px solid var(--border-default, rgb(255 255 255 / 0.12));
+  border-radius: 0.4rem;
+  padding: 0.5rem;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.5);
+  pointer-events: none;
+}
+
+.popoverLabel {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin: 0 0 0.35rem;
+  border-bottom: 1px solid var(--border-subtle, rgb(255 255 255 / 0.06));
+  padding-bottom: 0.3rem;
+  line-height: 1.3;
+}
+
+.popoverEmpty {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  margin: 0;
+  font-style: italic;
+}
+
+.popoverMappings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.popoverMapping {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.popoverParam {
+  font-size: 0.62rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popoverRange {
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Empty state
+   -------------------------------------------------------------------------- */
+
+.noControls {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  padding: 1rem;
+  text-align: center;
+  font-style: italic;
+}

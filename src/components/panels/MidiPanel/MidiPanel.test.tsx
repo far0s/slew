@@ -47,6 +47,18 @@ vi.mock("@/inputs/midi", () => ({
   isNoteMapping: (m: MidiMapping) => typeof m.note_number === "number",
 }));
 
+// Mock MIDI clock hook
+vi.mock("@/inputs/bpmSource", () => ({
+  useMidiClock: () => ({
+    status: { device_id: null, is_connected: false, bpm: null },
+    ports: [],
+    isLoading: false,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    refreshPorts: vi.fn(),
+  }),
+}));
+
 // Mock window.confirm
 const mockConfirm = vi.fn();
 (window as any).confirm = mockConfirm;

@@ -18,6 +18,9 @@ import {
   type NoteMappingMode,
   type MidiCombinedDeviceInfo,
 } from "@/inputs/midi";
+import { DeviceSchematic } from "./DeviceSchematic";
+import { MidiClockStrip } from "./MidiClockStrip";
+import { KNOWN_LAYOUTS } from "@/inputs/deviceLayouts";
 import styles from "./MidiPanel.module.css";
 
 /**
@@ -65,11 +68,13 @@ function DeviceRow({
   device,
   onToggleConnection,
   onToggleFeedback,
+  onViewSchematic,
   isConnecting,
 }: {
   device: MidiCombinedDeviceInfo;
   onToggleConnection: (deviceName: string, isConnected: boolean) => void;
   onToggleFeedback: (deviceName: string, enabled: boolean) => void;
+  onViewSchematic: (deviceName: string) => void;
   isConnecting: boolean;
 }) {
   const isConnected = device.inputConnected || device.outputConnected;
@@ -126,6 +131,17 @@ function DeviceRow({
         >
           {isConnecting ? "…" : isConnected ? "Disconnect" : "Connect"}
         </button>
+        {isConnected && (
+          <button
+            type="button"
+            onClick={() => onViewSchematic(device.name)}
+            className={styles.viewDeviceButton}
+            aria-label={`View ${device.name} schematic`}
+            title="View device layout"
+          >
+            ⊞
+          </button>
+        )}
       </div>
     </div>
   );
@@ -134,7 +150,13 @@ function DeviceRow({
 /**
  * Unified device list with connect/disconnect controls.
  */
-function DeviceList({ deviceName }: { deviceName?: string }) {
+function DeviceList({
+  deviceName,
+  onViewSchematic,
+}: {
+  deviceName?: string;
+  onViewSchematic: (name: string) => void;
+}) {
   const {
     devices,
     isLoading,
@@ -235,6 +257,7 @@ function DeviceList({ deviceName }: { deviceName?: string }) {
             void handleToggleConnection(name, isConnected)
           }
           onToggleFeedback={handleToggleFeedback}
+          onViewSchematic={onViewSchematic}
           isConnecting={connectingDevice === device.name}
         />
       ))}
@@ -512,6 +535,57 @@ function AddNoteMappingForm({
   );
 }
 
+/**
+ * Debug: browse all built-in device schematics without hardware connected.
+ */
+function SchematicBrowser() {
+  const [open, setOpen] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  return (
+    <>
+      <Collapsible.Root open={open} onOpenChange={setOpen}>
+        <Collapsible.Trigger asChild>
+          <button type="button" className={styles.sectionHeader}>
+            {open ? <ChevronDownIcon /> : <ChevronRightIcon />}
+            <span>Schematic Browser</span>
+            <span className={styles.mappingsBadge}>{KNOWN_LAYOUTS.length}</span>
+          </button>
+        </Collapsible.Trigger>
+        <Collapsible.Content className={styles.sectionContent}>
+          <div className={styles.schematicBrowserList}>
+            {KNOWN_LAYOUTS.map((layout) => (
+              <button
+                key={layout.name}
+                type="button"
+                className={styles.schematicBrowserItem}
+                onClick={() => setPreview(layout.name)}
+              >
+                <span className={styles.schematicBrowserName}>
+                  {layout.name}
+                </span>
+                <span className={styles.schematicBrowserMeta}>
+                  {layout.gridCols}×{layout.gridRows} · {layout.controls.length}{" "}
+                  controls
+                </span>
+              </button>
+            ))}
+          </div>
+        </Collapsible.Content>
+      </Collapsible.Root>
+
+      {preview && (
+        <DeviceSchematic
+          deviceName={preview}
+          mappings={[]}
+          inputDeviceId={null}
+          onClose={() => setPreview(null)}
+        />
+      )}
+    </>
+  );
+}
+
 export interface MidiPanelProps {
   /** Optional class name for additional styling */
   className?: string;
@@ -531,6 +605,7 @@ export interface MidiPanelProps {
 export function MidiPanel({ className, deviceName }: MidiPanelProps) {
   const [devicesOpen, setDevicesOpen] = useState(true);
   const [mappingsOpen, setMappingsOpen] = useState(true);
+  const [schematicDevice, setSchematicDevice] = useState<string | null>(null);
   const { mappings, clearAll } = useMidiMappings();
   const { devices: allDevices } = useMidiCombinedDevices();
 
@@ -557,6 +632,11 @@ export function MidiPanel({ className, deviceName }: MidiPanelProps) {
     }
   };
 
+  // Resolve the input device id for the schematic modal
+  const schematicInputId = schematicDevice
+    ? (allDevices.find((d) => d.name === schematicDevice)?.input?.id ?? null)
+    : null;
+
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
       {!deviceName && (
@@ -564,6 +644,9 @@ export function MidiPanel({ className, deviceName }: MidiPanelProps) {
           <h3 className={styles.title}>MIDI</h3>
         </div>
       )}
+
+      {/* MIDI Clock strip — always visible */}
+      <MidiClockStrip />
 
       <Collapsible.Root open={devicesOpen} onOpenChange={setDevicesOpen}>
         <Collapsible.Trigger asChild>
@@ -573,7 +656,10 @@ export function MidiPanel({ className, deviceName }: MidiPanelProps) {
           </button>
         </Collapsible.Trigger>
         <Collapsible.Content className={styles.sectionContent}>
-          <DeviceList deviceName={deviceName} />
+          <DeviceList
+            deviceName={deviceName}
+            onViewSchematic={(name) => setSchematicDevice(name)}
+          />
         </Collapsible.Content>
       </Collapsible.Root>
 
@@ -610,6 +696,19 @@ export function MidiPanel({ className, deviceName }: MidiPanelProps) {
           />
         </Collapsible.Content>
       </Collapsible.Root>
+
+      {/* Device schematic modal */}
+      {schematicDevice && (
+        <DeviceSchematic
+          deviceName={schematicDevice}
+          mappings={mappings}
+          inputDeviceId={schematicInputId}
+          onClose={() => setSchematicDevice(null)}
+        />
+      )}
+
+      {/* Debug: schematic browser (no hardware required) */}
+      <SchematicBrowser />
     </div>
   );
 }
