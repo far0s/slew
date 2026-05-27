@@ -73,22 +73,99 @@ function buildMidimixControls(): ControlDef[] {
   for (let c = 0; c < 8; c++) {
     const col = c;
     // Knobs at rows 0-2
-    controls.push({ kind: "knob", col, row: 0, cc: knobCCs[c][0], channel: 0, label: `Knob ${c + 1} Top (CC ${knobCCs[c][0]})` });
-    controls.push({ kind: "knob", col, row: 1, cc: knobCCs[c][1], channel: 0, label: `Knob ${c + 1} Mid (CC ${knobCCs[c][1]})` });
-    controls.push({ kind: "knob", col, row: 2, cc: knobCCs[c][2], channel: 0, label: `Knob ${c + 1} Bot (CC ${knobCCs[c][2]})` });
+    controls.push({
+      kind: "knob",
+      col,
+      row: 0,
+      cc: knobCCs[c][0],
+      channel: 0,
+      label: `Knob ${c + 1} Top (CC ${knobCCs[c][0]})`,
+    });
+    controls.push({
+      kind: "knob",
+      col,
+      row: 1,
+      cc: knobCCs[c][1],
+      channel: 0,
+      label: `Knob ${c + 1} Mid (CC ${knobCCs[c][1]})`,
+    });
+    controls.push({
+      kind: "knob",
+      col,
+      row: 2,
+      cc: knobCCs[c][2],
+      channel: 0,
+      label: `Knob ${c + 1} Bot (CC ${knobCCs[c][2]})`,
+    });
     // Buttons at rows 3-5
-    controls.push({ kind: "button", col, row: 3, note: muteNotes[c], channel: 0, label: `Mute ${c + 1} (Note ${muteNotes[c]})` });
-    controls.push({ kind: "button", col, row: 4, note: soloNotes[c], channel: 0, label: `Solo ${c + 1} (Note ${soloNotes[c]})` });
-    controls.push({ kind: "button", col, row: 5, note: recNotes[c], channel: 0, label: `Rec Arm ${c + 1} (Note ${recNotes[c]})` });
+    controls.push({
+      kind: "button",
+      col,
+      row: 3,
+      note: muteNotes[c],
+      channel: 0,
+      label: `Mute ${c + 1} (Note ${muteNotes[c]})`,
+    });
+    controls.push({
+      kind: "button",
+      col,
+      row: 4,
+      note: soloNotes[c],
+      channel: 0,
+      label: `Solo ${c + 1} (Note ${soloNotes[c]})`,
+    });
+    controls.push({
+      kind: "button",
+      col,
+      row: 5,
+      note: recNotes[c],
+      channel: 0,
+      label: `Rec Arm ${c + 1} (Note ${recNotes[c]})`,
+    });
     // Fader at row 6
-    controls.push({ kind: "fader", col, row: 6, cc: faderCCs[c], channel: 0, label: `Fader ${c + 1} (CC ${faderCCs[c]})` });
+    controls.push({
+      kind: "fader",
+      col,
+      row: 6,
+      cc: faderCCs[c],
+      channel: 0,
+      label: `Fader ${c + 1} (CC ${faderCCs[c]})`,
+    });
   }
 
   // Right column (col 8): master elements
-  controls.push({ kind: "button", col: 8, row: 3, note: 25, channel: 0, label: "Bank Left (Note 25)" });
-  controls.push({ kind: "button", col: 8, row: 4, note: 26, channel: 0, label: "Bank Right (Note 26)" });
-  controls.push({ kind: "button", col: 8, row: 5, note: 28, channel: 0, label: "Master Solo (Note 28)" });
-  controls.push({ kind: "fader", col: 8, row: 6, cc: 62, channel: 0, label: "Master Fader (CC 62)" });
+  controls.push({
+    kind: "button",
+    col: 8,
+    row: 3,
+    note: 25,
+    channel: 0,
+    label: "Bank Left (Note 25)",
+  });
+  controls.push({
+    kind: "button",
+    col: 8,
+    row: 4,
+    note: 26,
+    channel: 0,
+    label: "Bank Right (Note 26)",
+  });
+  controls.push({
+    kind: "button",
+    col: 8,
+    row: 5,
+    note: 28,
+    channel: 0,
+    label: "Master Solo (Note 28)",
+  });
+  controls.push({
+    kind: "fader",
+    col: 8,
+    row: 6,
+    cc: 62,
+    channel: 0,
+    label: "Master Fader (CC 62)",
+  });
 
   return controls;
 }
@@ -113,23 +190,51 @@ function buildApcMiniMk2Controls(): ControlDef[] {
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
       const note = (7 - r) * 8 + c;
-      controls.push({ kind: "pad", col: c, row: r, note, channel: 0, label: `Pad ${note} (Note ${note})` });
+      controls.push({
+        kind: "pad",
+        col: c,
+        row: r,
+        note,
+        channel: 0,
+        label: `Pad ${note} (Note ${note})`,
+      });
     }
   }
 
   // Scene launch buttons (col 8, rows 0-7)
   const sceneNotes = [112, 113, 114, 115, 116, 117, 118, 119];
   for (let r = 0; r < 8; r++) {
-    controls.push({ kind: "button", col: 8, row: r, note: sceneNotes[r], channel: 0, label: `Scene ${r + 1} (Note ${sceneNotes[r]})` });
+    controls.push({
+      kind: "button",
+      col: 8,
+      row: r,
+      note: sceneNotes[r],
+      channel: 0,
+      label: `Scene ${r + 1} (Note ${sceneNotes[r]})`,
+    });
   }
 
   // 8 channel faders (row 8, cols 0-7)
   const faderCCs = [48, 49, 50, 51, 52, 53, 54, 55];
   for (let c = 0; c < 8; c++) {
-    controls.push({ kind: "fader", col: c, row: 8, cc: faderCCs[c], channel: 0, label: `Fader ${c + 1} (CC ${faderCCs[c]})` });
+    controls.push({
+      kind: "fader",
+      col: c,
+      row: 8,
+      cc: faderCCs[c],
+      channel: 0,
+      label: `Fader ${c + 1} (CC ${faderCCs[c]})`,
+    });
   }
   // Master fader (row 8, col 8)
-  controls.push({ kind: "fader", col: 8, row: 8, cc: 56, channel: 0, label: "Master Fader (CC 56)" });
+  controls.push({
+    kind: "fader",
+    col: 8,
+    row: 8,
+    cc: 56,
+    channel: 0,
+    label: "Master Fader (CC 56)",
+  });
 
   return controls;
 }
@@ -154,22 +259,50 @@ function buildApcMiniMk1Controls(): ControlDef[] {
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
       const note = (7 - r) * 8 + c;
-      controls.push({ kind: "pad", col: c, row: r, note, channel: 0, label: `Pad ${note} (Note ${note})` });
+      controls.push({
+        kind: "pad",
+        col: c,
+        row: r,
+        note,
+        channel: 0,
+        label: `Pad ${note} (Note ${note})`,
+      });
     }
   }
 
   // Scene launch buttons (col 8, rows 0-7)
   const sceneNotes = [82, 83, 84, 85, 86, 87, 88, 89];
   for (let r = 0; r < 8; r++) {
-    controls.push({ kind: "button", col: 8, row: r, note: sceneNotes[r], channel: 0, label: `Scene ${r + 1} (Note ${sceneNotes[r]})` });
+    controls.push({
+      kind: "button",
+      col: 8,
+      row: r,
+      note: sceneNotes[r],
+      channel: 0,
+      label: `Scene ${r + 1} (Note ${sceneNotes[r]})`,
+    });
   }
 
   // 8 channel faders (row 8, cols 0-7)
   const faderCCs = [48, 49, 50, 51, 52, 53, 54, 55];
   for (let c = 0; c < 8; c++) {
-    controls.push({ kind: "fader", col: c, row: 8, cc: faderCCs[c], channel: 0, label: `Fader ${c + 1} (CC ${faderCCs[c]})` });
+    controls.push({
+      kind: "fader",
+      col: c,
+      row: 8,
+      cc: faderCCs[c],
+      channel: 0,
+      label: `Fader ${c + 1} (CC ${faderCCs[c]})`,
+    });
   }
-  controls.push({ kind: "fader", col: 8, row: 8, cc: 56, channel: 0, label: "Master Fader (CC 56)" });
+  controls.push({
+    kind: "fader",
+    col: 8,
+    row: 8,
+    cc: 56,
+    channel: 0,
+    label: "Master Fader (CC 56)",
+  });
 
   return controls;
 }
@@ -194,7 +327,14 @@ function buildMpd218Controls(): ControlDef[] {
   for (let r = 0; r < 4; r++) {
     for (let c = 0; c < 4; c++) {
       const note = (3 - r) * 4 + c + 36;
-      controls.push({ kind: "pad", col: c, row: r, note, channel: 0, label: `Pad ${note - 35} (Note ${note})` });
+      controls.push({
+        kind: "pad",
+        col: c,
+        row: r,
+        note,
+        channel: 0,
+        label: `Pad ${note - 35} (Note ${note})`,
+      });
     }
   }
 
@@ -203,7 +343,14 @@ function buildMpd218Controls(): ControlDef[] {
   for (let i = 0; i < 6; i++) {
     const col = 4 + (i % 3);
     const row = Math.floor(i / 3);
-    controls.push({ kind: "knob", col, row, cc: knobCCs[i], channel: 0, label: `Knob ${i + 1} (CC ${knobCCs[i]})` });
+    controls.push({
+      kind: "knob",
+      col,
+      row,
+      cc: knobCCs[i],
+      channel: 0,
+      label: `Knob ${i + 1} (CC ${knobCCs[i]})`,
+    });
   }
 
   return controls;
@@ -218,6 +365,200 @@ export const MPD218_LAYOUT: DeviceLayout = {
 };
 
 // ============================================================================
+// Novation Launchpad (mk2 / X / Mini mk3 / Pro mk3)
+// 8x8 pad grid + 8 scene buttons (right col) + 8 top buttons (top row)
+// Pad notes: row 1 (bottom) = 11-18, row 2 = 21-28, ..., row 8 (top) = 81-88
+// Scene notes (right col): 19, 29, 39, 49, 59, 69, 79, 89
+// Top row (mk2 = CC 104-111, mk3/X = notes 91-98) — modelled as buttons
+// ============================================================================
+
+function buildLaunchpadControls(): ControlDef[] {
+  const controls: ControlDef[] = [];
+
+  // 8x8 pad grid: row 0 (top of grid) = notes 81-88, row 7 (bottom) = 11-18
+  for (let r = 0; r < 8; r++) {
+    const noteRow = 8 - r; // row 8=top(81-88), row 1=bottom(11-18)
+    for (let c = 0; c < 8; c++) {
+      const note = noteRow * 10 + (c + 1);
+      controls.push({
+        kind: "pad",
+        col: c,
+        row: r,
+        note,
+        channel: 0,
+        label: `Pad (Note ${note})`,
+      });
+    }
+  }
+
+  // Scene launch buttons (col 8, rows 0-7): notes 89 (top) down to 19 (bottom)
+  const sceneNotes = [89, 79, 69, 59, 49, 39, 29, 19];
+  for (let r = 0; r < 8; r++) {
+    controls.push({
+      kind: "button",
+      col: 8,
+      row: r,
+      note: sceneNotes[r],
+      channel: 0,
+      label: `Scene ${r + 1} (Note ${sceneNotes[r]})`,
+    });
+  }
+
+  // Top row buttons (row 8): CC 104-111 on mk2, notes 91-98 on mk3/X
+  // Model as CC 104-111 (mk2 baseline; mk3/X users will see generic fallback for top row)
+  for (let c = 0; c < 8; c++) {
+    controls.push({
+      kind: "button",
+      col: c,
+      row: 8,
+      cc: 104 + c,
+      channel: 0,
+      label: `Top ${c + 1} (CC ${104 + c})`,
+    });
+  }
+
+  return controls;
+}
+
+const LAUNCHPAD_LAYOUT_BASE = buildLaunchpadControls();
+
+export const LAUNCHPAD_MK2_LAYOUT: DeviceLayout = {
+  name: "Novation Launchpad mk2",
+  matchPattern: /launchpad\s*mk2/i,
+  gridCols: 9,
+  gridRows: 9,
+  controls: LAUNCHPAD_LAYOUT_BASE,
+};
+
+export const LAUNCHPAD_X_LAYOUT: DeviceLayout = {
+  name: "Novation Launchpad X",
+  matchPattern: /launchpad\s*x(?!\s*l)/i,
+  gridCols: 9,
+  gridRows: 9,
+  controls: LAUNCHPAD_LAYOUT_BASE,
+};
+
+export const LAUNCHPAD_MINI_MK3_LAYOUT: DeviceLayout = {
+  name: "Novation Launchpad Mini mk3",
+  matchPattern: /launchpad\s*mini\s*mk3/i,
+  gridCols: 9,
+  gridRows: 9,
+  controls: LAUNCHPAD_LAYOUT_BASE,
+};
+
+export const LAUNCHPAD_PRO_MK3_LAYOUT: DeviceLayout = {
+  name: "Novation Launchpad Pro mk3",
+  matchPattern: /launchpad\s*pro\s*mk3/i,
+  gridCols: 9,
+  gridRows: 9,
+  controls: LAUNCHPAD_LAYOUT_BASE,
+};
+
+// ============================================================================
+// DJ TechTools Midi Fighter Twister
+// 4x4 grid of endless rotary encoders with RGB LED rings
+// Encoders: CC 0-15, channel 0. Push buttons: Note 0-15, channel 1.
+// ============================================================================
+
+function buildMfTwisterControls(): ControlDef[] {
+  const controls: ControlDef[] = [];
+
+  for (let i = 0; i < 16; i++) {
+    const col = i % 4;
+    const row = Math.floor(i / 4);
+    // Encoder (CC ch0) — shown as knob
+    controls.push({
+      kind: "knob",
+      col,
+      row,
+      cc: i,
+      channel: 0,
+      label: `Encoder ${i + 1} (CC ${i})`,
+    });
+  }
+
+  return controls;
+}
+
+export const MF_TWISTER_LAYOUT: DeviceLayout = {
+  name: "Midi Fighter Twister",
+  matchPattern: /midi\s*fighter\s*twister/i,
+  gridCols: 4,
+  gridRows: 4,
+  controls: buildMfTwisterControls(),
+};
+
+// ============================================================================
+// DJ TechTools Midi Fighter Spectra
+// 4x4 RGB button grid, 16 pads
+// Notes: row 0 (bottom) = 36-39, row 3 (top) = 48-51, channel 0
+// ============================================================================
+
+function buildMfSpectraControls(): ControlDef[] {
+  const controls: ControlDef[] = [];
+
+  // 4x4 pad grid: display row 0 (top) = hardware row 3 (notes 48-51)
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 4; c++) {
+      const note = (3 - r) * 4 + c + 36;
+      controls.push({
+        kind: "pad",
+        col: c,
+        row: r,
+        note,
+        channel: 0,
+        label: `Pad ${note} (Note ${note})`,
+      });
+    }
+  }
+
+  return controls;
+}
+
+export const MF_SPECTRA_LAYOUT: DeviceLayout = {
+  name: "Midi Fighter Spectra",
+  matchPattern: /midi\s*fighter\s*spectra/i,
+  gridCols: 4,
+  gridRows: 4,
+  controls: buildMfSpectraControls(),
+};
+
+// ============================================================================
+// DJ TechTools Midi Fighter 64
+// 8x8 RGB button grid, 64 pads
+// Notes: row 0 (bottom) = 36-43, row 7 (top) = 92-99, channel 0
+// ============================================================================
+
+function buildMf64Controls(): ControlDef[] {
+  const controls: ControlDef[] = [];
+
+  // 8x8 pad grid: display row 0 (top) = hardware row 7 (notes 92-99)
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const note = (7 - r) * 8 + c + 36;
+      controls.push({
+        kind: "pad",
+        col: c,
+        row: r,
+        note,
+        channel: 0,
+        label: `Pad ${note} (Note ${note})`,
+      });
+    }
+  }
+
+  return controls;
+}
+
+export const MF_64_LAYOUT: DeviceLayout = {
+  name: "Midi Fighter 64",
+  matchPattern: /midi\s*fighter\s*64/i,
+  gridCols: 8,
+  gridRows: 8,
+  controls: buildMf64Controls(),
+};
+
+// ============================================================================
 // Registry & lookup
 // ============================================================================
 
@@ -226,6 +567,13 @@ export const KNOWN_LAYOUTS: DeviceLayout[] = [
   APC_MINI_MK2_LAYOUT, // mk2 must come before mk1 (name is superset)
   APC_MINI_MK1_LAYOUT,
   MPD218_LAYOUT,
+  MF_TWISTER_LAYOUT,
+  MF_SPECTRA_LAYOUT,
+  MF_64_LAYOUT,
+  LAUNCHPAD_PRO_MK3_LAYOUT, // more specific patterns first
+  LAUNCHPAD_MINI_MK3_LAYOUT,
+  LAUNCHPAD_X_LAYOUT,
+  LAUNCHPAD_MK2_LAYOUT,
 ];
 
 /**

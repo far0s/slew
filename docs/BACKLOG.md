@@ -195,9 +195,11 @@ Support more hardware controllers.
 
 **Subtasks**:
 
-- [ ] Launchpad support
-- [ ] APC Mini support
-- [ ] Midi Fighter Twister / Spectra / 64 (DJ TechTools)
+- [x] Launchpad support (mk2, X, Mini mk3, Pro mk3 — bottom row → slot alphas, LED feedback)
+- [x] APC Mini support (mk1 + mk2 already done)
+- [x] Midi Fighter Twister (encoders 0–7 → slot alphas, LED ring reset on connect)
+- [x] Midi Fighter Spectra (4×4 pad grid → slot alphas, LED feedback)
+- [x] Midi Fighter 64 (8×8 pad grid → slot alphas, LED feedback)
 - [ ] Generic MIDI template system
 - [ ] MIDI mapping import/export
 

@@ -50,15 +50,23 @@ pub(crate) static CONTROLLERS: &[ControllerProfile] = &[
     ControllerProfile {
         label: "APC Mini mk2",
         // mk2 must come before mk1 — its port name is a superset of mk1's
-        matches: |name| name.to_ascii_lowercase().contains(APC_MINI_MK2_NAME_PATTERN),
+        matches: |name| {
+            name.to_ascii_lowercase()
+                .contains(APC_MINI_MK2_NAME_PATTERN)
+        },
         has_output: true,
         setup: || super::apc_mini::setup_apc_mini_default_mappings(),
         startup_leds: Some(|id| super::apc_mini::send_apc_mini_mk2_startup_leds(id)),
     },
     ControllerProfile {
         label: "APC Mini mk1",
-        matches: |name| name.to_ascii_uppercase().contains(APC_MINI_MK1_NAME_PATTERN)
-            && !name.to_ascii_lowercase().contains(APC_MINI_MK2_NAME_PATTERN),
+        matches: |name| {
+            name.to_ascii_uppercase()
+                .contains(APC_MINI_MK1_NAME_PATTERN)
+                && !name
+                    .to_ascii_lowercase()
+                    .contains(APC_MINI_MK2_NAME_PATTERN)
+        },
         has_output: true,
         setup: || super::apc_mini::setup_apc_mini_default_mappings(),
         startup_leds: Some(|id| super::apc_mini::send_apc_mini_mk1_startup_leds(id)),
@@ -69,6 +77,64 @@ pub(crate) static CONTROLLERS: &[ControllerProfile] = &[
         has_output: false,
         setup: || super::mpd218::setup_mpd218_default_mappings(),
         startup_leds: None,
+    },
+    ControllerProfile {
+        label: "Midi Fighter Twister",
+        matches: |name| name.to_ascii_lowercase().contains(MF_TWISTER_NAME_PATTERN),
+        has_output: true,
+        setup: || super::mf_twister::setup_mf_twister_default_mappings(),
+        startup_leds: Some(|id| super::mf_twister::send_mf_twister_startup_leds(id)),
+    },
+    ControllerProfile {
+        label: "Launchpad mk2",
+        matches: |name| {
+            name.to_ascii_lowercase()
+                .contains(LAUNCHPAD_MK2_NAME_PATTERN)
+        },
+        has_output: true,
+        setup: || super::launchpad::setup_launchpad_default_mappings(),
+        startup_leds: Some(|id| super::launchpad::send_launchpad_startup_leds(id)),
+    },
+    ControllerProfile {
+        label: "Launchpad X",
+        matches: |name| name.to_ascii_lowercase().contains(LAUNCHPAD_X_NAME_PATTERN),
+        has_output: true,
+        setup: || super::launchpad::setup_launchpad_default_mappings(),
+        startup_leds: Some(|id| super::launchpad::send_launchpad_startup_leds(id)),
+    },
+    ControllerProfile {
+        label: "Launchpad Mini mk3",
+        matches: |name| {
+            name.to_ascii_lowercase()
+                .contains(LAUNCHPAD_MINI_MK3_NAME_PATTERN)
+        },
+        has_output: true,
+        setup: || super::launchpad::setup_launchpad_default_mappings(),
+        startup_leds: Some(|id| super::launchpad::send_launchpad_startup_leds(id)),
+    },
+    ControllerProfile {
+        label: "Launchpad Pro mk3",
+        matches: |name| {
+            name.to_ascii_lowercase()
+                .contains(LAUNCHPAD_PRO_MK3_NAME_PATTERN)
+        },
+        has_output: true,
+        setup: || super::launchpad::setup_launchpad_default_mappings(),
+        startup_leds: Some(|id| super::launchpad::send_launchpad_startup_leds(id)),
+    },
+    ControllerProfile {
+        label: "Midi Fighter Spectra",
+        matches: |name| name.to_ascii_lowercase().contains(MF_SPECTRA_NAME_PATTERN),
+        has_output: true,
+        setup: || super::mf_spectra::setup_mf_spectra_default_mappings(),
+        startup_leds: Some(|id| super::mf_spectra::send_mf_spectra_startup_leds(id)),
+    },
+    ControllerProfile {
+        label: "Midi Fighter 64",
+        matches: |name| name.to_ascii_lowercase().contains(MF_64_NAME_PATTERN),
+        has_output: true,
+        setup: || super::mf_64::setup_mf_64_default_mappings(),
+        startup_leds: Some(|id| super::mf_64::send_mf_64_startup_leds(id)),
     },
 ];
 
@@ -101,6 +167,26 @@ pub fn is_apc_mini_mk2_device(name: &str) -> bool {
 
 pub fn is_mpd218_device(name: &str) -> bool {
     (CONTROLLERS[3].matches)(name)
+}
+
+pub fn is_mf_twister_device(name: &str) -> bool {
+    (CONTROLLERS[4].matches)(name)
+}
+
+pub fn is_launchpad_device(name: &str) -> bool {
+    // indices 5-8: mk2, X, Mini mk3, Pro mk3
+    (CONTROLLERS[5].matches)(name)
+        || (CONTROLLERS[6].matches)(name)
+        || (CONTROLLERS[7].matches)(name)
+        || (CONTROLLERS[8].matches)(name)
+}
+
+pub fn is_mf_spectra_device(name: &str) -> bool {
+    (CONTROLLERS[9].matches)(name)
+}
+
+pub fn is_mf_64_device(name: &str) -> bool {
+    (CONTROLLERS[10].matches)(name)
 }
 
 // ============================================================================
@@ -345,8 +431,8 @@ fn start_device_watcher_thread() {
 
             if auto_reconnect_enabled && !added.is_empty() {
                 for name in &added {
-                    let should_connect = auto_reconnect_devices.contains(name)
-                        || find_controller(name).is_some();
+                    let should_connect =
+                        auto_reconnect_devices.contains(name) || find_controller(name).is_some();
 
                     if should_connect {
                         if let Ok(devices) = list_devices() {

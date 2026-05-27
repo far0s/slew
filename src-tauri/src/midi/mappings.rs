@@ -93,6 +93,43 @@ pub fn install_default_cc_mappings(cc_numbers: &[u8]) {
     }
 }
 
+/// Install default note-to-slot-alpha mappings for a controller.
+///
+/// For each note in `notes`, maps it to `slot_{i}_alpha` (0-indexed) on the
+/// given channel, using gate mode (press = 1.0, release = 0.0).
+/// Skips any slot that already has a mapping. Saves to disk once after all
+/// mappings are applied.
+pub fn install_default_note_mappings(notes: &[u8], channel: u8) {
+    let existing = with_midi_engine(|state| state.mappings.clone());
+
+    let mut added = 0usize;
+    for (slot, &note) in notes.iter().enumerate() {
+        let param_id = format!("slot_{}_alpha", slot);
+        if existing.iter().any(|m| m.parameter_id == param_id) {
+            log::debug!("[MIDI] Skipping {} - already has a mapping", param_id);
+            continue;
+        }
+        with_midi_engine(|state| {
+            state.mappings.push(super::types::MidiMapping {
+                parameter_id: param_id.clone(),
+                channel: Some(channel),
+                cc_number: None,
+                note_number: Some(note),
+                note_mode: Some(super::types::NoteMappingMode::Trigger),
+                min_value: 0.0,
+                max_value: 1.0,
+                device_id: None,
+            });
+        });
+        log::debug!("[MIDI] Default mapping: note {} -> {}", note, param_id);
+        added += 1;
+    }
+
+    if added > 0 {
+        save_mappings_to_disk();
+    }
+}
+
 /// Clear all MIDI mappings.
 pub fn clear_mappings() {
     with_midi_engine(|state| {

@@ -77,13 +77,19 @@ pub const APC_MINI_MK2_CLIP_STOP_NOTES: [u8; 8] = [100, 101, 102, 103, 104, 105,
 
 /// APC Mini LED velocity values
 /// 0=off, 1=green, 2=green blink, 3=red, 4=red blink, 5=yellow, 6=yellow blink
-#[allow(dead_code)] pub const APC_MINI_LED_OFF: u8 = 0;
+#[allow(dead_code)]
+pub const APC_MINI_LED_OFF: u8 = 0;
 pub const APC_MINI_LED_GREEN: u8 = 1;
-#[allow(dead_code)] pub const APC_MINI_LED_GREEN_BLINK: u8 = 2;
-#[allow(dead_code)] pub const APC_MINI_LED_RED: u8 = 3;
-#[allow(dead_code)] pub const APC_MINI_LED_RED_BLINK: u8 = 4;
-#[allow(dead_code)] pub const APC_MINI_LED_YELLOW: u8 = 5;
-#[allow(dead_code)] pub const APC_MINI_LED_YELLOW_BLINK: u8 = 6;
+#[allow(dead_code)]
+pub const APC_MINI_LED_GREEN_BLINK: u8 = 2;
+#[allow(dead_code)]
+pub const APC_MINI_LED_RED: u8 = 3;
+#[allow(dead_code)]
+pub const APC_MINI_LED_RED_BLINK: u8 = 4;
+#[allow(dead_code)]
+pub const APC_MINI_LED_YELLOW: u8 = 5;
+#[allow(dead_code)]
+pub const APC_MINI_LED_YELLOW_BLINK: u8 = 6;
 
 // ============================================================================
 // MPD218 constants
@@ -110,3 +116,74 @@ pub const MPD218_KNOB_BANK_A_CCS: [u8; 6] = [3, 9, 12, 13, 14, 15];
 #[allow(dead_code)]
 /// MPD218 Bank B knob CC numbers (channel 0): factory defaults
 pub const MPD218_KNOB_BANK_B_CCS: [u8; 6] = [16, 17, 18, 19, 20, 21];
+
+// ============================================================================
+// Midi Fighter Twister constants
+// ============================================================================
+
+pub const MF_TWISTER_NAME_PATTERN: &str = "midi fighter twister"; // match lowercase
+
+/// Encoder CC numbers (channel 0): 16 encoders, CC 0-15
+pub const MF_TWISTER_ENCODER_CCS: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+
+#[allow(dead_code)]
+/// Push button note numbers (channel 1): 16 buttons, Note 0-15
+pub const MF_TWISTER_BUTTON_NOTES: [u8; 16] =
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+
+// ============================================================================
+// Launchpad constants
+// ============================================================================
+
+pub const LAUNCHPAD_MK2_NAME_PATTERN: &str = "launchpad mk2";
+pub const LAUNCHPAD_X_NAME_PATTERN: &str = "launchpad x";
+pub const LAUNCHPAD_MINI_MK3_NAME_PATTERN: &str = "launchpad mini mk3";
+pub const LAUNCHPAD_PRO_MK3_NAME_PATTERN: &str = "launchpad pro mk3";
+
+/// Bottom row pad notes (row 1): notes 11-18
+pub const LAUNCHPAD_BOTTOM_ROW_NOTES: [u8; 8] = [11, 12, 13, 14, 15, 16, 17, 18];
+
+/// Scene launch button notes (right column): notes 19,29,39,49,59,69,79,89
+#[allow(dead_code)]
+pub const LAUNCHPAD_SCENE_NOTES: [u8; 8] = [19, 29, 39, 49, 59, 69, 79, 89];
+
+/// LED velocity for green (used for startup and active slot indication)
+pub const LAUNCHPAD_LED_GREEN: u8 = 60;
+/// LED velocity for off
+#[allow(dead_code)]
+pub const LAUNCHPAD_LED_OFF: u8 = 0;
+
+// ============================================================================
+// Midi Fighter Spectra constants
+// ============================================================================
+
+pub const MF_SPECTRA_NAME_PATTERN: &str = "midi fighter spectra";
+
+/// All 16 pad notes (channel 0): rows bottom-to-top, left-to-right
+pub const MF_SPECTRA_PAD_NOTES: [u8; 16] = [
+    36, 37, 38, 39, // row 0 (bottom)
+    40, 41, 42, 43, // row 1
+    44, 45, 46, 47, // row 2
+    48, 49, 50, 51, // row 3 (top)
+];
+
+// ============================================================================
+// Midi Fighter 64 constants
+// ============================================================================
+
+pub const MF_64_NAME_PATTERN: &str = "midi fighter 64";
+
+/// Bottom row pad notes (row 0, channel 0): notes 36-43
+pub const MF_64_BOTTOM_ROW_NOTES: [u8; 8] = [36, 37, 38, 39, 40, 41, 42, 43];
+
+/// All 64 pad notes (channel 0): rows bottom-to-top, left-to-right
+pub const MF_64_PAD_NOTES: [u8; 64] = [
+    36, 37, 38, 39, 40, 41, 42, 43, // row 0 (bottom)
+    44, 45, 46, 47, 48, 49, 50, 51, // row 1
+    52, 53, 54, 55, 56, 57, 58, 59, // row 2
+    60, 61, 62, 63, 64, 65, 66, 67, // row 3
+    68, 69, 70, 71, 72, 73, 74, 75, // row 4
+    76, 77, 78, 79, 80, 81, 82, 83, // row 5
+    84, 85, 86, 87, 88, 89, 90, 91, // row 6
+    92, 93, 94, 95, 96, 97, 98, 99, // row 7 (top)
+];

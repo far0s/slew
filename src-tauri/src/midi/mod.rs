@@ -7,9 +7,13 @@ pub(crate) mod constants;
 pub mod devices;
 pub mod engine;
 pub(crate) mod events;
+pub(crate) mod launchpad;
 pub mod learn;
 pub mod mappings;
 pub(crate) mod message_handler;
+pub(crate) mod mf_64;
+pub(crate) mod mf_spectra;
+pub(crate) mod mf_twister;
 pub mod midimix;
 pub(crate) mod mpd218;
 pub mod output;
@@ -23,7 +27,9 @@ pub use connections::{
 pub use devices::{list_devices, list_output_devices};
 pub use engine::{cleanup_midi, init_midi_engine};
 pub use learn::{cancel_learn, get_learn_state, start_learn};
-pub use mappings::{clear_mappings, get_mappings, install_default_cc_mappings, remove_mapping, set_mapping};
+pub use mappings::{
+    clear_mappings, get_mappings, install_default_cc_mappings, remove_mapping, set_mapping,
+};
 // Midimix-specific operations kept at midi:: level for existing call sites
 pub use midimix::{pulse_beat_led, set_active_slots, update_midimix_leds};
 pub use output::{
