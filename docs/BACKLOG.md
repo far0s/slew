@@ -6,9 +6,9 @@ Prioritized list of potential work items for Slew.
 
 ## Priority Labels
 
-- 🔴 **High**: Important for core functionality or blocking other work
-- 🟡 **Medium**: Valuable improvement, not urgent
-- 🟢 **Low**: Nice to have, future consideration
+- 🔴 **Blocker**: Must ship before v1 public release
+- 🟡 **Target**: v1 feature; defer only if time-constrained
+- 🎨 **Future**: Inspiration, speculative, no timeline
 
 ## Tags
 
@@ -18,13 +18,19 @@ Prioritized list of potential work items for Slew.
 
 ---
 
-## Active / High Priority
+## v1 Public Release
 
-### 🔴 App Icon `chore`
+> **Scope freeze:** Everything below is in scope for v1. 🔴 items must ship; 🟡 items should ship and are only deferred under serious time pressure. Nothing outside this file's v1 section should be picked up until v1 ships.
+
+---
+
+### Release Blockers
+
+#### 🔴 App Icon `chore`
 
 Design and implement proper app icon for Slew.
 
-**Context**: App name is now "Slew" with tagline "VJ software for creative coders". Currently using 🎛️ emoji as a placeholder symbol. Needs a proper icon before public release.
+**Context**: App name is now "Slew" with tagline "VJ software for creative coders". Currently using 🎛️ emoji as a placeholder. Needs a proper icon before public release.
 
 **Subtasks**:
 
@@ -35,215 +41,22 @@ Design and implement proper app icon for Slew.
 
 ---
 
-## Medium Priority
+#### 🔴 Onboarding / First-Run Experience `feature`
 
-### 🟡 MIDI Panel — Device Schematic & Clock UI `feature` `design`
+Guide new users on first launch.
 
-Overhaul the Mappings section of the MIDI Panel to be visually useful and scalable.
-
-**Current problem:** The Mappings section is a flat list of `CC X @ Ch Y → parameter_id` rows. It conveys almost no spatial or contextual information about the device, and becomes unwieldy once more than a handful of mappings exist.
-
----
-
-**Part 1 — Device Schematic Modal** (main effort)
-
-Replace the list with a compact summary line (e.g. "8 mappings active") and a **"View Device" button** that opens a modal showing a top-down schematic of the connected MIDI controller:
-
-- Knobs, faders, pads, buttons rendered in their physical layout
-- Each control highlighted green/grey to indicate whether it has a mapping
-- Clicking a control opens an inline popover to assign/clear its mapping (replaces the current learn flow)
-- Support for multiple connected devices — tabs or a device switcher at the top of the modal
-
-*Effort estimate:* High. Each supported hardware model requires a schematic definition (layout data + SVG or CSS component). Suggested approach:
-  1. Define a `DeviceLayout` data format (JSON: control type, position, CC number, label)
-  2. Build a generic `<DeviceSchematic>` renderer that consumes the format
-  3. Ship definitions for the initially-supported models (e.g. Akai APC mini, Novation Launch Control, generic 8-knob template)
-  4. Unknown devices fall back to a grid auto-generated from the CC numbers they've emitted
-
-*Creative option:* Allow community-contributed layout files (plain JSON in `~/.slew/device-layouts/`) so users can add their own controllers without a code change.
-
----
-
-**Part 2 — MIDI Clock UI** (separate, lower coupling)
-
-MIDI Clock is a different kind of signal (timing pulses, not CC messages) and deserves its own dedicated sub-section in the MIDI Panel rather than appearing in the mappings list:
-
-- **Clock source indicator:** shows which device is sending clock (or "Internal" if Slew is the master)
-- **Live BPM display:** large numeric readout derived from inter-pulse timing, with a tap-tempo fallback
-- **Sync status badge:** Locked / Drifting / No Signal, with colour coding
-- **Phase offset control:** nudge slider to align Slew's beat grid to external clock
-- Future: allow Slew to *send* MIDI Clock to downstream devices (master mode)
-
-This section should be visually distinct from the device/mappings section — consider a horizontal "clock strip" at the top of the panel.
-
----
-
-**Acceptance criteria:**
-- [ ] Mappings list removed; replaced by schematic modal trigger
-- [ ] Modal renders correct physical layout for at least 2 real device models
-- [ ] Unknown devices render an auto-generated grid layout
-- [ ] Mapping assign/clear works inside the modal (no regression on learn flow)
-- [ ] MIDI Clock strip shows BPM and sync status when a clock source is present
-- [ ] All existing `MidiPanel` tests updated / extended
-
-**Sizing:** Large (split into Part 1 and Part 2 as separate PRs). Part 1 alone is likely 2–3 days of design + implementation.
-
----
-
-### 🟡 Full Size Slot Editor Overlay `feature`
-
-Add a full-size slot editor overlay, allowing users to focus on editing one slot at a time.
-
-**Context**: The slot preview is currently limited to a small area within the UI. If the visual output is key, it would be useful to be able to focus on one slot at a time.
+**Context**: Currently a new user sees 8 empty slots with no hints. No tutorial, no "get started" guidance. Required before wide release.
 
 **Subtasks**:
 
-- [ ] Slot preview click handler to open full-size editor
-- [ ] Full-size editor UI design and implementation: slot preview takes as much space as possible, slot parameters are put into a sidebar.
-- [ ] Make implementation as comprehensive as possible before starting the work.
+- [ ] Identify the 3–4 key actions a new user needs to discover (load sketch, map MIDI, enable output)
+- [ ] Design: tooltip hints, empty-state copy, or a dismissable welcome card
+- [ ] Implement and make dismissable/skippable
+- [ ] Persist dismissed state (don't show again after first use)
 
 ---
 
-### 🟡 External Texture Input `feature`
-
-Support external images/videos as input textures for sketches.
-
-**Context**: Current sketches are purely generative. Adding texture inputs unlocks whole new category - mix camera feeds, video files, image sequences with shaders. Huge VJ use case.
-
-**Subtasks**:
-
-- [ ] Add `texture` parameter type to ParameterTemplate
-- [ ] File picker UI for images/videos
-- [ ] WebRTC camera capture support
-- [ ] Texture management in renderer (cache, resize, format conversion)
-- [ ] Create example sketch using external texture (e.g., "Image Feedback", "Video Distortion")
-
-**Reference**: Look at how Hydra.video handles texture sources
-
----
-
-### 🟡 Parameter Randomization `feature`
-
-Add parameter randomization for experimentation.
-
-**Context**: VJs love "happy accidents" - randomization helps discover new looks. Common in TouchDesigner, Resolume, etc.
-
-**Subtasks**:
-
-- [ ] "Randomize" button per slot
-- [ ] Randomize all parameters (exclude alpha, respect min/max)
-- [ ] Optional: weighted randomization favoring interesting ranges
-- [ ] Optional: "lock" certain parameters from randomization
-
----
-
-### 🟡 Sketch Presets `feature`
-
-Save/load parameter configurations per sketch.
-
-**Context**: Users often find good parameter combinations they want to recall. Per-sketch presets would enable quick switching between looks.
-
-**Enhancement**: Combine with sketch browser - show preset thumbnails, allow preset preview before loading.
-
-**Subtasks**:
-
-- [ ] "Save Preset" button in slot controls
-- [ ] Preset dropdown to load saved configurations
-- [ ] Persist to JSON files (`presets/{sketchId}/{presetName}.json`)
-- [ ] Default preset per sketch type
-- [ ] Preset management UI (rename, delete)
-- [ ] Preset thumbnails in browser
-- [ ] Preset preview before loading
-
----
-
-### 🟡 API Documentation for Sketch Developers `chore`
-
-Create developer guide for building custom sketches.
-
-**Context**: Enables community contributions, future-proofs onboarding. SketchDescriptor and ParameterTemplate types exist but lack usage examples.
-
-**Subtasks**:
-
-- [ ] Create `docs/CREATING_SKETCHES.md`
-- [ ] Step-by-step tutorial (start from BlueCube)
-- [ ] Explain SketchDescriptor, ParameterTemplate, SketchProps
-- [ ] Document parameter types (number, color, enum)
-- [ ] Example: create a custom sketch from scratch
-- [ ] Link to TSL shader resources
-
----
-
-### 🟡 Video Output Troubleshooting Guide `chore`
-
-Create troubleshooting guide for video output setup.
-
-**Context**: Users will struggle with Syphon/NDI/Spout setup. Need comprehensive guide. Write after Spout is done so the Windows section is complete.
-
-**Subtasks**:
-
-- [ ] Create `docs/VIDEO_OUTPUT_TROUBLESHOOTING.md`
-- [ ] How to verify output is working (test patterns, receiver apps)
-- [ ] Common issues: permissions, firewall, SDK installation
-- [ ] Platform-specific notes
-- [ ] Screenshots of receiver apps
-
----
-
-## Low Priority / Future
-
-### 🟢 Marketing Site — Monorepo Setup `chore`
-
-Scaffold a `site/` workspace inside the repo for the Slew marketing/landing page.
-
-**Context**: When Slew is ready for public release it will need a landing page. Keeping it in the same repo as a separate workspace (`site/`) lets the site share color tokens, typography, changelog data, and screenshots with the app — while staying independently deployable.
-
-**Approach**:
-- Configure npm/pnpm workspaces so `site/` is a first-class package
-- Create `site/package.json` with its own framework choice (Astro recommended for a static marketing site)
-- Extract shared design tokens (CSS variables, color palette) into a `packages/tokens` or inline in `site/` initially
-- Set up a deploy target (Vercel/Netlify) that only triggers on changes to `site/`
-- Document the workspace structure in `docs/ARCHITECTURE.md`
-
-**Subtasks**:
-
-- [ ] Decide: pnpm workspaces or npm workspaces
-- [ ] Scaffold `site/` with Astro (or chosen framework)
-- [ ] Wire up shared tokens/styles from app
-- [ ] Configure CI deploy (Vercel/Netlify) scoped to `site/`
-- [ ] Update `ARCHITECTURE.md` with monorepo structure
-
----
-
-### 🟢 Marketing Site — Landing Page `feature` `design`
-
-Build the public-facing landing page to present and sell Slew ahead of its public release.
-
-**Context**: Slew needs a homepage that communicates what it is, who it's for, and where to get it. This is the primary conversion surface for new users.
-
-**Sections to include**:
-- Hero — tagline, short description, download CTA
-- Feature highlights — dual-window output, MIDI/OSC control, live shader sketches
-- Screenshot / demo reel — video or animated screenshots of the app in action
-- Sketch gallery — showcase of what's possible
-- Changelog / release history (pulled from `CHANGELOG.md`)
-- Download / pricing section (if applicable)
-- Footer with links (GitHub, docs, contact)
-
-**Ideas**:
-
-- [ ] Write copy: tagline, feature descriptions, about section
-- [ ] Capture screenshots and/or a demo video
-- [ ] Design hero section
-- [ ] Build feature highlights grid
-- [ ] Integrate changelog feed from `CHANGELOG.md`
-- [ ] SEO metadata, Open Graph tags
-- [ ] Analytics (privacy-respecting, e.g. Plausible)
-- [ ] Mobile-responsive layout
-
----
-
-### 🟢 Selling Strategy & Pricing Model `research`
+#### 🔴 Selling Strategy & Pricing Model `research`
 
 Define how Slew will be sold before public launch: pricing tiers, trial/free model, and feature gating strategy.
 
@@ -261,10 +74,6 @@ Define how Slew will be sold before public launch: pricing tiers, trial/free mod
 | MadMapper | Subscription or one-time | €$99–399 | Projection-focused |
 | Millumin | One-time | €$299 | Event/installation focus |
 | Modulaser | Free tier + One-time tiers | Free / €179 Standard / €499 Pro (20% early-access discount active) | Laser-focused; indie, macOS/Win/Linux; free tier is 15-min sessions, gates recording & output count — very close model to where Slew might land |
-
-- [ ] Research each competitor's current pricing, trial model, and perceived value
-- [ ] Note which features they gate (resolution, watermark, output count, save/export)
-- [ ] Research community sentiment on pricing (Reddit r/VJing, Discord servers, forums)
 
 **Questions to answer**:
 
@@ -286,75 +95,11 @@ Define how Slew will be sold before public launch: pricing tiers, trial/free mod
 
 ---
 
-### 🟢 App Launch Sequence & Preloader `polish`
-
-Improve the cold-start experience with a polished launch animation and soft preloader.
-
-**Context**: The app currently opens abruptly with no transition. A short branded preloader and entrance animation would make the app feel more professional and mask any initial asset-loading latency.
-
-**Subtasks**:
-
-- [ ] Design a minimal splash/preloader overlay (logo mark + subtle progress indicator)
-- [ ] Animate the preloader out once the control window is ready (fade/slide)
-- [ ] Add entrance animations for key UI regions (toolbar, deck panels, sidebar) on first paint
-- [ ] Ensure the output window opens without a visible flash or blank frame
-- [ ] Keep total perceived launch time the same or shorter (animation should not add wall-clock delay)
-- [ ] Respect `prefers-reduced-motion`
-
----
-
-### 🟢 Crash Reporting & Analytics `feature`
-
-Add optional telemetry for debugging and product insights.
-
-**Context**: No visibility into production issues or feature usage.
-
-**Subtasks**:
-
-- [ ] Add optional crash reporting (Sentry, user consent required)
-- [ ] Privacy-respecting usage analytics (opt-in)
-- [ ] Track: sketch popularity, input device usage, feature adoption
-- [ ] Use data to prioritize future development
-
----
-
-### 🟢 Parameter Locking `feature`
-
-Lock parameters to prevent accidental changes.
-
-**Context**: Prevents accidental changes during performance.
-
-**Subtasks**:
-
-- [ ] Lock icon on each slider
-- [ ] Locked state disables all input (MIDI, OSC, UI)
-- [ ] Visual indication (dimmed, lock icon)
-- [ ] Global "lock all" option
-
----
-
-### 🟢 Integration Tests `chore`
-
-Add end-to-end testing for critical workflows.
-
-**Context**: No E2E tests covering full workflows.
-
-**Subtasks**:
-
-- [ ] Set up Playwright or Tauri's testing framework
-- [ ] Test: Load sketch → set parameters → crossfade
-- [ ] Test: MIDI learn workflow
-- [ ] Test: Audio mapping creation → trigger
-- [ ] Test: Video output activation
-- [ ] Run in CI
-
----
-
-### 🟢 CI Test Job `chore`
+#### 🔴 CI Test Job `chore`
 
 Add automated testing to CI pipeline.
 
-**Context**: GitHub Actions builds but doesn't run tests. Can be partially done now (existing unit tests) without waiting for integration tests.
+**Context**: GitHub Actions builds but doesn't run tests. Needed as a quality gate before public release.
 
 **Subtasks**:
 
@@ -365,86 +110,212 @@ Add automated testing to CI pipeline.
 
 ---
 
-### 🟢 Architecture Diagrams `chore`
+#### 🔴 Video Output Troubleshooting Guide `chore`
 
-Add visual diagrams to architecture documentation.
+Create troubleshooting guide for video output setup.
 
-**Context**: ARCHITECTURE.md is text-only. Complex flows hard to visualize.
-
-**Subtasks**:
-
-- [ ] Add Mermaid diagrams for:
-  - Parameter flow (UI → Backend → Renderer)
-  - Window communication (Events, IPC)
-  - Video output pipeline (WebGPU → Syphon/NDI)
-  - Slot system (lifecycle, crossfade)
-
----
-
-### 🟢 Memory Leak Testing `chore`
-
-Add long-running stability testing.
-
-**Context**: App runs for hours during live performances - leaks will crash it.
+**Context**: Users will struggle with Syphon/NDI/Spout setup. Write after Spout is done so the Windows section is complete.
 
 **Subtasks**:
 
-- [ ] Create long-running stability test (4+ hours)
-- [ ] Monitor memory usage over time
-- [ ] Profile with Chrome DevTools (heap snapshots)
-- [ ] Document memory profiling workflow
+- [ ] Create `docs/VIDEO_OUTPUT_TROUBLESHOOTING.md`
+- [ ] How to verify output is working (test patterns, receiver apps)
+- [ ] Common issues: permissions, firewall, SDK installation
+- [ ] Platform-specific notes
+- [ ] Screenshots of receiver apps
 
 ---
 
-### 🟢 Presets & Projects (Full Session Management) `feature`
+### Core UX
 
-Save/load complete project state.
+#### 🟡 Full Size Slot Editor Overlay `feature`
 
-**Context**: For live performance, users need to save entire setups including all slots, parameters, and mappings. Sketch Presets (🟡) is a natural prerequisite.
+Add a full-size slot editor overlay, allowing users to focus on editing one slot at a time.
+
+**Context**: Slot preview is currently limited to a small area within the UI. Focusing on one slot at a time is a core UX improvement for visual work.
 
 **Subtasks**:
 
-- [ ] Save/load complete project state (slots, parameters, mappings)
-- [ ] Quick snapshot for A/B comparison
-- [ ] Export/import for sharing
-- [ ] Auto-save / recovery
+- [ ] Slot preview click handler to open full-size editor
+- [ ] Full-size editor UI: slot preview takes as much space as possible, slot parameters in a sidebar
+- [ ] Make implementation as comprehensive as possible before starting the work
 
 ---
 
-### 🟢 Multi-Display Support `feature`
+#### 🟡 Sketch Presets `feature`
 
-Multiple renderer windows for different outputs.
+Save/load parameter configurations per sketch.
 
-**Context**: Some VJ setups use multiple projectors or preview monitors.
+**Context**: VJs need to recall good parameter combinations quickly. Per-sketch presets are a workflow essential for live performance.
+
+**Enhancement**: Combine with sketch browser — show preset thumbnails, allow preset preview before loading.
 
 **Subtasks**:
 
-- [ ] Spawn additional renderer windows
-- [ ] Per-window slot assignment
-- [ ] Independent resolution/output settings
+- [ ] "Save Preset" button in slot controls
+- [ ] Preset dropdown to load saved configurations
+- [ ] Persist to JSON files (`presets/{sketchId}/{presetName}.json`)
+- [ ] Default preset per sketch type
+- [ ] Preset management UI (rename, delete)
+- [ ] Preset thumbnails in browser
+- [ ] Preset preview before loading
 
 ---
 
-### 🟢 Recording `feature`
+#### 🟡 Parameter Randomization `feature`
 
-GPU-based capture or frame export.
+Add parameter randomization for experimentation.
 
-**Context**: Users may want to record performances for later use or sharing.
+**Context**: VJs love "happy accidents" — randomization helps discover new looks. Common in TouchDesigner, Resolume, etc.
 
 **Subtasks**:
 
-- [ ] Define recording format (MP4, image sequence)
-- [ ] Implement GPU-based capture
-- [ ] Recording controls (start/stop/pause)
-- [ ] Export settings
+- [ ] "Randomize" button per slot
+- [ ] Randomize all parameters (exclude alpha, respect min/max)
+- [ ] Optional: weighted randomization favouring interesting ranges
+- [ ] Optional: "lock" certain parameters from randomization
 
 ---
 
-### 🟢 Post-Processing Effects Panel `feature`
+#### 🟡 Parameter Locking `feature`
+
+Lock parameters to prevent accidental changes during performance.
+
+**Subtasks**:
+
+- [ ] Lock icon on each slider
+- [ ] Locked state disables all input (MIDI, OSC, UI)
+- [ ] Visual indication (dimmed, lock icon)
+- [ ] Global "lock all" option
+
+---
+
+#### 🟡 App Launch Sequence & Preloader `polish`
+
+Improve the cold-start experience with a polished launch animation and soft preloader.
+
+**Context**: App currently opens abruptly with no transition.
+
+**Subtasks**:
+
+- [ ] Design a minimal splash/preloader overlay (logo mark + subtle progress indicator)
+- [ ] Animate the preloader out once the control window is ready (fade/slide)
+- [ ] Add entrance animations for key UI regions on first paint
+- [ ] Ensure the output window opens without a visible flash or blank frame
+- [ ] Keep total perceived launch time the same or shorter
+- [ ] Respect `prefers-reduced-motion`
+
+---
+
+### Control & Mapping
+
+#### 🟡 Inputs vs Outputs Rework `feature` `chore`
+
+Unify MIDI, HID, OSC, Audio, WLED, and any future protocol under a single **Inputs / Outputs** model instead of per-protocol panels.
+
+**Context**: Current setup has a separate panel per protocol. As the number of supported protocols grows this becomes unwieldy — a user with an existing rig just wants to say "here's what I have, what can I connect it to?" The shift to an Inputs/Outputs paradigm is both a UX rethink and an architectural rework. Expected to be one of the highest-effort items in v1, but also one of the most important for onboarding non-technical VJs.
+
+**Vision**:
+- **Inputs panel**: lists all detected/configured input sources (MIDI controllers, HID devices, OSC listeners, audio sources, cameras). Each shows type, connection status, and what it's currently mapped to.
+- **Outputs panel**: lists all configured output destinations (Syphon/NDI/Spout, WLED fixtures, OSC targets, DMX, etc.).
+- Smart autodetection: newly connected devices surface as suggestions ("APC Mini detected — set up mappings?")
+- Device type recognition: the app understands whether something is an input vs output, and what kind (controller, lighting, video, audio)
+- Replaces the individual MIDI / OSC / Audio / WLED tabs
+
+**Sizing**: Very large. Needs a design pass before implementation. Suggest splitting into: (1) new data model + routing layer, (2) Inputs panel, (3) Outputs panel, (4) per-protocol migration.
+
+**Subtasks**:
+
+- [ ] Design pass: unified device/connection data model, routing architecture
+- [ ] Define input types: MIDI controller, HID, OSC listener, audio source, camera/texture
+- [ ] Define output types: video (Syphon/NDI/Spout), WLED, OSC target, DMX
+- [ ] Autodetection and suggestion system
+- [ ] Inputs panel UI
+- [ ] Outputs panel UI
+- [ ] Migrate MIDI panel to new model
+- [ ] Migrate OSC, Audio, WLED to new model
+
+---
+
+#### 🟡 MIDI Panel — Device Schematic & Clock UI `feature` `design`
+
+Overhaul the Mappings section of the MIDI Panel to be visually useful and scalable.
+
+**Context**: Flat list of `CC X @ Ch Y → parameter_id` rows becomes unwieldy fast. **Secondary to the Inputs/Outputs Rework** — the design pass for that item should inform how the schematic modal integrates into the new unified model. Pick this up after the Inputs/Outputs data model is settled.
+
+**Part 1 — Device Schematic Modal**
+
+Replace the list with a compact summary line (e.g. "8 mappings active") and a **"View Device"** button that opens a modal showing a top-down schematic of the connected controller:
+
+- Knobs, faders, pads, buttons rendered in physical layout
+- Each control highlighted green/grey for whether it has a mapping
+- Clicking a control opens an inline popover to assign/clear mapping
+- Support for multiple connected devices
+
+*Approach*:
+1. Define a `DeviceLayout` data format (JSON: control type, position, CC number, label)
+2. Build a generic `<DeviceSchematic>` renderer consuming that format
+3. Ship definitions for initially-supported models (Akai APC mini, Novation Launch Control, generic 8-knob template)
+4. Unknown devices fall back to an auto-generated grid from emitted CC numbers
+
+*Creative option*: Allow community-contributed layout files (`~/.slew/device-layouts/`) so users can add controllers without a code change.
+
+**Part 2 — MIDI Clock UI**
+
+A dedicated sub-section for MIDI Clock signals:
+
+- **Clock source indicator**: which device is sending clock (or "Internal")
+- **Live BPM display**: large numeric readout from inter-pulse timing, tap-tempo fallback
+- **Sync status badge**: Locked / Drifting / No Signal, colour coded
+- **Phase offset control**: nudge slider to align beat grid to external clock
+- Future: allow Slew to *send* MIDI Clock (master mode)
+
+**Acceptance criteria:**
+- [ ] Mappings list replaced by schematic modal trigger
+- [ ] Modal renders correct physical layout for at least 2 real device models
+- [ ] Unknown devices render auto-generated grid layout
+- [ ] Mapping assign/clear works inside the modal (no regression on learn flow)
+- [ ] MIDI Clock strip shows BPM and sync status when a clock source is present
+- [ ] All existing `MidiPanel` tests updated / extended
+
+---
+
+#### 🟡 Additional Controller Support `feature`
+
+Support more hardware controllers.
+
+**Context**: Different VJs use different gear. Expanding controller support broadens the user base. Pairs with the Device Schematic work above.
+
+**Subtasks**:
+
+- [ ] Launchpad support
+- [ ] APC Mini support
+- [ ] Generic MIDI template system
+- [ ] MIDI mapping import/export
+
+---
+
+#### 🟡 DMX Lighting Control `feature`
+
+OSC → DMX integration for lighting.
+
+**Context**: Some VJs control lighting alongside visuals. Parameter → DMX output would enable synchronized light shows.
+
+**Subtasks**:
+
+- [ ] Research DMX interfaces/protocols
+- [ ] OSC → DMX plugin design
+- [ ] Fixture mapping system
+
+---
+
+### Visuals & Effects
+
+#### 🟡 Post-Processing Effects Panel `feature`
 
 A dedicated effects panel operating on the composited output, with an ordered stack of effects that can be added, removed, and reordered.
 
-**Context**: Merged from "New Sketch Group: Effects" and the previous "Post-Processing Pipeline" item. Per-slot effects via the slot system are too limiting — global effects (grain, bloom, etc.) shouldn't consume a slot, and chaining order matters. A first-class Effects Panel is the right model.
+**Context**: Per-slot effects via the slot system are too limiting — global effects (grain, bloom, etc.) shouldn't consume a slot, and chaining order matters. A first-class Effects Panel is the right model.
 
 **Architecture notes** (design pass needed before implementation):
 - Effects run on the composited output, after slot blending but before Syphon/NDI output — natural seam in `VideoOutputCapture.tsx`
@@ -475,87 +346,170 @@ A dedicated effects panel operating on the composited output, with an ordered st
 
 ---
 
-### 🟢 Additional Controller Support `feature`
+#### 🟡 Domain Warping, Mirroring & Display Cutting `feature` `design`
 
-Support more hardware controllers.
+Transform and slice the visual output — domain warping, mirror symmetry, and cutting the canvas across one or multiple displays.
 
-**Context**: Different VJs use different gear. Supporting more controllers expands the user base.
+**Context**: VJs want to take their generated output and twist it — fold it into kaleidoscopic mirrors, warp the UV space so patterns flow into themselves, or carve the canvas up and route different regions to different outputs or display zones. Closely related to the Post-Processing Effects Panel (domain warp and mirror could live there as effects) and the display-cutting aspect depends on Multi-Display Support.
 
-**Subtasks**:
+**Capabilities to cover**:
+- **Domain warping**: offset UV lookup by a secondary noise or pattern, causing visuals to warp through themselves (fbm-style, rotation-based, etc.)
+- **Mirror / symmetry modes**: horizontal, vertical, 4-way, radial/kaleidoscope (N segments), point symmetry
+- **Canvas cutting**: define regions of the composited output and route them independently — e.g. top-left quadrant to output A, bottom-right to output B, or stitch across two displays
+- **Tile / repeat**: repeat the output across a grid with optional alternating-mirror per cell
 
-- [ ] Launchpad support
-- [ ] APC Mini support
-- [ ] Generic MIDI template system
-- [ ] MIDI mapping import/export
+**Design questions to resolve**:
+- Mirror and domain warp as effects in the Effects Panel stack vs dedicated "Transform" layer?
+- Display cutting UI — drag-to-draw regions on a canvas thumbnail, or numeric grid config?
+- How does cutting interact with Multi-Display Support? (likely a dependency)
 
----
-
-### 🟢 DMX Lighting Control `feature`
-
-OSC → DMX integration for lighting.
-
-**Context**: Some VJs control lighting alongside visuals. Parameter → DMX output would enable synchronized light shows.
+**Sizing**: Medium–Large. Mirror/warp as effects = smaller slice. Full display cutting = needs Multi-Display Support first.
 
 **Subtasks**:
 
-- [ ] Research DMX interfaces/protocols
-- [ ] OSC → DMX plugin design
-- [ ] Fixture mapping system
+- [ ] Design pass: where these transforms sit in the pipeline and UX model
+- [ ] Implement mirror / symmetry effect modes
+- [ ] Implement domain warp effect (at least fbm and rotation-based)
+- [ ] Canvas cutting / output region UI
+- [ ] Wire cut regions to multi-display output routing
 
 ---
 
-### 🟢 Onboarding / First-Run Experience `feature`
+#### 🟡 External Texture Input `feature`
 
-Guide new users on first launch.
+Support external images/videos as input textures for sketches.
 
-**Context**: Currently a new user sees 8 empty slots with no hints. No tutorial, no "get started" guidance. Worth at least a lightweight first-run hint system before wide release.
+**Context**: Current sketches are purely generative. Adding texture inputs unlocks a whole new category — mix camera feeds, video files, image sequences with shaders. Huge VJ use case.
 
 **Subtasks**:
 
-- [ ] Identify the 3-4 key actions a new user needs to discover (load sketch, map MIDI, enable output)
-- [ ] Design: tooltip hints, empty-state copy, or a dismissable welcome card
-- [ ] Implement and make dismissable/skippable
-- [ ] Don't show again after first use (persist dismissed state)
+- [ ] Add `texture` parameter type to `ParameterTemplate`
+- [ ] File picker UI for images/videos
+- [ ] WebRTC camera capture support
+- [ ] Texture management in renderer (cache, resize, format conversion)
+- [ ] Create example sketch using external texture (e.g., "Image Feedback", "Video Distortion")
+
+**Reference**: Look at how Hydra.video handles texture sources.
 
 ---
 
-### 🟢 Linux Packaging Testing `issue` `chore`
+#### 🟡 Multi-Display Support `feature`
 
-Verify Linux builds work correctly.
+Multiple renderer windows for different outputs.
 
-**Context**: CI builds Linux artifacts (.deb, .rpm, .AppImage) but no verification they work correctly.
+**Context**: Some VJ setups use multiple projectors or preview monitors. Also a prerequisite for the display-cutting feature in Domain Warping / Mirroring.
 
 **Subtasks**:
 
-- [ ] Test .deb installer on Ubuntu/Debian
-- [ ] Test .rpm installer on Fedora/RHEL
-- [ ] Test .AppImage on various distros
-- [ ] Document Linux-specific setup (dependencies, permissions)
-- [ ] Community testing call
+- [ ] Spawn additional renderer windows
+- [ ] Per-window slot assignment
+- [ ] Independent resolution/output settings
 
 ---
 
-### 🟢 Windows Packaging Testing `chore`
+#### 🟡 Projection Mapping `feature`
 
-Complete Windows distribution pipeline testing.
+Warp/mask output for projection on non-flat surfaces.
 
-**Context**: Dependent on Spout (🔴) being complete first.
+**Context**: Architectural projection, 3D object mapping, irregular screens. Needed by VJs doing installation work.
 
 **Subtasks**:
 
-- [ ] Test NSIS/MSI installers on Windows 10/11
-- [ ] Verify all features work on Windows
-- [ ] Document Windows-specific setup
+- [ ] Corner-pin warping
+- [ ] Mesh warping with control points
+- [ ] Per-projector output (multi-display integration)
+- [ ] Masking tools (polygon, bezier)
+- [ ] Camera calibration for auto-alignment
+- [ ] Save/load mapping configurations
 
 ---
 
-## Future Consideration / Inspiration
+### Project & Workflow
 
-### 🎨 Spout Video Output (Windows) `feature`
+#### 🟡 Presets & Projects (Full Session Management) `feature`
+
+Save/load complete project state.
+
+**Context**: For live performance, users need to save entire setups including all slots, parameters, and mappings. Sketch Presets (see Core UX) is a natural prerequisite.
+
+**Subtasks**:
+
+- [ ] Save/load complete project state (slots, parameters, mappings)
+- [ ] Quick snapshot for A/B comparison
+- [ ] Export/import for sharing
+- [ ] Auto-save / recovery
+
+---
+
+#### 🟡 Recording `feature`
+
+GPU-based capture or frame export.
+
+**Context**: Users may want to record performances for later use or sharing.
+
+**Subtasks**:
+
+- [ ] Define recording format (MP4, image sequence)
+- [ ] Implement GPU-based capture
+- [ ] Recording controls (start/stop/pause)
+- [ ] Export settings
+
+---
+
+### Distribution & Platform
+
+#### 🟡 Marketing Site — Monorepo Setup `chore`
+
+Scaffold a `site/` workspace inside the repo for the Slew marketing/landing page.
+
+**Approach**:
+- Configure npm/pnpm workspaces so `site/` is a first-class package
+- Create `site/package.json` with its own framework choice (Astro recommended)
+- Extract shared design tokens into `packages/tokens` or inline in `site/` initially
+- Set up a deploy target (Vercel/Netlify) triggered only on changes to `site/`
+- Document workspace structure in `docs/ARCHITECTURE.md`
+
+**Subtasks**:
+
+- [ ] Decide: pnpm workspaces or npm workspaces
+- [ ] Scaffold `site/` with Astro (or chosen framework)
+- [ ] Wire up shared tokens/styles from app
+- [ ] Configure CI deploy (Vercel/Netlify) scoped to `site/`
+- [ ] Update `ARCHITECTURE.md` with monorepo structure
+
+---
+
+#### 🟡 Marketing Site — Landing Page `feature` `design`
+
+Build the public-facing landing page to present and sell Slew ahead of its public release.
+
+**Sections to include**:
+- Hero — tagline, short description, download CTA
+- Feature highlights — dual-window output, MIDI/OSC control, live shader sketches
+- Screenshot / demo reel — video or animated screenshots of the app in action
+- Sketch gallery — showcase of what's possible
+- Changelog / release history (pulled from `CHANGELOG.md`)
+- Download / pricing section (if applicable)
+- Footer with links (GitHub, docs, contact)
+
+**Subtasks**:
+
+- [ ] Write copy: tagline, feature descriptions, about section
+- [ ] Capture screenshots and/or a demo video
+- [ ] Design hero section
+- [ ] Build feature highlights grid
+- [ ] Integrate changelog feed from `CHANGELOG.md`
+- [ ] SEO metadata, Open Graph tags
+- [ ] Analytics (privacy-respecting, e.g. Plausible)
+- [ ] Mobile-responsive layout
+
+---
+
+#### 🟡 Spout Video Output (Windows) `feature`
 
 Implement Spout backend for Windows video output.
 
-**Context**: Windows VJs need Spout to route output to Resolume, MadMapper, etc. The `spout.rs` module and `SpoutBackend` in `video_out.rs` are already wired up correctly — the stub compiles and the Windows exe ships. Blocked on the Rust/Spout2 crate ecosystem.
+**Context**: Windows VJs need Spout to route output to Resolume, MadMapper, etc. The `spout.rs` module and `SpoutBackend` in `video_out.rs` are already wired up correctly — stub compiles and Windows exe ships. Blocked on the Rust/Spout2 crate ecosystem.
 
 **Blocker (May 2026)**: Both available crates fail in CI:
 - `spout-rs` v0.1.3 — link-only wrapper; requires `SPOUT2_LIB_DIR` pointing at a pre-built SDK.
@@ -570,6 +524,124 @@ Implement Spout backend for Windows video output.
 - [x] Update documentation
 - [ ] Unblock: wait for `autocxx-bindgen` fix or new Spout crate, then replace stub
 - [ ] Test with Spout receivers on Windows
+
+---
+
+#### 🟡 Windows Packaging Testing `chore`
+
+Complete Windows distribution pipeline testing.
+
+**Context**: Dependent on Spout being complete first.
+
+**Subtasks**:
+
+- [ ] Test NSIS/MSI installers on Windows 10/11
+- [ ] Verify all features work on Windows
+- [ ] Document Windows-specific setup
+
+---
+
+#### 🟡 Linux Packaging Testing `issue` `chore`
+
+Verify Linux builds work correctly.
+
+**Context**: CI builds Linux artifacts (.deb, .rpm, .AppImage) but no verification they work.
+
+**Subtasks**:
+
+- [ ] Test .deb installer on Ubuntu/Debian
+- [ ] Test .rpm installer on Fedora/RHEL
+- [ ] Test .AppImage on various distros
+- [ ] Document Linux-specific setup (dependencies, permissions)
+- [ ] Community testing call
+
+---
+
+### Quality & Documentation
+
+#### 🟡 API Documentation for Sketch Developers `chore`
+
+Create developer guide for building custom sketches.
+
+**Context**: Enables community contributions and future-proofs onboarding. `SketchDescriptor` and `ParameterTemplate` types exist but lack usage examples.
+
+**Subtasks**:
+
+- [ ] Create `docs/CREATING_SKETCHES.md`
+- [ ] Step-by-step tutorial (start from BlueCube)
+- [ ] Explain `SketchDescriptor`, `ParameterTemplate`, `SketchProps`
+- [ ] Document parameter types (number, color, enum)
+- [ ] Example: create a custom sketch from scratch
+- [ ] Link to TSL shader resources
+
+---
+
+#### 🟡 Integration Tests `chore`
+
+Add end-to-end testing for critical workflows.
+
+**Context**: No E2E tests covering full workflows.
+
+**Subtasks**:
+
+- [ ] Set up Playwright or Tauri's testing framework
+- [ ] Test: Load sketch → set parameters → crossfade
+- [ ] Test: MIDI learn workflow
+- [ ] Test: Audio mapping creation → trigger
+- [ ] Test: Video output activation
+- [ ] Run in CI
+
+---
+
+#### 🟡 Crash Reporting & Analytics `feature`
+
+Add optional telemetry for debugging and product insights.
+
+**Context**: No visibility into production issues or feature usage.
+
+**Subtasks**:
+
+- [ ] Add optional crash reporting (Sentry, user consent required)
+- [ ] Privacy-respecting usage analytics (opt-in)
+- [ ] Track: sketch popularity, input device usage, feature adoption
+- [ ] Use data to prioritize future development
+
+---
+
+#### 🟡 Memory Leak Testing `chore`
+
+Add long-running stability testing.
+
+**Context**: App runs for hours during live performances — leaks will crash it.
+
+**Subtasks**:
+
+- [ ] Create long-running stability test (4+ hours)
+- [ ] Monitor memory usage over time
+- [ ] Profile with Chrome DevTools (heap snapshots)
+- [ ] Document memory profiling workflow
+
+---
+
+#### 🟡 Architecture Diagrams `chore`
+
+Add visual diagrams to architecture documentation.
+
+**Context**: `ARCHITECTURE.md` is text-only. Complex flows are hard to visualize.
+
+**Subtasks**:
+
+- [ ] Add Mermaid diagrams for:
+  - Parameter flow (UI → Backend → Renderer)
+  - Window communication (Events, IPC)
+  - Video output pipeline (WebGPU → Syphon/NDI)
+  - Slot system (lifecycle, crossfade)
+
+---
+
+## Future / Inspiration
+
+No timeline. Revisit after v1 ships.
 
 ---
 
@@ -592,7 +664,6 @@ Bypass CPU entirely for ultimate video output performance.
 
 - Performance requirements increase (4K output, multiple simultaneous outputs)
 - Apple provides new public APIs for WebGPU texture access
-- VJ performance becomes a key differentiator worth major investment
 
 **Subtasks** (deferred):
 
@@ -662,26 +733,9 @@ AI/procedural generation of parameter variations.
 
 - [ ] Generate parameter variations using genetic algorithms
 - [ ] "More like this" button to refine
-- [ ] Save favorite variations as presets
+- [ ] Save favourite variations as presets
 - [ ] Interpolate between variations
 - [ ] Integration with modulation engine (animate between variations)
-
----
-
-### 🎨 Projection Mapping `feature`
-
-Warp/mask output for projection on non-flat surfaces.
-
-**Use case**: Architectural projection, 3D object mapping, irregular screens.
-
-**Ideas**:
-
-- [ ] Corner-pin warping
-- [ ] Mesh warping with control points
-- [ ] Per-projector output (multi-display integration)
-- [ ] Masking tools (polygon, bezier)
-- [ ] Camera calibration for auto-alignment
-- [ ] Save/load mapping configurations
 
 ---
 
