@@ -5,6 +5,63 @@
   height: 100%;
 }
 
+/* Lock overlay — blocks interaction when locked */
+.lockedOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  cursor: pointer;
+  border-radius: 0.35rem;
+}
+
+/* Lock toggle button — appears on hover, always visible when locked */
+.lockButton {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+.paramRow:hover .lockButton {
+  opacity: 0.5;
+}
+
+.lockButton:hover {
+  opacity: 1 !important;
+  color: var(--text-secondary);
+}
+
+.lockButtonActive {
+  opacity: 1 !important;
+  color: var(--accent-warning);
+}
+
+.lockButtonActive:hover {
+  color: var(--text-secondary);
+}
+
+.lockIcon {
+  width: 10px;
+  height: 10px;
+}
+
+/* Locked state — dim the control content */
+.paramRowLocked > :not(.lockButton):not(.lockedOverlay) {
+  opacity: 0.35;
+}
+
 .paramRow::before {
   content: '';
   position: absolute;

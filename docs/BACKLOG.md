@@ -162,34 +162,6 @@ Save/load parameter configurations per sketch.
 
 ---
 
-#### 🟡 Parameter Randomization `feature`
-
-Add parameter randomization for experimentation.
-
-**Context**: VJs love "happy accidents" — randomization helps discover new looks. Common in TouchDesigner, Resolume, etc.
-
-**Subtasks**:
-
-- [ ] "Randomize" button per slot
-- [ ] Randomize all parameters (exclude alpha, respect min/max)
-- [ ] Optional: weighted randomization favouring interesting ranges
-- [ ] Optional: "lock" certain parameters from randomization
-
----
-
-#### 🟡 Parameter Locking `feature`
-
-Lock parameters to prevent accidental changes during performance.
-
-**Subtasks**:
-
-- [ ] Lock icon on each slider
-- [ ] Locked state disables all input (MIDI, OSC, UI)
-- [ ] Visual indication (dimmed, lock icon)
-- [ ] Global "lock all" option
-
----
-
 #### 🟡 App Launch Sequence & Preloader `polish`
 
 Improve the cold-start experience with a polished launch animation and soft preloader.

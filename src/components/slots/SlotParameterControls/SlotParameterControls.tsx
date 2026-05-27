@@ -30,6 +30,7 @@ export interface SlotParameterControlsProps {
 }
 
 const HIDDEN_PARAMS_STORAGE_PREFIX = "slew:hidden-params:";
+const LOCKED_PARAMS_STORAGE_PREFIX = "slew:locked-params:";
 const COLLAPSED_GROUPS_STORAGE_PREFIX = "slew:collapsed-groups:";
 
 const GROUP_LABELS: Record<string, string> = {
@@ -69,6 +70,24 @@ function loadHiddenParams(sketchId: string): Set<string> {
 function saveHiddenParams(sketchId: string, hidden: Set<string>): void {
   try {
     localStorage.setItem(`${HIDDEN_PARAMS_STORAGE_PREFIX}${sketchId}`, JSON.stringify([...hidden]));
+  } catch {
+    // ignore
+  }
+}
+
+function loadLockedParams(sketchId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(`${LOCKED_PARAMS_STORAGE_PREFIX}${sketchId}`);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveLockedParams(sketchId: string, locked: Set<string>): void {
+  try {
+    localStorage.setItem(`${LOCKED_PARAMS_STORAGE_PREFIX}${sketchId}`, JSON.stringify([...locked]));
   } catch {
     // ignore
   }
@@ -122,6 +141,7 @@ export function SlotParameterControls({
   const descriptor = getSketchDescriptor(sketchId);
 
   const [hiddenParams, setHiddenParams] = useState<Set<string>>(() => loadHiddenParams(sketchId));
+  const [lockedParams, setLockedParams] = useState<Set<string>>(() => loadLockedParams(sketchId));
   const [chromaActiveMap, setChromaActiveMap] = useState<Record<string, boolean>>({});
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => loadCollapsedGroups(sketchId));
 
@@ -140,6 +160,7 @@ export function SlotParameterControls({
 
   useEffect(() => {
     setHiddenParams(loadHiddenParams(sketchId));
+    setLockedParams(loadLockedParams(sketchId));
     setCollapsedGroups(loadCollapsedGroups(sketchId));
   }, [sketchId]);
 
@@ -160,6 +181,19 @@ export function SlotParameterControls({
     saveHiddenParams(sketchId, empty);
     setHiddenParams(empty);
   }, [sketchId]);
+
+  const toggleLock = useCallback(
+    (templateId: string) => {
+      setLockedParams((prev) => {
+        const next = new Set(prev);
+        if (next.has(templateId)) next.delete(templateId);
+        else next.add(templateId);
+        saveLockedParams(sketchId, next);
+        return next;
+      });
+    },
+    [sketchId],
+  );
 
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const isUserInteractingRef = useRef(false);
@@ -295,6 +329,23 @@ export function SlotParameterControls({
     void forwardControlsEvent("sketch_color_changed", slotIndex).catch(() => {});
   };
 
+  const handleRandomize = useCallback(() => {
+    isUserInteractingRef.current = true;
+    const params = [...SLOT_PARAMETER_TEMPLATES, ...descriptor.parameters];
+    for (const template of params) {
+      if (template.templateId === "alpha") continue;
+      if (template.inputType === "color") continue;
+      if (lockedParams.has(template.templateId)) continue;
+      const paramId = makeSlotParameterId(slotIndex, template.templateId);
+      const raw = template.min + Math.random() * (template.max - template.min);
+      const snapped = Math.round(raw / template.step) * template.step;
+      const clamped = Math.min(template.max, Math.max(template.min, snapped));
+      setValue(paramId, clamped);
+      void invoke("set_parameter", { id: paramId, value: clamped, app: undefined }).catch(() => {});
+    }
+    setTimeout(() => { isUserInteractingRef.current = false; }, 300);
+  }, [descriptor, lockedParams, slotIndex, setValue]);
+
   const hiddenCount = hiddenParams.size;
 
   const renderParameterControl = (template: ParameterTemplate, index: number) => {
@@ -343,6 +394,8 @@ export function SlotParameterControls({
           if (el) rowRefs.current.set(mainId, el);
           else rowRefs.current.delete(mainId);
         }}
+        locked={lockedParams.has(template.templateId)}
+        onToggleLock={() => toggleLock(template.templateId)}
       />
     );
   };
@@ -380,6 +433,11 @@ export function SlotParameterControls({
           onBackgroundReset={handleBackgroundReset}
         />
       )}
+      <div className={styles.toolbar}>
+        <button type="button" className={styles.randomizeButton} onClick={handleRandomize}>
+          Randomize
+        </button>
+      </div>
       <div className={styles.controls}>
         {showGroupHeaders
           ? [...groupedParameters.entries()].map(([group, groupTemplates]) => {

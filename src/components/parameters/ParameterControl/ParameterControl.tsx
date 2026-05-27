@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { LockClosedIcon } from "@radix-ui/react-icons";
 import { subscribeBpm } from "@/inputs/tapTempo";
 import { pushUndoEntry } from "@/hooks/useUndoHistory";
 import type { ParameterTemplate } from "@/sketches";
@@ -40,6 +41,8 @@ export interface ParameterControlProps {
   onUnlinkLfo?: (parameterId: string) => void;
   siblingSwatches?: string[];
   rowRef?: (el: HTMLDivElement | null) => void;
+  locked?: boolean;
+  onToggleLock?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -322,9 +325,25 @@ export function ParameterControl({
   onUnlinkLfo,
   siblingSwatches,
   rowRef,
+  locked,
+  onToggleLock,
 }: ParameterControlProps) {
   const paramId = makeSlotParameterId(slotIndex, template.templateId);
   const hasMidiMapping = midiMappings?.some((m) => m.parameter_id === paramId);
+
+  const lockUI = onToggleLock ? (
+    <>
+      {locked && <div className={styles.lockedOverlay} onClick={onToggleLock} />}
+      <button
+        type="button"
+        className={`${styles.lockButton} ${locked ? styles.lockButtonActive : ""}`}
+        onClick={(e) => { e.stopPropagation(); onToggleLock(); }}
+        title={locked ? "Unlock parameter" : "Lock parameter"}
+      >
+        <LockClosedIcon className={styles.lockIcon} />
+      </button>
+    </>
+  ) : null;
 
   if (template.inputType === "color") {
     const baseId = `slot_${slotIndex}_${template.templateId}`;
@@ -414,12 +433,13 @@ export function ParameterControl({
     return (
       <div
         ref={rowRef}
-        className={`${styles.fullWidthRow} ${styles.paramRow} ${highlighted ? styles.paramHighlighted : ""}`}
+        className={`${styles.fullWidthRow} ${styles.paramRow} ${highlighted ? styles.paramHighlighted : ""} ${locked ? styles.paramRowLocked : ""}`}
         onContextMenu={(e) => {
           e.preventDefault();
           onHide?.();
         }}
       >
+        {lockUI}
         <ParameterSelect
           id={`slot-${slotIndex}-${template.templateId}`}
           label={template.label}
@@ -448,12 +468,13 @@ export function ParameterControl({
     return (
       <div
         ref={rowRef}
-        className={`${styles.paramRow} ${highlighted ? styles.paramHighlighted : ""}`}
+        className={`${styles.paramRow} ${highlighted ? styles.paramHighlighted : ""} ${locked ? styles.paramRowLocked : ""}`}
         onContextMenu={(e) => {
           e.preventDefault();
           onHide?.();
         }}
       >
+        {lockUI}
         <StepInput
           id={`slot-${slotIndex}-${template.templateId}`}
           label={template.label}
@@ -482,12 +503,13 @@ export function ParameterControl({
     return (
       <div
         ref={rowRef}
-        className={`${styles.fullWidthRow} ${styles.paramRow} ${highlighted ? styles.paramHighlighted : ""}`}
+        className={`${styles.fullWidthRow} ${styles.paramRow} ${highlighted ? styles.paramHighlighted : ""} ${locked ? styles.paramRowLocked : ""}`}
         onContextMenu={(e) => {
           e.preventDefault();
           onHide?.();
         }}
       >
+        {lockUI}
         <ParameterSlider
           id={`slot-${slotIndex}-${template.templateId}`}
           label={template.label}
@@ -523,12 +545,13 @@ export function ParameterControl({
   return (
     <div
       ref={rowRef}
-      className={`${styles.paramRow} ${highlighted ? styles.paramHighlighted : ""}`}
+      className={`${styles.paramRow} ${highlighted ? styles.paramHighlighted : ""} ${locked ? styles.paramRowLocked : ""}`}
       onContextMenu={(e) => {
         e.preventDefault();
         onHide?.();
       }}
     >
+      {lockUI}
       <KnobInput
         id={`slot-${slotIndex}-${template.templateId}`}
         label={template.label}
