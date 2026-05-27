@@ -21,20 +21,12 @@ vi.mock("motion/react", () => ({
 }));
 
 // Mock panel components
-vi.mock("@/components/panels/MidiPanel", () => ({
-  MidiPanel: () => <div data-testid="midi-panel">MIDI Panel</div>,
+vi.mock("@/components/panels/InputsPanel", () => ({
+  InputsPanel: () => <div data-testid="inputs-panel">Inputs Panel</div>,
 }));
 
-vi.mock("@/components/panels/OscPanel", () => ({
-  OscPanel: () => <div data-testid="osc-panel">OSC Panel</div>,
-}));
-
-vi.mock("@/components/panels/AudioPanel", () => ({
-  AudioPanel: () => <div data-testid="audio-panel">Audio Panel</div>,
-}));
-
-vi.mock("@/components/panels/HidPanel", () => ({
-  HidPanel: () => <div data-testid="hid-panel">HID Panel</div>,
+vi.mock("@/components/panels/OutputsPanel", () => ({
+  OutputsPanel: () => <div data-testid="outputs-panel">Outputs Panel</div>,
 }));
 
 vi.mock("@/components/panels/ModulationPanel", () => ({
@@ -137,10 +129,8 @@ describe("Sidebar", () => {
 
       expect(screen.getByRole("tab", { name: "Settings" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Video" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "MIDI" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "OSC" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "Audio" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "HID" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Inputs" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Outputs" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Mod" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Appearance" })).toBeInTheDocument();
     });
@@ -160,7 +150,7 @@ describe("Sidebar", () => {
     it("tabs are clickable", () => {
       render(<Sidebar {...defaultProps} />);
 
-      const tabs = ["Video", "MIDI", "OSC", "Audio", "HID", "Mod", "Appearance"];
+      const tabs = ["Video", "Inputs", "Outputs", "Mod", "Appearance"];
 
       tabs.forEach((tabName) => {
         const tab = screen.getByRole("tab", { name: tabName });

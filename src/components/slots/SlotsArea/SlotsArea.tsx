@@ -141,6 +141,14 @@ export interface SlotsAreaProps {
 
 const PANEL_SLOTS_KEY = "slew-panel-slots"; // localStorage — survives webview reloads
 
+// Maps legacy panel IDs (pre-Inputs/Outputs unification) to current ones
+const LEGACY_PANEL_MAP: Record<string, PanelId> = {
+  midi: "inputs",
+  audio: "inputs",
+  osc: "inputs",
+  hid: "inputs",
+};
+
 // Stable empty array — avoids new reference on every render
 const EMPTY_SKETCH_IDS: SketchId[] = [];
 
@@ -192,7 +200,13 @@ export const SlotsArea = memo(function SlotsArea({
   const [panelSlots, setPanelSlots] = useState<Record<number, PanelId | null>>(() => {
     try {
       const stored = localStorage.getItem(PANEL_SLOTS_KEY);
-      return stored ? (JSON.parse(stored) as Record<number, PanelId | null>) : {};
+      if (!stored) return {};
+      const raw = JSON.parse(stored) as Record<number, string | null>;
+      const result: Record<number, PanelId | null> = {};
+      for (const [k, v] of Object.entries(raw)) {
+        result[Number(k)] = v === null ? null : (LEGACY_PANEL_MAP[v] ?? (v as PanelId));
+      }
+      return result;
     } catch {
       return {};
     }

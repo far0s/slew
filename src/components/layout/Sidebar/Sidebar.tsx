@@ -7,13 +7,10 @@ import {
   MinusIcon,
   PlusIcon,
 } from "@radix-ui/react-icons";
-import { MidiPanel } from "@/components/panels/MidiPanel";
-import { OscPanel } from "@/components/panels/OscPanel";
-import { AudioPanel } from "@/components/panels/AudioPanel";
-import { HidPanel } from "@/components/panels/HidPanel";
+import { InputsPanel } from "@/components/panels/InputsPanel";
+import { OutputsPanel } from "@/components/panels/OutputsPanel";
 import { ModulationPanel } from "@/components/panels/ModulationPanel";
 import { VideoOutputPanel } from "@/components/panels/VideoOutputPanel";
-import { WledPanel } from "@/components/panels/WledPanel";
 import { ParameterSlider } from "@/components/parameters/ParameterSlider";
 import type { Slot } from "@/slots/useSlots";
 import {
@@ -414,23 +411,14 @@ export const Sidebar = memo(function Sidebar({
         <Tabs.Trigger value="video" className={styles.tabTrigger}>
           Video
         </Tabs.Trigger>
-        <Tabs.Trigger value="midi" className={styles.tabTrigger}>
-          MIDI
+        <Tabs.Trigger value="inputs" className={styles.tabTrigger}>
+          Inputs
         </Tabs.Trigger>
-        <Tabs.Trigger value="osc" className={styles.tabTrigger}>
-          OSC
-        </Tabs.Trigger>
-        <Tabs.Trigger value="audio" className={styles.tabTrigger}>
-          Audio
-        </Tabs.Trigger>
-        <Tabs.Trigger value="hid" className={styles.tabTrigger}>
-          HID
+        <Tabs.Trigger value="outputs" className={styles.tabTrigger}>
+          Outputs
         </Tabs.Trigger>
         <Tabs.Trigger value="mod" className={styles.tabTrigger}>
           Mod
-        </Tabs.Trigger>
-        <Tabs.Trigger value="wled" className={styles.tabTrigger}>
-          WLED
         </Tabs.Trigger>
         <Tabs.Trigger value="appearance" className={styles.tabTrigger}>
           Appearance
@@ -538,28 +526,16 @@ export const Sidebar = memo(function Sidebar({
           <VideoOutputPanel />
         </Tabs.Content>
 
-        <Tabs.Content value="midi" className={styles.tabContent}>
-          <MidiPanel />
+        <Tabs.Content value="inputs" className={styles.tabContent}>
+          <InputsPanel slots={slots} macropadSelectedIndex={macropadSelectedIndex} />
         </Tabs.Content>
 
-        <Tabs.Content value="osc" className={styles.tabContent}>
-          <OscPanel slots={slots} />
-        </Tabs.Content>
-
-        <Tabs.Content value="audio" className={styles.tabContent}>
-          <AudioPanel slots={slots} />
-        </Tabs.Content>
-
-        <Tabs.Content value="hid" className={styles.tabContent}>
-          <HidPanel selectedSlotIndex={macropadSelectedIndex} />
+        <Tabs.Content value="outputs" className={styles.tabContent}>
+          <OutputsPanel />
         </Tabs.Content>
 
         <Tabs.Content value="mod" className={styles.tabContent}>
           <ModulationPanel slots={slots} onHighlightParams={onHighlightParams} />
-        </Tabs.Content>
-
-        <Tabs.Content value="wled" className={styles.tabContent}>
-          <WledPanel />
         </Tabs.Content>
 
         <Tabs.Content value="appearance" className={styles.tabContent}>

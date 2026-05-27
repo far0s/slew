@@ -1,0 +1,137 @@
+/* ==========================================================================
+   InputsPanel.module.css
+   ========================================================================== */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ==========================================================================
+   Device card
+   ========================================================================== */
+
+.deviceCard {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.deviceCard:last-child {
+  border-bottom: none;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: background 0.1s ease;
+  text-align: left;
+}
+
+.cardHeader:hover {
+  background: var(--bg-hover);
+}
+
+.cardExpanded .cardHeader {
+  background: color-mix(in srgb, var(--accent-primary) 6%, transparent);
+}
+
+.deviceTypeLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 0.1rem 0.3rem;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.cardInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.cardName {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mappingCount {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Status label
+   ========================================================================== */
+
+.statusLabel {
+  font-size: 0.68rem;
+  font-weight: 500;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.status_connected,
+.status_active {
+  color: var(--accent-success);
+}
+
+.status_searching {
+  color: var(--accent-warning);
+}
+
+.status_error {
+  color: var(--accent-danger);
+}
+
+.status_disconnected {
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Chevron
+   ========================================================================== */
+
+.chevron {
+  width: 12px;
+  height: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Card body (expanded content)
+   ========================================================================== */
+
+.cardBody {
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ==========================================================================
+   Empty state
+   ========================================================================== */
+
+.emptyState {
+  padding: 1.5rem 0.75rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-align: center;
+}

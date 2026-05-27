@@ -7,7 +7,6 @@ import {
   useState,
   useMemo,
   type ReactNode,
-  type ReactElement,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
@@ -37,63 +36,8 @@ import { StreamedPreview } from "@/components/preview/StreamedPreview";
 import type { AudioMapping } from "@/inputs/audio";
 import type { ModulationTarget, LfoSource } from "@/inputs/modulation";
 import type { MidiMapping, MidiPickupState } from "@/inputs/midi";
-import { MidiPanel } from "@/components/panels/MidiPanel";
-import { AudioPanel } from "@/components/panels/AudioPanel";
-import { OscPanel } from "@/components/panels/OscPanel";
-import { ModulationPanel } from "@/components/panels/ModulationPanel";
-import { HidPanel } from "@/components/panels/HidPanel";
+import { PANEL_CONFIGS, type PanelId } from "@/panels/registry";
 import styles from "./SlotColumn.module.css";
-
-// ============================================================================
-// Panel slot types
-// ============================================================================
-
-export type PanelId = "midi" | "audio" | "osc" | "mod" | "hid";
-
-interface PanelConfig {
-  id: PanelId;
-  label: string;
-  shortLabel: string;
-  render: (
-    slots: Array<Slot & { sketchId: SketchId }>,
-    onHighlightParams?: (ids: Set<string>) => void,
-  ) => ReactElement;
-}
-
-const PANEL_CONFIGS: PanelConfig[] = [
-  {
-    id: "midi",
-    label: "MIDI",
-    shortLabel: "MIDI",
-    render: () => <MidiPanel />,
-  },
-  {
-    id: "audio",
-    label: "Audio",
-    shortLabel: "Audio",
-    render: () => <AudioPanel />,
-  },
-  {
-    id: "osc",
-    label: "OSC",
-    shortLabel: "OSC",
-    render: (slots) => <OscPanel slots={slots} />,
-  },
-  {
-    id: "mod",
-    label: "Modulation",
-    shortLabel: "Mod",
-    render: (slots, onHighlightParams) => (
-      <ModulationPanel slots={slots} onHighlightParams={onHighlightParams} />
-    ),
-  },
-  {
-    id: "hid",
-    label: "HID",
-    shortLabel: "HID",
-    render: () => <HidPanel />,
-  },
-];
 
 // Hoisted motion constants — stable references, Motion skips re-evaluation
 const MOTION_INITIAL = { opacity: 0, scale: 0.95 };
@@ -232,7 +176,7 @@ function PanelSlotContent({
         </button>
       </div>
       <div className={styles.panelColumnBody} data-nodrag>
-        {config?.render(filledSlots, onHighlightParams)}
+        {config?.render({ slots: filledSlots, onHighlightParams })}
       </div>
     </motion.article>
   );

@@ -7,45 +7,16 @@
  * - Recording: Placeholder for future recording feature
  */
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import {
-  CheckCircledIcon,
-  CrossCircledIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  InfoCircledIcon,
   QuestionMarkCircledIcon,
 } from "@radix-ui/react-icons";
 import { motion, AnimatePresence } from "motion/react";
-import {
-  useVideoOutputBackends,
-  useBufferPoolStats,
-  type BackendStatus,
-} from "@/outputs/videoOutput";
+import { useBufferPoolStats } from "@/outputs/videoOutput";
 import { useRendererSettings } from "@/hooks";
 import styles from "./VideoOutputPanel.module.css";
-
-// Fixed order for backends
-const BACKEND_ORDER = ["syphon", "ndi", "spout"];
-
-// Backend metadata
-const BACKEND_META: Record<
-  string,
-  { description: string; unavailableReason: string }
-> = {
-  syphon: {
-    description: "Share frames with other apps on this Mac",
-    unavailableReason: "Syphon is only available on macOS",
-  },
-  ndi: {
-    description: "Stream over your local network",
-    unavailableReason: "NDI SDK not available",
-  },
-  spout: {
-    description: "Share frames with other apps on Windows",
-    unavailableReason: "Spout coming soon — not yet available in this build",
-  },
-};
 
 /**
  * Collapsible section wrapper
@@ -311,199 +282,6 @@ function RendererSection() {
 }
 
 /**
- * Single backend row with status and toggle
- */
-function BackendRow({
-  backend,
-  onToggle,
-  isLoading,
-}: {
-  backend: BackendStatus;
-  onToggle: () => void;
-  isLoading: boolean;
-}) {
-  const meta = BACKEND_META[backend.id] || {
-    description: "",
-    unavailableReason: "Not available",
-  };
-
-  return (
-    <div
-      className={`${styles.backendRow} ${backend.active ? styles.active : ""} ${!backend.available ? styles.unavailable : ""}`}
-    >
-      <div className={styles.backendMain}>
-        <div className={styles.backendIndicator}>
-          {backend.available ? (
-            backend.active ? (
-              <span className={styles.indicatorActive} aria-label="Active" />
-            ) : (
-              <span className={styles.indicatorReady} aria-label="Ready" />
-            )
-          ) : (
-            <CrossCircledIcon className={styles.indicatorUnavailable} />
-          )}
-        </div>
-
-        <div className={styles.backendInfo}>
-          <div className={styles.backendNameRow}>
-            <span className={styles.backendName}>{backend.name}</span>
-            {backend.active && (
-              <span className={styles.activeLabel}>
-                <CheckCircledIcon className={styles.activeLabelIcon} />
-                Active
-              </span>
-            )}
-          </div>
-          <span className={styles.backendDescription}>
-            {backend.available ? meta.description : meta.unavailableReason}
-          </span>
-        </div>
-
-        {backend.available && (
-          <button
-            type="button"
-            className={`${styles.toggleButton} ${backend.active ? styles.toggleOff : styles.toggleOn}`}
-            onClick={onToggle}
-            disabled={isLoading}
-          >
-            {isLoading ? "…" : backend.active ? "Disable" : "Enable"}
-          </button>
-        )}
-      </div>
-
-      {backend.last_error && (
-        <div className={styles.errorMessage}>{backend.last_error}</div>
-      )}
-    </div>
-  );
-}
-
-/**
- * Expandable instructions section
- */
-function InstructionsSection() {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className={styles.instructions}>
-      <button
-        type="button"
-        className={styles.instructionsToggle}
-        onClick={() => setIsOpen(!isOpen)}
-        aria-expanded={isOpen}
-      >
-        <InfoCircledIcon className={styles.instructionsIcon} />
-        <span>How to use video output</span>
-        {isOpen ? (
-          <ChevronDownIcon className={styles.instructionsChevron} />
-        ) : (
-          <ChevronRightIcon className={styles.instructionsChevron} />
-        )}
-      </button>
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            className={styles.instructionsContent}
-          >
-            <div className={styles.instructionBlock}>
-              <strong>Syphon (macOS)</strong>
-              <p>
-                Open Resolume, VDMX, OBS, or any Syphon-compatible app. Add a
-                Syphon client/source and select "Slew" from the available
-                servers.
-              </p>
-            </div>
-            <div className={styles.instructionBlock}>
-              <strong>NDI (Cross-platform)</strong>
-              <p>
-                Open any NDI-compatible software (OBS with NDI plugin, Resolume,
-                vMix, etc.). Search for "Slew" as a source on your local
-                network.
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-/**
- * Output backends section
- */
-function OutputSection() {
-  const [loadingBackend, setLoadingBackend] = useState<string | null>(null);
-  const { backends, loading, error, toggle, refresh } =
-    useVideoOutputBackends();
-
-  const handleToggle = useCallback(
-    async (backendId: string) => {
-      setLoadingBackend(backendId);
-      try {
-        await toggle(backendId);
-      } finally {
-        setLoadingBackend(null);
-      }
-    },
-    [toggle],
-  );
-
-  // Sort backends in fixed order
-  const sortedBackends = [...backends].sort((a, b) => {
-    const aIndex = BACKEND_ORDER.indexOf(a.id);
-    const bIndex = BACKEND_ORDER.indexOf(b.id);
-    return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
-  });
-
-  const activeCount = backends.filter((b) => b.active).length;
-
-  return (
-    <Section
-      title="Output"
-      badge={
-        activeCount > 0 ? (
-          <span className={styles.activeBadge}>{activeCount} active</span>
-        ) : null
-      }
-    >
-      <div className={styles.outputContent}>
-        {loading ? (
-          <div className={styles.loadingState}>Loading backends…</div>
-        ) : error ? (
-          <div className={styles.errorState}>
-            <span>Error: {error}</span>
-            <button onClick={refresh} className={styles.retryButton}>
-              Retry
-            </button>
-          </div>
-        ) : sortedBackends.length === 0 ? (
-          <div className={styles.emptyState}>
-            No video output backends available
-          </div>
-        ) : (
-          <div className={styles.backendList}>
-            {sortedBackends.map((backend) => (
-              <BackendRow
-                key={backend.id}
-                backend={backend}
-                onToggle={() => handleToggle(backend.id)}
-                isLoading={loadingBackend === backend.id}
-              />
-            ))}
-          </div>
-        )}
-
-        <InstructionsSection />
-      </div>
-    </Section>
-  );
-}
-
-/**
  * Recording placeholder section
  */
 function RecordingSection() {
@@ -532,7 +310,6 @@ export function VideoOutputPanel() {
   return (
     <div className={styles.container}>
       <RendererSection />
-      <OutputSection />
       <RecordingSection />
     </div>
   );

@@ -209,34 +209,6 @@ Improve the cold-start experience with a polished launch animation and soft prel
 
 ### Control & Mapping
 
-#### 🟡 Inputs vs Outputs Rework `feature` `chore`
-
-Unify MIDI, HID, OSC, Audio, WLED, and any future protocol under a single **Inputs / Outputs** model instead of per-protocol panels.
-
-**Context**: Current setup has a separate panel per protocol. As the number of supported protocols grows this becomes unwieldy — a user with an existing rig just wants to say "here's what I have, what can I connect it to?" The shift to an Inputs/Outputs paradigm is both a UX rethink and an architectural rework. Expected to be one of the highest-effort items in v1, but also one of the most important for onboarding non-technical VJs.
-
-**Vision**:
-- **Inputs panel**: lists all detected/configured input sources (MIDI controllers, HID devices, OSC listeners, audio sources, cameras). Each shows type, connection status, and what it's currently mapped to.
-- **Outputs panel**: lists all configured output destinations (Syphon/NDI/Spout, WLED fixtures, OSC targets, DMX, etc.).
-- Smart autodetection: newly connected devices surface as suggestions ("APC Mini detected — set up mappings?")
-- Device type recognition: the app understands whether something is an input vs output, and what kind (controller, lighting, video, audio)
-- Replaces the individual MIDI / OSC / Audio / WLED tabs
-
-**Sizing**: Very large. Needs a design pass before implementation. Suggest splitting into: (1) new data model + routing layer, (2) Inputs panel, (3) Outputs panel, (4) per-protocol migration.
-
-**Subtasks**:
-
-- [ ] Design pass: unified device/connection data model, routing architecture
-- [ ] Define input types: MIDI controller, HID, OSC listener, audio source, camera/texture
-- [ ] Define output types: video (Syphon/NDI/Spout), WLED, OSC target, DMX
-- [ ] Autodetection and suggestion system
-- [ ] Inputs panel UI
-- [ ] Outputs panel UI
-- [ ] Migrate MIDI panel to new model
-- [ ] Migrate OSC, Audio, WLED to new model
-
----
-
 #### 🟡 MIDI Panel — Device Schematic & Clock UI `feature` `design`
 
 Overhaul the Mappings section of the MIDI Panel to be visually useful and scalable.

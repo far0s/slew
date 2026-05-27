@@ -134,7 +134,7 @@ function DeviceRow({
 /**
  * Unified device list with connect/disconnect controls.
  */
-function DeviceList() {
+function DeviceList({ deviceName }: { deviceName?: string }) {
   const {
     devices,
     isLoading,
@@ -146,6 +146,10 @@ function DeviceList() {
     setAutoReconnect,
     retryWithDelay,
   } = useMidiCombinedDevices();
+
+  const visibleDevices = deviceName
+    ? devices.filter((d) => d.name === deviceName)
+    : devices;
 
   const [connectingDevice, setConnectingDevice] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
@@ -181,7 +185,7 @@ function DeviceList() {
     setDeviceFeedbackEnabled(deviceName, enabled);
   };
 
-  if (isLoading && devices.length === 0) {
+  if (isLoading && visibleDevices.length === 0) {
     return <p className={styles.loadingText}>Scanning for MIDI devices…</p>;
   }
 
@@ -210,7 +214,7 @@ function DeviceList() {
     );
   }
 
-  if (devices.length === 0) {
+  if (visibleDevices.length === 0) {
     return (
       <div className={styles.emptyState}>
         <p className={styles.emptyText}>No MIDI devices detected</p>
@@ -223,7 +227,7 @@ function DeviceList() {
 
   return (
     <div className={styles.deviceList}>
-      {devices.map((device) => (
+      {visibleDevices.map((device) => (
         <DeviceRow
           key={device.name}
           device={device}
@@ -247,10 +251,18 @@ function DeviceList() {
 }
 
 /**
- * Mappings list showing all current MIDI→parameter bindings.
+ * Mappings list showing MIDI→parameter bindings, optionally scoped to one device.
+ * deviceInputId=undefined → show all; null → show any-device mappings only; string → show device + any-device
  */
-function MappingsList() {
+function MappingsList({ deviceInputId }: { deviceInputId?: string | null }) {
   const { mappings, isLoading, removeMapping, addMapping } = useMidiMappings();
+
+  const visibleMappings =
+    deviceInputId !== undefined
+      ? mappings.filter(
+          (m) => m.device_id === null || m.device_id === deviceInputId,
+        )
+      : mappings;
   const [removing, setRemoving] = useState<string | null>(null);
   const [togglingMode, setTogglingMode] = useState<string | null>(null);
   const [showAddNote, setShowAddNote] = useState(false);
@@ -287,12 +299,12 @@ function MappingsList() {
   return (
     <>
       <div className={styles.mappingsList}>
-        {mappings.length === 0 ? (
+        {visibleMappings.length === 0 ? (
           <p className={styles.emptyText}>
             No MIDI mappings. Use the Learn button on a parameter to create one.
           </p>
         ) : (
-          mappings.map((mapping) => (
+          visibleMappings.map((mapping) => (
             <div key={mapping.parameter_id} className={styles.mappingItem}>
               <div className={styles.mappingInfo}>
                 <span className={styles.mappingParameter}>
@@ -503,20 +515,37 @@ function AddNoteMappingForm({
 export interface MidiPanelProps {
   /** Optional class name for additional styling */
   className?: string;
+  /** When set, scope the panel to this device name only */
+  deviceName?: string;
 }
 
 /**
  * MidiPanel
  *
  * Complete MIDI management panel with:
- * - Activity indicator
  * - Unified device list with connect/disconnect and per-device feedback toggle
  * - Mappings overview with remove options
+ *
+ * When `deviceName` is provided, only that device and its mappings are shown.
  */
-export function MidiPanel({ className }: MidiPanelProps) {
+export function MidiPanel({ className, deviceName }: MidiPanelProps) {
   const [devicesOpen, setDevicesOpen] = useState(true);
   const [mappingsOpen, setMappingsOpen] = useState(true);
   const { mappings, clearAll } = useMidiMappings();
+  const { devices: allDevices } = useMidiCombinedDevices();
+
+  // Derive the MIDI input device ID for scoped mapping filtering
+  const scopedDevice = deviceName
+    ? allDevices.find((d) => d.name === deviceName)
+    : null;
+  const scopedInputId = scopedDevice?.input?.id ?? null;
+
+  const visibleMappings =
+    deviceName !== undefined
+      ? mappings.filter(
+          (m) => m.device_id === null || m.device_id === scopedInputId,
+        )
+      : mappings;
 
   const handleClearAll = async () => {
     if (mappings.length === 0) return;
@@ -530,9 +559,11 @@ export function MidiPanel({ className }: MidiPanelProps) {
 
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
-      <div className={styles.header}>
-        <h3 className={styles.title}>MIDI</h3>
-      </div>
+      {!deviceName && (
+        <div className={styles.header}>
+          <h3 className={styles.title}>MIDI</h3>
+        </div>
+      )}
 
       <Collapsible.Root open={devicesOpen} onOpenChange={setDevicesOpen}>
         <Collapsible.Trigger asChild>
@@ -542,7 +573,7 @@ export function MidiPanel({ className }: MidiPanelProps) {
           </button>
         </Collapsible.Trigger>
         <Collapsible.Content className={styles.sectionContent}>
-          <DeviceList />
+          <DeviceList deviceName={deviceName} />
         </Collapsible.Content>
       </Collapsible.Root>
 
@@ -552,12 +583,14 @@ export function MidiPanel({ className }: MidiPanelProps) {
             <button type="button" className={styles.sectionHeader}>
               {mappingsOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
               <span>Mappings</span>
-              {mappings.length > 0 && (
-                <span className={styles.mappingsBadge}>{mappings.length}</span>
+              {visibleMappings.length > 0 && (
+                <span className={styles.mappingsBadge}>
+                  {visibleMappings.length}
+                </span>
               )}
             </button>
           </Collapsible.Trigger>
-          {mappings.length > 0 && (
+          {!deviceName && visibleMappings.length > 0 && (
             <button
               type="button"
               onClick={(e) => {
@@ -572,7 +605,9 @@ export function MidiPanel({ className }: MidiPanelProps) {
           )}
         </div>
         <Collapsible.Content className={styles.sectionContent}>
-          <MappingsList />
+          <MappingsList
+            deviceInputId={deviceName !== undefined ? scopedInputId : undefined}
+          />
         </Collapsible.Content>
       </Collapsible.Root>
     </div>
