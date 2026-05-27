@@ -158,7 +158,7 @@ describe("SlotColumn", () => {
     const filledProps: SlotColumnProps = {
       ...defaultProps,
       sketchId: "blueCube" as SketchId,
-      params: {},
+      getSlotSketchParams: () => ({}),
     };
 
     it("renders sketch preview when sketchId is provided", () => {

@@ -3,7 +3,7 @@
  * Uses streaming mode by default, with local rendering as fallback.
  */
 
-import { Suspense, useState, useCallback, useEffect } from "react";
+import { Suspense, useState, useCallback, useEffect, memo } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { SketchId, SketchProps } from "@/sketches";
 import { STREAMING_FALLBACK_TIMEOUT_MS } from "@/config";
@@ -212,7 +212,7 @@ function RendererPreviewContent({
  * - No timeout-based fallback after streaming starts - show last valid frame
  * - Only fall back to local rendering if no frames received within initial timeout
  */
-export function RendererPreview({
+export const RendererPreview = memo(function RendererPreview({
   allSlots,
   activeSlotIndex,
   crossfadeTargetIndex,
@@ -315,6 +315,6 @@ export function RendererPreview({
       </div>
     </div>
   );
-}
+});
 
 export default RendererPreview;

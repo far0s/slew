@@ -6,6 +6,7 @@ import type { SketchId } from "@/sketches";
 import { buildSlotDefaultParameters } from "@/slots/slotTypes";
 import { logger } from "@/lib/logger";
 import type { ParameterStoreState, BackendParameter, SlotConfig } from "./useParameterStore";
+import type { ParameterId } from "@/slots/slotTypes";
 
 interface UseParameterBackendSyncParams {
   paramStore: ParameterStoreState;
@@ -26,11 +27,15 @@ export function useParameterBackendSync({
 }: UseParameterBackendSyncParams) {
   const [isInitialized, setIsInitialized] = useState(false);
   const hasHydratedRef = useRef(false);
-  // Stable ref so the parameter_changed listener always reads the latest store
   const paramStoreRef = useRef(paramStore);
   useEffect(() => {
     paramStoreRef.current = paramStore;
   }, [paramStore]);
+
+  // Pending target updates — populated by the parameter_changed listener,
+  // flushed once per RAF frame as a single setMany call (one React render/frame).
+  const pendingTargetsRef = useRef<Map<string, number>>(new Map());
+  const rafRef = useRef<number>(0);
 
   const refreshBackendParameters = useCallback(async () => {
     paramStore.setIsLoading(true);
@@ -50,7 +55,6 @@ export function useParameterBackendSync({
       for (const slot of slots) {
         if (slot.sketchId !== null) {
           paramStore.initializeSlot(slot.index, slot.sketchId);
-          // Push color sub-params that backend doesn't auto-create
           const defaults = buildSlotDefaultParameters(slot.index, slot.sketchId);
           for (const [id, value] of defaults) {
             if (/color_[a-z_]+_[rgb]$/.test(String(id)) && !backendParamIds.has(String(id))) {
@@ -68,7 +72,6 @@ export function useParameterBackendSync({
     }
   }, [slots, paramStore]);
 
-  // Initial parameter load — run once after slot hydration
   useEffect(() => {
     if (!isHydrated) return;
     if (hasHydratedRef.current) return;
@@ -76,7 +79,8 @@ export function useParameterBackendSync({
     void refreshBackendParameters();
   }, [isHydrated, refreshBackendParameters]);
 
-  // Subscribe to parameter_changed events from the backend
+  // Subscribe to parameter_changed. Only update refs here — no React setState.
+  // Target updates are batched and flushed once per RAF frame below.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
 
@@ -86,13 +90,10 @@ export function useParameterBackendSync({
           const updated = event.payload;
           const store = paramStoreRef.current;
 
+          // Interpolated value goes straight to ref — no React render.
           store.setInterpolated(updated.id, updated.value);
-          if (updated.id === "crossfade") {
-            store.set("crossfade", updated.value);
-          } else {
-            store.setFromBackend(updated.id, updated.target);
-          }
 
+          // Update backendSnapshot ref.
           const current = store.backendSnapshot ?? [];
           const idx = current.findIndex((p) => p.id === updated.id);
           if (idx === -1) {
@@ -102,6 +103,10 @@ export function useParameterBackendSync({
             next[idx] = updated;
             store.setBackendSnapshot(next);
           }
+
+          // Queue target update for RAF flush.
+          const targetValue = updated.id === "crossfade" ? updated.value : updated.target;
+          pendingTargetsRef.current.set(updated.id, targetValue);
         });
       } catch (error) {
         logger.error("Controls", "subscribe parameter_changed failed", error);
@@ -113,7 +118,32 @@ export function useParameterBackendSync({
     };
   }, []);
 
-  // Sync initial slot pairing to Renderer on startup (once)
+  // RAF flush: apply all pending target updates in one React render per frame.
+  useEffect(() => {
+    function flush() {
+      if (pendingTargetsRef.current.size > 0) {
+        const store = paramStoreRef.current;
+        const updates: Array<[ParameterId, number]> = [];
+
+        for (const [id, value] of pendingTargetsRef.current) {
+          if (store.hasPendingUserInput(id as ParameterId)) continue;
+          const current = store.parameters.get(id as ParameterId);
+          if (current !== undefined && Math.abs(current - value) < 0.001) continue;
+          updates.push([id as ParameterId, value]);
+        }
+        pendingTargetsRef.current.clear();
+
+        if (updates.length > 0) {
+          store.setMany(updates);
+        }
+      }
+      rafRef.current = requestAnimationFrame(flush);
+    }
+
+    rafRef.current = requestAnimationFrame(flush);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []);
+
   useEffect(() => {
     if (!isInitialized || !isHydrated) return;
     const activeSketchId = getSketchId(activeIndex);
@@ -127,11 +157,9 @@ export function useParameterBackendSync({
         logger.error("Controls", "Failed to sync initial slot pairing", error);
       });
     }
-    // Intentionally only depends on init flags — runs once when both become true
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInitialized, isHydrated]);
 
-  // Sync all slots to Renderer for multi-layer alpha rendering
   useEffect(() => {
     if (!isInitialized || !isHydrated) return;
 
@@ -148,7 +176,6 @@ export function useParameterBackendSync({
     });
   }, [isInitialized, isHydrated, slots, activeIndex, crossfadeTargetIndex]);
 
-  // Keep paramStore slot config in sync with current slot state
   useEffect(() => {
     const slotConfig: SlotConfig[] = slots
       .filter((slot) => slot.sketchId !== null)

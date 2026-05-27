@@ -228,13 +228,7 @@ export function useParameterStore(): ParameterStoreState {
   const interpolatedRef = useRef<Map<ParameterId, number>>(
     new Map([["crossfade", 0]]),
   );
-  const [interpolatedValues, setInterpolatedValues] = useState<
-    Map<ParameterId, number>
-  >(() => new Map([["crossfade", 0]]));
-
-  const [backendSnapshot, setBackendSnapshot] = useState<
-    BackendParameter[] | null
-  >(null);
+  const backendSnapshotRef = useRef<BackendParameter[] | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -269,12 +263,18 @@ export function useParameterStore(): ParameterStoreState {
   // Set multiple parameters at once
   const setMany = useCallback((updates: Array<[ParameterId, number]>) => {
     setParameters((prev) => {
+      let changed = false;
       const next = new Map(prev);
       for (const [id, value] of updates) {
         const range = getParameterRange(id, currentSlotsRef.current);
         const clampedValue = range ? clamp(value, range.min, range.max) : value;
-        next.set(id, clampedValue);
+        if (prev.get(id) !== clampedValue) {
+          next.set(id, clampedValue);
+          changed = true;
+        }
       }
+      if (!changed) return prev;
+      parametersRef.current = next;
       return next;
     });
   }, []);
@@ -283,14 +283,7 @@ export function useParameterStore(): ParameterStoreState {
   const setInterpolated = useCallback((id: ParameterId, value: number) => {
     const range = getParameterRange(id, currentSlotsRef.current);
     const clampedValue = range ? clamp(value, range.min, range.max) : value;
-
     interpolatedRef.current.set(id, clampedValue);
-
-    setInterpolatedValues((prev) => {
-      const next = new Map(prev);
-      next.set(id, clampedValue);
-      return next;
-    });
   }, []);
 
   // Initialize slot parameters with defaults (only for missing parameters)
@@ -309,17 +302,12 @@ export function useParameterStore(): ParameterStoreState {
         return next;
       });
 
-      // Also update interpolated values (only for missing ones)
-      setInterpolatedValues((prev) => {
-        const next = new Map(prev);
-        for (const [id, value] of defaults) {
-          if (!interpolatedRef.current.has(id)) {
-            interpolatedRef.current.set(id, value);
-            next.set(id, value);
-          }
+      // Also seed interpolated values for missing ones
+      for (const [id, value] of defaults) {
+        if (!interpolatedRef.current.has(id)) {
+          interpolatedRef.current.set(id, value);
         }
-        return next;
-      });
+      }
     },
     [],
   );
@@ -335,17 +323,9 @@ export function useParameterStore(): ParameterStoreState {
         return next;
       });
 
-      // Also update interpolated values
       for (const [id, value] of values) {
         interpolatedRef.current.set(id, value);
       }
-      setInterpolatedValues((prev) => {
-        const next = new Map(prev);
-        for (const [id, value] of values) {
-          next.set(id, value);
-        }
-        return next;
-      });
     },
     [],
   );
@@ -364,17 +344,11 @@ export function useParameterStore(): ParameterStoreState {
       return next;
     });
 
-    // Also remove from interpolated values
-    setInterpolatedValues((prev) => {
-      const next = new Map(prev);
-      for (const key of prev.keys()) {
-        if (typeof key === "string" && key.startsWith(prefix)) {
-          next.delete(key);
-          interpolatedRef.current.delete(key);
-        }
+    for (const key of interpolatedRef.current.keys()) {
+      if (typeof key === "string" && key.startsWith(prefix)) {
+        interpolatedRef.current.delete(key);
       }
-      return next;
-    });
+    }
   }, []);
 
   // Copy parameters from one slot to another
@@ -395,17 +369,9 @@ export function useParameterStore(): ParameterStoreState {
         return next;
       });
 
-      // Also update interpolated values
       for (const [id, value] of copied) {
         interpolatedRef.current.set(id, value);
       }
-      setInterpolatedValues((prev) => {
-        const next = new Map(prev);
-        for (const [id, value] of copied) {
-          next.set(id, value);
-        }
-        return next;
-      });
     },
     [parameters],
   );
@@ -426,13 +392,6 @@ export function useParameterStore(): ParameterStoreState {
       for (const [id, value] of defaults) {
         interpolatedRef.current.set(id, value);
       }
-      setInterpolatedValues((prev) => {
-        const next = new Map(prev);
-        for (const [id, value] of defaults) {
-          next.set(id, value);
-        }
-        return next;
-      });
     },
     [],
   );
@@ -446,7 +405,6 @@ export function useParameterStore(): ParameterStoreState {
     setParameters(new Map(defaults));
 
     interpolatedRef.current = new Map(defaults);
-    setInterpolatedValues(new Map(defaults));
   }, []);
 
   // Apply backend parameters (initial hydration only)
@@ -543,11 +501,13 @@ export function useParameterStore(): ParameterStoreState {
     return Array.from(parametersRef.current.entries());
   }, []);
 
-  // Memoized return object to prevent unnecessary re-renders
+  // Memoized return object to prevent unnecessary re-renders.
+  // interpolatedValues and backendSnapshot are ref-backed — use getters so
+  // callers always read the latest value without triggering React re-renders.
   const storeState = useMemo(
     () => ({
       parameters,
-      interpolatedValues,
+      get interpolatedValues() { return interpolatedRef.current; },
       get,
       getInterpolated,
       set,
@@ -564,8 +524,8 @@ export function useParameterStore(): ParameterStoreState {
       setSlotParameter,
       has,
       entries,
-      backendSnapshot,
-      setBackendSnapshot,
+      get backendSnapshot() { return backendSnapshotRef.current; },
+      setBackendSnapshot: (params: BackendParameter[] | null) => { backendSnapshotRef.current = params; },
       isLoading,
       setIsLoading,
       error,
@@ -577,7 +537,6 @@ export function useParameterStore(): ParameterStoreState {
     }),
     [
       parameters,
-      interpolatedValues,
       get,
       getInterpolated,
       set,
@@ -594,8 +553,6 @@ export function useParameterStore(): ParameterStoreState {
       setSlotParameter,
       has,
       entries,
-      backendSnapshot,
-      setBackendSnapshot,
       isLoading,
       setIsLoading,
       error,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import {
   useTapTempo,
   useBpmBeat,
@@ -18,7 +18,7 @@ import styles from "./Toolbar.module.css";
 const BPM_MIN = 20;
 const BPM_MAX = 300;
 
-export function ToolbarTapBpm() {
+export const ToolbarTapBpm = memo(function ToolbarTapBpm() {
   const tapTempo = useTapTempo();
   const tapGroupRef = useRef<HTMLDivElement>(null);
   const { status: linkStatus } = useLinkStatus();
@@ -248,4 +248,4 @@ export function ToolbarTapBpm() {
       )}
     </div>
   );
-}
+});

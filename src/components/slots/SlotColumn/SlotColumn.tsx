@@ -1,5 +1,6 @@
 import {
   Suspense,
+  memo,
   useCallback,
   useRef,
   useEffect,
@@ -94,6 +95,15 @@ const PANEL_CONFIGS: PanelConfig[] = [
   },
 ];
 
+// Hoisted motion constants — stable references, Motion skips re-evaluation
+const MOTION_INITIAL = { opacity: 0, scale: 0.95 };
+const MOTION_ANIMATE_IDLE = { opacity: 1, scale: 1, x: 0 };
+const MOTION_EXIT = { opacity: 0, scale: 0.95 };
+const MOTION_TRANSITION_DRAG = { duration: 0 };
+const MOTION_TRANSITION_NORMAL = { duration: 0.2, ease: "easeOut" };
+const MOTION_STYLE_IDLE = {} as React.CSSProperties;
+const MOTION_STYLE_DRAGGING = { zIndex: 10 } as React.CSSProperties;
+
 // Session storage key for persisting search across slot browsers
 const SKETCH_SEARCH_STORAGE_KEY = "slew-sketch-search";
 
@@ -175,6 +185,7 @@ function PanelSlotContent({
   isDragging = false,
   dragOffsetX = 0,
   onDragStart,
+  layoutDependency,
 }: {
   slotIndex: number;
   panelId: PanelId;
@@ -184,6 +195,7 @@ function PanelSlotContent({
   isDragging?: boolean;
   dragOffsetX?: number;
   onDragStart?: (e: React.PointerEvent) => void;
+  layoutDependency?: unknown;
 }) {
   const config = PANEL_CONFIGS.find((p) => p.id === panelId);
   const displayNumber = slotIndex + 1;
@@ -192,18 +204,17 @@ function PanelSlotContent({
     <motion.article
       className={`${styles.panelColumn}${isDragging ? " " + styles.dragging : ""}`}
       aria-label={`Slot ${displayNumber} - ${config?.label ?? panelId} panel`}
-      initial={{ opacity: 0, scale: 0.95 }}
+      initial={MOTION_INITIAL}
       animate={
         isDragging
           ? { opacity: 1, scale: 1, x: dragOffsetX }
-          : { opacity: 1, scale: 1, x: 0 }
+          : MOTION_ANIMATE_IDLE
       }
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={
-        isDragging ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }
-      }
+      exit={MOTION_EXIT}
+      transition={isDragging ? MOTION_TRANSITION_DRAG : MOTION_TRANSITION_NORMAL}
       layout={!isDragging}
-      style={{ zIndex: isDragging ? 10 : undefined }}
+      layoutDependency={layoutDependency}
+      style={isDragging ? MOTION_STYLE_DRAGGING : MOTION_STYLE_IDLE}
       onPointerDown={onDragStart}
     >
       <div className={styles.panelColumnHeader}>
@@ -239,8 +250,8 @@ export interface SlotColumnProps {
   rendererAspectRatio?: number;
   excludeSketchIds: SketchId[];
   canRemove: boolean;
-  params?: SketchProps["params"];
-  previewParams?: SketchProps["params"];
+  getSlotSketchParams?: (slotIndex: number, sketchId: SketchId) => SketchProps["params"];
+  getSlotSketchParamsInterpolated?: (slotIndex: number, sketchId: SketchId) => SketchProps["params"];
   colors?: SketchProps["colors"];
   alpha?: number;
 
@@ -272,6 +283,7 @@ export interface SlotColumnProps {
   isDragging?: boolean;
   dragOffsetX?: number;
   onDragStart?: (e: React.PointerEvent) => void;
+  layoutDependency?: unknown;
 }
 
 function getSketchLabel(sketchId: SketchId): string {
@@ -282,7 +294,7 @@ function getSketchLabel(sketchId: SketchId): string {
   return sketchId;
 }
 
-function SketchGroupSection({
+const SketchGroupSection = memo(function SketchGroupSection({
   group,
   slotIndex,
   onSelectSketch,
@@ -356,9 +368,9 @@ function SketchGroupSection({
       </AnimatePresence>
     </div>
   );
-}
+});
 
-function InlineSketchBrowser({
+const InlineSketchBrowser = memo(function InlineSketchBrowser({
   slotIndex,
   filledSlots,
   onSelectSketch,
@@ -367,6 +379,7 @@ function InlineSketchBrowser({
   isDragging = false,
   dragOffsetX = 0,
   onDragStart,
+  layoutDependency,
 }: {
   slotIndex: number;
   filledSlots: Array<Slot & { sketchId: SketchId }>;
@@ -376,6 +389,7 @@ function InlineSketchBrowser({
   isDragging?: boolean;
   dragOffsetX?: number;
   onDragStart?: (e: React.PointerEvent) => void;
+  layoutDependency?: unknown;
 }) {
   const displayNumber = slotIndex + 1;
   const { query, setQuery } = useSketchSearch();
@@ -422,18 +436,17 @@ function InlineSketchBrowser({
     <motion.article
       className={`${styles.emptyColumn}${isDragging ? " " + styles.dragging : ""}`}
       aria-label={`Slot ${displayNumber} - choose a sketch`}
-      initial={{ opacity: 0, scale: 0.95 }}
+      initial={MOTION_INITIAL}
       animate={
         isDragging
           ? { opacity: 1, scale: 1, x: dragOffsetX }
-          : { opacity: 1, scale: 1, x: 0 }
+          : MOTION_ANIMATE_IDLE
       }
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={
-        isDragging ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }
-      }
+      exit={MOTION_EXIT}
+      transition={isDragging ? MOTION_TRANSITION_DRAG : MOTION_TRANSITION_NORMAL}
       layout={!isDragging}
-      style={{ zIndex: isDragging ? 10 : undefined }}
+      layoutDependency={layoutDependency}
+      style={isDragging ? MOTION_STYLE_DRAGGING : MOTION_STYLE_IDLE}
       onPointerDown={onDragStart}
     >
       <div className={styles.inlineBrowserHeader}>
@@ -547,7 +560,7 @@ function InlineSketchBrowser({
       )}
     </motion.article>
   );
-}
+});
 
 /**
  * PreviewContainer wraps the 3D canvas preview and ensures proper sizing.
@@ -574,9 +587,10 @@ function PreviewContainer({
     return () => clearTimeout(timeoutId);
   }, []);
 
-  const containerStyle = {
-    "--renderer-aspect-ratio": aspectRatio,
-  } as React.CSSProperties;
+  const containerStyle = useMemo(
+    () => ({ "--renderer-aspect-ratio": aspectRatio } as React.CSSProperties),
+    [aspectRatio],
+  );
 
   return (
     <div
@@ -590,7 +604,7 @@ function PreviewContainer({
 }
 
 // A single column in the slot management UI containing preview, selector, and controls.
-export function SlotColumn({
+export const SlotColumn = memo(function SlotColumn({
   slotIndex,
   sketchId,
   isActive,
@@ -601,8 +615,8 @@ export function SlotColumn({
   rendererAspectRatio = 16 / 9,
   excludeSketchIds,
   canRemove,
-  params,
-  previewParams,
+  getSlotSketchParams,
+  getSlotSketchParamsInterpolated,
   colors,
   alpha = 1,
 
@@ -630,7 +644,17 @@ export function SlotColumn({
   isDragging = false,
   dragOffsetX = 0,
   onDragStart,
+  layoutDependency,
 }: SlotColumnProps) {
+  const params = useMemo(
+    () => (sketchId && getSlotSketchParams) ? getSlotSketchParams(slotIndex, sketchId) : undefined,
+    [getSlotSketchParams, slotIndex, sketchId],
+  );
+  const previewParams = useMemo(
+    () => (sketchId && getSlotSketchParamsInterpolated) ? getSlotSketchParamsInterpolated(slotIndex, sketchId) : undefined,
+    [getSlotSketchParamsInterpolated, slotIndex, sketchId],
+  );
+
   const [isSlotStreaming, setIsSlotStreaming] = useState(false);
   const [isPreviewHidden, setIsPreviewHidden] = useState(false);
   const [slotRefreshKey, setSlotRefreshKey] = useState(0);
@@ -658,6 +682,7 @@ export function SlotColumn({
         isDragging={isDragging}
         dragOffsetX={dragOffsetX}
         onDragStart={onDragStart}
+        layoutDependency={layoutDependency}
       />
     );
   }
@@ -673,6 +698,7 @@ export function SlotColumn({
         isDragging={isDragging}
         dragOffsetX={dragOffsetX}
         onDragStart={onDragStart}
+        layoutDependency={layoutDependency}
       />
     );
   }
@@ -710,18 +736,17 @@ export function SlotColumn({
     <motion.article
       className={columnClassNames}
       aria-label={`Slot ${displayNumber}${isMacropadSelected ? " (macropad selected)" : ""}`}
-      initial={{ opacity: 0, scale: 0.95 }}
+      initial={MOTION_INITIAL}
       animate={
         isDragging
           ? { opacity: 1, scale: 1, x: dragOffsetX }
-          : { opacity: 1, scale: 1, x: 0 }
+          : MOTION_ANIMATE_IDLE
       }
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={
-        isDragging ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }
-      }
+      exit={MOTION_EXIT}
+      transition={isDragging ? MOTION_TRANSITION_DRAG : MOTION_TRANSITION_NORMAL}
       layout={!isDragging}
-      style={{ zIndex: isDragging ? 10 : undefined }}
+      layoutDependency={layoutDependency}
+      style={isDragging ? MOTION_STYLE_DRAGGING : MOTION_STYLE_IDLE}
       onPointerDown={onDragStart}
     >
       <PreviewContainer aspectRatio={rendererAspectRatio}>
@@ -882,7 +907,7 @@ export function SlotColumn({
       </div>
     </motion.article>
   );
-}
+});
 
 /**
  * SlotPreview - Displays either streamed frames from Renderer or local rendering.

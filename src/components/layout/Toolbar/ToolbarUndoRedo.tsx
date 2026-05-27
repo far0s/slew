@@ -1,3 +1,4 @@
+import { memo } from "react";
 import styles from "./Toolbar.module.css";
 
 interface ToolbarUndoRedoProps {
@@ -9,7 +10,7 @@ interface ToolbarUndoRedoProps {
   onCancelMidiLearn: () => void;
 }
 
-export function ToolbarUndoRedo({
+export const ToolbarUndoRedo = memo(function ToolbarUndoRedo({
   canUndo,
   canRedo,
   onUndo,
@@ -50,4 +51,4 @@ export function ToolbarUndoRedo({
       )}
     </>
   );
-}
+});

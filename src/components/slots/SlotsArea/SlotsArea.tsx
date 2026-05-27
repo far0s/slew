@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect, useMemo } from "react";
+import { useCallback, useRef, useState, useEffect, useMemo, memo } from "react";
 import { AnimatePresence } from "motion/react";
 
 import type { SketchId, SketchProps } from "@/sketches";
@@ -141,9 +141,12 @@ export interface SlotsAreaProps {
 
 const PANEL_SLOTS_KEY = "slew-panel-slots"; // localStorage — survives webview reloads
 
+// Stable empty array — avoids new reference on every render
+const EMPTY_SKETCH_IDS: SketchId[] = [];
+
 // Horizontally scrollable container for slot columns.
 // Designed to show ~3.5 columns at once with the 4th peeking in.
-export function SlotsArea({
+export const SlotsArea = memo(function SlotsArea({
   slots,
   activeIndex,
   crossfadeTargetIndex,
@@ -173,8 +176,9 @@ export function SlotsArea({
   highlightedParamIds,
   onHighlightParams,
 }: SlotsAreaProps) {
-  const filledSlots = slots.filter(
-    (s): s is Slot & { sketchId: SketchId } => s.sketchId !== null,
+  const filledSlots = useMemo(
+    () => slots.filter((s): s is Slot & { sketchId: SketchId } => s.sketchId !== null),
+    [slots],
   );
 
   const { displayOrder, draggingSlotIndex, dragOffsetX, startDrag, moveDrag, endDrag } =
@@ -237,6 +241,57 @@ export function SlotsArea({
     },
     [startDrag],
   );
+
+  // Stable refs for parent callbacks — lets perSlotHandlers avoid recreating on every render
+  const handlePointerDownRef = useRef(handlePointerDown);
+  handlePointerDownRef.current = handlePointerDown;
+  const slotsRef = useRef(slots);
+  slotsRef.current = slots;
+  const onSlotSketchChangeRef = useRef(onSlotSketchChange);
+  onSlotSketchChangeRef.current = onSlotSketchChange;
+  const onSetSketchRef = useRef(onSetSketch);
+  onSetSketchRef.current = onSetSketch;
+  const onCrossfadeRef = useRef(onCrossfade);
+  onCrossfadeRef.current = onCrossfade;
+  const onClearSlotRef = useRef(onClearSlot);
+  onClearSlotRef.current = onClearSlot;
+  const onCopyToSlotRef = useRef(onCopyToSlot);
+  onCopyToSlotRef.current = onCopyToSlot;
+
+  // Stable per-slot handlers — recreate only when slot count changes
+  const perSlotHandlers = useMemo(() => {
+    const map = new Map<number, {
+      onDragStart: (e: React.PointerEvent) => void;
+      onSketchChange: (sketchId: SketchId) => void;
+      onCrossfade: () => void;
+      onRemove: () => void;
+      onCopyToSlot: (sourceSlotIndex: number) => void;
+      onOpenPanel: (panelId: PanelId) => void;
+      onClosePanel: () => void;
+    }>();
+    for (const slot of slots) {
+      const idx = slot.index;
+      map.set(idx, {
+        onDragStart: (e) => handlePointerDownRef.current(idx, e),
+        onSketchChange: (sketchId) => {
+          const current = slotsRef.current.find((s) => s.index === idx);
+          if (current?.sketchId === null) {
+            onSetSketchRef.current(idx, sketchId);
+          } else {
+            onSlotSketchChangeRef.current(idx, sketchId);
+          }
+        },
+        onCrossfade: () => onCrossfadeRef.current(idx),
+        onRemove: () => onClearSlotRef.current(idx),
+        onCopyToSlot: (sourceSlotIndex) => onCopyToSlotRef.current(sourceSlotIndex, idx),
+        onOpenPanel: (panelId) => handleOpenPanel(idx, panelId),
+        onClosePanel: () => handleClosePanel(idx),
+      });
+    }
+    return map;
+  // handleOpenPanel and handleClosePanel have stable [] deps; recreate only when slot count changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slots.length, handleOpenPanel, handleClosePanel]);
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
@@ -317,8 +372,8 @@ export function SlotsArea({
               {orderedSlots.map((slot) => {
                 const alphaParamId = makeSlotParameterId(slot.index, "alpha");
                 const alpha = slot.sketchId ? (getValue(alphaParamId) ?? 1) : 1;
-
-
+                const handlers = perSlotHandlers.get(slot.index)!;
+                const slotDisplayPosition = displayOrder.indexOf(slot.index);
 
                 return (
                   <SlotColumn
@@ -327,35 +382,24 @@ export function SlotsArea({
                     sketchId={slot.sketchId}
                     isDragging={slot.index === draggingSlotIndex}
                     dragOffsetX={slot.index === draggingSlotIndex ? dragOffsetX : 0}
-                    onDragStart={(e) => handlePointerDown(slot.index, e)}
+                    onDragStart={handlers.onDragStart}
+                    layoutDependency={slotDisplayPosition}
                     isActive={slot.index === activeIndex}
                     isCrossfadeTarget={slot.index === crossfadeTargetIndex}
                     crossfadeProgress={getCrossfadeProgress(slot.index)}
                     isCrossfading={isCrossfading}
                     isMacropadSelected={slot.index === macropadSelectedIndex}
                     rendererAspectRatio={rendererAspectRatio}
-                    excludeSketchIds={[]}
+                    excludeSketchIds={EMPTY_SKETCH_IDS}
                     canRemove={
                       slot.sketchId !== null && slot.index !== activeIndex
                     }
-                    params={
-                      slot.sketchId
-                        ? getSlotSketchParams(slot.index, slot.sketchId)
-                        : undefined
-                    }
-                    previewParams={
-                      slot.sketchId
-                        ? getSlotSketchParamsInterpolated?.(
-                            slot.index,
-                            slot.sketchId,
-                          )
-                        : undefined
-                    }
+                    getSlotSketchParams={getSlotSketchParams}
+                    getSlotSketchParamsInterpolated={getSlotSketchParamsInterpolated}
                     colors={
                       slot.sketchId ? getSlotColors?.(slot.index) : undefined
                     }
                     alpha={alpha}
-
                     getValue={getValue}
                     setValue={setValue}
                     audioMappings={audioMappings}
@@ -364,21 +408,13 @@ export function SlotsArea({
                     midiMappings={midiMappings}
                     midiPickupStates={midiPickupStates}
                     panelId={panelSlots[slot.index] ?? null}
-                    onOpenPanel={(panelId) => handleOpenPanel(slot.index, panelId)}
-                    onClosePanel={() => handleClosePanel(slot.index)}
+                    onOpenPanel={handlers.onOpenPanel}
+                    onClosePanel={handlers.onClosePanel}
                     filledSlots={filledSlots}
-                    onSketchChange={(sketchId) => {
-                      if (slot.sketchId === null) {
-                        onSetSketch(slot.index, sketchId);
-                      } else {
-                        onSlotSketchChange(slot.index, sketchId);
-                      }
-                    }}
-                    onCrossfade={() => onCrossfade(slot.index)}
-                    onRemove={() => onClearSlot(slot.index)}
-                    onCopyToSlot={(sourceSlotIndex) =>
-                      onCopyToSlot(sourceSlotIndex, slot.index)
-                    }
+                    onSketchChange={handlers.onSketchChange}
+                    onCrossfade={handlers.onCrossfade}
+                    onRemove={handlers.onRemove}
+                    onCopyToSlot={handlers.onCopyToSlot}
                     onQuickBeat={onQuickBeat}
                     onQuickLfo={onQuickLfo}
                     onUnlinkBeat={onUnlinkBeat}
@@ -397,6 +433,6 @@ export function SlotsArea({
       </div>
     </section>
   );
-}
+});
 
 export default SlotsArea;

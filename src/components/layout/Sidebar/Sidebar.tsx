@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useMemo, useState, useEffect, memo } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -372,7 +372,7 @@ function TapShortcutDisplay() {
   return <kbd className={styles.actionShortcut}>{label}</kbd>;
 }
 
-export function Sidebar({
+export const Sidebar = memo(function Sidebar({
   macropadSelectedIndex,
   slots = [],
   getValue,
@@ -578,6 +578,6 @@ export function Sidebar({
       </div>
     </Tabs.Root>
   );
-}
+});
 
 export default Sidebar;

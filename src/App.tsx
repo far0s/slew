@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useRef } from "react";
+import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { logger } from "@/lib/logger";
 import { LayoutGroup, motion } from "motion/react";
@@ -9,15 +9,44 @@ import {
   buildSlotSceneParamsInterpolated,
 } from "@/hooks/useParameterStore";
 import type { SketchId } from "@/sketches";
-import { makeSlotParameterId, getParameterDropdownLabel, type ParameterId } from "@/slots/slotTypes";
-import { SlotsArea, RendererPreview, Sidebar, UpdateBanner } from "@/components";
-import { ToolbarUndoRedo, ToolbarTapBpm, PerformanceChip, ToolbarShortcutsButton } from "@/components/layout/Toolbar";
+import {
+  makeSlotParameterId,
+  getParameterDropdownLabel,
+  type ParameterId,
+} from "@/slots/slotTypes";
+import {
+  SlotsArea,
+  RendererPreview,
+  Sidebar,
+  UpdateBanner,
+} from "@/components";
+import {
+  ToolbarUndoRedo,
+  ToolbarTapBpm,
+  PerformanceChip,
+  ToolbarShortcutsButton,
+} from "@/components/layout/Toolbar";
 import { ShortcutsModal } from "@/components/layout/ShortcutsModal/ShortcutsModal";
 import { AudioIndicator } from "@/components/panels/AudioIndicator";
 import { useUndoHistory, applyUndo, applyRedo } from "@/hooks/useUndoHistory";
-import { useAudioMappings, generateMappingId, type AudioMapping } from "@/inputs/audio";
-import { useLfos, useModulationTargets, createLfo, createTarget } from "@/inputs/modulation";
-import { useMidiMappings, useMidiDevices, useMidiPickupStates, useMidiLearn, cancelMidiLearn } from "@/inputs/midi";
+import {
+  useAudioMappings,
+  generateMappingId,
+  type AudioMapping,
+} from "@/inputs/audio";
+import {
+  useLfos,
+  useModulationTargets,
+  createLfo,
+  createTarget,
+} from "@/inputs/modulation";
+import {
+  useMidiMappings,
+  useMidiDevices,
+  useMidiPickupStates,
+  useMidiLearn,
+  cancelMidiLearn,
+} from "@/inputs/midi";
 import {
   useWindowManager,
   useLayoutPreferences,
@@ -35,24 +64,42 @@ import type { BpmSourceChangedEvent } from "@/inputs/bpmSource";
 import styles from "./App.module.css";
 
 function App() {
-  const slotState = useSlots({ minSlots: 1, maxSlots: 8, initialSketches: ["blueCube"] });
+  const slotState = useSlots({
+    minSlots: 1,
+    maxSlots: 8,
+    initialSketches: ["blueCube"],
+  });
   const paramStore = useParameterStore();
 
   // Audio / MIDI / Modulation inputs
-  const { mappings: audioMappings, add: addAudioMapping, remove: removeAudioMapping } = useAudioMappings();
+  const {
+    mappings: audioMappings,
+    add: addAudioMapping,
+    remove: removeAudioMapping,
+  } = useAudioMappings();
   const { mappings: midiMappings } = useMidiMappings();
   const { devices: midiDevices } = useMidiDevices();
   const { pickupStates: midiPickupStates } = useMidiPickupStates();
-  const { isLearning: isMidiLearning, learningParameterId: midiLearningParameterId, cancelLearn: cancelMidiLearnLocal } = useMidiLearn();
+  const {
+    isLearning: isMidiLearning,
+    learningParameterId: midiLearningParameterId,
+    cancelLearn: cancelMidiLearnLocal,
+  } = useMidiLearn();
   const isMidiDeviceConnected = midiDevices.some((d) => d.is_connected);
   const { lfos, add: addLfo } = useLfos();
-  const { targets: modulationTargets, add: addModulationTarget, remove: removeModulationTarget } = useModulationTargets();
+  const {
+    targets: modulationTargets,
+    add: addModulationTarget,
+    remove: removeModulationTarget,
+  } = useModulationTargets();
 
   // Renderer / window
   const { info: rendererInfo } = useRendererSettings();
   const performanceStats = usePerformanceMonitor();
   const rendererAspectRatio =
-    rendererInfo && rendererInfo.windowWidth > 0 && rendererInfo.windowHeight > 0
+    rendererInfo &&
+    rendererInfo.windowWidth > 0 &&
+    rendererInfo.windowHeight > 0
       ? rendererInfo.windowWidth / rendererInfo.windowHeight
       : 16 / 9;
   const { toggleFullscreenControls } = useWindowManager({
@@ -61,26 +108,46 @@ function App() {
     enableStatusPolling: false,
   });
 
+  // Refs for stable callbacks — always reflect latest values without causing recreations
+  const slotStateRef = useRef(slotState);
+  slotStateRef.current = slotState;
+  const isMidiLearningRef = useRef(isMidiLearning);
+  isMidiLearningRef.current = isMidiLearning;
+  const midiLearningParameterIdRef = useRef(midiLearningParameterId);
+  midiLearningParameterIdRef.current = midiLearningParameterId;
+
   const undoHistory = useUndoHistory();
-  const { state: updateState, installUpdate, dismiss: dismissUpdate } = useUpdater();
+  const {
+    state: updateState,
+    installUpdate,
+    dismiss: dismissUpdate,
+  } = useUpdater();
   const { sidebarPosition } = useLayoutPreferences();
 
-  // Undo / redo
+  // Undo / redo — paramStore.set is a stable callback (empty deps useCallback)
   const handleUndo = useCallback(() => {
     const entry = applyUndo();
     if (entry) {
       paramStore.set(entry.id, entry.value);
-      void invoke("set_parameter", { id: entry.id, value: entry.value, app: undefined });
+      void invoke("set_parameter", {
+        id: entry.id,
+        value: entry.value,
+        app: undefined,
+      });
     }
-  }, [paramStore]);
+  }, [paramStore.set]);
 
   const handleRedo = useCallback(() => {
     const entry = applyRedo();
     if (entry) {
       paramStore.set(entry.id, entry.value);
-      void invoke("set_parameter", { id: entry.id, value: entry.value, app: undefined });
+      void invoke("set_parameter", {
+        id: entry.id,
+        value: entry.value,
+        app: undefined,
+      });
     }
-  }, [paramStore]);
+  }, [paramStore.set]);
 
   // Domain hooks
   const { getSlotColors } = useSlotColors(slotState.slots);
@@ -93,7 +160,11 @@ function App() {
     isHydrated: slotState.isHydrated,
     getSketchId: slotState.getSketchId,
   });
-  const { macropadSelectedIndex } = useMacropadController({ slotState, paramStore, handleCrossfade });
+  const { macropadSelectedIndex } = useMacropadController({
+    slotState,
+    paramStore,
+    handleCrossfade,
+  });
 
   useGlobalKeyboard({
     isMidiLearning,
@@ -137,7 +208,10 @@ function App() {
       const lfo = createLfo({ name: lfoName });
       const savedLfo = await addLfo(lfo);
       const depth = 0.25 * (paramMax - paramMin);
-      const target = createTarget(savedLfo.id, parameterId, { depth, bipolar: true });
+      const target = createTarget(savedLfo.id, parameterId, {
+        depth,
+        bipolar: true,
+      });
       await addModulationTarget(target);
     },
     [addLfo, addModulationTarget],
@@ -153,129 +227,192 @@ function App() {
 
   const handleUnlinkLfo = useCallback(
     async (parameterId: string) => {
-      const targets = modulationTargets.filter((t) => t.parameter_id === parameterId);
+      const targets = modulationTargets.filter(
+        (t) => t.parameter_id === parameterId,
+      );
       await Promise.all(targets.map((t) => removeModulationTarget(t.id)));
     },
     [modulationTargets, removeModulationTarget],
   );
 
-  // Slot management
-  async function handleSlotSketchChange(slotIndex: number, sketchId: SketchId) {
-    const initParams = slotState.setSlotSketch(slotIndex, sketchId);
-    if (!initParams) return;
+  // Slot management — all stable (empty deps) via slotStateRef + stable paramStore callbacks
+  const handleSlotSketchChange = useCallback(
+    async (slotIndex: number, sketchId: SketchId) => {
+      const ss = slotStateRef.current;
+      const initParams = ss.setSlotSketch(slotIndex, sketchId);
+      if (!initParams) return;
 
-    paramStore.removeSlotParameters(slotIndex);
-    paramStore.initializeSlotWithValues(slotIndex, initParams.parameters);
+      paramStore.removeSlotParameters(slotIndex);
+      paramStore.initializeSlotWithValues(slotIndex, initParams.parameters);
 
-    try {
-      await invoke("reset_slot_parameters", { slotIndex, sketchId });
-      for (const [id, value] of initParams.parameters) {
-        if (/color_[a-z_]+_[rgb]$/.test(String(id))) {
-          await invoke("set_parameter", { id, value, app: undefined });
+      try {
+        await invoke("reset_slot_parameters", { slotIndex, sketchId });
+        for (const [id, value] of initParams.parameters) {
+          if (/color_[a-z_]+_[rgb]$/.test(String(id))) {
+            await invoke("set_parameter", { id, value, app: undefined });
+          }
         }
+      } catch (error) {
+        logger.error("Controls", "Failed to reset slot parameters", error);
       }
-    } catch (error) {
-      logger.error("Controls", "Failed to reset slot parameters", error);
-    }
 
-    try {
-      const activeSketchId = slotState.isActiveSlot(slotIndex)
-        ? sketchId
-        : slotState.getSketchId(slotState.activeIndex);
-      const targetSketchId = slotState.isCrossfadeTarget(slotIndex)
-        ? sketchId
-        : slotState.crossfadeTargetIndex !== null
-          ? slotState.getSketchId(slotState.crossfadeTargetIndex)
-          : null;
+      try {
+        const activeSketchId = ss.isActiveSlot(slotIndex)
+          ? sketchId
+          : ss.getSketchId(ss.activeIndex);
+        const targetSketchId = ss.isCrossfadeTarget(slotIndex)
+          ? sketchId
+          : ss.crossfadeTargetIndex !== null
+            ? ss.getSketchId(ss.crossfadeTargetIndex)
+            : null;
 
-      if (activeSketchId) {
-        await invoke("set_slot_pairing", {
-          activeSlotIndex: slotState.activeIndex,
-          activeSceneId: activeSketchId,
-          nextSlotIndex: slotState.crossfadeTargetIndex ?? slotState.activeIndex,
-          nextSceneId: targetSketchId ?? activeSketchId,
+        if (activeSketchId) {
+          await invoke("set_slot_pairing", {
+            activeSlotIndex: ss.activeIndex,
+            activeSceneId: activeSketchId,
+            nextSlotIndex: ss.crossfadeTargetIndex ?? ss.activeIndex,
+            nextSceneId: targetSketchId ?? activeSketchId,
+          });
+        }
+      } catch (error) {
+        logger.error("Controls", "Failed to update slot pairing", error);
+      }
+    },
+    [paramStore.removeSlotParameters, paramStore.initializeSlotWithValues],
+  );
+
+  const handleSetSketch = useCallback(
+    async (slotIndex: number, sketchId: SketchId) => {
+      const alphaParamId = makeSlotParameterId(slotIndex, "alpha");
+
+      // Reset backend parameters FIRST (with alpha=0) so there's no flash frame
+      // at alpha=1 when the renderer learns about the new slot.
+      try {
+        await invoke("reset_slot_parameters", {
+          slotIndex,
+          sketchId,
+          initialAlpha: 0,
         });
+      } catch (error) {
+        logger.error("Controls", "Failed to reset slot parameters", error);
+        return;
       }
-    } catch (error) {
-      logger.error("Controls", "Failed to update slot pairing", error);
-    }
-  }
 
-  async function handleSetSketch(slotIndex: number, sketchId: SketchId) {
-    const alphaParamId = makeSlotParameterId(slotIndex, "alpha");
+      const initParams = slotStateRef.current.setSketch(slotIndex, sketchId);
+      if (!initParams) return;
 
-    // Reset backend parameters FIRST (with alpha=0) so there's no flash frame
-    // at alpha=1 when the renderer learns about the new slot.
-    try {
-      await invoke("reset_slot_parameters", { slotIndex, sketchId, initialAlpha: 0 });
-    } catch (error) {
-      logger.error("Controls", "Failed to reset slot parameters", error);
-      return;
-    }
+      const { parameters } = initParams;
+      parameters.set(alphaParamId, 0);
 
-    const initParams = slotState.setSketch(slotIndex, sketchId);
-    if (!initParams) return;
+      paramStore.removeSlotParameters(slotIndex);
+      paramStore.initializeSlotWithValues(slotIndex, parameters);
 
-    const { parameters } = initParams;
-    parameters.set(alphaParamId, 0);
-
-    paramStore.removeSlotParameters(slotIndex);
-    paramStore.initializeSlotWithValues(slotIndex, parameters);
-
-    try {
-      for (const [id, value] of parameters) {
-        if (/color_[a-z_]+_[rgb]$/.test(String(id))) {
-          await invoke("set_parameter", { id, value, app: undefined });
+      try {
+        for (const [id, value] of parameters) {
+          if (/color_[a-z_]+_[rgb]$/.test(String(id))) {
+            await invoke("set_parameter", { id, value, app: undefined });
+          }
         }
+      } catch (error) {
+        logger.error("Controls", "Failed to push color sub-params", error);
       }
-    } catch (error) {
-      logger.error("Controls", "Failed to push color sub-params", error);
-    }
-  }
+    },
+    [paramStore.removeSlotParameters, paramStore.initializeSlotWithValues],
+  );
 
-  async function handleCopyToSlot(sourceSlotIndex: number, targetSlotIndex: number) {
-    const initParams = slotState.copyToSlot(sourceSlotIndex, targetSlotIndex, (id) => paramStore.get(id));
-    if (!initParams) return;
+  const handleCopyToSlot = useCallback(
+    async (sourceSlotIndex: number, targetSlotIndex: number) => {
+      const initParams = slotStateRef.current.copyToSlot(
+        sourceSlotIndex,
+        targetSlotIndex,
+        (id) => paramStore.get(id),
+      );
+      if (!initParams) return;
 
-    const { slotIndex, parameters } = initParams;
-    paramStore.initializeSlotWithValues(slotIndex, parameters);
+      const { slotIndex, parameters } = initParams;
+      paramStore.initializeSlotWithValues(slotIndex, parameters);
 
-    try {
-      for (const [paramId, value] of parameters) {
-        await invoke("set_parameter", { id: paramId, value, app: undefined });
+      try {
+        for (const [paramId, value] of parameters) {
+          await invoke("set_parameter", { id: paramId, value, app: undefined });
+        }
+      } catch (error) {
+        logger.error(
+          "Controls",
+          "Failed to copy slot parameters to backend",
+          error,
+        );
       }
-    } catch (error) {
-      logger.error("Controls", "Failed to copy slot parameters to backend", error);
-    }
-  }
+    },
+    [paramStore.get, paramStore.initializeSlotWithValues],
+  );
 
-  function handleClearSlot(slotIndex: number) {
-    slotState.clearSlot(slotIndex);
-    paramStore.removeSlotParameters(slotIndex);
-    if (isMidiLearning && midiLearningParameterId?.startsWith(`slot${slotIndex}_`)) {
-      void cancelMidiLearnLocal();
-    }
-  }
+  const handleClearSlot = useCallback(
+    (slotIndex: number) => {
+      slotStateRef.current.clearSlot(slotIndex);
+      paramStore.removeSlotParameters(slotIndex);
+      if (
+        isMidiLearningRef.current &&
+        midiLearningParameterIdRef.current?.startsWith(`slot${slotIndex}_`)
+      ) {
+        void cancelMidiLearnLocal();
+      }
+    },
+    [paramStore.removeSlotParameters, cancelMidiLearnLocal],
+  );
 
   // Param getters/setters for components
-  const getValue = useCallback((id: string) => paramStore.get(id), [paramStore.get]);
-  const setValue = useCallback((id: string, value: number) => { paramStore.set(id, value); }, [paramStore.set]);
+  const getValue = useCallback(
+    (id: string) => paramStore.get(id),
+    [paramStore.get],
+  );
+  const setValue = useCallback(
+    (id: string, value: number) => {
+      paramStore.set(id, value);
+    },
+    [paramStore.set],
+  );
 
+  // buildSlotSceneParams only calls store.get/getInterpolated — both stable callbacks
   const getSlotSketchParams = useCallback(
-    (slotIndex: number, sketchId: SketchId) => buildSlotSceneParams(slotIndex, sketchId, paramStore),
-    [paramStore],
+    (slotIndex: number, sketchId: SketchId) =>
+      buildSlotSceneParams(slotIndex, sketchId, paramStore),
+    [paramStore.get],
   );
   const getSlotSketchParamsInterpolated = useCallback(
-    (slotIndex: number, sketchId: SketchId) => buildSlotSceneParamsInterpolated(slotIndex, sketchId, paramStore),
-    [paramStore],
+    (slotIndex: number, sketchId: SketchId) =>
+      buildSlotSceneParamsInterpolated(slotIndex, sketchId, paramStore),
+    [paramStore.getInterpolated],
+  );
+  const getInterpolatedParam = useCallback(
+    (id: string) => paramStore.getInterpolated(id),
+    [paramStore.getInterpolated],
   );
 
-  const [highlightedParamIds, setHighlightedParamIds] = useState<Set<string>>(new Set());
+  const handleCancelMidiLearn = useCallback(() => {
+    void cancelMidiLearnLocal();
+  }, [cancelMidiLearnLocal]);
+
+  const [highlightedParamIds, setHighlightedParamIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   // OSC BPM toast (shown once when OSC takes over as BPM source)
   const oscToastShownRef = useRef(false);
   const [showOscBeatToast, setShowOscBeatToast] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Stable derived props — prevent breaking memo on child components
+  const rendererPreviewSlots = useMemo(
+    () =>
+      slotState.slots
+        .filter((slot) => slot.sketchId !== null)
+        .map((slot) => ({
+          index: slot.index,
+          sketchId: slot.sketchId as SketchId,
+        })),
+    [slotState.slots],
+  );
 
   useEventListener<BpmSourceChangedEvent>("bpm_source_changed", (event) => {
     if (event.source === "osc" && !oscToastShownRef.current) {
@@ -286,12 +423,21 @@ function App() {
 
   return (
     <div className={styles.root}>
-      <UpdateBanner state={updateState} onInstall={installUpdate} onClose={dismissUpdate} />
-      <ShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
+      <UpdateBanner
+        state={updateState}
+        onInstall={installUpdate}
+        onClose={dismissUpdate}
+      />
+      <ShortcutsModal
+        isOpen={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+      />
       {showOscBeatToast && (
         <div className={styles.oscBeatToast} role="status">
           <span className={styles.oscBeatToastBadge}>OSC</span>
-          <span className={styles.oscBeatToastMessage}>Beat clock connected — BPM now driven by OSC</span>
+          <span className={styles.oscBeatToastMessage}>
+            Beat clock connected — BPM now driven by OSC
+          </span>
           <button
             className={styles.oscBeatToastDismiss}
             onClick={() => setShowOscBeatToast(false)}
@@ -308,7 +454,7 @@ function App() {
           onUndo={handleUndo}
           onRedo={handleRedo}
           isMidiLearning={isMidiLearning}
-          onCancelMidiLearn={() => void cancelMidiLearnLocal()}
+          onCancelMidiLearn={handleCancelMidiLearn}
         />
         <div className={styles.toolbarSpacer} />
         <PerformanceChip
@@ -325,6 +471,7 @@ function App() {
           <motion.div
             className={styles.scenesArea}
             layout
+            layoutDependency={sidebarPosition}
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
             style={{ order: sidebarPosition === "left" ? 2 : 1 }}
           >
@@ -345,7 +492,9 @@ function App() {
               modulationTargets={modulationTargets}
               lfos={lfos}
               midiMappings={isMidiDeviceConnected ? midiMappings : undefined}
-              midiPickupStates={isMidiDeviceConnected ? midiPickupStates : undefined}
+              midiPickupStates={
+                isMidiDeviceConnected ? midiPickupStates : undefined
+              }
               onSlotSketchChange={handleSlotSketchChange}
               onCrossfade={handleCrossfade}
               onClearSlot={handleClearSlot}
@@ -364,16 +513,15 @@ function App() {
             className={styles.sidebar}
             aria-label="Preview and debug"
             layout
+            layoutDependency={sidebarPosition}
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
             style={{ order: sidebarPosition === "left" ? 1 : 2 }}
           >
             <RendererPreview
-              allSlots={slotState.slots
-                .filter((slot) => slot.sketchId !== null)
-                .map((slot) => ({ index: slot.index, sketchId: slot.sketchId as SketchId }))}
+              allSlots={rendererPreviewSlots}
               activeSlotIndex={slotState.activeIndex}
               crossfadeTargetIndex={slotState.crossfadeTargetIndex}
-              getParam={(id) => paramStore.getInterpolated(id)}
+              getParam={getInterpolatedParam}
               getSlotColors={getSlotColors}
               aspectRatio={rendererAspectRatio}
             />
