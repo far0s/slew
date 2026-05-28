@@ -2,10 +2,12 @@
 
 use super::connections;
 use super::devices;
+use super::import_export::{self, ImportMode, ImportResult};
 use super::learn;
 use super::mappings;
 use super::midimix;
 use super::output;
+use super::templates;
 use super::types::{
     MidiDeviceInfo, MidiLearnState, MidiMapping, MidiOutputConfig, MidiOutputDeviceInfo,
     MidiPickupStateUpdate,
@@ -143,4 +145,42 @@ pub fn trigger_midi_feedback(parameter_id: String, value: f64) {
 #[tauri::command]
 pub fn get_midi_pickup_states() -> Vec<MidiPickupStateUpdate> {
     midimix::get_all_pickup_states()
+}
+
+#[tauri::command]
+pub fn export_midi_mappings(device_filter: Option<String>) -> String {
+    let export = import_export::export_mappings(device_filter);
+    serde_json::to_string_pretty(&export).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
+}
+
+#[tauri::command]
+pub fn import_midi_mappings(json: String, mode: ImportMode) -> Result<ImportResult, String> {
+    let export: super::import_export::MidiMappingExport =
+        serde_json::from_str(&json).map_err(|e| format!("Invalid JSON: {}", e))?;
+    Ok(import_export::import_mappings(export, mode))
+}
+
+#[tauri::command]
+pub fn list_controller_templates() -> Vec<templates::ControllerTemplateMeta> {
+    templates::list_template_meta()
+}
+
+#[tauri::command]
+pub fn import_controller_template(json: String) -> Result<(), String> {
+    let mut template: templates::ControllerTemplate =
+        serde_json::from_str(&json).map_err(|e| format!("Invalid JSON: {}", e))?;
+    // Clear any source_file that might have been serialized in — we'll set it on save.
+    template.source_file = None;
+    templates::save_template_to_disk(&template)
+}
+
+#[tauri::command]
+pub fn delete_controller_template(label: String) -> Result<(), String> {
+    templates::delete_template(&label)
+}
+
+#[tauri::command]
+pub fn reload_controller_templates() -> Result<(), String> {
+    templates::load_templates_from_disk();
+    Ok(())
 }

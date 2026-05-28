@@ -20,6 +20,7 @@ import {
 } from "@/inputs/midi";
 import { DeviceSchematic } from "./DeviceSchematic";
 import { MidiClockStrip } from "./MidiClockStrip";
+import { MidiToolbar } from "./MidiToolbar";
 import { KNOWN_LAYOUTS } from "@/inputs/deviceLayouts";
 import styles from "./MidiPanel.module.css";
 
@@ -709,6 +710,9 @@ export function MidiPanel({ className, deviceName }: MidiPanelProps) {
 
       {/* Debug: schematic browser (no hardware required) */}
       <SchematicBrowser />
+
+      {/* Tools: import/export + template manager */}
+      <MidiToolbar />
     </div>
   );
 }

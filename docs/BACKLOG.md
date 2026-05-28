@@ -187,24 +187,6 @@ Improve the cold-start experience with a polished launch animation and soft prel
 
 ---
 
-#### 🟡 Additional Controller Support `feature`
-
-Support more hardware controllers.
-
-**Context**: Different VJs use different gear. Expanding controller support broadens the user base. Pairs with the Device Schematic work above.
-
-**Subtasks**:
-
-- [x] Launchpad support (mk2, X, Mini mk3, Pro mk3 — bottom row → slot alphas, LED feedback)
-- [x] APC Mini support (mk1 + mk2 already done)
-- [x] Midi Fighter Twister (encoders 0–7 → slot alphas, LED ring reset on connect)
-- [x] Midi Fighter Spectra (4×4 pad grid → slot alphas, LED feedback)
-- [x] Midi Fighter 64 (8×8 pad grid → slot alphas, LED feedback)
-- [ ] Generic MIDI template system
-- [ ] MIDI mapping import/export
-
----
-
 #### 🟡 DMX Lighting Control `feature`
 
 OSC → DMX integration for lighting.

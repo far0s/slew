@@ -143,6 +143,11 @@ pub(crate) fn find_controller(name: &str) -> Option<&'static ControllerProfile> 
     CONTROLLERS.iter().find(|p| (p.matches)(name))
 }
 
+/// Find a dynamic template for a port name (checked after static CONTROLLERS).
+pub(crate) fn find_template_controller(name: &str) -> Option<super::templates::ControllerTemplate> {
+    super::templates::find_template_for_port(name)
+}
+
 // ============================================================================
 // Legacy detection helpers
 // ============================================================================
@@ -431,8 +436,9 @@ fn start_device_watcher_thread() {
 
             if auto_reconnect_enabled && !added.is_empty() {
                 for name in &added {
-                    let should_connect =
-                        auto_reconnect_devices.contains(name) || find_controller(name).is_some();
+                    let should_connect = auto_reconnect_devices.contains(name)
+                        || find_controller(name).is_some()
+                        || find_template_controller(name).is_some();
 
                     if should_connect {
                         if let Ok(devices) = list_devices() {

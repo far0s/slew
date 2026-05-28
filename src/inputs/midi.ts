@@ -300,8 +300,98 @@ export async function getMidiPickupStates(): Promise<MidiPickupState[]> {
 }
 
 // ============================================================================
-// React Hooks
+// Import / Export
 // ============================================================================
+
+export type ImportMode = "replace" | "merge" | "merge_skip_conflicts";
+
+export interface MidiMappingExport {
+  version: number;
+  device: string | null;
+  exported_at: string;
+  mappings: MidiMapping[];
+}
+
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  replaced: number;
+  errors: string[];
+}
+
+/**
+ * Export current MIDI mappings as a JSON string.
+ * Pass `deviceFilter` to export only mappings for a specific device_id.
+ */
+export async function exportMidiMappings(
+  deviceFilter?: string,
+): Promise<string> {
+  return invoke<string>("export_midi_mappings", {
+    deviceFilter: deviceFilter ?? null,
+  });
+}
+
+/**
+ * Import MIDI mappings from a JSON string.
+ * `mode` controls how conflicts with existing mappings are resolved.
+ */
+export async function importMidiMappings(
+  json: string,
+  mode: ImportMode = "merge",
+): Promise<ImportResult> {
+  return invoke<ImportResult>("import_midi_mappings", { json, mode });
+}
+
+// ============================================================================
+// Controller Templates
+// ============================================================================
+
+export interface ControllerTemplateMeta {
+  label: string;
+  match_patterns: string[];
+  has_output: boolean;
+  mapping_count: number;
+  source: "user" | "builtin";
+}
+
+export interface ControllerTemplate {
+  schema_version: number;
+  label: string;
+  match_patterns: string[];
+  has_output: boolean;
+  default_mappings: Array<{
+    parameter_id: string;
+    channel?: number;
+    cc_number?: number;
+    note_number?: number;
+    note_mode?: NoteMappingMode;
+    min_value: number;
+    max_value: number;
+  }>;
+  startup_leds: Array<{ channel: number; note: number; velocity: number }>;
+}
+
+/** List all loaded user controller templates (metadata only). */
+export async function listControllerTemplates(): Promise<
+  ControllerTemplateMeta[]
+> {
+  return invoke<ControllerTemplateMeta[]>("list_controller_templates");
+}
+
+/** Import a controller template from a JSON string (saves to disk). */
+export async function importControllerTemplate(json: string): Promise<void> {
+  return invoke("import_controller_template", { json });
+}
+
+/** Delete a controller template by label. */
+export async function deleteControllerTemplate(label: string): Promise<void> {
+  return invoke("delete_controller_template", { label });
+}
+
+/** Reload all templates from disk (hot-reload). */
+export async function reloadControllerTemplates(): Promise<void> {
+  return invoke("reload_controller_templates");
+}
 
 /** Hook for managing MIDI devices with hot-plug detection support. */
 export function useMidiDevices() {

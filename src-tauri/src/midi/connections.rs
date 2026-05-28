@@ -9,7 +9,9 @@ use super::devices::find_paired_output_device;
 use super::engine::{find_controller, is_midimix_device, with_midi_engine, MIDI_ENGINE};
 use super::events::{emit_devices_changed, emit_output_devices_changed};
 use super::message_handler::handle_midi_message;
-use super::midimix::{reset_all_pickup, send_midimix_shutdown_animation_sync, send_midimix_startup_animation};
+use super::midimix::{
+    reset_all_pickup, send_midimix_shutdown_animation_sync, send_midimix_startup_animation,
+};
 use super::types::{ActiveInputConnection, ActiveOutputConnection};
 
 // ============================================================================
@@ -92,15 +94,24 @@ pub fn open_device(device_id: String) -> Result<(), String> {
         reset_all_pickup(&MIDI_ENGINE);
     }
 
-    // Dispatch to the matching controller profile for output pairing, LEDs, and mappings
+    // Dispatch to the matching controller profile for output pairing, LEDs, and mappings.
+    // Falls back to dynamic templates when no static profile matches.
     if let Some(profile) = find_controller(&port_name) {
         if profile.has_output {
             if let Some(output) = find_paired_output_device(&port_name) {
                 if !output.is_connected {
                     if let Err(e) = open_output_device(output.id.clone()) {
-                        log::warn!("[MIDI] Failed to auto-connect {} output: {}", profile.label, e);
+                        log::warn!(
+                            "[MIDI] Failed to auto-connect {} output: {}",
+                            profile.label,
+                            e
+                        );
                     } else {
-                        log::debug!("[MIDI] Auto-connected {} output: {}", profile.label, output.name);
+                        log::debug!(
+                            "[MIDI] Auto-connected {} output: {}",
+                            profile.label,
+                            output.name
+                        );
                         if let Some(leds_fn) = profile.startup_leds {
                             // Midimix startup animation is handled separately (includes pickup reset)
                             if !is_midimix {
@@ -114,6 +125,28 @@ pub fn open_device(device_id: String) -> Result<(), String> {
             }
         }
         (profile.setup)();
+    } else if let Some(template) = super::templates::find_template_for_port(&port_name) {
+        super::templates::setup_template_default_mappings(&template);
+        if template.has_output {
+            if let Some(output) = find_paired_output_device(&port_name) {
+                if !output.is_connected {
+                    if let Err(e) = open_output_device(output.id.clone()) {
+                        log::warn!(
+                            "[MIDI] Failed to auto-connect {} output: {}",
+                            template.label,
+                            e
+                        );
+                    } else {
+                        log::debug!(
+                            "[MIDI] Auto-connected {} output: {}",
+                            template.label,
+                            output.name
+                        );
+                        super::templates::send_template_startup_leds(&template, &output.id);
+                    }
+                }
+            }
+        }
     }
 
     Ok(())

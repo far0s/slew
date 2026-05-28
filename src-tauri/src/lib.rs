@@ -84,6 +84,7 @@ pub fn run() {
             }
 
             // Initialize all engines (they log internally at debug level)
+            midi::load_templates_from_disk();
             midi::init_midi_engine(app.handle().clone());
             osc::init_osc_engine(app.handle().clone());
             bpm::init_bpm_source(app.handle().clone());
@@ -174,6 +175,13 @@ pub fn run() {
             midi::commands::get_midi_output_config,
             midi::commands::trigger_midi_feedback,
             midi::commands::get_midi_pickup_states,
+            // MIDI Import/Export & Templates
+            midi::commands::export_midi_mappings,
+            midi::commands::import_midi_mappings,
+            midi::commands::list_controller_templates,
+            midi::commands::import_controller_template,
+            midi::commands::delete_controller_template,
+            midi::commands::reload_controller_templates,
             // OSC
             osc::commands::start_osc_server,
             osc::commands::stop_osc_server,

@@ -1,0 +1,142 @@
+/* ==========================================================================
+   MidiToolbar.module.css
+   Styles for the MIDI Tools section (import/export + template manager).
+   ========================================================================== */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem 0;
+}
+
+.section + .section {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sectionLabel {
+  font-size: 0.62rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 0 0 0.15rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.actionButton {
+  padding: 0.28rem 0.6rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
+  border-radius: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+  white-space: nowrap;
+}
+
+.actionButton:hover {
+  background: var(--bg-active);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+.actionButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.modeSelect {
+  flex: 1;
+  min-width: 0;
+  padding: 0.28rem 0.4rem;
+  background: var(--bg-active);
+  border: 1px solid var(--border-default);
+  border-radius: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.63rem;
+  cursor: pointer;
+}
+
+.modeSelect:focus {
+  outline: none;
+  border-color: rgb(59 130 246 / 0.5);
+}
+
+.statusText {
+  font-size: 0.65rem;
+  color: rgb(134 239 172);
+  margin: 0;
+}
+
+.hint {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+.hint code {
+  font-style: normal;
+  font-family: monospace;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   Template list
+   ========================================================================== */
+
+.templateList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.templateItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.5rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.3rem;
+  gap: 0.4rem;
+}
+
+.templateInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.templateLabel {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.templateMeta {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

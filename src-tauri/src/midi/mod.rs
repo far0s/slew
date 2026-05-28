@@ -7,6 +7,7 @@ pub(crate) mod constants;
 pub mod devices;
 pub mod engine;
 pub(crate) mod events;
+pub mod import_export;
 pub(crate) mod launchpad;
 pub mod learn;
 pub mod mappings;
@@ -17,6 +18,7 @@ pub(crate) mod mf_twister;
 pub mod midimix;
 pub(crate) mod mpd218;
 pub mod output;
+pub mod templates;
 pub mod types;
 
 pub use connections::{
@@ -26,6 +28,9 @@ pub use connections::{
 };
 pub use devices::{list_devices, list_output_devices};
 pub use engine::{cleanup_midi, init_midi_engine};
+pub use import_export::{
+    export_mappings, import_mappings, ImportMode, ImportResult, MidiMappingExport,
+};
 pub use learn::{cancel_learn, get_learn_state, start_learn};
 pub use mappings::{
     clear_mappings, get_mappings, install_default_cc_mappings, remove_mapping, set_mapping,
@@ -35,6 +40,10 @@ pub use midimix::{pulse_beat_led, set_active_slots, update_midimix_leds};
 pub use output::{
     get_output_config, send_cc, send_note_off, send_note_on, send_parameter_feedback,
     set_output_config,
+};
+pub use templates::{
+    delete_template, list_template_meta, load_templates_from_disk, save_template_to_disk,
+    ControllerTemplate, ControllerTemplateMeta,
 };
 pub use types::{
     MidiDeviceInfo, MidiLearnComplete, MidiLearnState, MidiMapping, MidiMessage, MidiOutputConfig,
