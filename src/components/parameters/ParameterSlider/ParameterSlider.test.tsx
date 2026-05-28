@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ParameterSlider } from "./ParameterSlider";
 
-// Mock the MidiLearnButton component
-vi.mock("@/components/parameters/MidiLearnButton", () => ({
-  MidiLearnButton: ({ parameterId }: { parameterId: string }) => (
-    <button data-testid={`midi-learn-${parameterId}`}>MIDI Learn</button>
+// Mock the LearnButton component
+vi.mock("@/components/parameters/LearnButton", () => ({
+  LearnButton: ({ parameterId }: { parameterId: string }) => (
+    <button data-testid={`midi-learn-${parameterId}`}>Learn</button>
   ),
 }));
 
@@ -203,7 +203,9 @@ describe("ParameterSlider", () => {
 
     it("does not show modulation badge when modulationIndicator is null", () => {
       render(<ParameterSlider {...defaultProps} modulationIndicator={null} />);
-      expect(document.querySelector('[title*="Modulated by"]')).not.toBeInTheDocument();
+      expect(
+        document.querySelector('[title*="Modulated by"]'),
+      ).not.toBeInTheDocument();
     });
   });
 

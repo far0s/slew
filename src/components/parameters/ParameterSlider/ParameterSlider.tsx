@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import * as Slider from "@radix-ui/react-slider";
 import { useScrollAdjust } from "@/inputs/shared";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
-import { MidiLearnButton } from "@/components/parameters/MidiLearnButton";
+import { LearnButton } from "@/components/parameters/LearnButton";
 import { MODULATION_INDICATOR_COLOR, type LfoShape } from "@/inputs/modulation";
 import { LfoShapeIcon } from "@/components/panels/ModulationPanel/LfoShapeIcon";
 import type { MidiPickupState } from "@/inputs/midi";
@@ -57,7 +57,7 @@ export interface ModulationIndicator {
  * @property formatValue - Custom value formatter function
  * @property onChange - Callback when value changes
  * @property aria-label - Accessible label override
- * @property midiParameterId - Parameter ID for MIDI Learn; if provided, shows a Learn button
+ * @property midiParameterId - Parameter ID for MIDI/HID Learn; if provided, shows a Learn button
  * @property audioMapping - Audio mapping indicator info; if provided, shows mapping badge
  * @property modulationIndicator - Modulation indicator info; if provided, shows modulation badge
  * @property isMidiControlled - If true, disables direct user input (controlled via MIDI only)
@@ -80,6 +80,7 @@ export interface ParameterSliderProps {
   onCommit?: (after: number, before: number) => void;
   "aria-label"?: string;
   midiParameterId?: string;
+  lockButton?: React.ReactNode;
   audioMapping?: AudioMappingIndicator | null;
   modulationIndicator?: ModulationIndicator | null;
   isMidiControlled?: boolean;
@@ -114,6 +115,7 @@ export function ParameterSlider({
   onChange,
   "aria-label": ariaLabel,
   midiParameterId,
+  lockButton,
   audioMapping,
   modulationIndicator,
   isMidiControlled = false,
@@ -126,7 +128,14 @@ export function ParameterSlider({
 }: ParameterSliderProps) {
   // Track value at the start of an interaction so onCommit can provide before/after
   const beforeRef = useRef<number>(value);
-  const { ref: scrollRef, isHovered: scrollHovered } = useScrollAdjust(value, onChange, step, min, max, isMidiControlled);
+  const { ref: scrollRef, isHovered: scrollHovered } = useScrollAdjust(
+    value,
+    onChange,
+    step,
+    min,
+    max,
+    isMidiControlled,
+  );
 
   const handleInteractionStart = () => {
     beforeRef.current = value;
@@ -188,8 +197,10 @@ export function ParameterSlider({
           <span className={styles.value}>{formatValue(value)}</span>
         </label>
         <div className={styles.labelActions}>
-          {!inline && audioMapping && (
-            onUnlinkBeat ? (
+          {lockButton}
+          {!inline &&
+            audioMapping &&
+            (onUnlinkBeat ? (
               <button
                 type="button"
                 className={styles.audioMappingBadge}
@@ -223,10 +234,10 @@ export function ParameterSlider({
                 />
                 {audioMapping.sourceLabel}
               </span>
-            )
-          )}
-          {!inline && modulationIndicator && (
-            onUnlinkLfo ? (
+            ))}
+          {!inline &&
+            modulationIndicator &&
+            (onUnlinkLfo ? (
               <button
                 type="button"
                 className={styles.modulationBadge}
@@ -238,7 +249,10 @@ export function ParameterSlider({
                 onClick={onUnlinkLfo}
               >
                 {modulationIndicator.lfoShape ? (
-                  <LfoShapeIcon shape={modulationIndicator.lfoShape} width={14} />
+                  <LfoShapeIcon
+                    shape={modulationIndicator.lfoShape}
+                    width={14}
+                  />
                 ) : (
                   <span
                     className={styles.modulationDot}
@@ -256,7 +270,10 @@ export function ParameterSlider({
                 }
               >
                 {modulationIndicator.lfoShape ? (
-                  <LfoShapeIcon shape={modulationIndicator.lfoShape} width={14} />
+                  <LfoShapeIcon
+                    shape={modulationIndicator.lfoShape}
+                    width={14}
+                  />
                 ) : (
                   <span
                     className={styles.modulationDot}
@@ -264,8 +281,7 @@ export function ParameterSlider({
                   />
                 )}
               </span>
-            )
-          )}
+            ))}
           {!inline && description && (
             <div
               className={styles.infoButtonWrapper}
@@ -309,12 +325,7 @@ export function ParameterSlider({
             </button>
           )}
           {!inline && midiParameterId && (
-            <MidiLearnButton
-              parameterId={midiParameterId}
-              min={min}
-              max={max}
-              // compact
-            />
+            <LearnButton parameterId={midiParameterId} min={min} max={max} />
           )}
         </div>
       </div>
@@ -328,7 +339,12 @@ export function ParameterSlider({
         onValueChange={handleValueChange}
         onPointerDown={handleInteractionStart}
         onFocus={handleInteractionStart}
-        onValueCommit={onCommit ? ([v]) => onCommit(Number.isFinite(v) ? v : value, beforeRef.current) : undefined}
+        onValueCommit={
+          onCommit
+            ? ([v]) =>
+                onCommit(Number.isFinite(v) ? v : value, beforeRef.current)
+            : undefined
+        }
         className={`${styles.sliderRoot} ${showPickupFlash ? styles.pickupFlash : ""}`}
         aria-label={ariaLabel ?? label}
         disabled={isMidiControlled}
@@ -350,8 +366,8 @@ export function ParameterSlider({
         <>
           <span className={styles.inlineValue}>{formatValue(value)}</span>
           <div className={styles.inlineSuffix}>
-            {audioMapping && (
-              onUnlinkBeat ? (
+            {audioMapping &&
+              (onUnlinkBeat ? (
                 <button
                   type="button"
                   className={styles.audioMappingBadge}
@@ -363,7 +379,10 @@ export function ParameterSlider({
                   title={`Audio mapped: ${audioMapping.sourceLabel} — click to remove`}
                   onClick={onUnlinkBeat}
                 >
-                  <span className={styles.audioMappingDot} style={{ backgroundColor: audioMapping.color }} />
+                  <span
+                    className={styles.audioMappingDot}
+                    style={{ backgroundColor: audioMapping.color }}
+                  />
                   {audioMapping.sourceLabel}
                 </button>
               ) : (
@@ -376,46 +395,83 @@ export function ParameterSlider({
                   }}
                   title={`Audio mapped: ${audioMapping.sourceLabel}`}
                 >
-                  <span className={styles.audioMappingDot} style={{ backgroundColor: audioMapping.color }} />
+                  <span
+                    className={styles.audioMappingDot}
+                    style={{ backgroundColor: audioMapping.color }}
+                  />
                   {audioMapping.sourceLabel}
                 </span>
-              )
-            )}
-            {modulationIndicator && (
-              onUnlinkLfo ? (
+              ))}
+            {modulationIndicator &&
+              (onUnlinkLfo ? (
                 <button
                   type="button"
                   className={styles.modulationBadge}
-                  title={modulationIndicator.count && modulationIndicator.count > 1 ? `Modulated by ${modulationIndicator.count} LFOs — click to remove` : `Modulated by ${modulationIndicator.lfoName} — click to remove`}
+                  title={
+                    modulationIndicator.count && modulationIndicator.count > 1
+                      ? `Modulated by ${modulationIndicator.count} LFOs — click to remove`
+                      : `Modulated by ${modulationIndicator.lfoName} — click to remove`
+                  }
                   onClick={onUnlinkLfo}
                 >
                   {modulationIndicator.lfoShape ? (
-                    <LfoShapeIcon shape={modulationIndicator.lfoShape} width={14} />
+                    <LfoShapeIcon
+                      shape={modulationIndicator.lfoShape}
+                      width={14}
+                    />
                   ) : (
-                    <span className={styles.modulationDot} style={{ backgroundColor: MODULATION_INDICATOR_COLOR }} />
+                    <span
+                      className={styles.modulationDot}
+                      style={{ backgroundColor: MODULATION_INDICATOR_COLOR }}
+                    />
                   )}
                 </button>
               ) : (
                 <span
                   className={styles.modulationBadge}
-                  title={modulationIndicator.count && modulationIndicator.count > 1 ? `Modulated by ${modulationIndicator.count} LFOs including ${modulationIndicator.lfoName}` : `Modulated by ${modulationIndicator.lfoName}`}
+                  title={
+                    modulationIndicator.count && modulationIndicator.count > 1
+                      ? `Modulated by ${modulationIndicator.count} LFOs including ${modulationIndicator.lfoName}`
+                      : `Modulated by ${modulationIndicator.lfoName}`
+                  }
                 >
                   {modulationIndicator.lfoShape ? (
-                    <LfoShapeIcon shape={modulationIndicator.lfoShape} width={14} />
+                    <LfoShapeIcon
+                      shape={modulationIndicator.lfoShape}
+                      width={14}
+                    />
                   ) : (
-                    <span className={styles.modulationDot} style={{ backgroundColor: MODULATION_INDICATOR_COLOR }} />
+                    <span
+                      className={styles.modulationDot}
+                      style={{ backgroundColor: MODULATION_INDICATOR_COLOR }}
+                    />
                   )}
                 </span>
-              )
-            )}
+              ))}
             {onQuickBeat && !audioMapping && (
-              <button type="button" className={styles.quickBeatButton} onClick={onQuickBeat} title="Quick-wire Beat trigger" aria-label="Quick-wire Beat trigger">♩</button>
+              <button
+                type="button"
+                className={styles.quickBeatButton}
+                onClick={onQuickBeat}
+                title="Quick-wire Beat trigger"
+                aria-label="Quick-wire Beat trigger"
+              >
+                ♩
+              </button>
             )}
             {onQuickLfo && !modulationIndicator && (
-              <button type="button" className={styles.quickLfoButton} onClick={onQuickLfo} title="Quick-wire LFO" aria-label="Quick-wire LFO">~</button>
+              <button
+                type="button"
+                className={styles.quickLfoButton}
+                onClick={onQuickLfo}
+                title="Quick-wire LFO"
+                aria-label="Quick-wire LFO"
+              >
+                ~
+              </button>
             )}
             {midiParameterId && (
-              <MidiLearnButton parameterId={midiParameterId} min={min} max={max} />
+              <LearnButton parameterId={midiParameterId} min={min} max={max} />
             )}
           </div>
         </>

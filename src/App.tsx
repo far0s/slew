@@ -364,7 +364,8 @@ function App() {
   // Param getters/setters for components
   const getValue = useCallback(
     (id: string) => paramStore.get(id),
-    [paramStore.get],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [paramStore.get, paramStore.parameters],
   );
   const setValue = useCallback(
     (id: string, value: number) => {

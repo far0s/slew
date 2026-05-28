@@ -1,0 +1,240 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.5rem;
+  min-width: 64px;
+  width: 64px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
+  border-radius: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
+  user-select: none;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--bg-active);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.button:focus-visible {
+  outline: 2px solid rgb(59 130 246 / 0.8);
+  outline-offset: 1px;
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.hidIcon {
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+
+/* Learning State */
+
+.learning {
+  background: rgb(234 179 8 / 0.15);
+  border-color: rgb(234 179 8 / 0.4);
+  color: rgb(253 224 71);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.learning:hover:not(:disabled) {
+  background: rgb(234 179 8 / 0.2);
+  border-color: rgb(234 179 8 / 0.5);
+}
+
+/* Light mode learning state */
+[data-theme="light"] .learning {
+  background: rgb(202 138 4 / 0.15);
+  border-color: rgb(202 138 4 / 0.5);
+  color: rgb(133 77 14);
+}
+
+[data-theme="light"] .learning:hover:not(:disabled) {
+  background: rgb(202 138 4 / 0.2);
+  border-color: rgb(202 138 4 / 0.6);
+}
+
+.learningIcon {
+  display: inline-flex;
+  animation: spin 2s linear infinite;
+  font-size: 0.8rem;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(234 179 8 / 0);
+  }
+  50% {
+    box-shadow: 0 0 8px 2px rgb(234 179 8 / 0.3);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Mapped State */
+
+.mapped {
+  background: rgb(34 197 94 / 0.12);
+  border-color: rgb(34 197 94 / 0.35);
+  color: rgb(134 239 172);
+}
+
+.mapped:hover:not(:disabled) {
+  background: rgb(239 68 68 / 0.12);
+  border-color: rgb(239 68 68 / 0.35);
+  color: rgb(252 165 165);
+}
+
+/* Light mode mapped state - higher contrast */
+[data-theme="light"] .mapped {
+  background: rgb(22 163 74 / 0.12);
+  border-color: rgb(22 163 74 / 0.5);
+  color: rgb(22 101 52);
+  font-weight: 600;
+}
+
+[data-theme="light"] .mapped:hover:not(:disabled) {
+  background: rgb(220 38 38 / 0.12);
+  border-color: rgb(220 38 38 / 0.5);
+  color: rgb(153 27 27);
+}
+
+.mappedContent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-width: 100%;
+}
+
+.mappingText {
+  transition: opacity 0.15s ease;
+}
+
+.mapped:hover .mappingText {
+  opacity: 0;
+}
+
+.removeIcon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1;
+  color: rgb(252 165 165);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.mapped:hover .removeIcon {
+  opacity: 1;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Success State */
+
+.success {
+  background: rgb(34 197 94 / 0.25);
+  border-color: rgb(34 197 94 / 0.5);
+  color: rgb(134 239 172);
+  animation: successFlash 0.6s ease-out;
+}
+
+/* Light mode success state */
+[data-theme="light"] .success {
+  background: rgb(22 163 74 / 0.2);
+  border-color: rgb(22 163 74 / 0.5);
+  color: rgb(22 101 52);
+}
+
+@keyframes successFlash {
+  0% {
+    background: rgb(34 197 94 / 0.4);
+    border-color: rgb(34 197 94 / 0.7);
+    box-shadow: 0 0 12px 4px rgb(34 197 94 / 0.4);
+    transform: scale(1.05);
+  }
+  100% {
+    background: rgb(34 197 94 / 0.12);
+    border-color: rgb(34 197 94 / 0.3);
+    box-shadow: 0 0 0 0 rgb(34 197 94 / 0);
+    transform: scale(1);
+  }
+}
+
+/* Compact Mode */
+
+.compact {
+  min-width: 56px;
+  width: 56px;
+  padding: 0.25rem 0.35rem;
+  font-size: 0.6rem;
+}
+
+.compact .learningIcon {
+  font-size: 0.7rem;
+}
+
+.compact .removeIcon {
+  font-size: 0.75rem;
+}
+
+/* Reduced Motion */
+
+@media (prefers-reduced-motion: reduce) {
+  .learning {
+    animation: none;
+    box-shadow: 0 0 6px 2px rgb(234 179 8 / 0.25);
+  }
+
+  .learningIcon {
+    animation: none;
+  }
+
+  .success {
+    animation: none;
+  }
+
+  .removeIcon {
+    animation: none;
+  }
+}

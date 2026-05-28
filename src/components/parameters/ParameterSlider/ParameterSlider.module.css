@@ -8,7 +8,9 @@
   padding-left: 4px;
   margin-left: -6px;
   border-radius: 0 3px 3px 0;
-  transition: border-left-color 0.1s ease, background-color 0.1s ease;
+  transition:
+    border-left-color 0.1s ease,
+    background-color 0.1s ease;
 }
 /* Scroll-to-adjust hover state — subtle left-border accent */
 .containerScrollFocus {

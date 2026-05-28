@@ -6,11 +6,18 @@ import { pushUndoEntry } from "@/hooks/useUndoHistory";
 import type { ParameterTemplate } from "@/sketches";
 import { makeSlotParameterId } from "@/slots/slotTypes";
 import { ParameterSlider } from "@/components/parameters/ParameterSlider";
-import type { AudioMappingIndicator, ModulationIndicator } from "@/components/parameters/ParameterSlider";
+import type {
+  AudioMappingIndicator,
+  ModulationIndicator,
+} from "@/components/parameters/ParameterSlider";
 import { KnobInput } from "@/components/parameters/KnobInput";
 import { StepInput } from "@/components/parameters/StepInput";
 import { ParameterSelect } from "@/components/parameters/ParameterSelect";
-import { type AudioMapping, AUDIO_SOURCE_SHORT_LABELS, AUDIO_SOURCE_COLORS } from "@/inputs/audio";
+import {
+  type AudioMapping,
+  AUDIO_SOURCE_SHORT_LABELS,
+  AUDIO_SOURCE_COLORS,
+} from "@/inputs/audio";
 import type { ModulationTarget, LfoSource } from "@/inputs/modulation";
 import type { MidiMapping, MidiPickupState } from "@/inputs/midi";
 import { ColorPicker } from "@/components/parameters/ColorPicker";
@@ -36,7 +43,11 @@ export interface ParameterControlProps {
   onInteractionStart?: () => void;
   onInteractionEnd?: () => void;
   onQuickBeat?: (parameterId: string, paramMax: number) => void;
-  onQuickLfo?: (parameterId: string, paramMin: number, paramMax: number) => void;
+  onQuickLfo?: (
+    parameterId: string,
+    paramMin: number,
+    paramMax: number,
+  ) => void;
   onUnlinkBeat?: (parameterId: string) => void;
   onUnlinkLfo?: (parameterId: string) => void;
   siblingSwatches?: string[];
@@ -53,7 +64,11 @@ async function setParameter(id: string, value: number): Promise<void> {
   await invoke("set_parameter", { id, value, app: undefined });
 }
 
-async function setParameterWithTransition(id: string, value: number, transitionSpeed: number): Promise<void> {
+async function setParameterWithTransition(
+  id: string,
+  value: number,
+  transitionSpeed: number,
+): Promise<void> {
   await invoke("set_parameter_with_transition", { id, value, transitionSpeed });
 }
 
@@ -97,7 +112,11 @@ function handleColorParamChange(
   if (colorType) {
     window.dispatchEvent(
       new CustomEvent("sketch-color-changed", {
-        detail: { slotIndex, colorType, color: [r, g, b] as [number, number, number] },
+        detail: {
+          slotIndex,
+          colorType,
+          color: [r, g, b] as [number, number, number],
+        },
       }),
     );
   }
@@ -107,7 +126,10 @@ function createChangeHandler(
   slotIndex: number,
   template: ParameterTemplate,
   setValue: (id: string, value: number) => void,
-): { onChange: (value: number) => void; onCommit: (after: number, before: number) => void } {
+): {
+  onChange: (value: number) => void;
+  onCommit: (after: number, before: number) => void;
+} {
   const paramId = makeSlotParameterId(slotIndex, template.templateId);
 
   const onChange = (value: number) => {
@@ -134,9 +156,14 @@ function createChangeHandler(
   return { onChange, onCommit };
 }
 
-function getAudioMappingIndicator(parameterId: string, audioMappings?: AudioMapping[]): AudioMappingIndicator | null {
+function getAudioMappingIndicator(
+  parameterId: string,
+  audioMappings?: AudioMapping[],
+): AudioMappingIndicator | null {
   if (!audioMappings) return null;
-  const mapping = audioMappings.find((m) => m.parameter_id === parameterId && m.enabled);
+  const mapping = audioMappings.find(
+    (m) => m.parameter_id === parameterId && m.enabled,
+  );
   if (!mapping) return null;
   return {
     sourceLabel: AUDIO_SOURCE_SHORT_LABELS[mapping.source],
@@ -150,19 +177,29 @@ function getModulationIndicator(
   lfos?: LfoSource[],
 ): ModulationIndicator | null {
   if (!modulationTargets || !lfos) return null;
-  const activeTargets = modulationTargets.filter((t) => t.parameter_id === parameterId && t.enabled);
+  const activeTargets = modulationTargets.filter(
+    (t) => t.parameter_id === parameterId && t.enabled,
+  );
   if (activeTargets.length === 0) return null;
   const firstTarget = activeTargets[0];
   const lfo = lfos.find((l) => l.id === firstTarget.source_id && l.enabled);
   if (!lfo) return null;
-  return { lfoName: lfo.name, lfoShape: lfo.shape, count: activeTargets.length };
+  return {
+    lfoName: lfo.name,
+    lfoShape: lfo.shape,
+    count: activeTargets.length,
+  };
 }
 
 // ---------------------------------------------------------------------------
 // ChromaLoop — BPM-synced hue rotation for color parameters
 // ---------------------------------------------------------------------------
 
-const LOOP_PRESETS: { label: string; beats: number | null; seconds: number | null }[] = [
+const LOOP_PRESETS: {
+  label: string;
+  beats: number | null;
+  seconds: number | null;
+}[] = [
   { label: "4 beats", beats: 4, seconds: null },
   { label: "8 beats", beats: 8, seconds: null },
   { label: "16 beats", beats: 16, seconds: null },
@@ -184,7 +221,13 @@ interface ChromaLoopProps {
   onActiveChange?: (active: boolean) => void;
 }
 
-function ChromaLoop({ slotIndex, templateId, getValue, setValue, onActiveChange }: ChromaLoopProps) {
+function ChromaLoop({
+  slotIndex,
+  templateId,
+  getValue,
+  setValue,
+  onActiveChange,
+}: ChromaLoopProps) {
   const [active, setActive] = useState(false);
   const [presetIndex, setPresetIndex] = useState(3);
   const [bpm, setBpm] = useState<number | null>(null);
@@ -247,7 +290,13 @@ function ChromaLoop({ slotIndex, templateId, getValue, setValue, onActiveChange 
 
       void (async () => {
         try {
-          await invoke("set_color_channels", { baseId, r, g, b, transitionSpeed: 0 });
+          await invoke("set_color_channels", {
+            baseId,
+            r,
+            g,
+            b,
+            transitionSpeed: 0,
+          });
         } catch {
           /* best-effort */
         }
@@ -331,18 +380,23 @@ export function ParameterControl({
   const paramId = makeSlotParameterId(slotIndex, template.templateId);
   const hasMidiMapping = midiMappings?.some((m) => m.parameter_id === paramId);
 
-  const lockUI = onToggleLock ? (
-    <>
-      {locked && <div className={styles.lockedOverlay} onClick={onToggleLock} />}
-      <button
-        type="button"
-        className={`${styles.lockButton} ${locked ? styles.lockButtonActive : ""}`}
-        onClick={(e) => { e.stopPropagation(); onToggleLock(); }}
-        title={locked ? "Unlock parameter" : "Lock parameter"}
-      >
-        <LockClosedIcon className={styles.lockIcon} />
-      </button>
-    </>
+  const lockedOverlay =
+    locked && onToggleLock ? (
+      <div className={styles.lockedOverlay} onClick={onToggleLock} />
+    ) : null;
+
+  const lockButton = onToggleLock ? (
+    <button
+      type="button"
+      className={`${styles.lockButton} ${styles.lockButtonInline} ${locked ? styles.lockButtonActive : ""}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggleLock();
+      }}
+      title={locked ? "Unlock parameter" : "Lock parameter"}
+    >
+      <LockClosedIcon className={styles.lockIcon} />
+    </button>
   ) : null;
 
   if (template.inputType === "color") {
@@ -379,49 +433,79 @@ export function ParameterControl({
             value={hexValue}
             swatches={siblingSwatches ?? []}
             onChange={(hex) =>
-              handleColorParamChange(slotIndex, template.templateId, hex, setValue, COLOR_PICK_TRANSITION)
+              handleColorParamChange(
+                slotIndex,
+                template.templateId,
+                hex,
+                setValue,
+                COLOR_PICK_TRANSITION,
+              )
             }
           />
         </div>
-        <div className={styles.colorSliders} data-collapsed={chromaActive ? "true" : "false"}>
+        <div
+          className={styles.colorSliders}
+          data-collapsed={chromaActive ? "true" : "false"}
+        >
           <div className={styles.colorSlidersInner}>
-            {channels.map(({ ch, label: chLabel, value: chVal, color: chColor }) => {
-              const chId = `${baseId}_${ch}`;
-              const hasMidiMappingCh = midiMappings?.some((m) => m.parameter_id === chId);
-              return (
-                <ParameterSlider
-                  key={chId}
-                  id={`slot-${slotIndex}-${template.templateId}-${ch}`}
-                  label={chLabel}
-                  value={chVal}
-                  min={0}
-                  max={255}
-                  step={1}
-                  color={chColor}
-                  inline
-                  onChange={(val) => {
-                    onInteractionStart?.();
-                    const newR = ch === "r" ? val : r;
-                    const newG = ch === "g" ? val : g;
-                    const newB = ch === "b" ? val : b;
-                    handleColorParamChange(slotIndex, template.templateId, rgbToHex(newR, newG, newB), setValue);
-                  }}
-                  onCommit={(after, before) => {
-                    onInteractionEnd?.();
-                    if (after !== before) pushUndoEntry(chId, before, after);
-                  }}
-                  audioMapping={getAudioMappingIndicator(chId, audioMappings)}
-                  modulationIndicator={getModulationIndicator(chId, modulationTargets, lfos)}
-                  isMidiControlled={hasMidiMappingCh}
-                  pickupState={midiPickupStates?.get(chId)}
-                  midiParameterId={chId}
-                  onQuickBeat={onQuickBeat ? () => onQuickBeat(chId, 255) : undefined}
-                  onQuickLfo={onQuickLfo ? () => onQuickLfo(chId, 0, 255) : undefined}
-                  onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(chId) : undefined}
-                  onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(chId) : undefined}
-                />
-              );
-            })}
+            {channels.map(
+              ({ ch, label: chLabel, value: chVal, color: chColor }) => {
+                const chId = `${baseId}_${ch}`;
+                const hasMidiMappingCh = midiMappings?.some(
+                  (m) => m.parameter_id === chId,
+                );
+                return (
+                  <ParameterSlider
+                    key={chId}
+                    id={`slot-${slotIndex}-${template.templateId}-${ch}`}
+                    label={chLabel}
+                    value={chVal}
+                    min={0}
+                    max={255}
+                    step={1}
+                    color={chColor}
+                    inline
+                    onChange={(val) => {
+                      onInteractionStart?.();
+                      const newR = ch === "r" ? val : r;
+                      const newG = ch === "g" ? val : g;
+                      const newB = ch === "b" ? val : b;
+                      handleColorParamChange(
+                        slotIndex,
+                        template.templateId,
+                        rgbToHex(newR, newG, newB),
+                        setValue,
+                      );
+                    }}
+                    onCommit={(after, before) => {
+                      onInteractionEnd?.();
+                      if (after !== before) pushUndoEntry(chId, before, after);
+                    }}
+                    audioMapping={getAudioMappingIndicator(chId, audioMappings)}
+                    modulationIndicator={getModulationIndicator(
+                      chId,
+                      modulationTargets,
+                      lfos,
+                    )}
+                    isMidiControlled={hasMidiMappingCh}
+                    pickupState={midiPickupStates?.get(chId)}
+                    midiParameterId={chId}
+                    onQuickBeat={
+                      onQuickBeat ? () => onQuickBeat(chId, 255) : undefined
+                    }
+                    onQuickLfo={
+                      onQuickLfo ? () => onQuickLfo(chId, 0, 255) : undefined
+                    }
+                    onUnlinkBeat={
+                      onUnlinkBeat ? () => onUnlinkBeat(chId) : undefined
+                    }
+                    onUnlinkLfo={
+                      onUnlinkLfo ? () => onUnlinkLfo(chId) : undefined
+                    }
+                  />
+                );
+              },
+            )}
           </div>
         </div>
       </div>
@@ -439,7 +523,7 @@ export function ParameterControl({
           onHide?.();
         }}
       >
-        {lockUI}
+        {lockedOverlay}
         <ParameterSelect
           id={`slot-${slotIndex}-${template.templateId}`}
           label={template.label}
@@ -452,10 +536,20 @@ export function ParameterControl({
             pushUndoEntry(paramId, selectBefore, value);
           }}
           audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
-          modulationIndicator={getModulationIndicator(paramId, modulationTargets, lfos)}
+          modulationIndicator={getModulationIndicator(
+            paramId,
+            modulationTargets,
+            lfos,
+          )}
           isMidiControlled={hasMidiMapping}
-          onQuickBeat={onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined}
-          onQuickLfo={onQuickLfo ? () => onQuickLfo(paramId, template.min, template.max) : undefined}
+          onQuickBeat={
+            onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined
+          }
+          onQuickLfo={
+            onQuickLfo
+              ? () => onQuickLfo(paramId, template.min, template.max)
+              : undefined
+          }
           onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined}
           onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined}
         />
@@ -464,7 +558,8 @@ export function ParameterControl({
   }
 
   if (template.inputType === "integer") {
-    const { onChange: stepOnChange, onCommit: stepOnCommit } = createChangeHandler(slotIndex, template, setValue);
+    const { onChange: stepOnChange, onCommit: stepOnCommit } =
+      createChangeHandler(slotIndex, template, setValue);
     return (
       <div
         ref={rowRef}
@@ -474,7 +569,7 @@ export function ParameterControl({
           onHide?.();
         }}
       >
-        {lockUI}
+        {lockedOverlay}
         <StepInput
           id={`slot-${slotIndex}-${template.templateId}`}
           label={template.label}
@@ -496,8 +591,12 @@ export function ParameterControl({
     );
   }
 
-  const { onChange: sliderOnChange, onCommit: sliderOnCommit } = createChangeHandler(slotIndex, template, setValue);
-  const useSlider = template.group === "transition" || template.group === "global" || template.inputType === "slider";
+  const { onChange: sliderOnChange, onCommit: sliderOnCommit } =
+    createChangeHandler(slotIndex, template, setValue);
+  const useSlider =
+    template.group === "transition" ||
+    template.group === "global" ||
+    template.inputType === "slider";
 
   if (useSlider) {
     return (
@@ -509,7 +608,7 @@ export function ParameterControl({
           onHide?.();
         }}
       >
-        {lockUI}
+        {lockedOverlay}
         <ParameterSlider
           id={`slot-${slotIndex}-${template.templateId}`}
           label={template.label}
@@ -529,12 +628,23 @@ export function ParameterControl({
             sliderOnCommit(after, before);
           }}
           audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
-          modulationIndicator={getModulationIndicator(paramId, modulationTargets, lfos)}
+          modulationIndicator={getModulationIndicator(
+            paramId,
+            modulationTargets,
+            lfos,
+          )}
           isMidiControlled={hasMidiMapping}
           pickupState={midiPickupStates?.get(paramId)}
           midiParameterId={paramId}
-          onQuickBeat={onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined}
-          onQuickLfo={onQuickLfo ? () => onQuickLfo(paramId, template.min, template.max) : undefined}
+          lockButton={lockButton}
+          onQuickBeat={
+            onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined
+          }
+          onQuickLfo={
+            onQuickLfo
+              ? () => onQuickLfo(paramId, template.min, template.max)
+              : undefined
+          }
           onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined}
           onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined}
         />
@@ -551,7 +661,7 @@ export function ParameterControl({
         onHide?.();
       }}
     >
-      {lockUI}
+      {lockedOverlay}
       <KnobInput
         id={`slot-${slotIndex}-${template.templateId}`}
         label={template.label}
@@ -569,12 +679,22 @@ export function ParameterControl({
           sliderOnCommit(after, before);
         }}
         audioMapping={getAudioMappingIndicator(paramId, audioMappings)}
-        modulationIndicator={getModulationIndicator(paramId, modulationTargets, lfos)}
+        modulationIndicator={getModulationIndicator(
+          paramId,
+          modulationTargets,
+          lfos,
+        )}
         isMidiControlled={hasMidiMapping}
         pickupState={midiPickupStates?.get(paramId)}
         midiParameterId={paramId}
-        onQuickBeat={onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined}
-        onQuickLfo={onQuickLfo ? () => onQuickLfo(paramId, template.min, template.max) : undefined}
+        onQuickBeat={
+          onQuickBeat ? () => onQuickBeat(paramId, template.max) : undefined
+        }
+        onQuickLfo={
+          onQuickLfo
+            ? () => onQuickLfo(paramId, template.min, template.max)
+            : undefined
+        }
         onUnlinkBeat={onUnlinkBeat ? () => onUnlinkBeat(paramId) : undefined}
         onUnlinkLfo={onUnlinkLfo ? () => onUnlinkLfo(paramId) : undefined}
       />

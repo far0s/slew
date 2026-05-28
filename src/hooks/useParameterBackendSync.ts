@@ -5,7 +5,11 @@ import type { Slot } from "@/slots/useSlots";
 import type { SketchId } from "@/sketches";
 import { buildSlotDefaultParameters } from "@/slots/slotTypes";
 import { logger } from "@/lib/logger";
-import type { ParameterStoreState, BackendParameter, SlotConfig } from "./useParameterStore";
+import type {
+  ParameterStoreState,
+  BackendParameter,
+  SlotConfig,
+} from "./useParameterStore";
 import type { ParameterId } from "@/slots/slotTypes";
 
 interface UseParameterBackendSyncParams {
@@ -45,7 +49,10 @@ export function useParameterBackendSync({
 
       const slotConfig: SlotConfig[] = slots
         .filter((slot) => slot.sketchId !== null)
-        .map((slot) => ({ index: slot.index, sketchId: slot.sketchId as SketchId }));
+        .map((slot) => ({
+          index: slot.index,
+          sketchId: slot.sketchId as SketchId,
+        }));
 
       paramStore.setCurrentSlots(slotConfig);
       paramStore.setBackendSnapshot(response);
@@ -55,9 +62,15 @@ export function useParameterBackendSync({
       for (const slot of slots) {
         if (slot.sketchId !== null) {
           paramStore.initializeSlot(slot.index, slot.sketchId);
-          const defaults = buildSlotDefaultParameters(slot.index, slot.sketchId);
+          const defaults = buildSlotDefaultParameters(
+            slot.index,
+            slot.sketchId,
+          );
           for (const [id, value] of defaults) {
-            if (/color_[a-z_]+_[rgb]$/.test(String(id)) && !backendParamIds.has(String(id))) {
+            if (
+              /color_[a-z_]+_[rgb]$/.test(String(id)) &&
+              !backendParamIds.has(String(id))
+            ) {
               await invoke("set_parameter", { id, value, app: undefined });
             }
           }
@@ -86,28 +99,32 @@ export function useParameterBackendSync({
 
     void (async () => {
       try {
-        unlisten = await listen<BackendParameter>("parameter_changed", (event) => {
-          const updated = event.payload;
-          const store = paramStoreRef.current;
+        unlisten = await listen<BackendParameter>(
+          "parameter_changed",
+          (event) => {
+            const updated = event.payload;
+            const store = paramStoreRef.current;
 
-          // Interpolated value goes straight to ref — no React render.
-          store.setInterpolated(updated.id, updated.value);
+            // Interpolated value goes straight to ref — no React render.
+            store.setInterpolated(updated.id, updated.value);
 
-          // Update backendSnapshot ref.
-          const current = store.backendSnapshot ?? [];
-          const idx = current.findIndex((p) => p.id === updated.id);
-          if (idx === -1) {
-            store.setBackendSnapshot([...current, updated]);
-          } else {
-            const next = current.slice();
-            next[idx] = updated;
-            store.setBackendSnapshot(next);
-          }
+            // Update backendSnapshot ref.
+            const current = store.backendSnapshot ?? [];
+            const idx = current.findIndex((p) => p.id === updated.id);
+            if (idx === -1) {
+              store.setBackendSnapshot([...current, updated]);
+            } else {
+              const next = current.slice();
+              next[idx] = updated;
+              store.setBackendSnapshot(next);
+            }
 
-          // Queue target update for RAF flush.
-          const targetValue = updated.id === "crossfade" ? updated.value : updated.target;
-          pendingTargetsRef.current.set(updated.id, targetValue);
-        });
+            // Queue target update for RAF flush.
+            const targetValue =
+              updated.id === "crossfade" ? updated.value : updated.target;
+            pendingTargetsRef.current.set(updated.id, targetValue);
+          },
+        );
       } catch (error) {
         logger.error("Controls", "subscribe parameter_changed failed", error);
       }
@@ -128,7 +145,8 @@ export function useParameterBackendSync({
         for (const [id, value] of pendingTargetsRef.current) {
           if (store.hasPendingUserInput(id as ParameterId)) continue;
           const current = store.parameters.get(id as ParameterId);
-          if (current !== undefined && Math.abs(current - value) < 0.001) continue;
+          if (current !== undefined && Math.abs(current - value) < 0.001)
+            continue;
           updates.push([id as ParameterId, value]);
         }
         pendingTargetsRef.current.clear();
@@ -165,7 +183,10 @@ export function useParameterBackendSync({
 
     const allSlots = slots
       .filter((slot) => slot.sketchId !== null)
-      .map((slot) => ({ index: slot.index, sketch_id: slot.sketchId as SketchId }));
+      .map((slot) => ({
+        index: slot.index,
+        sketch_id: slot.sketchId as SketchId,
+      }));
 
     void invoke("set_all_slots", {
       slots: allSlots,
@@ -179,7 +200,10 @@ export function useParameterBackendSync({
   useEffect(() => {
     const slotConfig: SlotConfig[] = slots
       .filter((slot) => slot.sketchId !== null)
-      .map((slot) => ({ index: slot.index, sketchId: slot.sketchId as SketchId }));
+      .map((slot) => ({
+        index: slot.index,
+        sketchId: slot.sketchId as SketchId,
+      }));
     paramStore.setCurrentSlots(slotConfig);
   }, [slots, paramStore.setCurrentSlots]);
 

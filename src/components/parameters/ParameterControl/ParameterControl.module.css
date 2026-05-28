@@ -31,7 +31,18 @@
   cursor: pointer;
   color: var(--text-muted);
   opacity: 0;
-  transition: opacity 0.12s ease, color 0.12s ease;
+  transition:
+    opacity 0.12s ease,
+    color 0.12s ease;
+}
+
+/* Inline variant — used inside ParameterSlider labelActions */
+.lockButtonInline {
+  position: static;
+  top: unset;
+  right: unset;
+  z-index: unset;
+  flex-shrink: 0;
 }
 
 .paramRow:hover .lockButton {
@@ -63,7 +74,7 @@
 }
 
 .paramRow::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: -2px;
   border-radius: 0.4rem;
@@ -73,7 +84,9 @@
   z-index: -1;
   opacity: 0;
   transform: scale(0.93);
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
 }
 
 .paramHighlighted::before {
@@ -146,7 +159,10 @@
   border: 1px solid var(--border-subtle);
   border-radius: 4px;
   cursor: pointer;
-  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+  transition:
+    color 0.12s ease,
+    border-color 0.12s ease,
+    background 0.12s ease;
   letter-spacing: 0.02em;
 }
 
@@ -163,8 +179,13 @@
 }
 
 @keyframes chromaPulse {
-  0%, 100% { border-color: rgb(139 92 246 / 0.6); }
-  50%       { border-color: rgb(167 139 250 / 0.9); }
+  0%,
+  100% {
+    border-color: rgb(139 92 246 / 0.6);
+  }
+  50% {
+    border-color: rgb(167 139 250 / 0.9);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,13 +1,19 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useScrollAdjust } from "@/inputs/shared";
-import { useMidiLearn, useMidiMappings } from "@/inputs/midi";
+import { LearnButton } from "@/components/parameters/LearnButton";
 import { LfoShapeIcon } from "@/components/panels/ModulationPanel/LfoShapeIcon";
 import type { MidiPickupState } from "@/inputs/midi";
-import type { AudioMappingIndicator, ModulationIndicator } from "@/components/parameters/ParameterSlider";
+import type {
+  AudioMappingIndicator,
+  ModulationIndicator,
+} from "@/components/parameters/ParameterSlider";
 import styles from "./KnobInput.module.css";
 
 // Re-export shared types so consumers can import from one place
-export type { AudioMappingIndicator, ModulationIndicator } from "@/components/parameters/ParameterSlider";
+export type {
+  AudioMappingIndicator,
+  ModulationIndicator,
+} from "@/components/parameters/ParameterSlider";
 
 export type KnobColorVariant =
   | "emerald"
@@ -66,7 +72,7 @@ function polarToXY(angleDeg: number, r: number) {
 
 function describeArc(fromDeg: number, toDeg: number, r: number) {
   // Work around the full-circle edge case
-  const normalised = ((toDeg - fromDeg) % 360 + 360) % 360;
+  const normalised = (((toDeg - fromDeg) % 360) + 360) % 360;
   if (normalised < 0.5) return ""; // empty arc
   const large = normalised > 180 ? 1 : 0;
   const start = polarToXY(fromDeg, r);
@@ -134,41 +140,6 @@ export function KnobInput({
     prevPickedUpRef.current = pickupState?.picked_up;
   }, [pickupState?.picked_up]);
 
-  // --- MIDI learn state (for Learn CTA) ---
-  const { isLearning, learningParameterId, startLearn, cancelLearn } = useMidiLearn();
-  const { getMappingForParameter, removeMapping } = useMidiMappings();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [currentMapping, setCurrentMapping] = useState(() =>
-    midiParameterId ? getMappingForParameter(midiParameterId) : undefined,
-  );
-  useEffect(() => {
-    if (!midiParameterId) return;
-    setCurrentMapping(getMappingForParameter(midiParameterId));
-  }, [getMappingForParameter, midiParameterId]);
-
-  const isLearningThis = midiParameterId ? isLearning && learningParameterId === midiParameterId : false;
-  const isLearningOther = isLearning && !isLearningThis;
-  const hasMapping = currentMapping !== undefined;
-
-  const handleLearnClick = useCallback(async () => {
-    if (!midiParameterId) return;
-    setIsProcessing(true);
-    try {
-      if (isLearningThis) {
-        await cancelLearn();
-      } else if (hasMapping) {
-        await removeMapping(midiParameterId);
-        setCurrentMapping(undefined);
-      } else {
-        await startLearn(midiParameterId, min, max);
-      }
-    } catch {
-      // ignore
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [midiParameterId, isLearningThis, hasMapping, cancelLearn, removeMapping, startLearn, min, max]);
-
   // --- drag handlers ---
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<SVGSVGElement>) => {
@@ -190,9 +161,15 @@ export function KnobInput({
       const range = max - min;
       const sensitivity = range / 200; // 200px drag = full range
       const raw = dragRef.current.startValue + dy * sensitivity * multiplier;
-      const next = Math.min(max, Math.max(min, parseFloat(raw.toPrecision(10))));
+      const next = Math.min(
+        max,
+        Math.max(min, parseFloat(raw.toPrecision(10))),
+      );
       const snapped = Math.round((next - min) / step) * step + min;
-      const clamped = Math.min(max, Math.max(min, parseFloat(snapped.toPrecision(10))));
+      const clamped = Math.min(
+        max,
+        Math.max(min, parseFloat(snapped.toPrecision(10))),
+      );
       if (clamped !== value) onChange(clamped);
     },
     [isMidiControlled, min, max, step, value, onChange],
@@ -249,13 +226,25 @@ export function KnobInput({
       if (isMidiControlled) return;
       const big = step * 10;
       let next = value;
-      if (e.key === "ArrowRight" || e.key === "ArrowUp")        next = Math.min(max, value + (e.shiftKey ? step * 0.1 : e.ctrlKey || e.metaKey ? big : step));
-      else if (e.key === "ArrowLeft" || e.key === "ArrowDown") next = Math.max(min, value - (e.shiftKey ? step * 0.1 : e.ctrlKey || e.metaKey ? big : step));
+      if (e.key === "ArrowRight" || e.key === "ArrowUp")
+        next = Math.min(
+          max,
+          value +
+            (e.shiftKey ? step * 0.1 : e.ctrlKey || e.metaKey ? big : step),
+        );
+      else if (e.key === "ArrowLeft" || e.key === "ArrowDown")
+        next = Math.max(
+          min,
+          value -
+            (e.shiftKey ? step * 0.1 : e.ctrlKey || e.metaKey ? big : step),
+        );
       else if (e.key === "Home") next = min;
-      else if (e.key === "End")  next = max;
+      else if (e.key === "End") next = max;
       else return;
       e.preventDefault();
-      const snapped = parseFloat((Math.round((next - min) / step) * step + min).toPrecision(10));
+      const snapped = parseFloat(
+        (Math.round((next - min) / step) * step + min).toPrecision(10),
+      );
       const clamped = Math.min(max, Math.max(min, snapped));
       if (clamped !== value) onChange(clamped);
     },
@@ -279,7 +268,6 @@ export function KnobInput({
     : 0;
   const ghostPos = showGhostMarker ? polarToXY(ghostAngle, RADIUS) : null;
 
-
   // Beat CTA: show if can link OR is linked (unlink possible)
   const showBeat = !!(onQuickBeat || onUnlinkBeat);
   const beatActive = !!audioMapping; // linked when audio mapping present
@@ -297,14 +285,24 @@ export function KnobInput({
     isMidiControlled && styles.disabled,
     showPickupFlash && styles.pickupFlash,
     isHovered && !isMidiControlled && styles.hovered,
-  ].filter(Boolean).join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <div className={wrapperClass}
-      title={isMidiControlled ? "Controlled via MIDI — adjust using your controller" : undefined}
+    <div
+      className={wrapperClass}
+      title={
+        isMidiControlled
+          ? "Controlled via MIDI — adjust using your controller"
+          : undefined
+      }
     >
       {/* SVG knob */}
-      <div className={styles.knobArea} ref={scrollRef as (el: HTMLDivElement | null) => void}>
+      <div
+        className={styles.knobArea}
+        ref={scrollRef as (el: HTMLDivElement | null) => void}
+      >
         <svg
           width={SIZE}
           height={SIZE}
@@ -341,12 +339,7 @@ export function KnobInput({
             />
           )}
           {/* Indicator dot */}
-          <circle
-            cx={dotPos.x}
-            cy={dotPos.y}
-            r={3}
-            className={styles.dot}
-          />
+          <circle cx={dotPos.x} cy={dotPos.y} r={3} className={styles.dot} />
           {/* Ghost dot — MIDI physical knob position, rendered on top so always visible */}
           {ghostPos && (
             <circle
@@ -396,74 +389,62 @@ export function KnobInput({
       {/* Label + CTA row — together at bottom */}
       {showCtaRow ? (
         <div className={styles.labelCtaGroup}>
-          <label htmlFor={id} className={styles.label}>{label}</label>
+          <label htmlFor={id} className={styles.label}>
+            {label}
+          </label>
           <div className={styles.ctaRow}>
-          {/* MIDI Learn CTA */}
-          {showLearn && (
-            <button
-              type="button"
-              className={`${styles.ctaBtn} ${styles.ctaLearn}${isLearningThis || hasMapping ? ` ${styles.ctaLearnActive}` : ""}`}
-              onClick={() => void handleLearnClick()}
-              disabled={isProcessing || isLearningOther}
-              title={
-                isLearningThis
-                  ? "Listening… move a MIDI control. Click to cancel."
-                  : hasMapping
-                  ? `MIDI mapped. Click to unbind.`
-                  : "Click to MIDI learn"
-              }
-            >
-              {/* MIDI plug icon */}
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-                <circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1.2"/>
-                <circle cx="3.2" cy="4" r="0.8" fill="currentColor"/>
-                <circle cx="6.8" cy="4" r="0.8" fill="currentColor"/>
-                <circle cx="5" cy="6.5" r="0.8" fill="currentColor"/>
-              </svg>
-            </button>
-          )}
+            {/* Learn CTA — handles both MIDI and HID */}
+            {showLearn && (
+              <LearnButton parameterId={midiParameterId!} min={min} max={max} />
+            )}
 
-          {/* Beat / audio-map CTA */}
-          {showBeat && (
-            <button
-              type="button"
-              className={`${styles.ctaBtn} ${styles.ctaBeat}${beatActive ? ` ${styles.ctaBeatActive}` : ""}`}
-              onClick={beatActive ? onUnlinkBeat : onQuickBeat}
-              title={
-                beatActive
-                  ? `Beat-mapped: ${audioMapping?.sourceLabel ?? ""}. Click to unlink.`
-                  : "Link to beat — pulses on detected beat"
-              }
-            >
-              ♩
-            </button>
-          )}
+            {/* Beat / audio-map CTA */}
+            {showBeat && (
+              <button
+                type="button"
+                className={`${styles.ctaBtn} ${styles.ctaBeat}${beatActive ? ` ${styles.ctaBeatActive}` : ""}`}
+                onClick={beatActive ? onUnlinkBeat : onQuickBeat}
+                title={
+                  beatActive
+                    ? `Beat-mapped: ${audioMapping?.sourceLabel ?? ""}. Click to unlink.`
+                    : "Link to beat — pulses on detected beat"
+                }
+              >
+                ♩
+              </button>
+            )}
 
-          {/* LFO CTA */}
-          {showLfo && (
-            <button
-              type="button"
-              className={`${styles.ctaBtn} ${styles.ctaLfo}${lfoActive ? ` ${styles.ctaLfoActive}` : ""}`}
-              onClick={lfoActive ? onUnlinkLfo : onQuickLfo}
-              title={
-                lfoActive
-                  ? (modulationIndicator?.count && modulationIndicator.count > 1
-                    ? `Modulated by ${modulationIndicator.count} LFOs. Click to unlink.`
-                    : `Modulated by ${modulationIndicator?.lfoName ?? "LFO"}. Click to unlink.`)
-                  : "Link to LFO — continuous oscillation"
-              }
-            >
-              {lfoActive && modulationIndicator?.lfoShape ? (
-                <LfoShapeIcon shape={modulationIndicator.lfoShape} width={10} />
-              ) : (
-                "~"
-              )}
-            </button>
-          )}
+            {/* LFO CTA */}
+            {showLfo && (
+              <button
+                type="button"
+                className={`${styles.ctaBtn} ${styles.ctaLfo}${lfoActive ? ` ${styles.ctaLfoActive}` : ""}`}
+                onClick={lfoActive ? onUnlinkLfo : onQuickLfo}
+                title={
+                  lfoActive
+                    ? modulationIndicator?.count &&
+                      modulationIndicator.count > 1
+                      ? `Modulated by ${modulationIndicator.count} LFOs. Click to unlink.`
+                      : `Modulated by ${modulationIndicator?.lfoName ?? "LFO"}. Click to unlink.`
+                    : "Link to LFO — continuous oscillation"
+                }
+              >
+                {lfoActive && modulationIndicator?.lfoShape ? (
+                  <LfoShapeIcon
+                    shape={modulationIndicator.lfoShape}
+                    width={10}
+                  />
+                ) : (
+                  "~"
+                )}
+              </button>
+            )}
           </div>
         </div>
       ) : (
-        <label htmlFor={id} className={styles.label}>{label}</label>
+        <label htmlFor={id} className={styles.label}>
+          {label}
+        </label>
       )}
     </div>
   );

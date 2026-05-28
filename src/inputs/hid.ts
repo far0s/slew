@@ -168,7 +168,7 @@ export async function addHidMapping(mapping: HidMapping): Promise<void> {
 
 /** Remove an HID mapping by encoder index. */
 export async function removeHidMapping(encoderIndex: number): Promise<void> {
-  return invoke("remove_hid_mapping", { encoder_index: encoderIndex });
+  return invoke("remove_hid_mapping", { encoderIndex });
 }
 
 /** Clear all HID mappings. */
@@ -359,42 +359,83 @@ export function useHidDevice() {
   };
 }
 
+// ============================================================================
+// Shared HID mappings store — one source of truth for all hook instances
+// ============================================================================
+
+type HidMappingsListener = (mappings: HidMapping[]) => void;
+
+let _hidMappings: HidMapping[] = [];
+let _hidMappingsLoaded = false;
+const _hidMappingsListeners = new Set<HidMappingsListener>();
+
+function _setHidMappings(next: HidMapping[]) {
+  _hidMappings = next;
+  for (const fn of _hidMappingsListeners) fn(next);
+}
+
+async function _refetchHidMappings(): Promise<HidMapping[]> {
+  const result = await getHidMappings();
+  _setHidMappings(result);
+  return result;
+}
+
+/** Mutate HID mappings and broadcast to all hook instances. */
+export async function commitHidMapping(mapping: HidMapping): Promise<void> {
+  await addHidMapping(mapping);
+  await _refetchHidMappings();
+}
+
+/** Remove a HID mapping by encoder index and broadcast. */
+export async function deleteHidMapping(encoderIndex: number): Promise<void> {
+  await removeHidMapping(encoderIndex);
+  await _refetchHidMappings();
+}
+
 /**
- * Hook for managing HID mappings (legacy, for direct parameter control).
+ * Hook for managing HID mappings. All instances share the same in-memory
+ * store so that mutations in one component (e.g. LearnButton) are
+ * immediately visible in all others without a full re-mount.
  */
 export function useHidMappings() {
-  const [mappings, setMappings] = useState<HidMapping[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [mappings, setMappings] = useState<HidMapping[]>(_hidMappings);
+  const [isLoading, setIsLoading] = useState(!_hidMappingsLoaded);
 
-  // Fetch mappings on mount
   useEffect(() => {
-    void getHidMappings().then((result) => {
-      setMappings(result);
+    _hidMappingsListeners.add(setMappings);
+
+    // Initial fetch only if not already loaded by another instance
+    if (!_hidMappingsLoaded) {
+      void getHidMappings().then((result) => {
+        _hidMappingsLoaded = true;
+        _setHidMappings(result);
+        setIsLoading(false);
+      });
+    } else {
       setIsLoading(false);
-    });
+    }
+
+    return () => {
+      _hidMappingsListeners.delete(setMappings);
+    };
   }, []);
 
   const addMapping = useCallback(async (mapping: HidMapping) => {
-    await addHidMapping(mapping);
-    const result = await getHidMappings();
-    setMappings(result);
+    await commitHidMapping(mapping);
   }, []);
 
   const removeMapping = useCallback(async (encoderIndex: number) => {
-    await removeHidMapping(encoderIndex);
-    const result = await getHidMappings();
-    setMappings(result);
+    await deleteHidMapping(encoderIndex);
   }, []);
 
   const clearAll = useCallback(async () => {
     await clearHidMappings();
-    setMappings([]);
+    _setHidMappings([]);
   }, []);
 
   const setupDefaults = useCallback(async () => {
     await setupDefaultHidMappings();
-    const result = await getHidMappings();
-    setMappings(result);
+    await _refetchHidMappings();
   }, []);
 
   const getMappingForEncoder = useCallback(
@@ -404,14 +445,32 @@ export function useHidMappings() {
     [mappings],
   );
 
+  const getMappingForParameter = useCallback(
+    (parameterId: string): HidMapping | undefined => {
+      return mappings.find((m) => m.parameter_id === parameterId);
+    },
+    [mappings],
+  );
+
+  const removeMappingForParameter = useCallback(
+    async (parameterId: string) => {
+      const mapping = mappings.find((m) => m.parameter_id === parameterId);
+      if (!mapping) return;
+      await deleteHidMapping(mapping.encoder_index);
+    },
+    [mappings],
+  );
+
   return {
     mappings,
     isLoading,
     addMapping,
     removeMapping,
+    removeMappingForParameter,
     clearAll,
     setupDefaults,
     getMappingForEncoder,
+    getMappingForParameter,
   };
 }
 
@@ -654,6 +713,64 @@ export function useMacropad(
   }, [encoderSensitivity]);
 
   return state;
+}
+
+// ============================================================================
+// HID Learn — frontend-only singleton learn state
+// ============================================================================
+
+interface HidLearnState {
+  isLearning: boolean;
+  parameterId: string | null;
+}
+
+type HidLearnListener = (state: HidLearnState) => void;
+
+let _hidLearnState: HidLearnState = { isLearning: false, parameterId: null };
+const _hidLearnListeners = new Set<HidLearnListener>();
+
+function _setHidLearnState(next: HidLearnState) {
+  _hidLearnState = next;
+  for (const fn of _hidLearnListeners) fn(next);
+}
+
+/**
+ * Hook for HID encoder Learn functionality.
+ *
+ * Works entirely in the frontend: stores learn state in a module-level
+ * singleton so all mounted HidLearnButton instances share the same
+ * "one active learn at a time" constraint — no backend round-trip needed.
+ *
+ * Usage:
+ *   1. Call `startLearn(parameterId)` — enters learn mode.
+ *   2. The user turns any encoder — `useHidLearn` listens to `hid_encoder`
+ *      events and resolves the mapping automatically.
+ *   3. Mapping is persisted via `add_hid_mapping` Tauri command.
+ */
+export function useHidLearn() {
+  const [state, setState] = useState<HidLearnState>(_hidLearnState);
+
+  useEffect(() => {
+    _hidLearnListeners.add(setState);
+    return () => {
+      _hidLearnListeners.delete(setState);
+    };
+  }, []);
+
+  const startLearn = useCallback((parameterId: string) => {
+    _setHidLearnState({ isLearning: true, parameterId });
+  }, []);
+
+  const cancelLearn = useCallback(() => {
+    _setHidLearnState({ isLearning: false, parameterId: null });
+  }, []);
+
+  return {
+    isLearning: state.isLearning,
+    learningParameterId: state.parameterId,
+    startLearn,
+    cancelLearn,
+  };
 }
 
 /**
