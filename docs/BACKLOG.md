@@ -166,27 +166,6 @@ Improve the cold-start experience with a polished launch animation and soft prel
 
 ### Control & Mapping
 
-#### 🟢 MIDI Panel — Device Schematic & Clock UI `feature` `design`
-
-**Completed** — see `src/components/panels/MidiPanel/`.
-
-**What shipped:**
-
-- `DeviceSchematic` modal — top-down CSS grid of each controller's physical layout; controls highlighted green (mapped) / grey (unmapped); click any control for a mapping popover
-- Layout definitions in `src/inputs/deviceLayouts.ts` for: Akai Midimix, APC Mini mk1, APC Mini mk2, Akai MPD218; unknown devices fall back to auto-generated CC grid
-- `MidiClockStrip` — always-visible horizontal strip in MidiPanel showing clock source (selector dropdown), live BPM, and Locked / Drifting / No Signal badge
-- `⊞` "View Device" button appears on each connected device row
-- `useMidiCombinedDevices` now keys by device `id`, fixing duplicate same-model devices collapsing into one entry
-- Collapsible **Schematic Browser** debug section lists all built-in layouts so you can inspect schematics without hardware connected
-
-**Remaining / future:**
-- [ ] Phase offset nudge slider on clock strip
-- [ ] MIDI Clock master (send) mode
-- [ ] Community layout files from `~/.slew/device-layouts/`
-- [ ] Mapping assign/clear directly from schematic popover (currently read-only)
-
----
-
 #### 🟡 DMX Lighting Control `feature`
 
 OSC → DMX integration for lighting.

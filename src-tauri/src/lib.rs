@@ -12,6 +12,7 @@ pub mod hid;
 pub mod link;
 pub mod midi;
 pub mod midi_clock;
+pub mod midi_clock_out;
 pub mod modulation;
 pub mod osc;
 pub mod parameter_store;
@@ -108,6 +109,7 @@ pub fn run() {
 
             updater::init_updater(app.handle().clone());
             midi_clock::init_midi_clock_engine(app.handle().clone());
+            midi_clock_out::init_midi_clock_out_engine(app.handle().clone());
             link::init_link_engine(app.handle().clone());
             start_parameter_tick_loop(app.handle().clone());
 
@@ -243,11 +245,17 @@ pub fn run() {
             modulation::commands::get_full_modulation_state,
             modulation::commands::is_parameter_modulated_cmd,
             modulation::commands::set_manual_bpm,
-            // MIDI Clock
+            // MIDI Clock input
             midi_clock::list_midi_clock_ports_cmd,
             midi_clock::connect_midi_clock_cmd,
             midi_clock::disconnect_midi_clock_cmd,
             midi_clock::get_midi_clock_status_cmd,
+            midi_clock::set_midi_clock_phase_offset_cmd,
+            // MIDI Clock output
+            midi_clock_out::enable_midi_clock_out_cmd,
+            midi_clock_out::disable_midi_clock_out_cmd,
+            midi_clock_out::get_midi_clock_out_status_cmd,
+            midi_clock_out::list_midi_clock_out_ports_cmd,
             // Ableton Link
             link::enable_link_cmd,
             link::get_link_status_cmd,

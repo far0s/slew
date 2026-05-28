@@ -4,6 +4,7 @@ pub(crate) mod apc_mini;
 pub mod commands;
 pub mod connections;
 pub(crate) mod constants;
+pub mod device_layouts;
 pub mod devices;
 pub mod engine;
 pub(crate) mod events;

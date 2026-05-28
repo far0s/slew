@@ -26,12 +26,15 @@ pub struct MidiClockStatus {
     pub device_id: Option<String>,
     pub is_connected: bool,
     pub bpm: Option<f64>,
+    pub phase_offset: f64,
 }
 
 /// Persisted preference: which port to auto-connect on start.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct MidiClockPrefs {
     device_id: String,
+    #[serde(default)]
+    phase_offset: f64,
 }
 
 const PREFS_FILENAME: &str = "midi_clock_prefs.json";
@@ -54,6 +57,8 @@ struct MidiClockState {
     pulse_count: u32,
     /// Last computed BPM (for status queries).
     current_bpm: Option<f64>,
+    /// Phase offset in beats (-0.5..0.5), shifts which pulse fires the beat.
+    phase_offset: f64,
 }
 
 impl MidiClockState {
@@ -65,6 +70,7 @@ impl MidiClockState {
             pulse_times: VecDeque::with_capacity(RING_BUF_SIZE),
             pulse_count: 0,
             current_bpm: None,
+            phase_offset: 0.0,
         }
     }
 }
@@ -90,7 +96,14 @@ pub fn init_midi_clock_engine(app_handle: AppHandle) {
     // Auto-reconnect from saved prefs.
     if let Some(path) = persistence::local_data_path(PREFS_FILENAME) {
         if let Some(prefs) = persistence::load_json::<MidiClockPrefs>(&path, "MidiClock") {
-            log::debug!("[MidiClock] Auto-reconnecting to saved device: {}", prefs.device_id);
+            // Restore phase offset before reconnecting.
+            with_midi_clock_engine(|state| {
+                state.phase_offset = prefs.phase_offset;
+            });
+            log::debug!(
+                "[MidiClock] Auto-reconnecting to saved device: {}",
+                prefs.device_id
+            );
             if let Err(e) = connect_midi_clock(prefs.device_id, Some(app_handle)) {
                 log::warn!("[MidiClock] Auto-reconnect failed: {}", e);
             }
@@ -185,12 +198,20 @@ pub fn connect_midi_clock(device_id: String, app_handle: Option<AppHandle>) -> R
         }
     });
 
-    log::debug!("[MidiClock] Connected to port {} ({})", device_id, port_name);
+    log::debug!(
+        "[MidiClock] Connected to port {} ({})",
+        device_id,
+        port_name
+    );
     emit_status_changed();
 
     // Persist preference.
     if let Some(path) = persistence::local_data_path(PREFS_FILENAME) {
-        let prefs = MidiClockPrefs { device_id };
+        let current_phase = with_midi_clock_engine(|s| s.phase_offset);
+        let prefs = MidiClockPrefs {
+            device_id,
+            phase_offset: current_phase,
+        };
         if let Err(e) = persistence::save_json(&path, &prefs, "MidiClock") {
             log::warn!("[MidiClock] Failed to save prefs: {}", e);
         }
@@ -261,8 +282,21 @@ fn handle_clock_message(engine: &Arc<Mutex<MidiClockState>>, message: &[u8]) {
         app_handle = state.app_handle.clone();
     }
 
-    // Report a beat once every 24 pulses (one quarter note).
-    if pulse_count_for_beat >= PULSES_PER_BEAT {
+    // Determine which pulse index (0-based) within the 24-pulse cycle fires the beat.
+    // phase_offset is in beats: 0.0=first pulse, 0.5=mid-cycle, etc.
+    let offset_pulses = {
+        let phase = with_midi_clock_engine(|s| s.phase_offset);
+        ((phase * PULSES_PER_BEAT as f64).round() as i32).rem_euclid(PULSES_PER_BEAT as i32) as u32
+    };
+
+    // Fire beat when pulse_count_for_beat (1-based, pre-reset) equals offset_pulses+1.
+    // Special case: offset_pulses=0 fires at the natural boundary (count >= PULSES_PER_BEAT).
+    let fire_beat = if offset_pulses == 0 {
+        pulse_count_for_beat >= PULSES_PER_BEAT
+    } else {
+        pulse_count_for_beat == offset_pulses
+    };
+    if fire_beat {
         crate::bpm::report_beat(BpmSourceKind::MidiClock, maybe_bpm, app_handle.as_ref());
         log::debug!("[MidiClock] Beat @ {:?} BPM", maybe_bpm);
         // Also emit status so frontend can see live BPM.
@@ -314,7 +348,29 @@ pub fn get_midi_clock_status() -> MidiClockStatus {
         device_id: state.device_id.clone(),
         is_connected: state.connection.is_some(),
         bpm: state.current_bpm,
+        phase_offset: state.phase_offset,
     })
+}
+
+/// Set the phase offset (in beats, -0.5..0.5) and persist it.
+pub fn set_midi_clock_phase_offset(offset: f64) {
+    let clamped = offset.clamp(-0.5, 0.5);
+    with_midi_clock_engine(|state| {
+        state.phase_offset = clamped;
+    });
+
+    // Persist with existing device_id (if any).
+    if let Some(path) = persistence::local_data_path(PREFS_FILENAME) {
+        let existing = persistence::load_json::<MidiClockPrefs>(&path, "MidiClock");
+        if let Some(mut prefs) = existing {
+            prefs.phase_offset = clamped;
+            if let Err(e) = persistence::save_json(&path, &prefs, "MidiClock") {
+                log::warn!("[MidiClock] Failed to save phase_offset prefs: {}", e);
+            }
+        }
+    }
+
+    emit_status_changed();
 }
 
 fn emit_status_changed() {
@@ -328,6 +384,7 @@ fn emit_status_changed_with_handle(handle: Option<&AppHandle>) {
             device_id: state.device_id.clone(),
             is_connected: state.connection.is_some(),
             bpm: state.current_bpm,
+            phase_offset: state.phase_offset,
         });
         let _ = h.emit("midi_clock_status_changed", status);
     }
@@ -355,4 +412,9 @@ pub fn disconnect_midi_clock_cmd() -> Result<(), String> {
 #[tauri::command]
 pub fn get_midi_clock_status_cmd() -> MidiClockStatus {
     get_midi_clock_status()
+}
+
+#[tauri::command]
+pub fn set_midi_clock_phase_offset_cmd(offset: f64) {
+    set_midi_clock_phase_offset(offset);
 }

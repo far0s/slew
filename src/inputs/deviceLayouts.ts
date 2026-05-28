@@ -5,6 +5,9 @@
  * to render a top-down visual of each controller with control positions.
  */
 
+import { invoke } from "@tauri-apps/api/core";
+import { useEffect, useState } from "react";
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -611,4 +614,75 @@ export function buildGenericLayout(
     gridRows: rows,
     controls,
   };
+}
+
+// ============================================================================
+// Community layouts (loaded from ~/.slew/device-layouts/)
+// ============================================================================
+
+/** Matches the Rust CommunityControl struct (camelCase via serde rename_all) */
+export interface CommunityControl {
+  kind: string;
+  col: number;
+  row: number;
+  colSpan?: number;
+  rowSpan?: number;
+  cc?: number;
+  note?: number;
+  channel?: number | null;
+  label: string;
+}
+
+/** Matches the Rust CommunityLayout struct (camelCase via serde rename_all) */
+export interface CommunityLayout {
+  name: string;
+  /** Raw regex string — converted to RegExp by toCommunityDeviceLayout() */
+  matchPattern: string;
+  gridCols: number;
+  gridRows: number;
+  controls: CommunityControl[];
+}
+
+/** Invoke the Tauri command to load all community layouts from disk. */
+export async function loadCommunityLayouts(): Promise<CommunityLayout[]> {
+  return invoke<CommunityLayout[]>("load_community_layouts_cmd");
+}
+
+/** Convert a community layout JSON record to a proper DeviceLayout. */
+export function toCommunityDeviceLayout(c: CommunityLayout): DeviceLayout {
+  return {
+    name: c.name,
+    matchPattern: new RegExp(c.matchPattern, "i"),
+    gridCols: c.gridCols,
+    gridRows: c.gridRows,
+    controls: c.controls.map((ctrl) => ({
+      kind: ctrl.kind as ControlKind,
+      col: ctrl.col,
+      row: ctrl.row,
+      colSpan: ctrl.colSpan,
+      rowSpan: ctrl.rowSpan,
+      cc: ctrl.cc,
+      note: ctrl.note,
+      channel: ctrl.channel ?? null,
+      label: ctrl.label,
+    })),
+  };
+}
+
+/**
+ * Hook: loads community layouts once on mount.
+ * Returns the converted DeviceLayout array (empty until loaded).
+ */
+export function useCommunityLayouts(): DeviceLayout[] {
+  const [layouts, setLayouts] = useState<DeviceLayout[]>([]);
+
+  useEffect(() => {
+    loadCommunityLayouts()
+      .then((raw) => setLayouts(raw.map(toCommunityDeviceLayout)))
+      .catch((err) =>
+        console.warn("[deviceLayouts] Failed to load community layouts:", err),
+      );
+  }, []);
+
+  return layouts;
 }

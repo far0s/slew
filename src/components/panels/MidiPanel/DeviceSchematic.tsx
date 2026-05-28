@@ -3,14 +3,17 @@
  *
  * Modal overlay showing a top-down physical layout of a MIDI controller.
  * Each control is highlighted green (has a mapping) or grey (no mapping).
- * Clicking a control shows a popover with mapping info.
+ * Clicking a control shows a popover with mapping info, clear buttons, and
+ * a MIDI-learn form for unmapped controls.
  */
 
 import { useState, useEffect, useRef } from "react";
 import type { MidiMapping } from "@/inputs/midi";
+import { removeMidiMapping, startMidiLearn } from "@/inputs/midi";
 import {
   findLayout,
   buildGenericLayout,
+  useCommunityLayouts,
   type ControlDef,
   type DeviceLayout,
 } from "@/inputs/deviceLayouts";
@@ -55,12 +58,17 @@ function ControlCell({
   control,
   mappings,
   cellSize,
+  onRemoveMapping,
+  onStartLearn,
 }: {
   control: ControlDef;
   mappings: MidiMapping[];
   cellSize: number;
+  onRemoveMapping?: (parameterId: string) => void;
+  onStartLearn?: (parameterId: string, min: number, max: number) => void;
 }) {
   const [showPopover, setShowPopover] = useState(false);
+  const [learnParam, setLearnParam] = useState("");
   const ref = useRef<HTMLButtonElement>(null);
   const hasMappings = mappings.length > 0;
 
@@ -105,7 +113,11 @@ function ControlCell({
       {control.kind === "fader" && <span className={styles.faderTrack} />}
 
       {showPopover && (
-        <div className={styles.popover} role="tooltip">
+        <div
+          className={styles.popover}
+          role="dialog"
+          onClick={(e) => e.stopPropagation()}
+        >
           <p className={styles.popoverLabel}>{control.label}</p>
           {hasMappings ? (
             <ul className={styles.popoverMappings}>
@@ -115,11 +127,46 @@ function ControlCell({
                   <span className={styles.popoverRange}>
                     {m.min_value}–{m.max_value}
                   </span>
+                  {onRemoveMapping && (
+                    <button
+                      type="button"
+                      className={styles.removeMapBtn}
+                      onClick={() => onRemoveMapping(m.parameter_id)}
+                      aria-label={`Remove mapping for ${m.parameter_id}`}
+                    >
+                      ×
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className={styles.popoverEmpty}>No mapping</p>
+            <div className={styles.learnForm}>
+              <p className={styles.popoverEmpty}>No mapping</p>
+              {onStartLearn && (
+                <>
+                  <input
+                    className={styles.learnInput}
+                    placeholder="parameter id"
+                    value={learnParam}
+                    onChange={(e) => setLearnParam(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <button
+                    type="button"
+                    className={styles.learnBtn}
+                    disabled={!learnParam.trim()}
+                    onClick={() => {
+                      onStartLearn(learnParam.trim(), 0, 1);
+                      setShowPopover(false);
+                      setLearnParam("");
+                    }}
+                  >
+                    Learn
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -137,9 +184,13 @@ const CELL_SIZE_SMALL = 26;
 function SchematicGrid({
   layout,
   mappings,
+  onRemoveMapping,
+  onStartLearn,
 }: {
   layout: DeviceLayout;
   mappings: MidiMapping[];
+  onRemoveMapping?: (parameterId: string) => void;
+  onStartLearn?: (parameterId: string, min: number, max: number) => void;
 }) {
   const cellSize = layout.gridCols > 8 ? CELL_SIZE_SMALL : CELL_SIZE;
 
@@ -161,6 +212,8 @@ function SchematicGrid({
             control={control}
             mappings={ctrlMappings}
             cellSize={cellSize}
+            onRemoveMapping={onRemoveMapping}
+            onStartLearn={onStartLearn}
           />
         );
       })}
@@ -191,11 +244,20 @@ export function DeviceSchematic({
   seenCcs,
   onClose,
 }: DeviceSchematicProps) {
+  const communityLayouts = useCommunityLayouts();
+
+  const builtinLayout = findLayout(deviceName);
+  const communityLayout =
+    builtinLayout === null
+      ? (communityLayouts.find((l) => l.matchPattern.test(deviceName)) ?? null)
+      : null;
+
   const layout: DeviceLayout =
-    findLayout(deviceName) ??
+    builtinLayout ??
+    communityLayout ??
     buildGenericLayout(deviceName, seenCcs ?? []);
 
-  const isGeneric = !findLayout(deviceName);
+  const isGeneric = builtinLayout === null && communityLayout === null;
 
   // Filter mappings to this device (device-specific + any-device)
   const deviceMappings = mappings.filter(
@@ -205,6 +267,27 @@ export function DeviceSchematic({
   const mappedCount = layout.controls.filter(
     (c) => mappingsForControl(c, deviceMappings).length > 0,
   ).length;
+
+  // Callbacks wired directly to Tauri commands
+  const handleRemoveMapping = async (parameterId: string) => {
+    try {
+      await removeMidiMapping(parameterId);
+    } catch (err) {
+      console.error("[DeviceSchematic] removeMidiMapping failed:", err);
+    }
+  };
+
+  const handleStartLearn = async (
+    parameterId: string,
+    min: number,
+    max: number,
+  ) => {
+    try {
+      await startMidiLearn(parameterId, min, max);
+    } catch (err) {
+      console.error("[DeviceSchematic] startMidiLearn failed:", err);
+    }
+  };
 
   // Close on Escape
   useEffect(() => {
@@ -232,6 +315,11 @@ export function DeviceSchematic({
             {isGeneric && (
               <p className={styles.genericNote}>
                 No layout definition — showing auto-generated grid
+              </p>
+            )}
+            {communityLayout !== null && (
+              <p className={styles.genericNote}>
+                Community layout: {communityLayout.name}
               </p>
             )}
           </div>
@@ -268,7 +356,12 @@ export function DeviceSchematic({
               the grid.
             </p>
           ) : (
-            <SchematicGrid layout={layout} mappings={deviceMappings} />
+            <SchematicGrid
+              layout={layout}
+              mappings={deviceMappings}
+              onRemoveMapping={handleRemoveMapping}
+              onStartLearn={handleStartLearn}
+            />
           )}
         </div>
       </div>

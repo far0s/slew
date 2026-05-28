@@ -50,13 +50,25 @@ vi.mock("@/inputs/midi", () => ({
 // Mock MIDI clock hook
 vi.mock("@/inputs/bpmSource", () => ({
   useMidiClock: () => ({
-    status: { device_id: null, is_connected: false, bpm: null },
+    status: {
+      device_id: null,
+      is_connected: false,
+      bpm: null,
+      phase_offset: 0,
+    },
     ports: [],
     isLoading: false,
     connect: vi.fn(),
     disconnect: vi.fn(),
     refreshPorts: vi.fn(),
   }),
+  getMidiClockOutStatus: vi
+    .fn()
+    .mockResolvedValue({ enabled: false, device_id: null, device_name: null }),
+  setMidiClockPhaseOffset: vi.fn().mockResolvedValue(undefined),
+  enableMidiClockOut: vi.fn().mockResolvedValue(undefined),
+  disableMidiClockOut: vi.fn().mockResolvedValue(undefined),
+  listMidiClockOutPorts: vi.fn().mockResolvedValue([]),
 }));
 
 // Mock window.confirm

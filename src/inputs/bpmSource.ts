@@ -14,7 +14,13 @@ import { useEventListener, useFetchOnMount } from "./shared";
 // ============================================================================
 
 /** The possible BPM input sources, matching the Rust `BpmSourceKind` enum. */
-export type BpmSourceKind = "idle" | "manual" | "osc" | "midi_clock" | "microphone" | "link";
+export type BpmSourceKind =
+  | "idle"
+  | "manual"
+  | "osc"
+  | "midi_clock"
+  | "microphone"
+  | "link";
 
 /** Event payload emitted when the active BPM source or BPM value changes. */
 export interface BpmSourceChangedEvent {
@@ -44,6 +50,15 @@ export interface MidiClockStatus {
   is_connected: boolean;
   /** The most recently computed BPM from MIDI clock, or null */
   bpm: number | null;
+  /** Phase offset in beats, -0.5..0.5 */
+  phase_offset: number;
+}
+
+/** Status of the MIDI Clock output (master send mode). */
+export interface MidiClockOutStatus {
+  enabled: boolean;
+  device_id: string | null;
+  device_name: string | null;
 }
 
 /** A MIDI device available for MIDI Clock input. */
@@ -110,6 +125,31 @@ export async function disconnectMidiClock(): Promise<void> {
 /** Get the current MIDI Clock receiver status. */
 export async function getMidiClockStatus(): Promise<MidiClockStatus> {
   return invoke<MidiClockStatus>("get_midi_clock_status");
+}
+
+/** Set the MIDI Clock phase offset (beats, -0.5..0.5). */
+export async function setMidiClockPhaseOffset(offset: number): Promise<void> {
+  return invoke<void>("set_midi_clock_phase_offset_cmd", { offset });
+}
+
+/** Enable MIDI Clock output on the given device. */
+export async function enableMidiClockOut(deviceId: string): Promise<void> {
+  return invoke<void>("enable_midi_clock_out_cmd", { device_id: deviceId });
+}
+
+/** Disable MIDI Clock output. */
+export async function disableMidiClockOut(): Promise<void> {
+  return invoke<void>("disable_midi_clock_out_cmd");
+}
+
+/** Get current MIDI Clock output status. */
+export async function getMidiClockOutStatus(): Promise<MidiClockOutStatus> {
+  return invoke<MidiClockOutStatus>("get_midi_clock_out_status_cmd");
+}
+
+/** List MIDI output ports available for clock send. */
+export async function listMidiClockOutPorts(): Promise<MidiDeviceInfo[]> {
+  return invoke<MidiDeviceInfo[]>("list_midi_clock_out_ports_cmd");
 }
 
 // ============================================================================
@@ -190,6 +230,7 @@ const DEFAULT_MIDI_CLOCK_STATUS: MidiClockStatus = {
   device_id: null,
   is_connected: false,
   bpm: null,
+  phase_offset: 0,
 };
 
 /**
