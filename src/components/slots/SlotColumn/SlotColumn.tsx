@@ -15,6 +15,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   Cross2Icon,
+  EnterFullScreenIcon,
   EyeOpenIcon,
   EyeClosedIcon,
   MagnifyingGlassIcon,
@@ -155,7 +156,9 @@ function PanelSlotContent({
           : MOTION_ANIMATE_IDLE
       }
       exit={MOTION_EXIT}
-      transition={isDragging ? MOTION_TRANSITION_DRAG : MOTION_TRANSITION_NORMAL}
+      transition={
+        isDragging ? MOTION_TRANSITION_DRAG : MOTION_TRANSITION_NORMAL
+      }
       layout={!isDragging}
       layoutDependency={layoutDependency}
       style={isDragging ? MOTION_STYLE_DRAGGING : MOTION_STYLE_IDLE}
@@ -194,8 +197,14 @@ export interface SlotColumnProps {
   rendererAspectRatio?: number;
   excludeSketchIds: SketchId[];
   canRemove: boolean;
-  getSlotSketchParams?: (slotIndex: number, sketchId: SketchId) => SketchProps["params"];
-  getSlotSketchParamsInterpolated?: (slotIndex: number, sketchId: SketchId) => SketchProps["params"];
+  getSlotSketchParams?: (
+    slotIndex: number,
+    sketchId: SketchId,
+  ) => SketchProps["params"];
+  getSlotSketchParamsInterpolated?: (
+    slotIndex: number,
+    sketchId: SketchId,
+  ) => SketchProps["params"];
   colors?: SketchProps["colors"];
   alpha?: number;
 
@@ -221,6 +230,9 @@ export interface SlotColumnProps {
   onUnlinkLfo?: (parameterId: string) => void;
   highlightedParamIds?: Set<string>;
   onHighlightParams?: (ids: Set<string>) => void;
+  onOpenOverlay?: () => void;
+  /** When true, the slot preview canvas is paused (overlay is open for another slot) */
+  isPreviewPaused?: boolean;
   panelId?: PanelId | null;
   onOpenPanel?: (panelId: PanelId) => void;
   onClosePanel?: () => void;
@@ -387,7 +399,9 @@ const InlineSketchBrowser = memo(function InlineSketchBrowser({
           : MOTION_ANIMATE_IDLE
       }
       exit={MOTION_EXIT}
-      transition={isDragging ? MOTION_TRANSITION_DRAG : MOTION_TRANSITION_NORMAL}
+      transition={
+        isDragging ? MOTION_TRANSITION_DRAG : MOTION_TRANSITION_NORMAL
+      }
       layout={!isDragging}
       layoutDependency={layoutDependency}
       style={isDragging ? MOTION_STYLE_DRAGGING : MOTION_STYLE_IDLE}
@@ -532,7 +546,7 @@ function PreviewContainer({
   }, []);
 
   const containerStyle = useMemo(
-    () => ({ "--renderer-aspect-ratio": aspectRatio } as React.CSSProperties),
+    () => ({ "--renderer-aspect-ratio": aspectRatio }) as React.CSSProperties,
     [aspectRatio],
   );
 
@@ -582,6 +596,8 @@ export const SlotColumn = memo(function SlotColumn({
   onUnlinkLfo,
   highlightedParamIds,
   onHighlightParams,
+  onOpenOverlay,
+  isPreviewPaused = false,
   panelId,
   onOpenPanel,
   onClosePanel,
@@ -591,11 +607,17 @@ export const SlotColumn = memo(function SlotColumn({
   layoutDependency,
 }: SlotColumnProps) {
   const params = useMemo(
-    () => (sketchId && getSlotSketchParams) ? getSlotSketchParams(slotIndex, sketchId) : undefined,
+    () =>
+      sketchId && getSlotSketchParams
+        ? getSlotSketchParams(slotIndex, sketchId)
+        : undefined,
     [getSlotSketchParams, slotIndex, sketchId],
   );
   const previewParams = useMemo(
-    () => (sketchId && getSlotSketchParamsInterpolated) ? getSlotSketchParamsInterpolated(slotIndex, sketchId) : undefined,
+    () =>
+      sketchId && getSlotSketchParamsInterpolated
+        ? getSlotSketchParamsInterpolated(slotIndex, sketchId)
+        : undefined,
     [getSlotSketchParamsInterpolated, slotIndex, sketchId],
   );
 
@@ -687,7 +709,9 @@ export const SlotColumn = memo(function SlotColumn({
           : MOTION_ANIMATE_IDLE
       }
       exit={MOTION_EXIT}
-      transition={isDragging ? MOTION_TRANSITION_DRAG : MOTION_TRANSITION_NORMAL}
+      transition={
+        isDragging ? MOTION_TRANSITION_DRAG : MOTION_TRANSITION_NORMAL
+      }
       layout={!isDragging}
       layoutDependency={layoutDependency}
       style={isDragging ? MOTION_STYLE_DRAGGING : MOTION_STYLE_IDLE}
@@ -705,12 +729,29 @@ export const SlotColumn = memo(function SlotColumn({
               colors={colors}
               onStreamingChange={setIsSlotStreaming}
               externalRefreshKey={slotRefreshKey}
+              paused={isPreviewPaused}
             />
           </Suspense>
         ) : (
           <div className={styles.fallback}>Unknown sketch: {sketchId}</div>
         )}
         <div className={styles.alphaOverlay}>
+          {onOpenOverlay && !isPreviewHidden && (
+            <>
+              <button
+                className={styles.previewToggleButton}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenOverlay();
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                title="Open full editor"
+                aria-label="Open full editor"
+              >
+                <EnterFullScreenIcon />
+              </button>
+            </>
+          )}
           <button
             className={styles.previewToggleButton}
             onClick={(e) => {
@@ -869,6 +910,7 @@ function SlotPreview({
   colors,
   onStreamingChange,
   externalRefreshKey = 0,
+  paused = false,
 }: {
   slotIndex: number;
   SketchComponent: React.ComponentType<SketchProps>;
@@ -876,6 +918,7 @@ function SlotPreview({
   colors?: SketchProps["colors"];
   onStreamingChange?: (isStreaming: boolean) => void;
   externalRefreshKey?: number;
+  paused?: boolean;
 }) {
   // Whether streaming is enabled in backend config
   const [streamingEnabled, setStreamingEnabled] = useState(false);
@@ -932,7 +975,7 @@ function SlotPreview({
       <WebGPUCanvas
         key={refreshKey}
         camera={{ position: [0, 0, 4], fov: 50 }}
-        frameloop="always"
+        frameloop={paused ? "never" : "always"}
         dpr={1}
         fallback={<div className={styles.fallback}>Initializing…</div>}
       >

@@ -113,20 +113,6 @@ Create troubleshooting guide for video output setup.
 
 ### Core UX
 
-#### 🟡 Full Size Slot Editor Overlay `feature`
-
-Add a full-size slot editor overlay, allowing users to focus on editing one slot at a time.
-
-**Context**: Slot preview is currently limited to a small area within the UI. Focusing on one slot at a time is a core UX improvement for visual work.
-
-**Subtasks**:
-
-- [ ] Slot preview click handler to open full-size editor
-- [ ] Full-size editor UI: slot preview takes as much space as possible, slot parameters in a sidebar
-- [ ] Make implementation as comprehensive as possible before starting the work
-
----
-
 #### 🟡 Sketch Presets `feature`
 
 Save/load parameter configurations per sketch.

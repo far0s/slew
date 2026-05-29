@@ -8,6 +8,7 @@ import type { ModulationTarget, LfoSource } from "@/inputs/modulation";
 import type { MidiMapping, MidiPickupState } from "@/inputs/midi";
 import { makeSlotParameterId } from "@/slots/slotTypes";
 import { SlotColumn, type PanelId } from "@/components/slots/SlotColumn";
+import { SlotEditorOverlay } from "@/components/slots/SlotEditorOverlay";
 import styles from "./SlotsArea.module.css";
 
 // ============================================================================
@@ -15,12 +16,12 @@ import styles from "./SlotsArea.module.css";
 // ============================================================================
 
 interface DragState {
-  slotIndex: number;   // which slot is being dragged
-  startX: number;      // pointer X at drag start (rebased on each swap)
-  currentX: number;    // current pointer X
+  slotIndex: number; // which slot is being dragged
+  startX: number; // pointer X at drag start (rebased on each swap)
+  currentX: number; // current pointer X
   columnWidth: number; // measured column width + gap
   originOrder: number[]; // displayOrder at drag start
-  currentPos: number;  // current position index in displayOrder
+  currentPos: number; // current position index in displayOrder
 }
 
 function useDragReorder(slotCount: number) {
@@ -37,7 +38,9 @@ function useDragReorder(slotCount: number) {
   }, [slotCount]);
 
   const dragRef = useRef<DragState | null>(null);
-  const [draggingSlotIndex, setDraggingSlotIndex] = useState<number | null>(null);
+  const [draggingSlotIndex, setDraggingSlotIndex] = useState<number | null>(
+    null,
+  );
   const [dragOffsetX, setDragOffsetX] = useState(0);
 
   const startDrag = useCallback(
@@ -98,7 +101,14 @@ function useDragReorder(slotCount: number) {
     document.body.style.userSelect = "";
   }, []);
 
-  return { displayOrder, draggingSlotIndex, dragOffsetX, startDrag, moveDrag, endDrag };
+  return {
+    displayOrder,
+    draggingSlotIndex,
+    dragOffsetX,
+    startDrag,
+    moveDrag,
+    endDrag,
+  };
 }
 
 export interface SlotsAreaProps {
@@ -132,7 +142,11 @@ export interface SlotsAreaProps {
   onSetSketch: (slotIndex: number, sketchId: SketchId) => void;
   onCopyToSlot: (sourceSlotIndex: number, targetSlotIndex: number) => void;
   onQuickBeat?: (parameterId: string, paramMax: number) => void;
-  onQuickLfo?: (parameterId: string, paramMin: number, paramMax: number) => void;
+  onQuickLfo?: (
+    parameterId: string,
+    paramMin: number,
+    paramMax: number,
+  ) => void;
   onUnlinkBeat?: (parameterId: string) => void;
   onUnlinkLfo?: (parameterId: string) => void;
   highlightedParamIds?: Set<string>;
@@ -185,37 +199,63 @@ export const SlotsArea = memo(function SlotsArea({
   onHighlightParams,
 }: SlotsAreaProps) {
   const filledSlots = useMemo(
-    () => slots.filter((s): s is Slot & { sketchId: SketchId } => s.sketchId !== null),
+    () =>
+      slots.filter(
+        (s): s is Slot & { sketchId: SketchId } => s.sketchId !== null,
+      ),
     [slots],
   );
 
-  const { displayOrder, draggingSlotIndex, dragOffsetX, startDrag, moveDrag, endDrag } =
-    useDragReorder(slots.length);
+  const {
+    displayOrder,
+    draggingSlotIndex,
+    dragOffsetX,
+    startDrag,
+    moveDrag,
+    endDrag,
+  } = useDragReorder(slots.length);
 
   const orderedSlots = useMemo(
     () => displayOrder.map((i) => slots[i]).filter(Boolean),
     [displayOrder, slots],
   );
 
-  const [panelSlots, setPanelSlots] = useState<Record<number, PanelId | null>>(() => {
-    try {
-      const stored = localStorage.getItem(PANEL_SLOTS_KEY);
-      if (!stored) return {};
-      const raw = JSON.parse(stored) as Record<number, string | null>;
-      const result: Record<number, PanelId | null> = {};
-      for (const [k, v] of Object.entries(raw)) {
-        result[Number(k)] = v === null ? null : (LEGACY_PANEL_MAP[v] ?? (v as PanelId));
+  const [overlaySlotIndex, setOverlaySlotIndex] = useState<number | null>(null);
+
+  const handleOpenOverlay = useCallback((slotIndex: number) => {
+    setOverlaySlotIndex(slotIndex);
+  }, []);
+
+  const handleCloseOverlay = useCallback(() => {
+    setOverlaySlotIndex(null);
+  }, []);
+
+  const [panelSlots, setPanelSlots] = useState<Record<number, PanelId | null>>(
+    () => {
+      try {
+        const stored = localStorage.getItem(PANEL_SLOTS_KEY);
+        if (!stored) return {};
+        const raw = JSON.parse(stored) as Record<number, string | null>;
+        const result: Record<number, PanelId | null> = {};
+        for (const [k, v] of Object.entries(raw)) {
+          result[Number(k)] =
+            v === null ? null : (LEGACY_PANEL_MAP[v] ?? (v as PanelId));
+        }
+        return result;
+      } catch {
+        return {};
       }
-      return result;
-    } catch {
-      return {};
-    }
-  });
+    },
+  );
 
   const handleOpenPanel = useCallback((slotIndex: number, panelId: PanelId) => {
     setPanelSlots((prev) => {
       const next = { ...prev, [slotIndex]: panelId };
-      try { localStorage.setItem(PANEL_SLOTS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      try {
+        localStorage.setItem(PANEL_SLOTS_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
       return next;
     });
   }, []);
@@ -223,7 +263,11 @@ export const SlotsArea = memo(function SlotsArea({
   const handleClosePanel = useCallback((slotIndex: number) => {
     setPanelSlots((prev) => {
       const next = { ...prev, [slotIndex]: null };
-      try { localStorage.setItem(PANEL_SLOTS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      try {
+        localStorage.setItem(PANEL_SLOTS_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
       return next;
     });
   }, []);
@@ -236,7 +280,10 @@ export const SlotsArea = memo(function SlotsArea({
       if (e.button !== 0) return;
       const target = e.target as HTMLElement;
       // Don't start drag from buttons, inputs, selects or scrollable controls
-      if (target.closest("button, input, select, [role='slider'], [data-nodrag]")) return;
+      if (
+        target.closest("button, input, select, [role='slider'], [data-nodrag]")
+      )
+        return;
 
       // Prevent text selection for the duration of the drag
       e.preventDefault();
@@ -274,15 +321,19 @@ export const SlotsArea = memo(function SlotsArea({
 
   // Stable per-slot handlers — recreate only when slot count changes
   const perSlotHandlers = useMemo(() => {
-    const map = new Map<number, {
-      onDragStart: (e: React.PointerEvent) => void;
-      onSketchChange: (sketchId: SketchId) => void;
-      onCrossfade: () => void;
-      onRemove: () => void;
-      onCopyToSlot: (sourceSlotIndex: number) => void;
-      onOpenPanel: (panelId: PanelId) => void;
-      onClosePanel: () => void;
-    }>();
+    const map = new Map<
+      number,
+      {
+        onDragStart: (e: React.PointerEvent) => void;
+        onSketchChange: (sketchId: SketchId) => void;
+        onCrossfade: () => void;
+        onRemove: () => void;
+        onCopyToSlot: (sourceSlotIndex: number) => void;
+        onOpenPanel: (panelId: PanelId) => void;
+        onClosePanel: () => void;
+        onOpenOverlay: () => void;
+      }
+    >();
     for (const slot of slots) {
       const idx = slot.index;
       map.set(idx, {
@@ -297,14 +348,16 @@ export const SlotsArea = memo(function SlotsArea({
         },
         onCrossfade: () => onCrossfadeRef.current(idx),
         onRemove: () => onClearSlotRef.current(idx),
-        onCopyToSlot: (sourceSlotIndex) => onCopyToSlotRef.current(sourceSlotIndex, idx),
+        onCopyToSlot: (sourceSlotIndex) =>
+          onCopyToSlotRef.current(sourceSlotIndex, idx),
         onOpenPanel: (panelId) => handleOpenPanel(idx, panelId),
         onClosePanel: () => handleClosePanel(idx),
+        onOpenOverlay: () => handleOpenOverlay(idx),
       });
     }
     return map;
-  // handleOpenPanel and handleClosePanel have stable [] deps; recreate only when slot count changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // handleOpenPanel and handleClosePanel have stable [] deps; recreate only when slot count changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slots.length, handleOpenPanel, handleClosePanel]);
 
   const handlePointerMove = useCallback(
@@ -395,7 +448,9 @@ export const SlotsArea = memo(function SlotsArea({
                     slotIndex={slot.index}
                     sketchId={slot.sketchId}
                     isDragging={slot.index === draggingSlotIndex}
-                    dragOffsetX={slot.index === draggingSlotIndex ? dragOffsetX : 0}
+                    dragOffsetX={
+                      slot.index === draggingSlotIndex ? dragOffsetX : 0
+                    }
                     onDragStart={handlers.onDragStart}
                     layoutDependency={slotDisplayPosition}
                     isActive={slot.index === activeIndex}
@@ -409,7 +464,9 @@ export const SlotsArea = memo(function SlotsArea({
                       slot.sketchId !== null && slot.index !== activeIndex
                     }
                     getSlotSketchParams={getSlotSketchParams}
-                    getSlotSketchParamsInterpolated={getSlotSketchParamsInterpolated}
+                    getSlotSketchParamsInterpolated={
+                      getSlotSketchParamsInterpolated
+                    }
                     colors={
                       slot.sketchId ? getSlotColors?.(slot.index) : undefined
                     }
@@ -424,6 +481,10 @@ export const SlotsArea = memo(function SlotsArea({
                     panelId={panelSlots[slot.index] ?? null}
                     onOpenPanel={handlers.onOpenPanel}
                     onClosePanel={handlers.onClosePanel}
+                    onOpenOverlay={
+                      slot.sketchId ? handlers.onOpenOverlay : undefined
+                    }
+                    isPreviewPaused={overlaySlotIndex !== null}
                     filledSlots={filledSlots}
                     onSketchChange={handlers.onSketchChange}
                     onCrossfade={handlers.onCrossfade}
@@ -445,6 +506,40 @@ export const SlotsArea = memo(function SlotsArea({
           <div className={styles.fadeRight} aria-hidden="true" />
         )}
       </div>
+
+      {/* Full-size slot editor overlay */}
+      <AnimatePresence>
+        {overlaySlotIndex !== null &&
+          (() => {
+            const overlaySlot = slots.find((s) => s.index === overlaySlotIndex);
+            if (!overlaySlot?.sketchId) return null;
+            return (
+              <SlotEditorOverlay
+                key={overlaySlotIndex}
+                slotIndex={overlaySlotIndex}
+                sketchId={overlaySlot.sketchId}
+                rendererAspectRatio={rendererAspectRatio}
+                getSlotSketchParamsInterpolated={
+                  getSlotSketchParamsInterpolated
+                }
+                colors={getSlotColors?.(overlaySlotIndex)}
+                getValue={getValue}
+                setValue={setValue}
+                audioMappings={audioMappings}
+                modulationTargets={modulationTargets}
+                lfos={lfos}
+                midiMappings={midiMappings}
+                midiPickupStates={midiPickupStates}
+                highlightedParamIds={highlightedParamIds}
+                onQuickBeat={onQuickBeat}
+                onQuickLfo={onQuickLfo}
+                onUnlinkBeat={onUnlinkBeat}
+                onUnlinkLfo={onUnlinkLfo}
+                onClose={handleCloseOverlay}
+              />
+            );
+          })()}
+      </AnimatePresence>
     </section>
   );
 });
