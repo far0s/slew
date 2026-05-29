@@ -42,7 +42,7 @@ interface PrismLinesUniforms {
   prismSpread: { value: number };
   rotationChaos: { value: number };
   chromaticSpread: { value: number };
-  pulseAmount: { value: number };
+
   opacity: { value: number };
   // baked
   lineCount: number;
@@ -77,7 +77,7 @@ function buildMaterial(
   const uPrismSpread = uniform(0.35);
   const uRotationChaos = uniform(0.4);
   const uChromaticSpread = uniform(0.025);
-  const uPulseAmount = uniform(0.2);
+
   const uOpacity = uniform(1.0);
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -184,9 +184,8 @@ function buildMaterial(
       lineGlow,
       lineBrightness,
       smokeDensity,
-      pulseAmount,
       chromaticSpread,
-    ]: [any, any, any, any, any, any, any, any, any, any]) => {
+    ]: [any, any, any, any, any, any, any, any, any]) => {
       const angle = lineAngle(idx, t);
       const offset = lineOffset(idx, t);
 
@@ -237,18 +236,10 @@ function buildMaterial(
         smoothstep(float(0.3), float(0.7), parity),
       );
 
-      // Per-line pulse
-      const pulseSeed = hash11(idx.mul(4.7));
-      const pulse = float(1.0).add(
-        sin(t.mul(float(1.5).add(pulseSeed.mul(1.0))))
-          .mul(float(pulseAmount))
-          .mul(0.5),
-      );
-
       // Chromatic R/B channels via scalar multiply
-      const colR = lineCol.mul(glowR).mul(pulse);
-      const colG = lineCol.mul(glowScalar).mul(pulse);
-      const colB2 = lineCol.mul(glowB2).mul(pulse);
+      const colR = lineCol.mul(glowR);
+      const colG = lineCol.mul(glowScalar);
+      const colB2 = lineCol.mul(glowB2);
       // Blend: mostly center, with slight R/B offset for prism edge
       const caBlend = float(0.5);
       const rgbGlow = colG
@@ -264,7 +255,7 @@ function buildMaterial(
             .mul(caBlend)
             .mul(vec3(0.0, 0.0, 1.0)),
         );
-      const smokeContrib = lineCol.mul(smokeHalo).mul(pulse);
+      const smokeContrib = lineCol.mul(smokeHalo);
 
       return rgbGlow.add(smokeContrib);
     },
@@ -358,7 +349,6 @@ function buildMaterial(
         uLineGlow,
         uLineBrightness,
         uSmokeDensity,
-        uPulseAmount,
         uChromaticSpread,
       );
       accum.addAssign(c);
@@ -407,7 +397,7 @@ function buildMaterial(
       prismSpread: uPrismSpread,
       rotationChaos: uRotationChaos,
       chromaticSpread: uChromaticSpread,
-      pulseAmount: uPulseAmount,
+
       opacity: uOpacity,
       lineCount,
     },
@@ -437,7 +427,7 @@ export function PrismLines({
   const prismSpread = params?.prismSpread ?? 0.35;
   const rotationChaos = params?.rotationChaos ?? 0.4;
   const chromaticSpread = params?.chromaticSpread ?? 0.025;
-  const pulseAmount = params?.pulseAmount ?? 0.2;
+
   const colorA: [number, number, number] = [
     (params?.colorPrimaryR ?? 0) / 255,
     (params?.colorPrimaryG ?? 180) / 255,
@@ -484,9 +474,6 @@ export function PrismLines({
   useEffect(() => {
     uniforms.chromaticSpread.value = chromaticSpread;
   }, [chromaticSpread, uniforms]);
-  useEffect(() => {
-    uniforms.pulseAmount.value = pulseAmount;
-  }, [pulseAmount, uniforms]);
   useEffect(() => {
     uniforms.opacity.value = opacity;
   }, [opacity, uniforms]);

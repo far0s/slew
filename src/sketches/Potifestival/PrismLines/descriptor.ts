@@ -128,8 +128,7 @@ export const descriptor: SketchDescriptor = {
       max: 1.0,
       step: 0.01,
       defaultValue: 0.3,
-      description:
-        "How much the fog scatters light sideways along each beam.",
+      description: "How much the fog scatters light sideways along each beam.",
     },
     {
       templateId: "prism_spread",
@@ -164,18 +163,8 @@ export const descriptor: SketchDescriptor = {
       max: 0.15,
       step: 0.005,
       defaultValue: 0.02,
-      description: "RGB channel separation on the lines — makes beams look refracted.",
-    },
-    {
-      templateId: "pulse_amount",
-      label: "Pulse",
-      group: "sketch",
-      orderHint: 100,
-      min: 0.0,
-      max: 1.0,
-      step: 0.01,
-      defaultValue: 0.25,
-      description: "Lines breathe in brightness rhythmically. Great with beat-sync.",
+      description:
+        "RGB channel separation on the lines — makes beams look refracted.",
     },
   ],
 };
