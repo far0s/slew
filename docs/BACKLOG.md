@@ -164,22 +164,6 @@ Improve the cold-start experience with a polished launch animation and soft prel
 
 ---
 
-### Control & Mapping
-
-#### 🟡 DMX Lighting Control `feature`
-
-OSC → DMX integration for lighting.
-
-**Context**: Some VJs control lighting alongside visuals. Parameter → DMX output would enable synchronized light shows.
-
-**Subtasks**:
-
-- [ ] Research DMX interfaces/protocols
-- [ ] OSC → DMX plugin design
-- [ ] Fixture mapping system
-
----
-
 ### Visuals & Effects
 
 #### 🟡 Post-Processing Effects Panel `feature`
@@ -264,37 +248,6 @@ Support external images/videos as input textures for sketches.
 
 ---
 
-#### 🟡 Multi-Display Support `feature`
-
-Multiple renderer windows for different outputs.
-
-**Context**: Some VJ setups use multiple projectors or preview monitors. Also a prerequisite for the display-cutting feature in Domain Warping / Mirroring.
-
-**Subtasks**:
-
-- [ ] Spawn additional renderer windows
-- [ ] Per-window slot assignment
-- [ ] Independent resolution/output settings
-
----
-
-#### 🟡 Projection Mapping `feature`
-
-Warp/mask output for projection on non-flat surfaces.
-
-**Context**: Architectural projection, 3D object mapping, irregular screens. Needed by VJs doing installation work.
-
-**Subtasks**:
-
-- [ ] Corner-pin warping
-- [ ] Mesh warping with control points
-- [ ] Per-projector output (multi-display integration)
-- [ ] Masking tools (polygon, bezier)
-- [ ] Camera calibration for auto-alignment
-- [ ] Save/load mapping configurations
-
----
-
 ### Project & Workflow
 
 #### 🟡 Presets & Projects (Full Session Management) `feature`
@@ -309,21 +262,6 @@ Save/load complete project state.
 - [ ] Quick snapshot for A/B comparison
 - [ ] Export/import for sharing
 - [ ] Auto-save / recovery
-
----
-
-#### 🟡 Recording `feature`
-
-GPU-based capture or frame export.
-
-**Context**: Users may want to record performances for later use or sharing.
-
-**Subtasks**:
-
-- [ ] Define recording format (MP4, image sequence)
-- [ ] Implement GPU-based capture
-- [ ] Recording controls (start/stop/pause)
-- [ ] Export settings
 
 ---
 
@@ -591,6 +529,66 @@ Multiple Slew instances controlled from one "director" instance.
 - [ ] Network discovery (zero-conf)
 - [ ] Latency compensation
 - [ ] Fallback to local control if network drops
+
+---
+
+### 🎨 Multi-Display Support `feature`
+
+Multiple renderer windows for different outputs.
+
+**Context**: Some VJ setups use multiple projectors or preview monitors. Also a prerequisite for the display-cutting feature in Domain Warping / Mirroring.
+
+**Subtasks**:
+
+- [ ] Spawn additional renderer windows
+- [ ] Per-window slot assignment
+- [ ] Independent resolution/output settings
+
+---
+
+### 🎨 Projection Mapping `feature`
+
+Warp/mask output for projection on non-flat surfaces.
+
+**Context**: Architectural projection, 3D object mapping, irregular screens. Needed by VJs doing installation work.
+
+**Subtasks**:
+
+- [ ] Corner-pin warping
+- [ ] Mesh warping with control points
+- [ ] Per-projector output (multi-display integration)
+- [ ] Masking tools (polygon, bezier)
+- [ ] Camera calibration for auto-alignment
+- [ ] Save/load mapping configurations
+
+---
+
+### 🎨 Recording `feature`
+
+GPU-based capture or frame export.
+
+**Context**: Users may want to record performances for later use or sharing.
+
+**Subtasks**:
+
+- [ ] Define recording format (MP4, image sequence)
+- [ ] Implement GPU-based capture
+- [ ] Recording controls (start/stop/pause)
+- [ ] Export settings
+
+---
+
+### 🎨 DMX Lighting Control `feature`
+
+OSC → DMX integration for lighting.
+
+**Context**: Some VJs control lighting alongside visuals. Parameter → DMX output would enable synchronized light shows. High-effort: requires DMX protocol research, new Rust plugin, and fixture mapping UI.
+
+**Subtasks**:
+
+- [ ] Research DMX interfaces/protocols
+- [ ] OSC → DMX plugin design
+- [ ] Fixture mapping system
 
 ---
 
