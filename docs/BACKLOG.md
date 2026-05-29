@@ -147,23 +147,6 @@ Save/load parameter configurations per sketch.
 
 ---
 
-#### 🟡 App Launch Sequence & Preloader `polish`
-
-Improve the cold-start experience with a polished launch animation and soft preloader.
-
-**Context**: App currently opens abruptly with no transition.
-
-**Subtasks**:
-
-- [ ] Design a minimal splash/preloader overlay (logo mark + subtle progress indicator)
-- [ ] Animate the preloader out once the control window is ready (fade/slide)
-- [ ] Add entrance animations for key UI regions on first paint
-- [ ] Ensure the output window opens without a visible flash or blank frame
-- [ ] Keep total perceived launch time the same or shorter
-- [ ] Respect `prefers-reduced-motion`
-
----
-
 ### Visuals & Effects
 
 #### 🟡 Post-Processing Effects Panel `feature`
