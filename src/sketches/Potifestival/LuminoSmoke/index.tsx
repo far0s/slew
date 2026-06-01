@@ -44,7 +44,6 @@ interface LuminoSmokeUniforms {
   scatterFalloff: { value: number };
   smokeTurbulence: { value: number };
   chromaticSpread: { value: number };
-  pulseAmount: { value: number };
   opacity: { value: number };
   // integer — needs shader rebuild
   lightCount: number;
@@ -82,7 +81,6 @@ function buildMaterial(
   const uScatterFalloff = uniform(1.8);
   const uSmokeTurbulence = uniform(0.3);
   const uChromaticSpread = uniform(0.03);
-  const uPulseAmount = uniform(0.25);
   const uOpacity = uniform(1.0);
 
   // ─── Utility helpers ────────────────────────────────────────────────────────
@@ -197,9 +195,8 @@ function buildMaterial(
       haloRadius,
       lightIntensity,
       scatterFalloff,
-      pulseAmount,
       smokeTurbulence,
-    ]: [any, any, any, any, any, any, any, any, any, any, any, any]) => {
+    ]: [any, any, any, any, any, any, any, any, any, any, any]) => {
       const lpos = lightPos(lightIdx, t);
 
       // Pick color based on light index mod 3
@@ -210,14 +207,6 @@ function buildMaterial(
       const blendBC = smoothstep(float(1.4), float(1.6), mod3.sub(1.0));
       col.assign(mix(col, colorB, blendAB));
       col.assign(mix(col, colorC, blendBC));
-
-      // Per-light pulse
-      const pulseSeed = hash21(vec2(lightIdx.mul(5.1), float(0.0)));
-      const pulse = float(1.0).add(
-        sin(t.mul(float(1.8).add(pulseSeed.mul(1.2))))
-          .mul(pulseAmount)
-          .mul(0.5),
-      );
 
       // Turbulence offset on the light position
       const turbOffset = vec2(
@@ -241,8 +230,7 @@ function buildMaterial(
       );
       const scatter = beerLambert
         .mul(haloFalloff)
-        .mul(lightIntensity)
-        .mul(pulse);
+        .mul(lightIntensity);
 
       // Soft core glow (bright center point)
       const coreGlow = float(0.012)
@@ -279,7 +267,6 @@ function buildMaterial(
         uHaloRadius,
         uLightIntensity,
         uScatterFalloff,
-        uPulseAmount,
         uSmokeTurbulence,
       );
       accum.addAssign(c);
@@ -321,7 +308,6 @@ function buildMaterial(
       scatterFalloff: uScatterFalloff,
       smokeTurbulence: uSmokeTurbulence,
       chromaticSpread: uChromaticSpread,
-      pulseAmount: uPulseAmount,
       opacity: uOpacity,
       lightCount,
     },
@@ -351,7 +337,6 @@ export function LuminoSmoke({
   const scatterFalloff = params?.scatterFalloff ?? 1.8;
   const smokeTurbulence = params?.smokeTurbulence ?? 0.3;
   const chromaticSpread = params?.chromaticSpread ?? 0.03;
-  const pulseAmount = params?.pulseAmount ?? 0.25;
 
   // Colors (0-255 → 0-1)
   const colorA: [number, number, number] = [
@@ -399,9 +384,6 @@ export function LuminoSmoke({
   useEffect(() => {
     uniforms.chromaticSpread.value = chromaticSpread;
   }, [chromaticSpread, uniforms]);
-  useEffect(() => {
-    uniforms.pulseAmount.value = pulseAmount;
-  }, [pulseAmount, uniforms]);
   useEffect(() => {
     uniforms.opacity.value = opacity;
   }, [opacity, uniforms]);

@@ -157,17 +157,5 @@ export const descriptor: SketchDescriptor = {
       description:
         "Chromatic aberration — separates RGB channels for a prismatic edge.",
     },
-    {
-      templateId: "pulse_amount",
-      label: "Pulse",
-      group: "sketch",
-      orderHint: 100,
-      min: 0.0,
-      max: 1.0,
-      step: 0.01,
-      defaultValue: 0.5,
-      description:
-        "Each light source gently pulses in brightness. Pair with audio reactivity for beats.",
-    },
   ],
 };
