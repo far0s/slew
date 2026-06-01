@@ -281,7 +281,9 @@ export const SlotsArea = memo(function SlotsArea({
       const target = e.target as HTMLElement;
       // Don't start drag from buttons, inputs, selects or scrollable controls
       if (
-        target.closest("button, input, select, [role='slider'], [data-nodrag]")
+        target.closest(
+          "button, input, select, [role='slider'], [role='option'], [role='listbox'], [data-nodrag]",
+        )
       )
         return;
 
@@ -460,9 +462,7 @@ export const SlotsArea = memo(function SlotsArea({
                     isMacropadSelected={slot.index === macropadSelectedIndex}
                     rendererAspectRatio={rendererAspectRatio}
                     excludeSketchIds={EMPTY_SKETCH_IDS}
-                    canRemove={
-                      slot.sketchId !== null && slot.index !== activeIndex
-                    }
+                    canRemove={slot.sketchId !== null}
                     getSlotSketchParams={getSlotSketchParams}
                     getSlotSketchParamsInterpolated={
                       getSlotSketchParamsInterpolated

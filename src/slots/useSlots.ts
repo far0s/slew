@@ -195,7 +195,15 @@ export function useSlots(config: Partial<SlotsConfig> = {}): SlotsState {
   const clearSlot = useCallback(
     (slotIndex: number): boolean => {
       if (slotIndex < 0 || slotIndex >= FIXED_SLOT_COUNT) return false;
-      if (slotIndex === activeIndex) return false;
+
+      if (slotIndex === activeIndex) {
+        const nextFilled = slots.find(
+          (s) => s.index !== slotIndex && s.sketchId !== null,
+        );
+        if (nextFilled) {
+          setActiveIndex(nextFilled.index);
+        }
+      }
 
       setSlots((prev) =>
         prev.map((slot) =>
@@ -210,7 +218,7 @@ export function useSlots(config: Partial<SlotsConfig> = {}): SlotsState {
 
       return true;
     },
-    [activeIndex, crossfadeTargetIndex],
+    [activeIndex, slots, crossfadeTargetIndex],
   );
 
   const copyToSlot = useCallback(

@@ -680,7 +680,7 @@ export const SlotColumn = memo(function SlotColumn({
   const displayLabel = getSketchLabel(sketchId);
   const displayNumber = slotIndex + 1;
 
-  const isSelectDisabled = isActive || isCrossfading;
+  const isSelectDisabled = isCrossfading;
   const isCrossfadeDisabled = isActive || isCrossfading;
 
   let crossfadeButtonLabel: string;
@@ -694,7 +694,7 @@ export const SlotColumn = memo(function SlotColumn({
     crossfadeButtonLabel = "Crossfade";
   }
 
-  const showRemoveButton = canRemove && !isActive;
+  const showRemoveButton = canRemove;
 
   const columnClassNames = [
     styles.column,
@@ -869,7 +869,16 @@ export const SlotColumn = memo(function SlotColumn({
               <button
                 type="button"
                 className={styles.removeButton}
-                onClick={onRemove}
+                onClick={() => {
+                  if (
+                    isActive &&
+                    !window.confirm(
+                      `Remove active slot ${displayNumber}? Another slot will become active.`,
+                    )
+                  )
+                    return;
+                  onRemove();
+                }}
                 aria-label={`Remove slot ${displayNumber}`}
               >
                 <Cross2Icon />

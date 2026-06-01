@@ -349,9 +349,43 @@ function App() {
   );
 
   const handleClearSlot = useCallback(
-    (slotIndex: number) => {
-      slotStateRef.current.clearSlot(slotIndex);
+    async (slotIndex: number) => {
+      const ss = slotStateRef.current;
+      const wasActive = ss.isActiveSlot(slotIndex);
+      const nextFilled = wasActive
+        ? ss.getFilledSlots().find((s) => s.index !== slotIndex)
+        : null;
+
+      ss.clearSlot(slotIndex);
       paramStore.removeSlotParameters(slotIndex);
+
+      if (wasActive) {
+        const oldAlphaId = makeSlotParameterId(slotIndex, "alpha");
+        try {
+          await invoke("set_parameter", { id: oldAlphaId, value: 0, app: undefined });
+          paramStore.set(oldAlphaId, 0);
+        } catch (error) {
+          logger.error("Controls", "Failed to clear active slot alpha", error);
+        }
+
+        if (nextFilled) {
+          const newSketchId = nextFilled.sketchId;
+          const newAlphaId = makeSlotParameterId(nextFilled.index, "alpha");
+          try {
+            await invoke("set_parameter", { id: newAlphaId, value: 1, app: undefined });
+            paramStore.set(newAlphaId, 1);
+            await invoke("set_slot_pairing", {
+              activeSlotIndex: nextFilled.index,
+              activeSceneId: newSketchId,
+              nextSlotIndex: nextFilled.index,
+              nextSceneId: newSketchId,
+            });
+          } catch (error) {
+            logger.error("Controls", "Failed to activate next slot after active removal", error);
+          }
+        }
+      }
+
       if (
         isMidiLearningRef.current &&
         midiLearningParameterIdRef.current?.startsWith(`slot${slotIndex}_`)
@@ -359,7 +393,7 @@ function App() {
         void cancelMidiLearnLocal();
       }
     },
-    [paramStore.removeSlotParameters, cancelMidiLearnLocal],
+    [paramStore.removeSlotParameters, paramStore.set, cancelMidiLearnLocal],
   );
 
   // Param getters/setters for components
