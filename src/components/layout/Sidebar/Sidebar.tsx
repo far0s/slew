@@ -11,6 +11,7 @@ import { InputsPanel } from "@/components/panels/InputsPanel";
 import { OutputsPanel } from "@/components/panels/OutputsPanel";
 import { ModulationPanel } from "@/components/panels/ModulationPanel";
 import { VideoOutputPanel } from "@/components/panels/VideoOutputPanel";
+import { EffectsPanel } from "@/components/panels/EffectsPanel";
 import { ParameterSlider } from "@/components/parameters/ParameterSlider";
 import type { Slot } from "@/slots/useSlots";
 import {
@@ -420,6 +421,9 @@ export const Sidebar = memo(function Sidebar({
         <Tabs.Trigger value="mod" className={styles.tabTrigger}>
           Mod
         </Tabs.Trigger>
+        <Tabs.Trigger value="fx" className={styles.tabTrigger}>
+          FX
+        </Tabs.Trigger>
         <Tabs.Trigger value="appearance" className={styles.tabTrigger}>
           Appearance
         </Tabs.Trigger>
@@ -536,6 +540,10 @@ export const Sidebar = memo(function Sidebar({
 
         <Tabs.Content value="mod" className={styles.tabContent}>
           <ModulationPanel slots={slots} onHighlightParams={onHighlightParams} />
+        </Tabs.Content>
+
+        <Tabs.Content value="fx" className={styles.tabContent}>
+          <EffectsPanel />
         </Tabs.Content>
 
         <Tabs.Content value="appearance" className={styles.tabContent}>

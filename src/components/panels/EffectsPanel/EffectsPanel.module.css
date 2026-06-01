@@ -1,0 +1,333 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ============================================================================
+   Section header
+   ============================================================================ */
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.1rem;
+}
+
+.sectionTitle {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.badge {
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--accent-primary) 20%, transparent);
+  color: var(--accent-primary);
+  letter-spacing: 0;
+}
+
+.addButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 0.2rem;
+  background: var(--bg-active);
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.addButton:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.addButton[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent-primary) 20%, transparent);
+  color: var(--accent-primary);
+}
+
+/* ============================================================================
+   No items
+   ============================================================================ */
+
+.noItems {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.5rem 0.25rem;
+  margin: 0;
+}
+
+/* ============================================================================
+   Effects list (Reorder.Group renders as <ul>)
+   ============================================================================ */
+
+.effectsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* ============================================================================
+   Effect card (Reorder.Item renders as <li>)
+   ============================================================================ */
+
+.effectCard {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.3rem;
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+  list-style: none;
+}
+
+.effectDisabled {
+  opacity: 0.5;
+}
+
+/* ============================================================================
+   Row
+   ============================================================================ */
+
+.effectRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.5rem;
+  min-height: 36px;
+}
+
+.dragHandle {
+  width: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: grab;
+  flex-shrink: 0;
+  opacity: 0.5;
+  user-select: none;
+  touch-action: none;
+}
+
+.dragHandle:hover {
+  opacity: 1;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.enableToggle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: 1.5px solid var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.enableToggleOn {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.effectInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background: none;
+  border: none;
+  padding: 0.2rem 0.3rem;
+  margin: -0.2rem 0;
+  border-radius: 0.2rem;
+  transition: background-color 0.15s ease;
+}
+
+.effectInfo:hover {
+  background: var(--bg-active);
+}
+
+.effectName {
+  font-weight: 600;
+  font-size: 0.7rem;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deleteButton {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.deleteButton:hover {
+  color: var(--accent-danger, #ef4444);
+}
+
+/* ============================================================================
+   Animated params section (grid expand trick, matching ModulationPanel)
+   ============================================================================ */
+
+.paramsWrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.2s ease;
+}
+
+.paramsOpen {
+  grid-template-rows: 1fr;
+}
+
+.paramsInner {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  border-top: 1px solid transparent;
+  padding: 0 0.5rem;
+  transition: padding 0.2s ease, border-color 0.2s ease;
+}
+
+.paramsOpen .paramsInner {
+  padding: 0.4rem 0.5rem 0.5rem;
+  border-top-color: var(--border-subtle);
+}
+
+/* ============================================================================
+   Add Effect Picker
+   ============================================================================ */
+
+.picker {
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.3rem;
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.pickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.pickerTitle {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.pickerClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 0.2rem;
+  transition: color 0.1s;
+}
+
+.pickerClose:hover {
+  color: var(--text-primary);
+}
+
+.pickerList {
+  display: flex;
+  flex-direction: column;
+}
+
+.pickerItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  padding: 0.45rem 0.5rem;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.pickerItem:last-child {
+  border-bottom: none;
+}
+
+.pickerItem:hover {
+  background: var(--bg-hover);
+}
+
+.pickerItemLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.pickerItemDesc {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+
+/* ============================================================================
+   Pipeline note
+   ============================================================================ */
+
+.pipelineNote {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin: 0;
+  padding: 0 0.1rem;
+}

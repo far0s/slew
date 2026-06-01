@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import App from "./App";
 import RendererRoot from "./renderer/RendererRoot";
+import { EffectsProvider } from "./effects/EffectsContext";
 import "./reset.css";
 import "./globals.css";
 
@@ -23,14 +24,18 @@ const windowLabel = getCurrentWindow().label;
 if (windowLabel === "renderer") {
   root.render(
     <React.StrictMode>
-      <RendererRoot />
+      <EffectsProvider>
+        <RendererRoot />
+      </EffectsProvider>
     </React.StrictMode>,
   );
 } else {
   // Default to the controls UI (label should be "controls")
   root.render(
     <React.StrictMode>
-      <App />
+      <EffectsProvider>
+        <App />
+      </EffectsProvider>
     </React.StrictMode>,
   );
 }

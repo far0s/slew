@@ -113,67 +113,40 @@ Create troubleshooting guide for video output setup.
 
 ### Visuals & Effects
 
-#### 🟡 Post-Processing Effects Panel `feature`
+#### 🟡 Mirror, Tile & Domain Warp `feature`
 
-A dedicated effects panel operating on the composited output, with an ordered stack of effects that can be added, removed, and reordered.
+UV-space transforms as effects in the FX panel stack.
 
-**Context**: Per-slot effects via the slot system are too limiting — global effects (grain, bloom, etc.) shouldn't consume a slot, and chaining order matters. A first-class Effects Panel is the right model.
+**Context**: Mirror/symmetry, tile/repeat, and domain warp all operate via UV manipulation — they fit naturally in the FX panel alongside existing effects like Wave and Bulge. No new architecture needed.
 
-**Architecture notes** (design pass needed before implementation):
-- Effects run on the composited output, after slot blending but before Syphon/NDI output — natural seam in `VideoOutputCapture.tsx`
-- Effects are descriptor-based like sketches (same `ParameterTemplate` system, same auto-generated sliders)
-- UI: separate panel with add/remove/drag-to-reorder stack
+**Capabilities to cover**:
+- **Mirror / symmetry**: horizontal, vertical, 4-way, radial/kaleidoscope (N segments)
+- **Domain warp**: displace UV by noise (fbm-style, rotation-based) causing visuals to warp through themselves
+- **Tile / repeat**: repeat output across a grid with optional alternating-mirror per cell
 
-**Effect ideas** (from Phobon's Fragments Boilerplate and beyond):
-- Grain
-- Bloom
-- Chromatic Aberration / RGB Split
-- CRT Scanlines
-- Dither / Halftone
-- Pixelation
-- Vignette
-- Feedback / Trails (frame buffer decay)
-- Mirror / Symmetry
-- Bulge / Swirl / Wave Distortion
-- Edge Detection
-- Datamosh (glitch)
+**Sizing**: Small — all implemented as new entries in `buildEffectChain.ts` + `effectDescriptors.ts`
 
 **Subtasks**:
 
-- [ ] Design pass: pipeline integration, descriptor schema for effects, panel UX
-- [ ] Implement effects render pass in `VideoOutputCapture.tsx`
-- [ ] Effects Panel UI (add, remove, reorder, per-effect parameters)
-- [ ] Implement initial set of effects
-- [ ] Persist effects stack and parameters
+- [ ] Mirror / symmetry effect (horizontal, vertical, 4-way, N-segment radial)
+- [ ] Domain warp effect (fbm noise + rotation variants)
+- [ ] Tile / repeat effect
 
 ---
 
-#### 🟡 Domain Warping, Mirroring & Display Cutting `feature` `design`
+#### 🟡 Multi-Display Support `feature` `design`
 
-Transform and slice the visual output — domain warping, mirror symmetry, and cutting the canvas across one or multiple displays.
+Multiple renderer windows for different outputs.
 
-**Context**: VJs want to take their generated output and twist it — fold it into kaleidoscopic mirrors, warp the UV space so patterns flow into themselves, or carve the canvas up and route different regions to different outputs or display zones. Closely related to the Post-Processing Effects Panel (domain warp and mirror could live there as effects) and the display-cutting aspect depends on Multi-Display Support.
-
-**Capabilities to cover**:
-- **Domain warping**: offset UV lookup by a secondary noise or pattern, causing visuals to warp through themselves (fbm-style, rotation-based, etc.)
-- **Mirror / symmetry modes**: horizontal, vertical, 4-way, radial/kaleidoscope (N segments), point symmetry
-- **Canvas cutting**: define regions of the composited output and route them independently — e.g. top-left quadrant to output A, bottom-right to output B, or stitch across two displays
-- **Tile / repeat**: repeat the output across a grid with optional alternating-mirror per cell
-
-**Design questions to resolve**:
-- Mirror and domain warp as effects in the Effects Panel stack vs dedicated "Transform" layer?
-- Display cutting UI — drag-to-draw regions on a canvas thumbnail, or numeric grid config?
-- How does cutting interact with Multi-Display Support? (likely a dependency)
-
-**Sizing**: Medium–Large. Mirror/warp as effects = smaller slice. Full display cutting = needs Multi-Display Support first.
+**Context**: Required for canvas cutting and display routing — routing different spatial regions of the composited output to different physical outputs. Also a prerequisite for projection mapping.
 
 **Subtasks**:
 
-- [ ] Design pass: where these transforms sit in the pipeline and UX model
-- [ ] Implement mirror / symmetry effect modes
-- [ ] Implement domain warp effect (at least fbm and rotation-based)
-- [ ] Canvas cutting / output region UI
-- [ ] Wire cut regions to multi-display output routing
+- [ ] Spawn additional renderer windows
+- [ ] Per-window slot assignment
+- [ ] Independent resolution/output settings
+- [ ] Canvas cutting UI: define spatial regions on a canvas thumbnail and assign each to a display window
+- [ ] Wire cut regions to per-window output routing (Syphon/NDI per window)
 
 ---
 
@@ -476,20 +449,6 @@ Multiple Slew instances controlled from one "director" instance.
 - [ ] Network discovery (zero-conf)
 - [ ] Latency compensation
 - [ ] Fallback to local control if network drops
-
----
-
-### 🎨 Multi-Display Support `feature`
-
-Multiple renderer windows for different outputs.
-
-**Context**: Some VJ setups use multiple projectors or preview monitors. Also a prerequisite for the display-cutting feature in Domain Warping / Mirroring.
-
-**Subtasks**:
-
-- [ ] Spawn additional renderer windows
-- [ ] Per-window slot assignment
-- [ ] Independent resolution/output settings
 
 ---
 

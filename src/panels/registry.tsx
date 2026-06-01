@@ -3,10 +3,11 @@ import type { Slot } from "@/slots/useSlots";
 import { InputsPanel } from "@/components/panels/InputsPanel";
 import { OutputsPanel } from "@/components/panels/OutputsPanel";
 import { ModulationPanel } from "@/components/panels/ModulationPanel";
+import { EffectsPanel } from "@/components/panels/EffectsPanel";
 
 // Panels that appear in both the Sidebar and the slot column picker.
 // Adding a new panel here automatically exposes it in both places.
-export type PanelId = "inputs" | "outputs" | "mod";
+export type PanelId = "inputs" | "outputs" | "mod" | "fx";
 
 export interface PanelRenderProps {
   slots?: Slot[];
@@ -43,5 +44,11 @@ export const PANEL_CONFIGS: PanelConfig[] = [
     render: ({ slots, onHighlightParams }) => (
       <ModulationPanel slots={slots} onHighlightParams={onHighlightParams} />
     ),
+  },
+  {
+    id: "fx",
+    label: "Effects",
+    shortLabel: "FX",
+    render: () => <EffectsPanel />,
   },
 ];

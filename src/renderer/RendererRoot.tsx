@@ -24,6 +24,7 @@ import {
   FPS_SAMPLE_COUNT,
   STATS_REPORT_INTERVAL_MS,
 } from "@/config";
+import { EffectsLayer } from "@/effects/EffectsLayer";
 import styles from "./RendererRoot.module.css";
 
 // =============================================================================
@@ -946,6 +947,8 @@ export function RendererRoot() {
         />
         {/* Video output capture - sends frames to Syphon/Spout/NDI when active */}
         <VideoOutputCapture />
+        {/* Post-processing effects layer - renders scene + effects to screen */}
+        <EffectsLayer />
         <RendererContent
           allSlots={allSlots}
           activeSlotIndex={activeSlotIndex}

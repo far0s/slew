@@ -27,6 +27,8 @@ import * as THREEWebGPU from "three/webgpu";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { logger } from "@/lib/logger";
+import { useEffects } from "@/effects/EffectsContext";
+import { buildTextureEffectPipeline } from "@/effects/buildEffectChain";
 
 // ============================================================================
 // Types
@@ -241,6 +243,7 @@ export function VideoOutputCapture({
   onStatsUpdate,
 }: VideoOutputCaptureProps) {
   const { gl, scene, camera, size } = useThree();
+  const { effects } = useEffects();
 
   // Detect renderer type
   const isWebGPU = isWebGPURenderer(gl);
@@ -249,6 +252,10 @@ export function VideoOutputCapture({
   // Use separate refs for WebGL and WebGPU to maintain proper types
   const webglRenderTargetRef = useRef<THREE.WebGLRenderTarget | null>(null);
   const webgpuRenderTargetRef = useRef<THREEWebGPU.RenderTarget | null>(null);
+
+  // Effects pipeline for post-processing the capture RT
+  const effectsPipelineRef = useRef<THREEWebGPU.RenderPipeline | null>(null);
+  const effectsRTRef = useRef<THREE.WebGLRenderTarget | null>(null);
 
   // Helper to get current render target
   const getRenderTarget = () =>
@@ -407,6 +414,36 @@ export function VideoOutputCapture({
       }
     };
   }, [captureWidth, captureHeight]);
+
+  // Build / rebuild effects pipeline for video capture
+  const effectsKey = JSON.stringify(effects);
+  useEffect(() => {
+    effectsPipelineRef.current?.dispose();
+    effectsPipelineRef.current = null;
+    effectsRTRef.current?.dispose();
+    effectsRTRef.current = null;
+
+    const enabledEffects = effects.filter((e) => e.enabled);
+    if (enabledEffects.length === 0 || captureWidth <= 0 || captureHeight <= 0) return;
+
+    // Effects RT is the same size as the capture RT
+    effectsRTRef.current = new THREE.WebGLRenderTarget(captureWidth, captureHeight, {
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+      format: THREE.RGBAFormat,
+      type: THREE.UnsignedByteType,
+    });
+
+    // We can only build the pipeline once the capture RT's texture exists.
+    // The pipeline texture node will be patched in on first use if the RT isn't ready yet.
+    return () => {
+      effectsPipelineRef.current?.dispose();
+      effectsPipelineRef.current = null;
+      effectsRTRef.current?.dispose();
+      effectsRTRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectsKey, captureWidth, captureHeight]);
 
   // Initialize PBOs
   const initializePBOs = useCallback(
@@ -955,6 +992,32 @@ export function VideoOutputCapture({
       const renderEnd = performance.now();
       const renderMs = renderEnd - renderStart;
 
+      // === Apply post-processing effects (if any) ===
+      // Lazily build the effects pipeline on first use (needs the RT texture to exist)
+      const enabledEffects = effects.filter((e) => e.enabled);
+      if (enabledEffects.length > 0 && effectsRTRef.current) {
+        if (!effectsPipelineRef.current) {
+          try {
+            effectsPipelineRef.current = buildTextureEffectPipeline(
+              gl as unknown as THREEWebGPU.WebGPURenderer,
+              webglRT.texture,
+              effects,
+            );
+          } catch (err) {
+            logger.warn("VideoCapture", "Failed to build effects pipeline:", err);
+          }
+        }
+        if (effectsPipelineRef.current) {
+          try {
+            gl.setRenderTarget(effectsRTRef.current);
+            effectsPipelineRef.current.render();
+            gl.setRenderTarget(null);
+          } catch (err) {
+            logger.warn("VideoCapture", "Effects pipeline render failed:", err);
+          }
+        }
+      }
+
       // Ensure we have a buffer of the right size
       const bufferSize = width * height * 4;
       if (
@@ -973,11 +1036,19 @@ export function VideoOutputCapture({
         tempRowBufferRef.current = new Uint8Array(rowSize);
       }
 
+      // Use effects RT as readback source if effects were applied, otherwise scene RT
+      const hasEffectsApplied =
+        enabledEffects.length > 0 &&
+        effectsPipelineRef.current !== null &&
+        effectsRTRef.current !== null;
+      const readbackRT = hasEffectsApplied ? effectsRTRef.current! : webglRT;
+
       let readPixelsMs: number;
       let hasPixelData = false;
 
-      // Try PBO async readback if supported
-      if (USE_PBO_ASYNC_READBACK && pboSupported.current !== false) {
+      // PBO async readback only available when not using effects RT
+      // (effects RT is fresh each frame so PBO ping-pong doesn't apply)
+      if (!hasEffectsApplied && USE_PBO_ASYNC_READBACK && pboSupported.current !== false) {
         // Initialize PBOs if needed
         if (!pboInitialized.current) {
           initializePBOs(glContext, width, height);
@@ -1019,7 +1090,7 @@ export function VideoOutputCapture({
           // Fallback to sync readPixels
           const readStart = performance.now();
           gl.readRenderTargetPixels(
-            webglRT,
+            readbackRT,
             0,
             0,
             width,
@@ -1034,7 +1105,7 @@ export function VideoOutputCapture({
         // === TIMING: Read Pixels (sync) ===
         const readStart = performance.now();
         gl.readRenderTargetPixels(
-          webglRT,
+          readbackRT,
           0,
           0,
           width,
