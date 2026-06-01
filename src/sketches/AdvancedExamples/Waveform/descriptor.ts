@@ -1,6 +1,8 @@
 import type { SketchDescriptor } from "@/sketches/types";
+import thumbnail from "@/assets/sketches/wave-thumb.png";
 
 export const descriptor: SketchDescriptor = {
+  thumbnail,
   id: "waveform",
   label: "Waveform",
   shortLabel: "Wave",

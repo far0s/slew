@@ -1,6 +1,8 @@
 import type { SketchDescriptor } from "@/sketches/types";
+import thumbnail from "@/assets/sketches/starTrails-thumb.png";
 
 export const descriptor: SketchDescriptor = {
+  thumbnail,
   id: "starTrails",
   label: "StarTrails",
   shortLabel: "StarTrails",

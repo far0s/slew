@@ -111,28 +111,6 @@ Create troubleshooting guide for video output setup.
 
 ---
 
-### Core UX
-
-#### 🟡 Sketch Presets `feature`
-
-Save/load parameter configurations per sketch.
-
-**Context**: VJs need to recall good parameter combinations quickly. Per-sketch presets are a workflow essential for live performance.
-
-**Enhancement**: Combine with sketch browser — show preset thumbnails, allow preset preview before loading.
-
-**Subtasks**:
-
-- [ ] "Save Preset" button in slot controls
-- [ ] Preset dropdown to load saved configurations
-- [ ] Persist to JSON files (`presets/{sketchId}/{presetName}.json`)
-- [ ] Default preset per sketch type
-- [ ] Preset management UI (rename, delete)
-- [ ] Preset thumbnails in browser
-- [ ] Preset preview before loading
-
----
-
 ### Visuals & Effects
 
 #### 🟡 Post-Processing Effects Panel `feature`

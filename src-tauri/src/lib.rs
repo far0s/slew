@@ -16,6 +16,7 @@ pub mod midi_clock_out;
 pub mod modulation;
 pub mod osc;
 pub mod parameter_store;
+pub mod presets;
 #[cfg(target_os = "windows")]
 pub mod spout;
 #[cfg(target_os = "macos")]
@@ -280,6 +281,14 @@ pub fn run() {
             wled::set_wled_config,
             wled::test_wled_connection,
             wled::push_wled_color,
+            // Frame capture dev tool
+            commands::write_file_to_downloads,
+            // Presets
+            presets::list_presets_for_sketch,
+            presets::save_preset,
+            presets::load_preset,
+            presets::delete_preset,
+            presets::rename_preset,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

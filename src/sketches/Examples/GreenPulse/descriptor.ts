@@ -1,4 +1,5 @@
 import type { SketchDescriptor } from "@/sketches/types";
+import thumbnail from "@/assets/sketches/pulse-thumb.png";
 
 /**
  * GreenPulse Sketch Descriptor
@@ -7,6 +8,7 @@ import type { SketchDescriptor } from "@/sketches/types";
  * This is the single source of truth for GreenPulse's configuration.
  */
 export const descriptor: SketchDescriptor = {
+  thumbnail,
   id: "greenPulse",
   label: "Green Pulse",
   shortLabel: "Pulse",

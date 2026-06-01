@@ -1,4 +1,5 @@
 import type { SketchDescriptor } from "@/sketches/types";
+import thumbnail from "@/assets/sketches/blue-thumb.png";
 
 /**
  * BlueCube Sketch Descriptor
@@ -7,6 +8,7 @@ import type { SketchDescriptor } from "@/sketches/types";
  * This is the single source of truth for BlueCube's configuration.
  */
 export const descriptor: SketchDescriptor = {
+  thumbnail,
   id: "blueCube",
   label: "Blue Cube",
   shortLabel: "Blue",

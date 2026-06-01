@@ -1,4 +1,5 @@
 import type { SketchDescriptor } from "@/sketches/types";
+import thumbnail from "@/assets/sketches/prismLines-thumb.png";
 
 /**
  * PrismLines Sketch Descriptor
@@ -8,6 +9,7 @@ import type { SketchDescriptor } from "@/sketches/types";
  * a rainbow burst of refracted light. Designed for smoky DJ backdrops.
  */
 export const descriptor: SketchDescriptor = {
+  thumbnail,
   id: "prismLines",
   label: "PrismLines",
   shortLabel: "PrismLines",

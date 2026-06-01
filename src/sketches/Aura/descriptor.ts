@@ -1,4 +1,5 @@
 import type { SketchDescriptor } from "@/sketches/types";
+import thumbnail from "@/assets/sketches/auraOg-thumb.png";
 
 /**
  * Aura Sketch Descriptor
@@ -7,6 +8,7 @@ import type { SketchDescriptor } from "@/sketches/types";
  * Ported from https://seb.cat/sketches/aura
  */
 export const descriptor: SketchDescriptor = {
+  thumbnail,
   id: "aura",
   label: "Aura",
   shortLabel: "Aura",

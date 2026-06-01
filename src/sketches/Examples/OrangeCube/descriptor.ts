@@ -1,4 +1,5 @@
 import type { SketchDescriptor } from "@/sketches/types";
+import thumbnail from "@/assets/sketches/orange-thumb.png";
 
 /**
  * OrangeCube Sketch Descriptor
@@ -7,6 +8,7 @@ import type { SketchDescriptor } from "@/sketches/types";
  * This is the single source of truth for OrangeCube's configuration.
  */
 export const descriptor: SketchDescriptor = {
+  thumbnail,
   id: "orangeCube",
   label: "Orange Cube",
   shortLabel: "Orange",

@@ -1,4 +1,5 @@
 import type { SketchDescriptor } from "@/sketches/types";
+import thumbnail from "@/assets/sketches/text-thumb.png";
 
 /**
  * TslText3D Sketch Descriptor
@@ -7,6 +8,7 @@ import type { SketchDescriptor } from "@/sketches/types";
  * Features rotating 3D text with dynamic color and glow effects.
  */
 export const descriptor: SketchDescriptor = {
+  thumbnail,
   id: "tslText3D",
   label: "TSL 3D Text",
   shortLabel: "Text",

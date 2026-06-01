@@ -1,6 +1,8 @@
 import type { SketchDescriptor } from "@/sketches/types";
+import thumbnail from "@/assets/sketches/vortexBeam-thumb.png";
 
 export const descriptor: SketchDescriptor = {
+  thumbnail,
   id: "vortexBeam",
   label: "VortexBeam",
   shortLabel: "VortexBeam",

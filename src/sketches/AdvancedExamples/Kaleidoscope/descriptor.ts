@@ -1,6 +1,8 @@
 import type { SketchDescriptor } from "@/sketches/types";
+import thumbnail from "@/assets/sketches/kaleid-thumb.png";
 
 export const descriptor: SketchDescriptor = {
+  thumbnail,
   id: "kaleidoscope",
   label: "Kaleidoscope",
   shortLabel: "Kaleid",

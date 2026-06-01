@@ -1,4 +1,5 @@
 import type { SketchDescriptor } from "@/sketches/types";
+import thumbnail from "@/assets/sketches/luminoSmoke-thumb.png";
 
 /**
  * LuminoSmoke Sketch Descriptor
@@ -8,6 +9,7 @@ import type { SketchDescriptor } from "@/sketches/types";
  * where real smoke machines amplify the effect.
  */
 export const descriptor: SketchDescriptor = {
+  thumbnail,
   id: "luminoSmoke",
   label: "LuminoSmoke",
   shortLabel: "LuminoSmoke",

@@ -1,9 +1,11 @@
 import type { SketchDescriptor } from "@/sketches/types";
+import thumbnail from "@/assets/sketches/blob-thumb.png";
 
 /**
  * TslNoiseBlob Sketch Descriptor
  */
 export const descriptor: SketchDescriptor = {
+  thumbnail,
   id: "tslNoiseBlob",
   label: "TSL Noise Blob",
   shortLabel: "Blob",

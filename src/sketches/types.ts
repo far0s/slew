@@ -37,6 +37,7 @@ export interface SketchDescriptor {
   label: string;
   shortLabel: string;
   description?: string;
+  thumbnail?: string;
   parameters: ParameterTemplate[];
   colorPalette?: {
     startColor: [number, number, number];

@@ -11,14 +11,20 @@
 
 import type { SketchGroup, SketchDescriptor } from "@/sketches/types";
 import { descriptor as baseDescriptor } from "./descriptor";
+import thumbAuraOg from "@/assets/sketches/auraOg-thumb.png";
+import thumbAuraRoseGold from "@/assets/sketches/auraRoseGold-thumb.png";
+import thumbAuraDeepBlue from "@/assets/sketches/auraDeepBlue-thumb.png";
+import thumbAuraSolarPlume from "@/assets/sketches/auraSolarPlume-thumb.png";
+import thumbAuraGhostLike from "@/assets/sketches/auraGhostLike-thumb.png";
+import thumbAuraForestClearing from "@/assets/sketches/auraForestClearing-thumb.png";
+import thumbAuraIntense from "@/assets/sketches/auraIntense-thumb.png";
+import thumbAuraBlushNebula from "@/assets/sketches/auraBlushNebula-thumb.png";
 
-/**
- * Helper to create a preset descriptor by overriding default values
- */
 function createPresetDescriptor(
   id: string,
   name: string,
   shortLabel: string,
+  thumbnail: string,
   overrides: Record<string, number>,
   colorOverrides?: Record<string, [number, number, number]>,
 ): SketchDescriptor {
@@ -27,6 +33,7 @@ function createPresetDescriptor(
     id,
     label: `Aura: ${name}`,
     shortLabel,
+    thumbnail,
     description: `${name} preset - ${baseDescriptor.description}`,
     parameters: baseDescriptor.parameters.map((param) => {
       // Handle color param overrides
@@ -57,6 +64,7 @@ export const auraOgDescriptor = createPresetDescriptor(
   "auraOg",
   "Aura OG",
   "Aura OG",
+  thumbAuraOg,
   {
     bloom: 3.2,
     complexity: 3.3,
@@ -86,6 +94,7 @@ export const auraRoseGoldDescriptor = createPresetDescriptor(
   "auraRoseGold",
   "Rose Gold",
   "Rose Gold",
+  thumbAuraRoseGold,
   {
     bloom: 3.2,
     complexity: 3.3,
@@ -115,6 +124,7 @@ export const auraDeepBlueDescriptor = createPresetDescriptor(
   "auraDeepBlue",
   "Deep Blue",
   "Deep Blue",
+  thumbAuraDeepBlue,
   {
     bloom: 3.2,
     complexity: 3.3,
@@ -144,6 +154,7 @@ export const auraSolarPlumeDescriptor = createPresetDescriptor(
   "auraSolarPlume",
   "Solar Plume",
   "Solar Plume",
+  thumbAuraSolarPlume,
   {
     bloom: 0.36,
     complexity: 1.57,
@@ -173,6 +184,7 @@ export const auraGhostLikeDescriptor = createPresetDescriptor(
   "auraGhostLike",
   "Ghost Like",
   "Ghost Like",
+  thumbAuraGhostLike,
   {
     bloom: 1.33,
     complexity: 2.64,
@@ -202,6 +214,7 @@ export const auraForestClearingDescriptor = createPresetDescriptor(
   "auraForestClearing",
   "Forest Clearing",
   "Forest Clearing",
+  thumbAuraForestClearing,
   {
     bloom: 0.29,
     complexity: 2.2,
@@ -231,6 +244,7 @@ export const auraDefaultIntenseDescriptor = createPresetDescriptor(
   "auraDefaultIntense",
   "Aura Intense",
   "Aura Intense",
+  thumbAuraIntense,
   {
     bloom: 1.57,
     complexity: 2.48,
@@ -260,6 +274,7 @@ export const auraBlushNebulaDescriptor = createPresetDescriptor(
   "auraBlushNebula",
   "Blush Nebula",
   "Blush Nebula",
+  thumbAuraBlushNebula,
   {
     bloom: 3.0,
     complexity: 2.5,

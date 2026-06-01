@@ -8,6 +8,7 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
+import { useSketchThumbnailHover } from "@/components/slots/SketchThumbnailPopover/SketchThumbnailPopover";
 import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import * as Select from "@radix-ui/react-select";
@@ -250,6 +251,7 @@ function getSketchLabel(sketchId: SketchId): string {
   return sketchId;
 }
 
+
 const SketchGroupSection = memo(function SketchGroupSection({
   group,
   slotIndex,
@@ -267,6 +269,7 @@ const SketchGroupSection = memo(function SketchGroupSection({
 }) {
   // Auto-expand when searching, otherwise use default
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const { onMouseEnter, onMouseLeave, popover } = useSketchThumbnailHover();
   const displayNumber = slotIndex + 1;
 
   // Auto-expand groups when searching
@@ -311,6 +314,8 @@ const SketchGroupSection = memo(function SketchGroupSection({
                 type="button"
                 className={styles.inlineSketchItem}
                 onClick={() => onSelectSketch(descriptor.id as SketchId)}
+                onMouseEnter={(e) => onMouseEnter(e, descriptor.thumbnail)}
+                onMouseLeave={onMouseLeave}
                 aria-label={`Add ${descriptor.label} to slot ${displayNumber}`}
               >
                 <PlusIcon className={styles.inlineSketchItemIcon} />
@@ -319,6 +324,7 @@ const SketchGroupSection = memo(function SketchGroupSection({
                 </span>
               </button>
             ))}
+            {popover}
           </motion.div>
         )}
       </AnimatePresence>
@@ -636,6 +642,7 @@ export const SlotColumn = memo(function SlotColumn({
       hidden: isPreviewHidden,
     });
   }, [slotIndex, isPreviewHidden]);
+
 
   if (sketchId === null && panelId) {
     return (

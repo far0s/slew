@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::PathBuf;
 
 use tauri::{AppHandle, Emitter};
 
@@ -16,6 +17,15 @@ use crate::{midi, osc};
 #[tauri::command]
 pub fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+/// Write arbitrary bytes to ~/Downloads/{filename}. Used by the frame capture dev tool.
+#[tauri::command]
+pub fn write_file_to_downloads(filename: String, data: Vec<u8>) -> Result<String, String> {
+    let downloads: PathBuf = dirs::download_dir().ok_or("Could not resolve Downloads directory")?;
+    let path = downloads.join(&filename);
+    fs::write(&path, data).map_err(|e| format!("Failed to write file: {e}"))?;
+    Ok(path.to_string_lossy().into_owned())
 }
 
 #[tauri::command]

@@ -25,6 +25,7 @@ import {
   ToolbarTapBpm,
   PerformanceChip,
   ToolbarShortcutsButton,
+  ToolbarCaptureFrame,
 } from "@/components/layout/Toolbar";
 import { ShortcutsModal } from "@/components/layout/ShortcutsModal/ShortcutsModal";
 import { AudioIndicator } from "@/components/panels/AudioIndicator";
@@ -457,6 +458,7 @@ function App() {
           isMidiLearning={isMidiLearning}
           onCancelMidiLearn={handleCancelMidiLearn}
         />
+        <ToolbarCaptureFrame />
         <div className={styles.toolbarSpacer} />
         <PerformanceChip
           controls={performanceStats}

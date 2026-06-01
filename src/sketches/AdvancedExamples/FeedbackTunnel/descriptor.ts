@@ -1,9 +1,11 @@
 import type { SketchDescriptor } from "@/sketches/types";
+import thumbnail from "@/assets/sketches/tunnel-thumb.png";
 
 /**
  * FeedbackTunnel Sketch Descriptor
  */
 export const descriptor: SketchDescriptor = {
+  thumbnail,
   id: "feedbackTunnel",
   label: "Feedback Tunnel",
   shortLabel: "Tunnel",

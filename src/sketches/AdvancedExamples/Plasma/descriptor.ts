@@ -1,4 +1,5 @@
 import type { SketchDescriptor } from "@/sketches/types";
+import thumbnail from "@/assets/sketches/plasma-thumb.png";
 
 /**
  * Plasma Sketch Descriptor
@@ -6,6 +7,7 @@ import type { SketchDescriptor } from "@/sketches/types";
  * Classic demoscene plasma effect with animated color cycling and wave interference patterns.
  */
 export const descriptor: SketchDescriptor = {
+  thumbnail,
   id: "plasma",
   label: "Plasma",
   shortLabel: "Plasma",
