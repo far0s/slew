@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { Reorder, useDragControls } from "motion/react";
-import { PlusIcon, Cross2Icon } from "@radix-ui/react-icons";
+import { Cross2Icon } from "@radix-ui/react-icons";
 import { useEffects, makeFxParamId } from "@/effects/EffectsContext";
 import { EFFECT_DESCRIPTORS, getEffectDescriptor } from "@/effects/effectDescriptors";
 import type { EffectInstance } from "@/effects/effectTypes";
@@ -160,12 +160,11 @@ export function EffectsPanel() {
         </span>
         <button
           type="button"
-          className={styles.addButton}
+          className={`${styles.addButton} ${showPicker ? styles.addButtonActive : ""}`}
           onClick={() => setShowPicker(!showPicker)}
           aria-label="Add effect"
-          aria-pressed={showPicker}
         >
-          <PlusIcon />
+          + Add
         </button>
       </div>
 

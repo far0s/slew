@@ -113,27 +113,6 @@ Create troubleshooting guide for video output setup.
 
 ### Visuals & Effects
 
-#### 🟡 Mirror, Tile & Domain Warp `feature`
-
-UV-space transforms as effects in the FX panel stack.
-
-**Context**: Mirror/symmetry, tile/repeat, and domain warp all operate via UV manipulation — they fit naturally in the FX panel alongside existing effects like Wave and Bulge. No new architecture needed.
-
-**Capabilities to cover**:
-- **Mirror / symmetry**: horizontal, vertical, 4-way, radial/kaleidoscope (N segments)
-- **Domain warp**: displace UV by noise (fbm-style, rotation-based) causing visuals to warp through themselves
-- **Tile / repeat**: repeat output across a grid with optional alternating-mirror per cell
-
-**Sizing**: Small — all implemented as new entries in `buildEffectChain.ts` + `effectDescriptors.ts`
-
-**Subtasks**:
-
-- [ ] Mirror / symmetry effect (horizontal, vertical, 4-way, N-segment radial)
-- [ ] Domain warp effect (fbm noise + rotation variants)
-- [ ] Tile / repeat effect
-
----
-
 #### 🟡 Multi-Display Support `feature` `design`
 
 Multiple renderer windows for different outputs.

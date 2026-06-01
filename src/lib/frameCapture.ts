@@ -31,8 +31,6 @@ export async function captureCompositeFrameAsDataUrl(
     },
   );
 
-  unlisten?.();
-
   const { data, width, height } = frame;
   const bin = atob(data);
   const bytes = new Uint8Array(bin.length);

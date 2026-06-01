@@ -3,7 +3,7 @@ import { useThree, useFrame } from "@react-three/fiber";
 import type { RenderPipeline } from "three/webgpu";
 import type { WebGPURenderer } from "three/webgpu";
 import { useEffects } from "./EffectsContext";
-import { buildSceneEffectPipeline } from "./buildEffectChain";
+import { buildSceneEffectPipeline, type AfterImageCache } from "./buildEffectChain";
 
 /**
  * Renders the scene through the post-processing effect chain to screen.
@@ -16,6 +16,8 @@ export function EffectsLayer() {
   const { gl, scene, camera } = useThree();
   const { effects } = useEffects();
   const pipelineRef = useRef<RenderPipeline | null>(null);
+  // Persists AfterImageNode instances across rebuilds so accumulated history survives.
+  const afterImageCacheRef = useRef<AfterImageCache>(new Map());
 
   const effectsKey = JSON.stringify(effects);
   const enabledEffects = effects.filter((e) => e.enabled);
@@ -25,6 +27,12 @@ export function EffectsLayer() {
     pipelineRef.current?.dispose();
     pipelineRef.current = null;
 
+    // Evict cache entries for AfterImage instances no longer in the stack.
+    const liveIds = new Set(effects.map((e) => e.instanceId));
+    for (const id of afterImageCacheRef.current.keys()) {
+      if (!liveIds.has(id)) afterImageCacheRef.current.delete(id);
+    }
+
     if (!hasEffects) return;
 
     pipelineRef.current = buildSceneEffectPipeline(
@@ -32,6 +40,7 @@ export function EffectsLayer() {
       scene,
       camera,
       effects,
+      afterImageCacheRef.current,
     );
 
     return () => {
