@@ -60,6 +60,7 @@ fn apply_encoder_to_parameter(event: &HidEncoderEvent, engine: &Arc<Mutex<HidEng
     if let Some(handle) = app_handle {
         if let Some(param) = crate::with_parameter_store(|store| store.get(&mapping.parameter_id)) {
             let _ = handle.emit("parameter_changed", &param);
+            let _ = handle.emit("parameter_changed_by_user", &param);
         }
     }
 

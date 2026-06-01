@@ -362,6 +362,7 @@ fn apply_midi_to_parameter(
     if let Some(handle) = app_handle {
         if let Some(param) = crate::with_parameter_store(|store| store.get(parameter_id)) {
             let _ = handle.emit("parameter_changed", &param);
+            let _ = handle.emit("parameter_changed_by_user", &param);
         }
     }
 

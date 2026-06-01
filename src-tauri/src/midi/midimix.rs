@@ -356,6 +356,7 @@ fn toggle_slot_mute(slot_index: usize, app_handle: Option<&AppHandle>) {
         use tauri::Emitter;
         if let Some(param) = crate::with_parameter_store(|store| store.get(&param_id)) {
             let _ = handle.emit("parameter_changed", &param);
+            let _ = handle.emit("parameter_changed_by_user", &param);
         }
     }
 
@@ -394,6 +395,7 @@ fn handle_solo_slot(slot_index: usize, app_handle: Option<&AppHandle>) {
             use tauri::Emitter;
             if let Some(param) = crate::with_parameter_store(|store| store.get(&param_id)) {
                 let _ = handle.emit("parameter_changed", &param);
+                let _ = handle.emit("parameter_changed_by_user", &param);
             }
         }
     }
@@ -1052,6 +1054,7 @@ pub(crate) fn handle_master_fader(
             use tauri::Emitter;
             if let Some(param) = crate::with_parameter_store(|store| store.get(&param_id)) {
                 let _ = handle.emit("parameter_changed", &param);
+                let _ = handle.emit("parameter_changed_by_user", &param);
             }
         }
 

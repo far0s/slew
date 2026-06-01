@@ -201,20 +201,6 @@ export function SlotParameterControls({
 
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const isUserInteractingRef = useRef(false);
-  const modulationTargetsRef = useRef(modulationTargets);
-  const lfosRef = useRef(lfos);
-  useEffect(() => { modulationTargetsRef.current = modulationTargets; }, [modulationTargets]);
-  useEffect(() => { lfosRef.current = lfos; }, [lfos]);
-
-  useEffect(() => {
-    const reset = () => { isUserInteractingRef.current = false; };
-    window.addEventListener("pointerup", reset);
-    window.addEventListener("pointercancel", reset);
-    return () => {
-      window.removeEventListener("pointerup", reset);
-      window.removeEventListener("pointercancel", reset);
-    };
-  }, []);
 
   const lastManualScrollRef = useRef(0);
   const scrollerListenerRef = useRef<{ el: HTMLElement; handler: () => void } | null>(null);
@@ -228,18 +214,9 @@ export function SlotParameterControls({
     };
   }, []);
 
-  useEventListener<{ id: string; value: number; target: number }>("parameter_changed", (payload) => {
-    if (isUserInteractingRef.current) return;
+  useEventListener<{ id: string; value: number; target: number }>("parameter_changed_by_user", (payload) => {
     if (Date.now() - lastManualScrollRef.current < 1000) return;
     const { id } = payload;
-    const targets = modulationTargetsRef.current;
-    const lfos = lfosRef.current;
-    if (targets && lfos) {
-      const hasActiveLfo = targets.some(
-        (t) => t.parameter_id === id && lfos.some((l) => l.id === t.source_id && l.enabled),
-      );
-      if (hasActiveLfo) return;
-    }
     const row = rowRefs.current.get(id);
     if (row) {
       const scroller = findScrollParent(row);
