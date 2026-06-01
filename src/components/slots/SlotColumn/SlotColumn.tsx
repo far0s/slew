@@ -22,7 +22,9 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   CopyIcon,
+  ReloadIcon,
 } from "@radix-ui/react-icons";
+import NumberFlow from "@number-flow/react";
 import { motion, AnimatePresence } from "motion/react";
 import type { SketchId, SketchProps, SketchGroup } from "@/sketches";
 import {
@@ -32,7 +34,7 @@ import {
   getSketchDescriptor,
 } from "@/sketches";
 import type { Slot } from "@/slots/useSlots";
-import { SlotParameterControls } from "@/components/slots/SlotParameterControls";
+import { SlotParameterControls, type SlotParameterControlsHandle } from "@/components/slots/SlotParameterControls";
 import { WebGPUCanvas } from "@/renderer/WebGPUCanvas";
 import { StreamedPreview } from "@/components/preview/StreamedPreview";
 import type { AudioMapping } from "@/inputs/audio";
@@ -40,6 +42,34 @@ import type { ModulationTarget, LfoSource } from "@/inputs/modulation";
 import type { MidiMapping, MidiPickupState } from "@/inputs/midi";
 import { PANEL_CONFIGS, type PanelId } from "@/panels/registry";
 import styles from "./SlotColumn.module.css";
+
+function DiceIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      {/* Top face */}
+      <path d="M12 2L21 7L12 12L3 7Z" fill="currentColor" fillOpacity="0.95" />
+      {/* Left face */}
+      <path d="M3 7L12 12V22L3 17Z" fill="currentColor" fillOpacity="0.5" />
+      {/* Right face */}
+      <path d="M21 7L12 12V22L21 17Z" fill="currentColor" fillOpacity="0.72" />
+      {/* Top face — 1 dot */}
+      <circle cx="12" cy="7" r="1" fill="var(--bg-elevated, #111)" />
+      {/* Left face — 2 dots */}
+      <circle cx="6.5" cy="12" r="0.85" fill="var(--bg-elevated, #111)" />
+      <circle cx="9" cy="18" r="0.85" fill="var(--bg-elevated, #111)" />
+      {/* Right face — 3 dots */}
+      <circle cx="15" cy="10.5" r="0.85" fill="var(--bg-elevated, #111)" />
+      <circle cx="17.5" cy="14.5" r="0.85" fill="var(--bg-elevated, #111)" />
+      <circle cx="15" cy="18.5" r="0.85" fill="var(--bg-elevated, #111)" />
+    </svg>
+  );
+}
 
 // Hoisted motion constants — stable references, Motion skips re-evaluation
 const MOTION_INITIAL = { opacity: 0, scale: 0.95 };
@@ -627,13 +657,45 @@ export const SlotColumn = memo(function SlotColumn({
     [getSlotSketchParamsInterpolated, slotIndex, sketchId],
   );
 
+  const paramControlsRef = useRef<SlotParameterControlsHandle>(null);
+
   const [isSlotStreaming, setIsSlotStreaming] = useState(false);
   const [isPreviewHidden, setIsPreviewHidden] = useState(false);
   const [slotRefreshKey, setSlotRefreshKey] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCompletingSpin, setIsCompletingSpin] = useState(false);
+  const completingSpinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const spinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSlotBadgeClick = useCallback(() => {
     setIsSlotStreaming(false);
+    setIsCompletingSpin(false);
+    if (completingSpinTimerRef.current) clearTimeout(completingSpinTimerRef.current);
+    if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
+    setIsRefreshing(true);
     setSlotRefreshKey((k) => k + 1);
+    spinTimeoutRef.current = setTimeout(() => {
+      setIsRefreshing(false);
+      setIsCompletingSpin(true);
+      completingSpinTimerRef.current = setTimeout(() => setIsCompletingSpin(false), 700);
+    }, 2000);
+  }, []);
+
+  const handleStreamingChange = useCallback((streaming: boolean) => {
+    setIsSlotStreaming(streaming);
+    if (streaming) {
+      if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
+      setIsRefreshing(false);
+      setIsCompletingSpin(true);
+      completingSpinTimerRef.current = setTimeout(() => setIsCompletingSpin(false), 700);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (completingSpinTimerRef.current) clearTimeout(completingSpinTimerRef.current);
+      if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -724,6 +786,60 @@ export const SlotColumn = memo(function SlotColumn({
       style={isDragging ? MOTION_STYLE_DRAGGING : MOTION_STYLE_IDLE}
       onPointerDown={onDragStart}
     >
+      {/* Header strip */}
+      <div className={styles.columnHeader}>
+        <div className={`${styles.slotNumber} ${isMacropadSelected ? styles.slotNumberMacropad : ""}`}>
+          {displayNumber}
+          {isMacropadSelected && <span className={styles.macropadIndicator}>⎈</span>}
+        </div>
+        <span className={styles.columnSketchLabel}>{displayLabel}</span>
+        <div className={styles.columnHeaderActions}>
+          <button
+            type="button"
+            className={styles.headerIconButton}
+            onClick={(e) => { e.stopPropagation(); paramControlsRef.current?.randomize(); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            title="Randomize parameters"
+            aria-label="Randomize parameters"
+          >
+            <DiceIcon />
+          </button>
+          <button
+            type="button"
+            className={styles.headerIconButton}
+            onClick={(e) => { e.stopPropagation(); setIsPreviewHidden((v) => !v); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            title={isPreviewHidden ? "Show preview" : "Hide preview"}
+            aria-label={isPreviewHidden ? "Show preview" : "Hide preview"}
+          >
+            {isPreviewHidden ? <EyeOpenIcon /> : <EyeClosedIcon />}
+          </button>
+          {onOpenOverlay && (
+            <button
+              type="button"
+              className={styles.headerIconButton}
+              onClick={(e) => { e.stopPropagation(); onOpenOverlay(); }}
+              onPointerDown={(e) => e.stopPropagation()}
+              title="Open full editor"
+              aria-label="Open full editor"
+            >
+              <EnterFullScreenIcon />
+            </button>
+          )}
+          {showRemoveButton && (
+            <button
+              type="button"
+              className={styles.headerRemoveButton}
+              onClick={() => { onRemove(); }}
+              onPointerDown={(e) => e.stopPropagation()}
+              aria-label={`Remove slot ${displayNumber}`}
+            >
+              <Cross2Icon />
+            </button>
+          )}
+        </div>
+      </div>
+
       <PreviewContainer aspectRatio={rendererAspectRatio}>
         {isPreviewHidden ? (
           <div className={styles.previewHiddenPlaceholder} />
@@ -734,7 +850,7 @@ export const SlotColumn = memo(function SlotColumn({
               SketchComponent={SketchComponent}
               params={previewParams ?? params}
               colors={colors}
-              onStreamingChange={setIsSlotStreaming}
+              onStreamingChange={handleStreamingChange}
               externalRefreshKey={slotRefreshKey}
               paused={isPreviewPaused}
             />
@@ -742,64 +858,31 @@ export const SlotColumn = memo(function SlotColumn({
         ) : (
           <div className={styles.fallback}>Unknown sketch: {sketchId}</div>
         )}
-        <div className={styles.alphaOverlay}>
-          {onOpenOverlay && !isPreviewHidden && (
-            <>
-              <button
-                className={styles.previewToggleButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenOverlay();
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                title="Open full editor"
-                aria-label="Open full editor"
-              >
-                <EnterFullScreenIcon />
-              </button>
-            </>
-          )}
-          <button
-            className={styles.previewToggleButton}
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsPreviewHidden((v) => !v);
-            }}
-            title={isPreviewHidden ? "Show preview" : "Hide preview"}
-            aria-label={isPreviewHidden ? "Show preview" : "Hide preview"}
-          >
-            {isPreviewHidden ? <EyeOpenIcon /> : <EyeClosedIcon />}
-          </button>
 
-          {alpha < 0.99 && (
-            <span className={styles.alphaValue}>
-              {Math.round(alpha * 100)}%
-            </span>
-          )}
-        </div>
+        {/* Stream indicator — top left */}
         <div
-          className={`${styles.slotBadge} ${isMacropadSelected ? styles.slotBadgeSelected : ""} ${styles.slotBadgeClickable}`}
+          className={`${styles.streamIndicator} ${isMacropadSelected ? styles.streamIndicatorMacropad : ""}`}
           title="Click to reconnect preview"
           onClick={handleSlotBadgeClick}
           onPointerDown={(e) => e.stopPropagation()}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") handleSlotBadgeClick();
-          }}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleSlotBadgeClick(); }}
         >
-          <span
-            className={
-              isSlotStreaming
-                ? styles.streamDotActive
-                : styles.streamDotInactive
-            }
-          />
-          {displayNumber}
-          {isMacropadSelected && (
-            <span className={styles.macropadIndicator}>⎈</span>
+          {isSlotStreaming ? (
+            <span className={styles.streamDotActive} />
+          ) : (
+            <ReloadIcon className={`${styles.streamRefreshIcon} ${isRefreshing ? styles.streamRefreshIconSpinning : isCompletingSpin ? styles.streamRefreshIconCompleting : ""}`} />
           )}
         </div>
+
+        {/* Alpha indicator — top right, only when < 1 */}
+        {alpha < 0.99 && (
+          <div className={styles.alphaIndicator}>
+            <NumberFlow value={Math.round(alpha * 100)} />%
+          </div>
+        )}
+
         <div className={styles.bottomOverlay}>
           <div className={styles.selectorWrapper}>
             <Select.Root
@@ -864,32 +947,13 @@ export const SlotColumn = memo(function SlotColumn({
             >
               {crossfadeButtonLabel}
             </button>
-
-            {showRemoveButton && (
-              <button
-                type="button"
-                className={styles.removeButton}
-                onClick={() => {
-                  if (
-                    isActive &&
-                    !window.confirm(
-                      `Remove active slot ${displayNumber}? Another slot will become active.`,
-                    )
-                  )
-                    return;
-                  onRemove();
-                }}
-                aria-label={`Remove slot ${displayNumber}`}
-              >
-                <Cross2Icon />
-              </button>
-            )}
           </div>
         </div>
       </PreviewContainer>
 
       <div className={styles.controls} data-nodrag>
         <SlotParameterControls
+          ref={paramControlsRef}
           slotIndex={slotIndex}
           sketchId={sketchId}
           getValue={getValue}

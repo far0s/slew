@@ -119,69 +119,17 @@
 }
 
 /* ==========================================================================
-   Preview hide toggle
+   Column Header Strip
    ========================================================================== */
 
-/* Eye toggle button inline inside alphaOverlay pill */
-.previewToggleButton {
+.columnHeader {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: rgb(255 255 255 / 0.7);
-  cursor: pointer;
-  pointer-events: all;
-  transition: color 0.15s ease;
-  line-height: 1;
-}
-
-.previewToggleButton:hover {
-  color: #fff;
-}
-
-.previewToggleButton svg {
-  width: 0.875rem;
-  height: 0.875rem;
-}
-
-/* Placeholder shown when preview is hidden — fills the previewContainer */
-.previewHiddenPlaceholder {
-  position: absolute;
-  inset: 0;
-  background: var(--bg-panel);
-}
-
-/* Alpha indicator badge - shown when slot alpha < 1 */
-.alphaOverlay {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 0.4rem;
-  padding: 0.2rem 0.4rem;
-  background: rgb(0 0 0 / 0.6);
-  border-radius: 0.25rem;
-  backdrop-filter: blur(4px);
-  pointer-events: none;
-  transition: opacity 0.15s ease;
+  flex-shrink: 0;
 }
 
-.alphaValue {
-  font-size: 0.65rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: rgb(255 255 255 / 0.8);
-}
-
-/* Slot number badge (top-left) */
-.slotBadge {
-  position: absolute;
-  top: 0.5rem;
-  left: 0.5rem;
+.slotNumber {
   min-width: 1.5rem;
   height: 1.5rem;
   display: flex;
@@ -190,35 +138,182 @@
   gap: 0.2rem;
   font-size: 0.7rem;
   font-weight: 600;
-  color: rgb(255 255 255 / 0.9);
-  background: rgb(0 0 0 / 0.6);
+  color: var(--text-secondary);
+  background: var(--bg-active);
   border-radius: 0.25rem;
-  backdrop-filter: blur(4px);
-  transition:
-    background-color 0.15s ease,
-    box-shadow 0.15s ease;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Macropad selected state for badge */
-.slotBadgeSelected {
-  background: rgb(6 182 212 / 0.8);
-  color: rgb(255 255 255);
-  box-shadow: 0 0 8px rgb(6 182 212 / 0.5);
-}
-
-/* Clickable state for badge when preview is not live */
-.slotBadgeClickable {
-  cursor: pointer;
-}
-
-.slotBadgeClickable:hover {
-  background: rgb(0 0 0 / 0.85);
-  color: rgb(255 255 255);
+.slotNumberMacropad {
+  background: rgb(6 182 212 / 0.25);
+  color: rgb(6 182 212);
+  box-shadow: 0 0 0 1px rgb(6 182 212 / 0.4);
 }
 
 .macropadIndicator {
   font-size: 0.6rem;
   opacity: 0.9;
+}
+
+.columnSketchLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.columnHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  flex-shrink: 0;
+}
+
+.headerIconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0.25rem;
+  color: var(--text-muted);
+  cursor: pointer !important;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.headerIconButton:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.headerIconButton:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-primary) 60%, transparent);
+  outline-offset: 1px;
+}
+
+.headerIconButton svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.headerRemoveButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0.25rem;
+  color: var(--text-muted);
+  cursor: pointer !important;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.headerRemoveButton:hover {
+  background: rgb(239 68 68 / 0.15);
+  color: rgb(239 68 68);
+}
+
+.headerRemoveButton:focus-visible {
+  outline: 2px solid rgb(239 68 68 / 0.5);
+  outline-offset: 1px;
+}
+
+.headerRemoveButton svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* ==========================================================================
+   Preview overlays
+   ========================================================================== */
+
+/* Placeholder shown when preview is hidden — fills the previewContainer */
+.previewHiddenPlaceholder {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-panel);
+}
+
+/* Stream indicator — top left of preview */
+.streamIndicator {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  background: rgb(0 0 0 / 0.5);
+  border-radius: 0.25rem;
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.streamIndicator:hover {
+  background: rgb(0 0 0 / 0.75);
+}
+
+.streamIndicator:focus-visible {
+  outline: 2px solid rgb(255 255 255 / 0.4);
+  outline-offset: 1px;
+}
+
+.streamIndicatorMacropad {
+  background: rgb(6 182 212 / 0.35);
+  box-shadow: 0 0 6px rgb(6 182 212 / 0.4);
+}
+
+.streamRefreshIcon {
+  width: 0.7rem;
+  height: 0.7rem;
+  color: rgb(255 255 255 / 0.45);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.streamRefreshIconSpinning {
+  animation: spin 0.7s linear infinite;
+  color: rgb(255 255 255 / 0.75);
+}
+
+.streamRefreshIconCompleting {
+  animation: spin 0.7s linear 1 forwards;
+  color: rgb(255 255 255 / 0.55);
+}
+
+/* Alpha indicator — top right of preview, only when alpha < 1 */
+.alphaIndicator {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.05rem;
+  padding: 0.2rem 0.4rem;
+  background: rgb(0 0 0 / 0.6);
+  border-radius: 0.25rem;
+  backdrop-filter: blur(4px);
+  font-size: 0.65rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: rgb(255 255 255 / 0.8);
+  pointer-events: none;
 }
 
 /* ==========================================================================
@@ -303,15 +398,23 @@
 .selectContent {
   z-index: 1000;
   min-width: 140px;
+  max-height: var(--radix-select-content-available-height);
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-radius: 0.375rem;
   box-shadow: var(--shadow-md);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .selectViewport {
   padding: 0.25rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.15) transparent;
 }
 
 .selectItem {
@@ -397,40 +500,6 @@
 .crossfadeTarget:hover:not(:disabled) {
   background: rgb(251 191 36 / 0.25);
   border-color: rgb(251 191 36 / 0.5);
-}
-
-/* ==========================================================================
-   Remove Button
-   ========================================================================== */
-
-.removeButton {
-  flex-shrink: 0;
-  aspect-ratio: 1;
-  width: 1.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgb(255 255 255 / 0.6);
-  background: rgb(255 255 255 / 0.1);
-  border: 1px solid rgb(255 255 255 / 0.15);
-  border-radius: 0.25rem;
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-  transition:
-    color 0.15s ease,
-    background 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.removeButton:hover {
-  color: rgb(239 68 68);
-  background: rgb(239 68 68 / 0.2);
-  border-color: rgb(239 68 68 / 0.4);
-}
-
-.removeButton:focus-visible {
-  outline: 2px solid rgb(239 68 68 / 0.6);
-  outline-offset: 1px;
 }
 
 /* ==========================================================================
@@ -1051,25 +1120,14 @@
   font-size: 0.65rem;
 }
 
-.streamDotActive,
-.streamDotInactive {
+.streamDotActive {
   display: block;
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
-  transition:
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.streamDotActive {
   background: rgb(52 211 153);
-  box-shadow: 0 0 3px rgb(52 211 153 / 0.8);
-}
-
-.streamDotInactive {
-  background: rgb(255 255 255 / 0.3);
+  box-shadow: 0 0 4px rgb(52 211 153 / 0.9);
 }
 
 /* ==========================================================================

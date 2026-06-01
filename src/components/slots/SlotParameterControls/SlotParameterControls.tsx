@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, forwardRef, useImperativeHandle } from "react";
 import { useEventListener } from "@/inputs/shared/useEventListener";
 import type { SketchId, ParameterTemplate } from "@/sketches";
 import { getSketchDescriptor } from "@/sketches";
@@ -13,8 +13,12 @@ import { rgbToHex } from "@/lib/color";
 import { usePresets } from "@/hooks/usePresets";
 import { useSketchThumbnailHover } from "@/components/slots/SketchThumbnailPopover/SketchThumbnailPopover";
 import { captureCompositeFrameAsDataUrl } from "@/lib/frameCapture";
-import { ToolbarButton } from "./ToolbarButton";
+import { PlusIcon, Pencil1Icon, Cross2Icon } from "@radix-ui/react-icons";
 import styles from "./SlotParameterControls.module.css";
+
+export interface SlotParameterControlsHandle {
+  randomize: () => void;
+}
 
 export interface SlotParameterControlsProps {
   slotIndex: number;
@@ -126,7 +130,7 @@ async function forwardControlsEvent(event: string, value: number): Promise<void>
   });
 }
 
-export function SlotParameterControls({
+export const SlotParameterControls = forwardRef<SlotParameterControlsHandle, SlotParameterControlsProps>(function SlotParameterControls({
   slotIndex,
   sketchId,
   getValue,
@@ -141,7 +145,7 @@ export function SlotParameterControls({
   onQuickLfo,
   onUnlinkBeat,
   onUnlinkLfo,
-}: SlotParameterControlsProps) {
+}: SlotParameterControlsProps, ref) {
   const descriptor = getSketchDescriptor(sketchId);
 
   const [hiddenParams, setHiddenParams] = useState<Set<string>>(() => loadHiddenParams(sketchId));
@@ -327,27 +331,35 @@ export function SlotParameterControls({
     setTimeout(() => { isUserInteractingRef.current = false; }, 300);
   }, [descriptor, lockedParams, slotIndex, setValue]);
 
+  useImperativeHandle(ref, () => ({ randomize: handleRandomize }), [handleRandomize]);
+
   // ---- Preset state ----
   const { presets, savePreset, deletePreset, renamePreset } = usePresets(sketchId);
   const { onMouseEnter: onPresetMouseEnter, onMouseLeave: onPresetMouseLeave, popover: presetPopover } =
     useSketchThumbnailHover();
-  const [presetsOpen, setPresetsOpen] = useState(false);
+  const [savingPreset, setSavingPreset] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [renamingName, setRenamingName] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const presetsRef = useRef<HTMLDivElement>(null);
+  const saveInputRef = useRef<HTMLInputElement>(null);
+  const chipsRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollFades = useCallback(() => {
+    const el = chipsRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  }, []);
 
   useEffect(() => {
-    if (!presetsOpen) return;
-    const handleOutside = (e: MouseEvent) => {
-      if (presetsRef.current && !presetsRef.current.contains(e.target as Node)) {
-        setPresetsOpen(false);
-        setRenamingName(null);
-      }
-    };
-    document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
-  }, [presetsOpen]);
+    updateScrollFades();
+  }, [presets, updateScrollFades]);
+
+  useEffect(() => {
+    if (savingPreset) saveInputRef.current?.focus();
+  }, [savingPreset]);
 
   const defaultPresetParams = useMemo((): Record<string, number> => {
     const params: Record<string, number> = {};
@@ -385,6 +397,7 @@ export function SlotParameterControls({
     const thumbnail = await captureCompositeFrameAsDataUrl().catch(() => undefined);
     await savePreset(name, collectCurrentParams(), thumbnail);
     setSaveName("");
+    setSavingPreset(false);
   }, [saveName, savePreset, collectCurrentParams]);
 
   const handleLoadPreset = useCallback(async (presetParams: Record<string, number>) => {
@@ -395,7 +408,6 @@ export function SlotParameterControls({
       void invoke("set_parameter", { id: paramId, value }).catch(() => {});
     }
     setTimeout(() => { isUserInteractingRef.current = false; }, 300);
-    setPresetsOpen(false);
   }, [slotIndex, setValue]);
 
   const handleStartRename = useCallback((name: string) => {
@@ -498,97 +510,120 @@ export function SlotParameterControls({
           onBackgroundReset={handleBackgroundReset}
         />
       )}
-      <div className={styles.toolbar}>
-        <ToolbarButton onClick={handleRandomize}>Randomize</ToolbarButton>
-        <div className={styles.presetsWrap} ref={presetsRef}>
-          <ToolbarButton
-            active={presetsOpen}
-            onClick={() => { setPresetsOpen((o) => !o); setRenamingName(null); }}
+      <div className={styles.presetsSection}>
+        <div className={styles.presetsHeader}>
+          <span className={styles.presetsSectionLabel}>Presets</span>
+          {savingPreset ? (
+            <div className={styles.presetSaveInline}>
+              <input
+                ref={saveInputRef}
+                className={styles.presetSaveInlineInput}
+                type="text"
+                placeholder="Name…"
+                value={saveName}
+                onChange={(e) => setSaveName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleSavePreset();
+                  if (e.key === "Escape") { setSavingPreset(false); setSaveName(""); }
+                }}
+                onBlur={() => { if (!saveName.trim()) { setSavingPreset(false); setSaveName(""); } }}
+              />
+              <button
+                type="button"
+                className={styles.presetSaveConfirmBtn}
+                onClick={() => void handleSavePreset()}
+                disabled={!saveName.trim()}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                className={styles.presetSaveCancelBtn}
+                onClick={() => { setSavingPreset(false); setSaveName(""); }}
+                aria-label="Cancel"
+              >
+                <Cross2Icon />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className={styles.presetAddBtn}
+              onClick={() => setSavingPreset(true)}
+              title="Save current params as preset"
+              aria-label="Save preset"
+            >
+              <PlusIcon />
+            </button>
+          )}
+        </div>
+        <div className={styles.presetsScrollWrap}>
+          <div
+            className={styles.presetsChips}
+            ref={chipsRef}
+            onScroll={updateScrollFades}
           >
-            Presets {presetsOpen ? "▴" : "▾"}
-          </ToolbarButton>
-          {presetsOpen && (
-            <div className={styles.presetsDropdown}>
-              <div className={styles.presetsSave}>
-                <input
-                  className={styles.presetNameInput}
-                  type="text"
-                  placeholder="Preset name…"
-                  value={saveName}
-                  onChange={(e) => setSaveName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") void handleSavePreset(); }}
-                />
-                <button
-                  type="button"
-                  className={styles.presetSaveBtn}
-                  onClick={() => void handleSavePreset()}
-                  disabled={!saveName.trim()}
-                >
-                  Save
-                </button>
-              </div>
-              <div className={styles.presetsList}>
-                <div className={styles.presetItem}>
+            <button
+              type="button"
+              className={`${styles.presetChip} ${styles.presetChipDefault}`}
+              onClick={() => void handleLoadPreset(defaultPresetParams)}
+              onMouseEnter={(e) => onPresetMouseEnter(e, descriptor.thumbnail)}
+              onMouseLeave={onPresetMouseLeave}
+            >
+              Default
+            </button>
+            {presets.map((preset) => (
+              <div key={preset.name} className={styles.presetChipWrap}>
+                {renamingName === preset.name ? (
+                  <input
+                    className={styles.presetChipRenameInput}
+                    type="text"
+                    value={renameValue}
+                    autoFocus
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void handleConfirmRename(preset.name);
+                      if (e.key === "Escape") setRenamingName(null);
+                    }}
+                    onBlur={() => void handleConfirmRename(preset.name)}
+                  />
+                ) : (
                   <button
                     type="button"
-                    className={`${styles.presetItemName} ${styles.presetItemDefault}`}
-                    onClick={() => void handleLoadPreset(defaultPresetParams)}
-                    onMouseEnter={(e) => onPresetMouseEnter(e, descriptor.thumbnail)}
+                    className={styles.presetChip}
+                    onClick={() => void handleLoadPreset(preset.parameters)}
+                    onMouseEnter={(e) => onPresetMouseEnter(e, preset.thumbnail ?? descriptor.thumbnail)}
                     onMouseLeave={onPresetMouseLeave}
                   >
-                    Default
+                    {preset.name}
+                  </button>
+                )}
+                <div className={styles.presetChipActions}>
+                  <button
+                    type="button"
+                    className={styles.presetChipActionBtn}
+                    title="Rename"
+                    onClick={() => handleStartRename(preset.name)}
+                    aria-label="Rename preset"
+                  >
+                    <Pencil1Icon />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.presetChipActionBtn}
+                    title="Delete"
+                    onClick={() => void deletePreset(preset.name)}
+                    aria-label="Delete preset"
+                  >
+                    <Cross2Icon />
                   </button>
                 </div>
-                {presets.map((preset) => (
-                    <div key={preset.name} className={styles.presetItem}>
-                      {renamingName === preset.name ? (
-                        <input
-                          className={styles.presetRenameInput}
-                          type="text"
-                          value={renameValue}
-                          autoFocus
-                          onChange={(e) => setRenameValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") void handleConfirmRename(preset.name);
-                            if (e.key === "Escape") setRenamingName(null);
-                          }}
-                          onBlur={() => void handleConfirmRename(preset.name)}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          className={styles.presetItemName}
-                          onClick={() => void handleLoadPreset(preset.parameters)}
-                          onMouseEnter={(e) => onPresetMouseEnter(e, preset.thumbnail ?? descriptor.thumbnail)}
-                          onMouseLeave={onPresetMouseLeave}
-                        >
-                          {preset.name}
-                        </button>
-                      )}
-                      <div className={styles.presetItemActions}>
-                        <button
-                          type="button"
-                          className={styles.presetActionBtn}
-                          title="Rename"
-                          onClick={() => handleStartRename(preset.name)}
-                        >
-                          ✎
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.presetActionBtn}
-                          title="Delete"
-                          onClick={() => void deletePreset(preset.name)}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    </div>
-                ))}
               </div>
-              {presetPopover}
-            </div>
-          )}
+            ))}
+          </div>
+          {canScrollLeft && <div className={styles.fadeLeft} aria-hidden="true" />}
+          {canScrollRight && <div className={styles.fadeRight} aria-hidden="true" />}
+          {presetPopover}
         </div>
       </div>
       <div className={styles.controls}>
@@ -632,6 +667,6 @@ export function SlotParameterControls({
       )}
     </div>
   );
-}
+});
 
 export default SlotParameterControls;
