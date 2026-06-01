@@ -151,6 +151,9 @@ export interface SlotsAreaProps {
   onUnlinkLfo?: (parameterId: string) => void;
   highlightedParamIds?: Set<string>;
   onHighlightParams?: (ids: Set<string>) => void;
+  suspendedSlots?: Set<number>;
+  onSuspendSlot?: (slotIndex: number) => void;
+  onResumeSlot?: (slotIndex: number) => void;
 }
 
 const PANEL_SLOTS_KEY = "slew-panel-slots"; // localStorage — survives webview reloads
@@ -197,6 +200,9 @@ export const SlotsArea = memo(function SlotsArea({
   onUnlinkLfo,
   highlightedParamIds,
   onHighlightParams,
+  suspendedSlots,
+  onSuspendSlot,
+  onResumeSlot,
 }: SlotsAreaProps) {
   const filledSlots = useMemo(
     () =>
@@ -320,6 +326,10 @@ export const SlotsArea = memo(function SlotsArea({
   onClearSlotRef.current = onClearSlot;
   const onCopyToSlotRef = useRef(onCopyToSlot);
   onCopyToSlotRef.current = onCopyToSlot;
+  const onSuspendSlotRef = useRef(onSuspendSlot);
+  onSuspendSlotRef.current = onSuspendSlot;
+  const onResumeSlotRef = useRef(onResumeSlot);
+  onResumeSlotRef.current = onResumeSlot;
 
   // Stable per-slot handlers — recreate only when slot count changes
   const perSlotHandlers = useMemo(() => {
@@ -334,6 +344,8 @@ export const SlotsArea = memo(function SlotsArea({
         onOpenPanel: (panelId: PanelId) => void;
         onClosePanel: () => void;
         onOpenOverlay: () => void;
+        onSuspend: () => void;
+        onResume: () => void;
       }
     >();
     for (const slot of slots) {
@@ -355,6 +367,8 @@ export const SlotsArea = memo(function SlotsArea({
         onOpenPanel: (panelId) => handleOpenPanel(idx, panelId),
         onClosePanel: () => handleClosePanel(idx),
         onOpenOverlay: () => handleOpenOverlay(idx),
+        onSuspend: () => onSuspendSlotRef.current?.(idx),
+        onResume: () => onResumeSlotRef.current?.(idx),
       });
     }
     return map;
@@ -496,6 +510,9 @@ export const SlotsArea = memo(function SlotsArea({
                     onUnlinkLfo={onUnlinkLfo}
                     highlightedParamIds={highlightedParamIds}
                     onHighlightParams={onHighlightParams}
+                    isSuspended={suspendedSlots?.has(slot.index) ?? false}
+                    onSuspend={handlers.onSuspend}
+                    onResume={handlers.onResume}
                   />
                 );
               })}

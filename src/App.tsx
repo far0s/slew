@@ -152,6 +152,7 @@ function App() {
 
   // Domain hooks
   const { getSlotColors } = useSlotColors(slotState.slots);
+  const { suspendedSlots, suspendSlot, resumeSlot } = slotState;
   const { handleCrossfade } = useCrossfade({ slotState, paramStore });
   useParameterBackendSync({
     paramStore,
@@ -362,7 +363,11 @@ function App() {
       if (wasActive) {
         const oldAlphaId = makeSlotParameterId(slotIndex, "alpha");
         try {
-          await invoke("set_parameter", { id: oldAlphaId, value: 0, app: undefined });
+          await invoke("set_parameter", {
+            id: oldAlphaId,
+            value: 0,
+            app: undefined,
+          });
           paramStore.set(oldAlphaId, 0);
         } catch (error) {
           logger.error("Controls", "Failed to clear active slot alpha", error);
@@ -372,7 +377,11 @@ function App() {
           const newSketchId = nextFilled.sketchId;
           const newAlphaId = makeSlotParameterId(nextFilled.index, "alpha");
           try {
-            await invoke("set_parameter", { id: newAlphaId, value: 1, app: undefined });
+            await invoke("set_parameter", {
+              id: newAlphaId,
+              value: 1,
+              app: undefined,
+            });
             paramStore.set(newAlphaId, 1);
             await invoke("set_slot_pairing", {
               activeSlotIndex: nextFilled.index,
@@ -381,7 +390,11 @@ function App() {
               nextSceneId: newSketchId,
             });
           } catch (error) {
-            logger.error("Controls", "Failed to activate next slot after active removal", error);
+            logger.error(
+              "Controls",
+              "Failed to activate next slot after active removal",
+              error,
+            );
           }
         }
       }
@@ -442,12 +455,14 @@ function App() {
   const rendererPreviewSlots = useMemo(
     () =>
       slotState.slots
-        .filter((slot) => slot.sketchId !== null)
+        .filter(
+          (slot) => slot.sketchId !== null && !suspendedSlots.has(slot.index),
+        )
         .map((slot) => ({
           index: slot.index,
           sketchId: slot.sketchId as SketchId,
         })),
-    [slotState.slots],
+    [slotState.slots, suspendedSlots],
   );
 
   useEventListener<BpmSourceChangedEvent>("bpm_source_changed", (event) => {
@@ -537,6 +552,9 @@ function App() {
               onClearSlot={handleClearSlot}
               onSetSketch={handleSetSketch}
               onCopyToSlot={handleCopyToSlot}
+              suspendedSlots={suspendedSlots}
+              onSuspendSlot={suspendSlot}
+              onResumeSlot={resumeSlot}
               onQuickBeat={handleQuickBeat}
               onQuickLfo={handleQuickLfo}
               onUnlinkBeat={handleUnlinkBeat}

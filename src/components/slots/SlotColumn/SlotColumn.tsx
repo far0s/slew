@@ -20,6 +20,8 @@ import {
   EyeOpenIcon,
   EyeClosedIcon,
   MagnifyingGlassIcon,
+  PauseIcon,
+  PlayIcon,
   PlusIcon,
   CopyIcon,
   ReloadIcon,
@@ -34,7 +36,10 @@ import {
   getSketchDescriptor,
 } from "@/sketches";
 import type { Slot } from "@/slots/useSlots";
-import { SlotParameterControls, type SlotParameterControlsHandle } from "@/components/slots/SlotParameterControls";
+import {
+  SlotParameterControls,
+  type SlotParameterControlsHandle,
+} from "@/components/slots/SlotParameterControls";
 import { WebGPUCanvas } from "@/renderer/WebGPUCanvas";
 import { StreamedPreview } from "@/components/preview/StreamedPreview";
 import type { AudioMapping } from "@/inputs/audio";
@@ -264,6 +269,10 @@ export interface SlotColumnProps {
   onOpenOverlay?: () => void;
   /** When true, the slot preview canvas is paused (overlay is open for another slot) */
   isPreviewPaused?: boolean;
+  /** When true, the slot is suspended — no rendering, preview frozen */
+  isSuspended?: boolean;
+  onSuspend?: () => void;
+  onResume?: () => void;
   panelId?: PanelId | null;
   onOpenPanel?: (panelId: PanelId) => void;
   onClosePanel?: () => void;
@@ -280,7 +289,6 @@ function getSketchLabel(sketchId: SketchId): string {
   }
   return sketchId;
 }
-
 
 const SketchGroupSection = memo(function SketchGroupSection({
   group,
@@ -634,6 +642,9 @@ export const SlotColumn = memo(function SlotColumn({
   onHighlightParams,
   onOpenOverlay,
   isPreviewPaused = false,
+  isSuspended = false,
+  onSuspend,
+  onResume,
   panelId,
   onOpenPanel,
   onClosePanel,
@@ -664,20 +675,26 @@ export const SlotColumn = memo(function SlotColumn({
   const [slotRefreshKey, setSlotRefreshKey] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCompletingSpin, setIsCompletingSpin] = useState(false);
-  const completingSpinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completingSpinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const spinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSlotBadgeClick = useCallback(() => {
     setIsSlotStreaming(false);
     setIsCompletingSpin(false);
-    if (completingSpinTimerRef.current) clearTimeout(completingSpinTimerRef.current);
+    if (completingSpinTimerRef.current)
+      clearTimeout(completingSpinTimerRef.current);
     if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
     setIsRefreshing(true);
     setSlotRefreshKey((k) => k + 1);
     spinTimeoutRef.current = setTimeout(() => {
       setIsRefreshing(false);
       setIsCompletingSpin(true);
-      completingSpinTimerRef.current = setTimeout(() => setIsCompletingSpin(false), 700);
+      completingSpinTimerRef.current = setTimeout(
+        () => setIsCompletingSpin(false),
+        700,
+      );
     }, 2000);
   }, []);
 
@@ -687,13 +704,17 @@ export const SlotColumn = memo(function SlotColumn({
       if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
       setIsRefreshing(false);
       setIsCompletingSpin(true);
-      completingSpinTimerRef.current = setTimeout(() => setIsCompletingSpin(false), 700);
+      completingSpinTimerRef.current = setTimeout(
+        () => setIsCompletingSpin(false),
+        700,
+      );
     }
   }, []);
 
   useEffect(() => {
     return () => {
-      if (completingSpinTimerRef.current) clearTimeout(completingSpinTimerRef.current);
+      if (completingSpinTimerRef.current)
+        clearTimeout(completingSpinTimerRef.current);
       if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
     };
   }, []);
@@ -705,6 +726,9 @@ export const SlotColumn = memo(function SlotColumn({
     });
   }, [slotIndex, isPreviewHidden]);
 
+  useEffect(() => {
+    emit("slot-suspended-changed", { slotIndex, suspended: isSuspended });
+  }, [slotIndex, isSuspended]);
 
   if (sketchId === null && panelId) {
     return (
@@ -763,6 +787,7 @@ export const SlotColumn = memo(function SlotColumn({
     isActive && styles.activeColumn,
     isMacropadSelected && !isActive && styles.macropadSelected,
     isDragging && styles.dragging,
+    isSuspended && styles.suspendedColumn,
   ]
     .filter(Boolean)
     .join(" ");
@@ -788,16 +813,23 @@ export const SlotColumn = memo(function SlotColumn({
     >
       {/* Header strip */}
       <div className={styles.columnHeader}>
-        <div className={`${styles.slotNumber} ${isMacropadSelected ? styles.slotNumberMacropad : ""}`}>
+        <div
+          className={`${styles.slotNumber} ${isMacropadSelected ? styles.slotNumberMacropad : ""}`}
+        >
           {displayNumber}
-          {isMacropadSelected && <span className={styles.macropadIndicator}>⎈</span>}
+          {isMacropadSelected && (
+            <span className={styles.macropadIndicator}>⎈</span>
+          )}
         </div>
         <span className={styles.columnSketchLabel}>{displayLabel}</span>
         <div className={styles.columnHeaderActions}>
           <button
             type="button"
             className={styles.headerIconButton}
-            onClick={(e) => { e.stopPropagation(); paramControlsRef.current?.randomize(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              paramControlsRef.current?.randomize();
+            }}
             onPointerDown={(e) => e.stopPropagation()}
             title="Randomize parameters"
             aria-label="Randomize parameters"
@@ -806,8 +838,26 @@ export const SlotColumn = memo(function SlotColumn({
           </button>
           <button
             type="button"
+            className={`${styles.headerIconButton} ${isSuspended ? styles.headerIconButtonActive : ""}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isSuspended) onResume?.();
+              else onSuspend?.();
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            title={isSuspended ? "Resume slot" : "Suspend slot"}
+            aria-label={isSuspended ? "Resume slot" : "Suspend slot"}
+            aria-pressed={isSuspended}
+          >
+            {isSuspended ? <PlayIcon /> : <PauseIcon />}
+          </button>
+          <button
+            type="button"
             className={styles.headerIconButton}
-            onClick={(e) => { e.stopPropagation(); setIsPreviewHidden((v) => !v); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsPreviewHidden((v) => !v);
+            }}
             onPointerDown={(e) => e.stopPropagation()}
             title={isPreviewHidden ? "Show preview" : "Hide preview"}
             aria-label={isPreviewHidden ? "Show preview" : "Hide preview"}
@@ -818,7 +868,10 @@ export const SlotColumn = memo(function SlotColumn({
             <button
               type="button"
               className={styles.headerIconButton}
-              onClick={(e) => { e.stopPropagation(); onOpenOverlay(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenOverlay();
+              }}
               onPointerDown={(e) => e.stopPropagation()}
               title="Open full editor"
               aria-label="Open full editor"
@@ -830,7 +883,9 @@ export const SlotColumn = memo(function SlotColumn({
             <button
               type="button"
               className={styles.headerRemoveButton}
-              onClick={() => { onRemove(); }}
+              onClick={() => {
+                onRemove();
+              }}
               onPointerDown={(e) => e.stopPropagation()}
               aria-label={`Remove slot ${displayNumber}`}
             >
@@ -841,8 +896,15 @@ export const SlotColumn = memo(function SlotColumn({
       </div>
 
       <PreviewContainer aspectRatio={rendererAspectRatio}>
-        {isPreviewHidden ? (
-          <div className={styles.previewHiddenPlaceholder} />
+        {isPreviewHidden || isSuspended ? (
+          <div className={styles.previewHiddenPlaceholder}>
+            {isSuspended && (
+              <div className={styles.suspendedBadge}>
+                <PauseIcon />
+                <span>Suspended</span>
+              </div>
+            )}
+          </div>
         ) : SketchComponent ? (
           <Suspense fallback={<div className={styles.fallback}>Loading…</div>}>
             <SlotPreview
@@ -867,12 +929,16 @@ export const SlotColumn = memo(function SlotColumn({
           onPointerDown={(e) => e.stopPropagation()}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleSlotBadgeClick(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") handleSlotBadgeClick();
+          }}
         >
           {isSlotStreaming ? (
             <span className={styles.streamDotActive} />
           ) : (
-            <ReloadIcon className={`${styles.streamRefreshIcon} ${isRefreshing ? styles.streamRefreshIconSpinning : isCompletingSpin ? styles.streamRefreshIconCompleting : ""}`} />
+            <ReloadIcon
+              className={`${styles.streamRefreshIcon} ${isRefreshing ? styles.streamRefreshIconSpinning : isCompletingSpin ? styles.streamRefreshIconCompleting : ""}`}
+            />
           )}
         </div>
 

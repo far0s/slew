@@ -70,6 +70,10 @@ export interface SlotsState {
   getSlotParameterIds: (slotIndex: number) => SlotParameterId[];
   getFilledSlots: () => Slot[];
   isHydrated: boolean;
+  suspendedSlots: Set<number>;
+  suspendSlot: (index: number) => void;
+  resumeSlot: (index: number) => void;
+  isSlotSuspended: (index: number) => boolean;
   hydrateFromBackend: () => Promise<boolean>;
   setSlots: (slots: Slot[]) => void;
   setActiveIndex: (index: number) => void;
@@ -109,6 +113,7 @@ export function useSlots(config: Partial<SlotsConfig> = {}): SlotsState {
   >(null);
   const [crossfadeValue, setCrossfadeValue] = useState(0);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [suspendedSlots, setSuspendedSlots] = useState<Set<number>>(new Set());
 
   const hydrateFromBackend = useCallback(async (): Promise<boolean> => {
     try {
@@ -321,6 +326,29 @@ export function useSlots(config: Partial<SlotsConfig> = {}): SlotsState {
     [slots, setSketch, copyToSlot],
   );
 
+  const suspendSlot = useCallback((index: number) => {
+    setSuspendedSlots((prev) => {
+      if (prev.has(index)) return prev;
+      const next = new Set(prev);
+      next.add(index);
+      return next;
+    });
+  }, []);
+
+  const resumeSlot = useCallback((index: number) => {
+    setSuspendedSlots((prev) => {
+      if (!prev.has(index)) return prev;
+      const next = new Set(prev);
+      next.delete(index);
+      return next;
+    });
+  }, []);
+
+  const isSlotSuspended = useCallback(
+    (index: number) => suspendedSlots.has(index),
+    [suspendedSlots],
+  );
+
   const startCrossfade = useCallback(
     (targetIndex: number) => {
       if (targetIndex === activeIndex) return;
@@ -394,6 +422,10 @@ export function useSlots(config: Partial<SlotsConfig> = {}): SlotsState {
     getSlotParameterIds,
     getFilledSlots,
     isHydrated,
+    suspendedSlots,
+    suspendSlot,
+    resumeSlot,
+    isSlotSuspended,
     hydrateFromBackend,
     setSlots,
     setActiveIndex,

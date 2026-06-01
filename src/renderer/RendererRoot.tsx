@@ -327,6 +327,7 @@ function RendererContent({
   const [hiddenPreviewSlots, setHiddenPreviewSlots] = useState<Set<number>>(
     new Set(),
   );
+  const [suspendedSlots, setSuspendedSlots] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const unlisten = listen<{ slotIndex: number; hidden: boolean }>(
@@ -335,6 +336,26 @@ function RendererContent({
         setHiddenPreviewSlots((prev) => {
           const next = new Set(prev);
           if (event.payload.hidden) {
+            next.add(event.payload.slotIndex);
+          } else {
+            next.delete(event.payload.slotIndex);
+          }
+          return next;
+        });
+      },
+    );
+    return () => {
+      unlisten.then((u) => u());
+    };
+  }, []);
+
+  useEffect(() => {
+    const unlisten = listen<{ slotIndex: number; suspended: boolean }>(
+      "slot-suspended-changed",
+      (event) => {
+        setSuspendedSlots((prev) => {
+          const next = new Set(prev);
+          if (event.payload.suspended) {
             next.add(event.payload.slotIndex);
           } else {
             next.delete(event.payload.slotIndex);
@@ -396,73 +417,76 @@ function RendererContent({
         slotGroups={slotGroupsRef}
         visibleSlotIndices={allSlots
           .map((s) => s.index)
-          .filter((i) => !hiddenPreviewSlots.has(i))}
+          .filter((i) => !hiddenPreviewSlots.has(i) && !suspendedSlots.has(i))}
         opacitySetters={slotOpacitySettersRef}
         opacityValues={slotOpacityValuesRef}
       />
 
       {/* Render all loaded slots. Slots not in slotsToRender are hidden from
            the main scene (visible=false) but their groups are still registered
-           in slotGroupsRef so SlotPreviewCapture can capture their frames. */}
-      {allSlots.map((slot) => {
-        const SketchComponent = SKETCH_COMPONENT_REGISTRY[slot.sketchId];
-        if (!SketchComponent) return null;
+           in slotGroupsRef so SlotPreviewCapture can capture their frames.
+           Suspended slots are fully unmounted to save GPU resources. */}
+      {allSlots
+        .filter((slot) => !suspendedSlots.has(slot.index))
+        .map((slot) => {
+          const SketchComponent = SKETCH_COMPONENT_REGISTRY[slot.sketchId];
+          if (!SketchComponent) return null;
 
-        const isVisible = slotsToRender.some((s) => s.index === slot.index);
+          const isVisible = slotsToRender.some((s) => s.index === slot.index);
 
-        // Get the slot's alpha (master opacity) parameter
-        const alphaParamId = makeSlotParameterId(slot.index, "alpha");
-        const alpha = paramStore.get(alphaParamId) ?? 0;
+          // Get the slot's alpha (master opacity) parameter
+          const alphaParamId = makeSlotParameterId(slot.index, "alpha");
+          const alpha = paramStore.get(alphaParamId) ?? 0;
 
-        // Use real opacity for the main scene composite; invisible slots render
-        // at opacity=1 so SlotPreviewCapture captures them at full brightness.
-        const opacity = isVisible
-          ? calculateSlotOpacity(
-              slot.index,
-              activeSlotIndex,
-              crossfadeTargetIndex,
-              crossfade,
-              alpha,
-            )
-          : 1;
+          // Use real opacity for the main scene composite; invisible slots render
+          // at opacity=1 so SlotPreviewCapture captures them at full brightness.
+          const opacity = isVisible
+            ? calculateSlotOpacity(
+                slot.index,
+                activeSlotIndex,
+                crossfadeTargetIndex,
+                crossfade,
+                alpha,
+              )
+            : 1;
 
-        const sketchParams = buildSlotParams(
-          slot.index,
-          slot.sketchId,
-          paramStore,
-          tintLfoPhase,
-        );
+          const sketchParams = buildSlotParams(
+            slot.index,
+            slot.sketchId,
+            paramStore,
+            tintLfoPhase,
+          );
 
-        // Store the real opacity value so SlotPreviewCapture can restore it after capture
-        slotOpacityValuesRef.current.set(slot.index, opacity);
+          // Store the real opacity value so SlotPreviewCapture can restore it after capture
+          slotOpacityValuesRef.current.set(slot.index, opacity);
 
-        const colors = slotColors.get(slot.index);
+          const colors = slotColors.get(slot.index);
 
-        return (
-          <group
-            key={`slot-${slot.index}`}
-            visible={isVisible}
-            ref={(group) => {
-              if (group) {
-                slotGroupsRef.current.set(slot.index, group);
-              } else {
-                slotGroupsRef.current.delete(slot.index);
-              }
-            }}
-          >
-            <Suspense fallback={<SketchLoadingFallback />}>
-              <SketchComponent
-                opacity={opacity}
-                params={sketchParams}
-                colors={colors}
-                setOpacityOverride={(setter) =>
-                  slotOpacitySettersRef.current.set(slot.index, setter)
+          return (
+            <group
+              key={`slot-${slot.index}`}
+              visible={isVisible}
+              ref={(group) => {
+                if (group) {
+                  slotGroupsRef.current.set(slot.index, group);
+                } else {
+                  slotGroupsRef.current.delete(slot.index);
                 }
-              />
-            </Suspense>
-          </group>
-        );
-      })}
+              }}
+            >
+              <Suspense fallback={<SketchLoadingFallback />}>
+                <SketchComponent
+                  opacity={opacity}
+                  params={sketchParams}
+                  colors={colors}
+                  setOpacityOverride={(setter) =>
+                    slotOpacitySettersRef.current.set(slot.index, setter)
+                  }
+                />
+              </Suspense>
+            </group>
+          );
+        })}
     </>
   );
 }
