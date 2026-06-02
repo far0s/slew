@@ -465,6 +465,36 @@ function App() {
     [slotState.slots, suspendedSlots],
   );
 
+  useEventListener<string | null>("project_restored", (frontendState) => {
+    void slotState.hydrateFromBackend();
+    if (frontendState) {
+      try {
+        const parsed = JSON.parse(frontendState) as {
+          effects?: unknown;
+          panelSlots?: unknown;
+        };
+        if (parsed.effects !== undefined) {
+          localStorage.setItem("slew-effects", JSON.stringify(parsed.effects));
+          void import("@tauri-apps/api/event").then(({ emit }) => {
+            void emit("effects-changed", parsed.effects);
+          });
+        }
+        if (parsed.panelSlots !== undefined) {
+          localStorage.setItem("slew-panel-slots", JSON.stringify(parsed.panelSlots));
+          void import("@tauri-apps/api/event").then(({ emit }) => {
+            void emit("panel-slots-restore", parsed.panelSlots);
+          });
+        }
+      } catch {
+        // malformed frontend_state — ignore
+      }
+    }
+    // Always stay on Projects tab after a load so user sees the result
+    void import("@tauri-apps/api/event").then(({ emit }) => {
+      void emit("sidebar-tab-restore", "projects");
+    });
+  });
+
   useEventListener<BpmSourceChangedEvent>("bpm_source_changed", (event) => {
     if (event.source === "osc" && !oscToastShownRef.current) {
       oscToastShownRef.current = true;

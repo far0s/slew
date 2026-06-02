@@ -20,7 +20,7 @@ pub use commands::{
     set_osc_beat_config_cmd, set_osc_output_config, start_osc_server, stop_osc_server,
 };
 pub use engine::init_osc_engine;
-pub use mappings::{add_mapping, clear_mappings, get_mappings, remove_mapping};
+pub use mappings::{add_mapping, clear_mappings, get_mappings, remove_mapping, restore_bulk};
 pub use send::{
     get_output_config, send_osc_beat, send_osc_bpm, send_osc_color, send_osc_message,
     set_output_config,

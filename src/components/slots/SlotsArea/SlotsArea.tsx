@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState, useEffect, useMemo, memo } from "react";
+import { useEventListener } from "@/inputs/shared";
 import { AnimatePresence } from "motion/react";
 
 import type { SketchId, SketchProps } from "@/sketches";
@@ -277,6 +278,10 @@ export const SlotsArea = memo(function SlotsArea({
       return next;
     });
   }, []);
+
+  useEventListener<Record<number, PanelId | null>>("panel-slots-restore", (restored) => {
+    setPanelSlots(restored);
+  });
 
   const columnsWrapperRef = useRef<HTMLDivElement>(null);
 

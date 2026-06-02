@@ -25,5 +25,5 @@ pub use capture::{
 };
 
 pub use mappings::{
-    add_mapping, clear_mappings, get_mappings, remove_mapping, set_mapping_enabled,
+    add_mapping, clear_mappings, get_mappings, remove_mapping, restore_bulk, set_mapping_enabled,
 };

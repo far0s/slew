@@ -41,7 +41,7 @@ pub(super) fn load_state_from_disk(app: &AppHandle) {
     }
 }
 
-pub(super) fn save_state_to_disk(app: &AppHandle) {
+pub fn save_state_to_disk(app: &AppHandle) {
     let state = get_modulation_state();
 
     if let Some(path) = state_path(app) {

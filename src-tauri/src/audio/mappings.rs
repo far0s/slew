@@ -189,6 +189,25 @@ pub fn clear_mappings() {
     log::debug!("[Audio] Cleared all mappings");
 }
 
+/// Replace all mappings atomically. Used by project restore.
+pub fn restore_bulk(mappings: Vec<AudioMapping>) {
+    let (app_handle, count) = with_audio_engine(|state| {
+        state.mappings.clear();
+        // clear smoothed state so old values don't bleed into new mappings
+        state.smoothed_values.clear();
+        state.mappings.extend(mappings);
+        let count = state.mappings.len();
+        (state.app_handle.clone(), count)
+    });
+
+    if let Some(handle) = app_handle {
+        save_mappings_to_disk(&handle);
+    }
+
+    emit_mappings_changed();
+    log::debug!("[Audio] Restored {} mappings from bulk", count);
+}
+
 pub fn set_mapping_enabled(id: &str, enabled: bool) -> bool {
     let (found, app_handle) = with_audio_engine(|state| {
         let found = state.mappings.iter_mut().find(|m| m.id == id);

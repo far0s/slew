@@ -321,6 +321,18 @@ pub fn get_modulation_state() -> ModulationState {
     })
 }
 
+/// Replace all modulation state atomically. Used by project restore.
+pub fn restore_state(state: ModulationState) {
+    with_modulation_engine(|engine| {
+        engine.lfos.clear();
+        for lfo in state.lfos {
+            engine.lfos.insert(lfo.id.clone(), lfo);
+        }
+        engine.targets = state.targets;
+        engine.audio_modulations = state.audio_modulations;
+    });
+}
+
 /// Check if a parameter has any active modulation targets
 pub fn is_parameter_modulated(parameter_id: &str) -> bool {
     with_modulation_engine(|state| {

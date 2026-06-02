@@ -49,6 +49,15 @@ pub fn clear_mappings() -> Result<(), String> {
     Ok(())
 }
 
+/// Replace all mappings atomically. Used by project restore.
+pub fn restore_bulk(mappings: Vec<HidMapping>) {
+    with_hid_engine(|state| {
+        state.mappings.clear();
+        state.mappings.extend(mappings);
+    });
+    save_mappings_to_disk();
+}
+
 /// Set up default mappings for the Megalodon.
 ///
 /// # Deprecated

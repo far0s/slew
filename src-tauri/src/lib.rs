@@ -17,6 +17,7 @@ pub mod modulation;
 pub mod osc;
 pub mod parameter_store;
 pub mod presets;
+pub mod projects;
 #[cfg(target_os = "windows")]
 pub mod spout;
 #[cfg(target_os = "macos")]
@@ -52,6 +53,7 @@ pub fn run() {
     log::info!("[App] Starting Slew");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
@@ -113,6 +115,7 @@ pub fn run() {
             midi_clock_out::init_midi_clock_out_engine(app.handle().clone());
             link::init_link_engine(app.handle().clone());
             start_parameter_tick_loop(app.handle().clone());
+            projects::start_autosave_loop(app.handle().clone());
 
             // Window placement - spawn with delay to ensure windows are ready
             let app_handle = app.handle().clone();
@@ -289,6 +292,14 @@ pub fn run() {
             presets::load_preset,
             presets::delete_preset,
             presets::rename_preset,
+            // Projects
+            projects::save_project,
+            projects::load_project,
+            projects::list_projects,
+            projects::delete_project,
+            projects::rename_project,
+            projects::export_project,
+            projects::import_project,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

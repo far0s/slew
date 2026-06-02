@@ -57,6 +57,15 @@ pub fn clear_mappings() {
     log::info!("[OSC] Cleared all mappings");
 }
 
+/// Replace all mappings atomically. Used by project restore.
+pub fn restore_bulk(mappings: Vec<OscMapping>) {
+    with_osc_engine(|state| {
+        state.mappings.clear();
+        state.mappings.extend(mappings);
+    });
+    save_mappings_to_disk();
+}
+
 // ============================================================================
 // Persistence
 // ============================================================================
@@ -102,7 +111,7 @@ pub(super) fn load_mappings_from_disk() {
 }
 
 /// Save OSC mappings to disk.
-fn save_mappings_to_disk() {
+pub(crate) fn save_mappings_to_disk() {
     let (app_handle, mappings) =
         with_osc_engine(|state| (state.app_handle.clone(), state.mappings.clone()));
 

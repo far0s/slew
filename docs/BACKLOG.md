@@ -147,23 +147,6 @@ Support external images/videos as input textures for sketches.
 
 ---
 
-### Project & Workflow
-
-#### 🟡 Presets & Projects (Full Session Management) `feature`
-
-Save/load complete project state.
-
-**Context**: For live performance, users need to save entire setups including all slots, parameters, and mappings. Sketch Presets (see Core UX) is a natural prerequisite.
-
-**Subtasks**:
-
-- [ ] Save/load complete project state (slots, parameters, mappings)
-- [ ] Quick snapshot for A/B comparison
-- [ ] Export/import for sharing
-- [ ] Auto-save / recovery
-
----
-
 ### Distribution & Platform
 
 #### 🟡 Marketing Site — Monorepo Setup `chore`

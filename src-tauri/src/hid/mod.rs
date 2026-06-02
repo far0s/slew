@@ -19,6 +19,6 @@ pub use devices::{list_devices, list_supported_devices};
 pub use engine::{init_hid_engine, is_auto_connect_enabled, set_auto_connect};
 #[allow(deprecated)]
 pub use mappings::{
-    add_mapping, clear_mappings, get_mappings, remove_mapping, setup_default_mappings,
+    add_mapping, clear_mappings, get_mappings, remove_mapping, restore_bulk, setup_default_mappings,
 };
 pub use types::{HidDeviceInfo, HidEncoderEvent, HidKeyEvent, HidMapping, HidRawReport, HidStatus};

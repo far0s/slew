@@ -45,6 +45,7 @@ export { UpdateBanner } from "./layout/UpdateBanner";
 
 // Additional components
 export { WledPanel } from "./panels/WledPanel";
+export { ProjectsPanel } from "./panels/ProjectsPanel";
 export { ShortcutsModal } from "./layout/ShortcutsModal/ShortcutsModal";
 export { KnobInput, type KnobInputProps, type KnobColorVariant } from "./parameters/KnobInput";
 export { StepInput, type StepInputProps } from "./parameters/StepInput";

@@ -23,8 +23,11 @@ pub use types::{
 // Re-export public engine functions
 pub use engine::{
     get_modulation_state, get_targets_for_parameter, init_modulation_engine,
-    is_parameter_modulated, update_audio_levels, update_bpm,
+    is_parameter_modulated, restore_state, update_audio_levels, update_bpm,
 };
+
+// Re-export persistence functions
+pub use persistence::save_state_to_disk as save_modulation_state_to_disk;
 
 // Re-export LFO management
 pub use lfos::{add_lfo, clear_lfos, get_lfo, get_lfos, remove_lfo, update_lfo};

@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, useEffect, memo } from "react";
+import { useEventListener } from "@/inputs/shared";
 import * as Tabs from "@radix-ui/react-tabs";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -12,6 +13,7 @@ import { OutputsPanel } from "@/components/panels/OutputsPanel";
 import { ModulationPanel } from "@/components/panels/ModulationPanel";
 import { VideoOutputPanel } from "@/components/panels/VideoOutputPanel";
 import { EffectsPanel } from "@/components/panels/EffectsPanel";
+import { ProjectsPanel } from "@/components/panels/ProjectsPanel";
 import { ParameterSlider } from "@/components/parameters/ParameterSlider";
 import type { Slot } from "@/slots/useSlots";
 import {
@@ -403,8 +405,22 @@ export const Sidebar = memo(function Sidebar({
     await restartRenderer();
   }, [isRestarting, restartRenderer]);
 
+  const [activeTab, setActiveTab] = useState(
+    () => localStorage.getItem("slew-active-sidebar-tab") ?? "settings",
+  );
+
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    localStorage.setItem("slew-active-sidebar-tab", tab);
+  }, []);
+
+  useEventListener<string>("sidebar-tab-restore", (tab) => {
+    setActiveTab(tab);
+    localStorage.setItem("slew-active-sidebar-tab", tab);
+  });
+
   return (
-    <Tabs.Root defaultValue="settings" className={styles.container}>
+    <Tabs.Root value={activeTab} onValueChange={handleTabChange} className={styles.container}>
       <Tabs.List className={styles.tabList} aria-label="Sidebar tabs">
         <Tabs.Trigger value="settings" className={styles.tabTrigger}>
           Settings
@@ -426,6 +442,9 @@ export const Sidebar = memo(function Sidebar({
         </Tabs.Trigger>
         <Tabs.Trigger value="appearance" className={styles.tabTrigger}>
           Appearance
+        </Tabs.Trigger>
+        <Tabs.Trigger value="projects" className={styles.tabTrigger}>
+          Projects
         </Tabs.Trigger>
       </Tabs.List>
 
@@ -558,6 +577,10 @@ export const Sidebar = memo(function Sidebar({
               <LayoutControls />
             </div>
           </div>
+        </Tabs.Content>
+
+        <Tabs.Content value="projects" className={styles.tabContent}>
+          <ProjectsPanel />
         </Tabs.Content>
       </div>
     </Tabs.Root>

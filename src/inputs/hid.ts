@@ -13,7 +13,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { useMessageActivityWithHistory, useMessageHistory } from "./shared";
+import {
+  useEventListener,
+  useMessageActivityWithHistory,
+  useMessageHistory,
+} from "./shared";
 import { logger } from "@/lib/logger";
 
 // ============================================================================
@@ -419,6 +423,11 @@ export function useHidMappings() {
       _hidMappingsListeners.delete(setMappings);
     };
   }, []);
+
+  // Subscribe to mappings changes during project restore
+  useEventListener<HidMapping[]>("hid_mappings_changed", (updatedMappings) => {
+    _setHidMappings(updatedMappings);
+  });
 
   const addMapping = useCallback(async (mapping: HidMapping) => {
     await commitHidMapping(mapping);

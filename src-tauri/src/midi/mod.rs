@@ -34,7 +34,8 @@ pub use import_export::{
 };
 pub use learn::{cancel_learn, get_learn_state, start_learn};
 pub use mappings::{
-    clear_mappings, get_mappings, install_default_cc_mappings, remove_mapping, set_mapping,
+    clear_mappings, get_mappings, install_default_cc_mappings, remove_mapping, restore_bulk,
+    set_mapping,
 };
 // Midimix-specific operations kept at midi:: level for existing call sites
 pub use midimix::{pulse_beat_led, set_active_slots, update_midimix_leds};

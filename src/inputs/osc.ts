@@ -293,6 +293,11 @@ export function useOscMappings() {
 
   const [isOperating, setIsOperating] = useState(false);
 
+  // Subscribe to mappings changes during project restore
+  useEventListener<OscMapping[]>("osc_mappings_changed", (updatedMappings) => {
+    setMappings(updatedMappings);
+  });
+
   const addMapping = useCallback(
     async (mapping: OscMapping) => {
       setIsOperating(true);

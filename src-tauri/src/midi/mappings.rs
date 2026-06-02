@@ -130,6 +130,16 @@ pub fn install_default_note_mappings(notes: &[u8], channel: u8) {
     }
 }
 
+/// Replace all mappings atomically. Used by project restore.
+pub fn restore_bulk(mappings: Vec<MidiMapping>) {
+    with_midi_engine(|state| {
+        state.mappings.clear();
+        state.mappings.extend(mappings);
+    });
+    save_mappings_to_disk();
+    emit_mappings_changed();
+}
+
 /// Clear all MIDI mappings.
 pub fn clear_mappings() {
     with_midi_engine(|state| {
