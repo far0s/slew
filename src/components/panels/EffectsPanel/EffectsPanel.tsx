@@ -1,11 +1,13 @@
 import { useState, useCallback } from "react";
 import { Reorder, useDragControls } from "motion/react";
 import { Cross2Icon } from "@radix-ui/react-icons";
+import * as Switch from "@radix-ui/react-switch";
 import { useEffects, makeFxParamId } from "@/effects/EffectsContext";
 import { EFFECT_DESCRIPTORS, getEffectDescriptor } from "@/effects/effectDescriptors";
 import type { EffectInstance } from "@/effects/effectTypes";
 import { useMidiMappings, type MidiMapping } from "@/inputs/midi";
 import { ParameterSlider } from "@/components/parameters/ParameterSlider";
+import { AngleDial } from "@/components/parameters/AngleDial/AngleDial";
 import styles from "./EffectsPanel.module.css";
 
 // ============================================================================
@@ -78,15 +80,42 @@ function EffectCard({ effect, onRemove, onToggle, onParamChange, midiMappings }:
           <div className={styles.paramsInner}>
             {descriptor.parameters.map((param) => {
               const fxParamId = makeFxParamId(effect.instanceId, param.templateId);
+              const value = effect.params[param.templateId] ?? param.defaultValue;
+
+              if (param.inputType === "toggle") {
+                return (
+                  <div key={param.templateId} className={styles.toggleRow}>
+                    <span className={styles.toggleLabel}>{param.label}</span>
+                    <Switch.Root
+                      className={styles.switchRoot}
+                      checked={value === 1}
+                      onCheckedChange={(checked) => onParamChange(param.templateId, checked ? 1 : 0)}
+                    >
+                      <Switch.Thumb className={styles.switchThumb} />
+                    </Switch.Root>
+                  </div>
+                );
+              }
+
               const isMidiControlled = midiMappings.some(
                 (m) => m.parameter_id === fxParamId,
               );
+              const isAngle = param.unit === "°";
+              const formatValue = param.unit != null || param.step === 1
+                ? (v: number) => `${Math.round(v)}${param.unit ?? ""}`
+                : undefined;
+              const valueDisplay = isAngle ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", minWidth: "3.2em", justifyContent: "flex-end" }}>
+                  <AngleDial degrees={value} />
+                  <span style={{ display: "inline-block", width: "2.2em", textAlign: "right" }}>{Math.round(value)}°</span>
+                </span>
+              ) : undefined;
               return (
                 <ParameterSlider
                   key={param.templateId}
                   id={`effect_${effect.instanceId}_${param.templateId}`}
                   label={param.label}
-                  value={effect.params[param.templateId] ?? param.defaultValue}
+                  value={value}
                   onChange={(v) => onParamChange(param.templateId, v)}
                   min={param.min}
                   max={param.max}
@@ -94,6 +123,8 @@ function EffectCard({ effect, onRemove, onToggle, onParamChange, midiMappings }:
                   color={param.color}
                   midiParameterId={fxParamId}
                   isMidiControlled={isMidiControlled}
+                  formatValue={formatValue}
+                  valueDisplay={valueDisplay}
                 />
               );
             })}

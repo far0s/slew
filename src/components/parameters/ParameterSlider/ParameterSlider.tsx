@@ -76,6 +76,7 @@ export interface ParameterSliderProps {
   compact?: boolean;
   inline?: boolean;
   formatValue?: (value: number) => string;
+  valueDisplay?: React.ReactNode;
   onChange: (value: number) => void;
   onCommit?: (after: number, before: number) => void;
   "aria-label"?: string;
@@ -112,6 +113,7 @@ export function ParameterSlider({
   compact = false,
   inline = false,
   formatValue = (v) => v.toFixed(2),
+  valueDisplay,
   onChange,
   "aria-label": ariaLabel,
   midiParameterId,
@@ -194,7 +196,7 @@ export function ParameterSlider({
               pickup
             </span>
           )}
-          <span className={styles.value}>{formatValue(value)}</span>
+          <span className={styles.value}>{valueDisplay ?? formatValue(value)}</span>
         </label>
         <div className={styles.labelActions}>
           {lockButton}

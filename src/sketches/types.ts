@@ -27,7 +27,8 @@ export interface ParameterTemplate {
   defaultValue: number;
   color?: SliderColor;
   description?: string;
-  inputType?: "slider" | "select" | "color" | "integer";
+  inputType?: "slider" | "select" | "color" | "integer" | "toggle";
+  unit?: string;
   defaultColorValue?: [number, number, number]; // for inputType: "color", RGB 0-255
   options?: Array<{ value: number; label: string }>;
 }

@@ -43,6 +43,11 @@ import type { EffectInstance } from "./effectTypes";
 // RTs across pipeline rebuilds so accumulated trail history survives param changes.
 export type AfterImageCache = Map<string, AfterImageNode>;
 
+// Afterimage "damp" is stored as 0–100% in the UI; convert to the raw 0.8–0.99 range.
+function dampFromPercent(pct: number): number {
+  return 0.8 + (pct / 100) * (0.99 - 0.8);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyNode = any;
 
@@ -163,7 +168,7 @@ function applyUVTransform(
     case "tile": {
       const scale = float(params.scale ?? 3);
       const doMirror = (params.mirror ?? 1) >= 0.5;
-      const tileUV = currentUV.mul(scale);
+      const tileUV = currentUV.sub(0.5).mul(scale).add(0.5);
       const cell = floor(tileUV) as AnyNode;
       const localUV = fract(tileUV) as AnyNode;
       if (doMirror) {
@@ -179,12 +184,13 @@ function applyUVTransform(
 
     case "domain_warp": {
       const scale = float(params.scale ?? 3);
-      const strength = float(params.strength ?? 0.15);
+      const strength = float(((params.strength ?? 30) / 100) * 0.5);
       const octaves = Math.max(1, Math.round(params.octaves ?? 3));
       const speed = float(params.speed ?? 0.3);
+      const angleRad = ((params.angle ?? 90) - 90) * Math.PI / 180;
       const noiseUV = vec2(
-        currentUV.x.mul(scale).add(time.mul(speed)),
-        currentUV.y.mul(scale),
+        currentUV.x.mul(scale).add(time.mul(speed).mul(Math.cos(angleRad))),
+        currentUV.y.mul(scale).add(time.mul(speed).mul(Math.sin(angleRad))),
       );
       const displacement = mx_fractal_noise_vec2(noiseUV, octaves, 2, 0.5, 1);
       return currentUV.add(displacement.mul(strength));
@@ -192,8 +198,8 @@ function applyUVTransform(
 
     case "bulge": {
       return bulgeDistortionFn(currentUV, {
-        strength: float(params.strength ?? 0.5),
-        radius: float(params.radius ?? 0.5),
+        strength: float((params.strength ?? 50) / 100),
+        radius: float((params.radius ?? 50) / 100),
         power: float(params.power ?? 1.0),
         center: vec2(0.5),
       });
@@ -201,8 +207,8 @@ function applyUVTransform(
 
     case "swirl": {
       return swirlDistortionFn(currentUV, {
-        strength: float(params.strength ?? 1.0),
-        radius: float(params.radius ?? 0.5),
+        strength: float(((params.strength ?? 20) / 100) * 5),
+        radius: float((params.radius ?? 50) / 100),
         center: vec2(0.5),
       });
     }
@@ -235,20 +241,33 @@ function applyColorEffect(
 ): AnyNode {
   switch (effectId) {
     case "grain": {
-      return film(inputNode, float(params.intensity ?? 0.4));
+      return film(inputNode, float((params.intensity ?? 40) / 100));
     }
 
     case "bloom": {
-      const bloomNode = bloom(inputNode, params.strength ?? 1.0, params.radius ?? 0.4, params.threshold ?? 0.85);
+      const bloomNode = bloom(
+        inputNode,
+        (params.strength ?? 100) / 100,
+        (params.radius ?? 40) / 100,
+        (params.threshold ?? 85) / 100,
+      );
       return inputNode.add(bloomNode);
     }
 
     case "rgb_shift": {
-      return rgbShift(inputNode, params.amount ?? 0.005, params.angle ?? 0);
+      return rgbShift(
+        inputNode,
+        ((params.amount ?? 25) / 100) * 0.02,
+        ((params.angle ?? 0) * Math.PI) / 180,
+      );
     }
 
     case "chromatic_ab": {
-      return rgbShift(inputNode, params.strength ?? 0.005, 0);
+      return rgbShift(
+        inputNode,
+        ((params.strength ?? 25) / 100) * 0.02,
+        ((params.angle ?? 0) * Math.PI) / 180,
+      );
     }
 
     case "blur": {
@@ -256,14 +275,14 @@ function applyColorEffect(
     }
 
     case "afterimage": {
-      return afterImage(inputNode, float(params.damp ?? 0.96));
+      return afterImage(inputNode, float(dampFromPercent(params.damp ?? 84)));
     }
 
     case "vignette": {
       const _uv = uv();
       const centeredUV = _uv.sub(0.5);
       const dist = length(centeredUV);
-      const vignette = smoothstep(float(params.smoothing ?? 0.25), float(1), dist).oneMinus();
+      const vignette = smoothstep(float((params.smoothing ?? 25) / 100), float(1), dist).oneMinus();
       const vignetteMask = pow(vignette, float(params.exponent ?? 5));
       return inputNode.mul(vignetteMask);
     }
@@ -271,9 +290,9 @@ function applyColorEffect(
     case "crt": {
       const _uv = uv();
       const lf = float(params.lineFrequency ?? 200);
-      const li = float(params.lineIntensity ?? 0.3);
-      const curv = float(params.curvature ?? 0.1);
-      const sharpness = float(params.scanlineSharpness ?? 0.5);
+      const li = float((params.lineIntensity ?? 30) / 100);
+      const curv = float(((params.curvature ?? 20) / 100) * 0.5);
+      const sharpness = float((params.scanlineSharpness ?? 50) / 100);
       const centered = _uv.sub(0.5);
       const distortion = centered.mul(curv.mul(centered.dot(centered)));
       const distortedUV = _uv.add(distortion);
@@ -287,7 +306,7 @@ function applyColorEffect(
       const _uv = uv();
       const pixSize = float(params.pixelSize ?? 2);
       const colorThreshold = float(params.colorThreshold ?? 4);
-      const bias = float(params.bias ?? 0.25);
+      const bias = float((params.bias ?? 50) / 100);
       const scaledResolution = screenSize.div(pixSize);
       const x = int(_uv.x.mul(scaledResolution.x)).mod(8);
       const y = int(_uv.y.mul(scaledResolution.y)).mod(8);
@@ -303,8 +322,8 @@ function applyColorEffect(
     case "halftone": {
       const _uv = uv();
       const freq = float(params.frequency ?? 100);
-      const ang = float(params.angle ?? 0.5);
-      const sm = float(params.smoothness ?? 0.1);
+      const ang = float(((params.angle ?? 29) * Math.PI) / 180);
+      const sm = float(((params.smoothness ?? 33) / 100) * 0.3);
       const aspect = screenSize.x.div(screenSize.y).toVar();
       const aspectUV = vec2(_uv.x.mul(aspect), _uv.y).toVar();
       const c = cos(ang).toVar();
@@ -326,7 +345,7 @@ function applyColorEffect(
       const scalar = float(params.scalar ?? 100);
       const zoom = float(params.zoom ?? 2);
       const exponent = float(params.exponent ?? 1.2);
-      const edge = float(params.edge ?? 0.1);
+      const edge = float(((params.edge ?? 20) / 100) * 0.5);
       const gridUV = fract(_uv.mul(scalar)).sub(0.5).toVar();
       const patt = length(gridUV.mul(zoom)).oneMinus().toVar();
       patt.assign(smoothstep(edge, float(1), patt));
@@ -374,7 +393,7 @@ function buildEffectChain(
 
   let outputNode: AnyNode;
   if (afterImageEffect) {
-    const damp = float(afterImageEffect.params.damp ?? 0.96);
+    const damp = float(dampFromPercent(afterImageEffect.params.damp ?? 84));
     const convertedTexture = convertToTexture(originalTexture);
 
     let afNode = afterImageCache.get(afterImageEffect.instanceId);

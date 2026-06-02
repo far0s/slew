@@ -324,6 +324,58 @@
 }
 
 /* ============================================================================
+   Toggle param row
+   ============================================================================ */
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0.1rem;
+  min-height: 28px;
+}
+
+.toggleLabel {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.switchRoot {
+  width: 28px;
+  height: 16px;
+  background: var(--border-subtle);
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.switchRoot[data-state="checked"] {
+  background: var(--accent-primary);
+}
+
+.switchThumb {
+  display: block;
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.15s ease;
+  pointer-events: none;
+}
+
+.switchRoot[data-state="checked"] .switchThumb {
+  transform: translateX(12px);
+}
+
+/* ============================================================================
    Pipeline note
    ============================================================================ */
 
