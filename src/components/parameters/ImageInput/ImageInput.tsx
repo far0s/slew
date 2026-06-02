@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import styles from "./ImageInput.module.css";
 
 export interface ImageInputProps {
@@ -7,7 +8,10 @@ export interface ImageInputProps {
   label: string;
 }
 
-export function makeImageStorageKey(sketchId: string, templateId: string): string {
+export function makeImageStorageKey(
+  sketchId: string,
+  templateId: string,
+): string {
   return `slew:sketch-image:${sketchId}:${templateId}`;
 }
 
@@ -20,8 +24,8 @@ export function ImageInput({ sketchId, templateId }: ImageInputProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(() =>
     localStorage.getItem(storageKey),
   );
-  const [loadState, setLoadState] = useState<LoadState>(
-    () => (localStorage.getItem(storageKey) ? "loaded" : "idle"),
+  const [loadState, setLoadState] = useState<LoadState>(() =>
+    localStorage.getItem(storageKey) ? "loaded" : "idle",
   );
 
   const applyImage = useCallback(
@@ -36,6 +40,11 @@ export function ImageInput({ sketchId, templateId }: ImageInputProps) {
       window.dispatchEvent(
         new CustomEvent(storageKey, { detail: { dataUrl: url } }),
       );
+      // Forward to renderer window via Tauri backend
+      invoke("forward_controls_event", {
+        event: storageKey,
+        payload: JSON.stringify({ dataUrl: url }),
+      }).catch(() => {});
     },
     [storageKey],
   );
@@ -60,7 +69,8 @@ export function ImageInput({ sketchId, templateId }: ImageInputProps) {
   // Sync if another component writes to the same key
   useEffect(() => {
     const handler = (e: Event) => {
-      const { dataUrl: url } = (e as CustomEvent<{ dataUrl: string | null }>).detail;
+      const { dataUrl: url } = (e as CustomEvent<{ dataUrl: string | null }>)
+        .detail;
       setDataUrl(url);
       setLoadState(url ? "loaded" : "idle");
     };
@@ -89,11 +99,7 @@ export function ImageInput({ sketchId, templateId }: ImageInputProps) {
 
       {loadState === "loaded" && dataUrl && (
         <>
-          <img
-            className={styles.preview}
-            src={dataUrl}
-            alt="Logo preview"
-          />
+          <img className={styles.preview} src={dataUrl} alt="Logo preview" />
           <div className={styles.previewActions}>
             <button
               className={styles.actionBtn}

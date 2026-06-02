@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useMemo } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
+import { listen } from "@tauri-apps/api/event";
 import type { SketchProps } from "@/sketches/types";
 import { makeImageStorageKey } from "@/components/parameters/ImageInput";
 import { DEFAULT_LOGO_DATA_URL } from "./defaultLogo";
@@ -12,14 +13,14 @@ export { descriptor };
 
 // Curated neon bounce palette — cycles in order, never random.
 const BOUNCE_PALETTE: [number, number, number][] = [
-  [0, 200, 255],   // electric cyan
-  [255, 60, 200],  // hot pink
-  [80, 255, 80],   // lime
-  [255, 180, 0],   // amber
+  [0, 200, 255], // electric cyan
+  [255, 60, 200], // hot pink
+  [80, 255, 80], // lime
+  [255, 180, 0], // amber
   [200, 100, 255], // purple
-  [255, 80, 80],   // coral
-  [0, 255, 200],   // mint
-  [255, 220, 50],  // yellow
+  [255, 80, 80], // coral
+  [0, 255, 200], // mint
+  [255, 220, 50], // yellow
 ];
 
 function rgbToThreeColor(rgb: [number, number, number]): THREE.Color {
@@ -51,7 +52,11 @@ interface BounceState {
 
 const TRAIL_COUNT = 6;
 
-export function DvdBounce({ opacity, params, setOpacityOverride }: SketchProps) {
+export function DvdBounce({
+  opacity,
+  params,
+  setOpacityOverride,
+}: SketchProps) {
   const speed = params?.dvdSpeed ?? 1;
   const scale = params?.dvdScale ?? 0.18;
   const glow = params?.dvdGlow ?? 0.4;
@@ -63,11 +68,13 @@ export function DvdBounce({ opacity, params, setOpacityOverride }: SketchProps) 
   const [imageAspect, setImageAspect] = useState(2.5);
 
   const applyDataUrl = (url: string) => {
-    loadTexture(url).then((tex) => {
-      const img = tex.image as HTMLImageElement;
-      setImageAspect(img.width / img.height);
-      setTexture(tex);
-    }).catch(() => {});
+    loadTexture(url)
+      .then((tex) => {
+        const img = tex.image as HTMLImageElement;
+        setImageAspect(img.width / img.height);
+        setTexture(tex);
+      })
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -79,8 +86,27 @@ export function DvdBounce({ opacity, params, setOpacityOverride }: SketchProps) 
       applyDataUrl(dataUrl ?? DEFAULT_LOGO_DATA_URL);
     };
     window.addEventListener(IMAGE_STORAGE_KEY, handler);
-    return () => window.removeEventListener(IMAGE_STORAGE_KEY, handler);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    // Also listen for changes forwarded from the controls window via Tauri
+    let unlisten: (() => void) | undefined;
+    listen<string>(`renderer:${IMAGE_STORAGE_KEY}`, (event) => {
+      try {
+        const { dataUrl } = JSON.parse(event.payload) as {
+          dataUrl: string | null;
+        };
+        applyDataUrl(dataUrl ?? DEFAULT_LOGO_DATA_URL);
+      } catch {}
+    })
+      .then((fn) => {
+        unlisten = fn;
+      })
+      .catch(() => {});
+
+    return () => {
+      window.removeEventListener(IMAGE_STORAGE_KEY, handler);
+      unlisten?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -89,18 +115,26 @@ export function DvdBounce({ opacity, params, setOpacityOverride }: SketchProps) 
     };
   }, [texture]);
 
-  const mainMat = useMemo(() => new THREE.MeshBasicMaterial({
-    transparent: true,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-  }), []);
+  const mainMat = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    [],
+  );
 
-  const glowMat = useMemo(() => new THREE.MeshBasicMaterial({
-    transparent: true,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  }), []);
+  const glowMat = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    [],
+  );
 
   useEffect(() => {
     return () => {
@@ -142,16 +176,23 @@ export function DvdBounce({ opacity, params, setOpacityOverride }: SketchProps) 
   const mainMeshRef = useRef<THREE.Mesh>(null);
   const glowMeshRef = useRef<THREE.Mesh>(null);
 
-  const trailMeshRefs = useRef<(THREE.Mesh | null)[]>(Array(TRAIL_COUNT).fill(null));
-  const trailMats = useMemo(() =>
-    Array.from({ length: TRAIL_COUNT }, () =>
-      new THREE.MeshBasicMaterial({
-        transparent: true,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      })
-    ), []);
+  const trailMeshRefs = useRef<(THREE.Mesh | null)[]>(
+    Array(TRAIL_COUNT).fill(null),
+  );
+  const trailMats = useMemo(
+    () =>
+      Array.from(
+        { length: TRAIL_COUNT },
+        () =>
+          new THREE.MeshBasicMaterial({
+            transparent: true,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+          }),
+      ),
+    [],
+  );
 
   useEffect(() => {
     if (!texture) return;
@@ -193,10 +234,26 @@ export function DvdBounce({ opacity, params, setOpacityOverride }: SketchProps) 
     const top = vh / 2 - halfH;
     const bottom = -vh / 2 + halfH;
 
-    if (newX > right) { newX = right; newVx = -Math.abs(newVx); bounced = true; }
-    if (newX < left)  { newX = left;  newVx =  Math.abs(newVx); bounced = true; }
-    if (newY > top)   { newY = top;   newVy = -Math.abs(newVy); bounced = true; }
-    if (newY < bottom){ newY = bottom; newVy = Math.abs(newVy); bounced = true; }
+    if (newX > right) {
+      newX = right;
+      newVx = -Math.abs(newVx);
+      bounced = true;
+    }
+    if (newX < left) {
+      newX = left;
+      newVx = Math.abs(newVx);
+      bounced = true;
+    }
+    if (newY > top) {
+      newY = top;
+      newVy = -Math.abs(newVy);
+      bounced = true;
+    }
+    if (newY < bottom) {
+      newY = bottom;
+      newVy = Math.abs(newVy);
+      bounced = true;
+    }
 
     if (bounced) {
       st.paletteIdx = (st.paletteIdx + 1) % BOUNCE_PALETTE.length;
@@ -216,21 +273,27 @@ export function DvdBounce({ opacity, params, setOpacityOverride }: SketchProps) 
     if (mainMeshRef.current) {
       mainMeshRef.current.position.set(newX, newY, 0);
       mainMeshRef.current.scale.set(logoW, logoH, 1);
-      (mainMeshRef.current.material as THREE.MeshBasicMaterial).color = colorRef.current;
+      (mainMeshRef.current.material as THREE.MeshBasicMaterial).color =
+        colorRef.current;
     }
 
     if (glowMeshRef.current) {
       glowMeshRef.current.position.set(newX, newY, -0.01);
       glowMeshRef.current.scale.set(logoW * 1.3, logoH * 1.3, 1);
-      (glowMeshRef.current.material as THREE.MeshBasicMaterial).color = colorRef.current;
+      (glowMeshRef.current.material as THREE.MeshBasicMaterial).color =
+        colorRef.current;
     }
 
     trailMeshRefs.current.forEach((mesh, i) => {
       if (!mesh) return;
       const histIdx = (i + 1) * 3;
       const pos = posHistoryRef.current[histIdx];
-      if (!pos) { mesh.visible = false; return; }
-      const trailOpacity = trail * opacity * (1 - (i + 1) / (TRAIL_COUNT + 1)) * 0.4;
+      if (!pos) {
+        mesh.visible = false;
+        return;
+      }
+      const trailOpacity =
+        trail * opacity * (1 - (i + 1) / (TRAIL_COUNT + 1)) * 0.4;
       mesh.visible = trail > 0.01 && trailOpacity > 0.005;
       mesh.position.set(pos.x, pos.y, -0.02 - i * 0.01);
       mesh.scale.set(logoW, logoH, 1);
@@ -244,7 +307,9 @@ export function DvdBounce({ opacity, params, setOpacityOverride }: SketchProps) 
       {trailMats.map((mat, i) => (
         <mesh
           key={`trail-${i}`}
-          ref={(el) => { trailMeshRefs.current[i] = el; }}
+          ref={(el) => {
+            trailMeshRefs.current[i] = el;
+          }}
         >
           <planeGeometry args={[1, 1]} />
           <primitive object={mat} attach="material" />
@@ -260,7 +325,6 @@ export function DvdBounce({ opacity, params, setOpacityOverride }: SketchProps) 
         <planeGeometry args={[1, 1]} />
         <primitive object={mainMat} attach="material" />
       </mesh>
-
     </group>
   );
 }
