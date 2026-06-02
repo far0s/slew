@@ -260,6 +260,29 @@ export const SlotParameterControls = forwardRef<SlotParameterControlsHandle, Slo
 
   const allParameters = [...SLOT_PARAMETER_TEMPLATES, ...descriptor.parameters];
   const sortedParameters = allParameters.sort((a, b) => (a.orderHint ?? 0) - (b.orderHint ?? 0));
+
+  // For sketches with dynamicColorRange, animate color_item_N params in/out based on count.
+  const dynamicRange = descriptor.dynamicColorRange;
+  const activeItemCount = dynamicRange
+    ? Math.round(getValue(makeSlotParameterId(slotIndex, dynamicRange.linkedParam)) ?? 1)
+    : 0;
+
+  // isDynamicItemVisible: true if param is a dynamic color item within the active count.
+  // We keep all params in DOM (for smooth animation) but filter from sibling swatches.
+  const isDynamicItemVisible = (templateId: string): boolean | null => {
+    if (!dynamicRange || !templateId.startsWith(dynamicRange.itemPrefix)) return null;
+    const idx = parseInt(templateId.slice(dynamicRange.itemPrefix.length), 10);
+    return Number.isFinite(idx) ? idx <= activeItemCount : null;
+  };
+
+  // filteredParameters excludes invisible dynamic items from sibling swatch computation.
+  const filteredParameters = dynamicRange
+    ? sortedParameters.filter((t) => {
+        const visible = isDynamicItemVisible(t.templateId);
+        return visible !== false;
+      })
+    : sortedParameters;
+
   const hasColorParams = descriptor.parameters.some((p) => p.inputType === "color");
 
   // Legacy color palette state (for sketches that haven't migrated to color params)
@@ -432,7 +455,7 @@ export const SlotParameterControls = forwardRef<SlotParameterControlsHandle, Slo
       : paramId;
 
     const siblingSwatches = template.inputType === "color"
-      ? sortedParameters
+      ? filteredParameters
           .filter((t) => t.inputType === "color" && t.templateId !== template.templateId)
           .map((t) => {
             const sid = `slot_${slotIndex}_${t.templateId}`;
@@ -441,7 +464,8 @@ export const SlotParameterControls = forwardRef<SlotParameterControlsHandle, Slo
           .filter((hex) => hex !== "#000000")
       : undefined;
 
-    return (
+    const dynamicVisible = isDynamicItemVisible(template.templateId);
+    const control = (
       <ParameterControl
         key={mainId}
         template={template}
@@ -474,6 +498,17 @@ export const SlotParameterControls = forwardRef<SlotParameterControlsHandle, Slo
         locked={lockedParams.has(template.templateId)}
         onToggleLock={() => toggleLock(template.templateId)}
       />
+    );
+
+    if (dynamicVisible === null) return control;
+    return (
+      <div
+        key={`dynamic-wrap-${mainId}`}
+        className={`${dynamicVisible ? styles.dynamicParamVisible : styles.dynamicParamHidden} ${styles.dynamicParamFullWidth}`}
+        aria-hidden={!dynamicVisible}
+      >
+        {control}
+      </div>
     );
   };
 

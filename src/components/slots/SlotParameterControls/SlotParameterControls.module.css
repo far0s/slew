@@ -352,3 +352,26 @@
   line-height: 1;
 }
 
+/* Dynamic color param reveal animation: expand height first, then fade in. */
+.dynamicParamFullWidth {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.dynamicParamVisible {
+  overflow: hidden;
+  max-height: 200px;
+  opacity: 1;
+  /* height expands immediately, opacity follows after height has room */
+  transition: max-height 180ms ease, opacity 150ms ease 130ms;
+}
+
+.dynamicParamHidden {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  /* opacity collapses first, then height closes up */
+  transition: opacity 120ms ease, max-height 160ms ease 100ms;
+  pointer-events: none;
+}
+

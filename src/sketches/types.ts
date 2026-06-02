@@ -46,6 +46,14 @@ export interface SketchDescriptor {
     endColor: [number, number, number];
     background: [number, number, number, number];
   };
+  /**
+   * When set, color params with templateId matching `itemPrefix + N` (e.g. "color_item_3")
+   * are shown/hidden dynamically based on the current value of `linkedParam`.
+   */
+  dynamicColorRange?: {
+    linkedParam: string;
+    itemPrefix: string;
+  };
 }
 
 export interface SketchGroup {

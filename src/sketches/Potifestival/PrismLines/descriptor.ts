@@ -1,13 +1,6 @@
 import type { SketchDescriptor } from "@/sketches/types";
 import thumbnail from "@/assets/sketches/prismLines-thumb.png";
 
-/**
- * PrismLines Sketch Descriptor
- *
- * Glowing lines drifting and rotating through darkness, scattering light into
- * simulated smoke. Where lines intersect, they collide and emit prismatic flares —
- * a rainbow burst of refracted light. Designed for smoky DJ backdrops.
- */
 export const descriptor: SketchDescriptor = {
   thumbnail,
   id: "prismLines",
@@ -21,10 +14,66 @@ export const descriptor: SketchDescriptor = {
     endColor: [0, 255, 120],
     background: [0, 0, 0, 1],
   },
+  dynamicColorRange: {
+    linkedParam: "pl_count",
+    itemPrefix: "color_item",
+  },
   parameters: [
     {
-      templateId: "color_primary",
-      label: "Line A Color",
+      templateId: "color_item1",
+      label: "Line 1",
+      group: "sketch",
+      orderHint: 1,
+      min: 0,
+      max: 255,
+      step: 1,
+      defaultValue: 0,
+      inputType: "color",
+      defaultColorValue: [0, 180, 255],
+      description: "Color of line 1.",
+    },
+    {
+      templateId: "color_item2",
+      label: "Line 2",
+      group: "sketch",
+      orderHint: 2,
+      min: 0,
+      max: 255,
+      step: 1,
+      defaultValue: 0,
+      inputType: "color",
+      defaultColorValue: [220, 0, 255],
+      description: "Color of line 2.",
+    },
+    {
+      templateId: "color_item3",
+      label: "Line 3",
+      group: "sketch",
+      orderHint: 3,
+      min: 0,
+      max: 255,
+      step: 1,
+      defaultValue: 0,
+      inputType: "color",
+      defaultColorValue: [0, 255, 120],
+      description: "Color of line 3.",
+    },
+    {
+      templateId: "color_item4",
+      label: "Line 4",
+      group: "sketch",
+      orderHint: 4,
+      min: 0,
+      max: 255,
+      step: 1,
+      defaultValue: 0,
+      inputType: "color",
+      defaultColorValue: [255, 100, 0],
+      description: "Color of line 4.",
+    },
+    {
+      templateId: "color_item5",
+      label: "Line 5",
       group: "sketch",
       orderHint: 5,
       min: 0,
@@ -32,12 +81,12 @@ export const descriptor: SketchDescriptor = {
       step: 1,
       defaultValue: 0,
       inputType: "color",
-      defaultColorValue: [0, 180, 255],
-      description: "Base color tint for odd-numbered lines.",
+      defaultColorValue: [255, 0, 120],
+      description: "Color of line 5.",
     },
     {
-      templateId: "color_secondary",
-      label: "Line B Color",
+      templateId: "color_item6",
+      label: "Line 6",
       group: "sketch",
       orderHint: 6,
       min: 0,
@@ -45,14 +94,40 @@ export const descriptor: SketchDescriptor = {
       step: 1,
       defaultValue: 0,
       inputType: "color",
-      defaultColorValue: [220, 0, 255],
-      description: "Base color tint for even-numbered lines.",
+      defaultColorValue: [0, 220, 180],
+      description: "Color of line 6.",
+    },
+    {
+      templateId: "color_item7",
+      label: "Line 7",
+      group: "sketch",
+      orderHint: 7,
+      min: 0,
+      max: 255,
+      step: 1,
+      defaultValue: 0,
+      inputType: "color",
+      defaultColorValue: [255, 220, 0],
+      description: "Color of line 7.",
+    },
+    {
+      templateId: "color_item8",
+      label: "Line 8",
+      group: "sketch",
+      orderHint: 8,
+      min: 0,
+      max: 255,
+      step: 1,
+      defaultValue: 0,
+      inputType: "color",
+      defaultColorValue: [100, 0, 255],
+      description: "Color of line 8.",
     },
     {
       templateId: "color_bg",
       label: "Prism Tint",
       group: "sketch",
-      orderHint: 7,
+      orderHint: 9,
       min: 0,
       max: 255,
       step: 1,
@@ -61,7 +136,6 @@ export const descriptor: SketchDescriptor = {
       defaultColorValue: [255, 220, 80],
       description: "Color tint added to the intersection / collision flare.",
     },
-    // Top 3 — main live controls
     {
       templateId: "line_glow",
       label: "Line Glow",
@@ -97,7 +171,6 @@ export const descriptor: SketchDescriptor = {
       defaultValue: 1.0,
       description: "Overall brightness of the lines and flares.",
     },
-    // Secondary controls
     {
       templateId: "pl_speed",
       label: "Drift Speed",

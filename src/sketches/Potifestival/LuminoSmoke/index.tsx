@@ -13,7 +13,6 @@ import {
   exp,
   length,
   clamp,
-  smoothstep,
   mix,
   time,
   uniform,
@@ -21,7 +20,6 @@ import {
   dot,
   pow,
   max,
-  mod,
   floor,
 } from "three/tsl";
 
@@ -31,12 +29,19 @@ import { descriptor } from "./descriptor";
 export { descriptor };
 import { screenAspectUV } from "@/lib/tsl/utils";
 
+const MAX_LIGHTS = 6;
+
+const DEFAULT_COLORS: [number, number, number][] = [
+  [0, 120, 255],
+  [255, 0, 180],
+  [0, 255, 160],
+  [255, 180, 0],
+  [180, 0, 255],
+  [0, 220, 220],
+];
+
 interface LuminoSmokeUniforms {
-  // Colors
-  colorA: { value: THREE.Vector3 };
-  colorB: { value: THREE.Vector3 };
-  colorC: { value: THREE.Vector3 };
-  // Parameters
+  colors: { value: THREE.Vector3 }[];
   smokeDensity: { value: number };
   haloRadius: { value: number };
   lightIntensity: { value: number };
@@ -45,20 +50,13 @@ interface LuminoSmokeUniforms {
   smokeTurbulence: { value: number };
   chromaticSpread: { value: number };
   opacity: { value: number };
-  // integer — needs shader rebuild
+  // baked — requires shader rebuild
   lightCount: number;
 }
 
-/**
- * Hash function for pseudo-random values
- */
 function buildMaterial(
   lightCount: number,
-  initialColors: {
-    colorA: [number, number, number];
-    colorB: [number, number, number];
-    colorC: [number, number, number];
-  },
+  initialColors: [number, number, number][],
 ): {
   material: MeshBasicNodeMaterial;
   uniforms: LuminoSmokeUniforms;
@@ -69,10 +67,10 @@ function buildMaterial(
     depthWrite: false,
   });
 
-  // Uniforms
-  const uColorA = uniform(new THREE.Vector3(...initialColors.colorA));
-  const uColorB = uniform(new THREE.Vector3(...initialColors.colorB));
-  const uColorC = uniform(new THREE.Vector3(...initialColors.colorC));
+  // Create MAX_LIGHTS uniforms so color changes never require a rebuild
+  const uColors = Array.from({ length: MAX_LIGHTS }, (_, i) =>
+    uniform(new THREE.Vector3(...(initialColors[i] ?? DEFAULT_COLORS[i] ?? [1, 1, 1]))),
+  );
 
   const uSmokeDensity = uniform(0.55);
   const uHaloRadius = uniform(0.45);
@@ -85,20 +83,13 @@ function buildMaterial(
 
   // ─── Utility helpers ────────────────────────────────────────────────────────
 
-  /**
-   * hash21 – 2D → 1D pseudo-random
-   */
   const hash21 = Fn(([p]: [any]) => {
-    // p must be vec2; use explicit construction
     const pv = vec2(p);
     const q = fract(pv.mul(vec2(127.1, 311.7)));
     const r = q.add(q.yx);
     return fract(sin(dot(r, vec2(127.1, 311.7))).mul(43758.5453));
   });
 
-  /**
-   * hash22 – 2D → 2D pseudo-random (seed as vec2)
-   */
   const hash22 = Fn(([p]: [any]) => {
     const n = sin(dot(p, vec2(127.1, 311.7))).mul(43758.5453);
     return fract(
@@ -109,9 +100,6 @@ function buildMaterial(
     );
   });
 
-  /**
-   * 2D smooth noise [0,1]
-   */
   const noise2D = Fn(([p]: [any]) => {
     const pv = vec2(p);
     const i = floor(pv);
@@ -127,16 +115,12 @@ function buildMaterial(
     return mix(mix(a, b, ux), mix(c, d, ux), uy);
   });
 
-  /**
-   * Fractal Brownian Motion — layered noise for smoke turbulence
-   */
   const fbm = Fn(([p]: [any]) => {
     const result = float(0.0).toVar();
     const amplitude = float(0.5).toVar();
     const freq = float(1.0).toVar();
     const pp = vec2(p).toVar();
 
-    // 4 octaves
     result.addAssign(noise2D(pp.mul(freq)).mul(amplitude));
     pp.assign(pp.mul(2.1).add(vec2(1.7, 9.2)));
     amplitude.mulAssign(0.5);
@@ -157,15 +141,9 @@ function buildMaterial(
     return result;
   });
 
-  /**
-   * Compute position of light source i at time t
-   * Each light has unique Lissajous-like path seeded by its index
-   */
   const lightPos = Fn(([idx, t]: [any, any]) => {
-    // Unique seed per light — use hash to get different frequencies/phases
     const seed = hash22(vec2(idx.mul(3.7), idx.mul(7.3)));
 
-    // Frequencies: slow drift, each light has different orbit speed
     const freqX = seed.x.mul(0.8).add(0.3);
     const freqY = seed.y.mul(0.6).add(0.25);
     const phaseX = seed.x.mul(6.283);
@@ -179,36 +157,20 @@ function buildMaterial(
     return vec2(x, y);
   });
 
-  /**
-   * Sample a single light's contribution at UV position p
-   * Returns RGB contribution
-   */
   const lightContrib = Fn(
     ([
       p,
       lightIdx,
       t,
-      colorA,
-      colorB,
-      colorC,
+      color,
       smokeDensity,
       haloRadius,
       lightIntensity,
       scatterFalloff,
       smokeTurbulence,
-    ]: [any, any, any, any, any, any, any, any, any, any, any]) => {
+    ]: [any, any, any, any, any, any, any, any, any]) => {
       const lpos = lightPos(lightIdx, t);
 
-      // Pick color based on light index mod 3
-      const mod3 = mod(lightIdx, float(3.0));
-      const col = vec3(colorA).toVar();
-      // smooth blending would require dynamic branching; use lerp chain instead
-      const blendAB = smoothstep(float(0.4), float(0.6), mod3.sub(0.0));
-      const blendBC = smoothstep(float(1.4), float(1.6), mod3.sub(1.0));
-      col.assign(mix(col, colorB, blendAB));
-      col.assign(mix(col, colorC, blendBC));
-
-      // Turbulence offset on the light position
       const turbOffset = vec2(
         fbm(p.add(vec2(t.mul(0.12), lightIdx.mul(0.37)))).sub(0.5),
         fbm(p.add(vec2(lightIdx.mul(0.53), t.mul(0.09)))).sub(0.5),
@@ -219,8 +181,6 @@ function buildMaterial(
       const dp = p.sub(lpos).sub(turbOffset);
       const dist = length(dp);
 
-      // Core halo — Gaussian-like scatter through smoke
-      // Beer-Lambert: light is attenuated exponentially through fog
       const beerLambert = exp(
         float(dist).mul(float(smokeDensity)).mul(float(-3.5)),
       );
@@ -232,7 +192,6 @@ function buildMaterial(
         .mul(haloFalloff)
         .mul(lightIntensity);
 
-      // Soft core glow (bright center point)
       const coreGlow = float(0.012)
         .div(max(dist.mul(dist), float(0.0001)))
         .mul(lightIntensity)
@@ -240,29 +199,23 @@ function buildMaterial(
 
       const total = scatter.add(coreGlow);
 
-      return col.mul(total);
+      return vec3(color).mul(total);
     },
   );
 
-  /**
-   * Main shader
-   */
   const luminoSmokeShader = Fn(() => {
     const t = time.mul(uLsSpeed);
     const uv = screenAspectUV().toVar();
 
     const accum = vec3(0.0).toVar();
 
-    // Accumulate all lights — single pass, no per-light CA loop
     for (let i = 0; i < lightCount; i++) {
       const idx = float(i);
       const c = lightContrib(
         uv,
         idx,
         t,
-        uColorA,
-        uColorB,
-        uColorC,
+        uColors[i],
         uSmokeDensity,
         uHaloRadius,
         uLightIntensity,
@@ -272,9 +225,6 @@ function buildMaterial(
       accum.addAssign(c);
     }
 
-    // Cheap post-process chromatic aberration:
-    // Shift R warm at edges (outward = more of the inward light), B cool at center.
-    // This is O(1) rather than O(lightCount) — avoids blowing up shader complexity.
     const uvDist = length(uv);
     const caAmount = uvDist.mul(uChromaticSpread).mul(3.0);
     const hdr = vec3(
@@ -283,9 +233,7 @@ function buildMaterial(
       accum.z.mul(float(1.0).sub(caAmount.mul(0.5))),
     );
 
-    // Reinhard-style tonemapping to keep vibrant colors from clipping harshly
     const tonemapped = hdr.div(hdr.add(float(1.0)));
-    // Boost saturation slightly post-tonemap
     const luma = dot(tonemapped, vec3(0.299, 0.587, 0.114));
     const vivid = mix(vec3(luma), tonemapped, float(1.35));
     const clamped = clamp(vivid, vec3(0.0), vec3(1.0));
@@ -298,9 +246,7 @@ function buildMaterial(
   return {
     material,
     uniforms: {
-      colorA: uColorA,
-      colorB: uColorB,
-      colorC: uColorC,
+      colors: uColors,
       smokeDensity: uSmokeDensity,
       haloRadius: uHaloRadius,
       lightIntensity: uLightIntensity,
@@ -314,13 +260,6 @@ function buildMaterial(
   };
 }
 
-/**
- * LuminoSmoke
- *
- * Floating light sources drifting in darkness, each emitting volumetric halos
- * through simulated smoke/fog. Includes god rays, chromatic aberration, turbulence,
- * and Mie-inspired scatter for a realistic "light through smoke" look.
- */
 export function LuminoSmoke({
   opacity,
   params,
@@ -328,77 +267,49 @@ export function LuminoSmoke({
 }: SketchProps) {
   const { viewport } = useThree();
 
-  // Parameters with defaults
   const smokeDensity = params?.smokeDensity ?? 0.55;
   const haloRadius = params?.haloRadius ?? 0.45;
   const lightIntensity = params?.lightIntensity ?? 3.5;
   const lsSpeed = params?.lsSpeed ?? 0.35;
-  const lightCount = Math.round(params?.lsCount ?? 3);
+  const lightCount = Math.round(params?.lsCount ?? 4);
   const scatterFalloff = params?.scatterFalloff ?? 1.8;
   const smokeTurbulence = params?.smokeTurbulence ?? 0.3;
   const chromaticSpread = params?.chromaticSpread ?? 0.03;
 
-  // Colors (0-255 → 0-1)
-  const colorA: [number, number, number] = [
-    (params?.colorPrimaryR ?? 0) / 255,
-    (params?.colorPrimaryG ?? 120) / 255,
-    (params?.colorPrimaryB ?? 255) / 255,
-  ];
-  const colorB: [number, number, number] = [
-    (params?.colorSecondaryR ?? 255) / 255,
-    (params?.colorSecondaryG ?? 0) / 255,
-    (params?.colorSecondaryB ?? 180) / 255,
-  ];
-  const colorC: [number, number, number] = [
-    (params?.colorBgR ?? 0) / 255,
-    (params?.colorBgG ?? 255) / 255,
-    (params?.colorBgB ?? 160) / 255,
-  ];
+  const perItemColors: [number, number, number][] = Array.from({ length: MAX_LIGHTS }, (_, i) => {
+    const n = i + 1;
+    const def = DEFAULT_COLORS[i];
+    return [
+      (params?.[`colorItem${n}R`] ?? def[0]) / 255,
+      (params?.[`colorItem${n}G`] ?? def[1]) / 255,
+      (params?.[`colorItem${n}B`] ?? def[2]) / 255,
+    ];
+  });
 
-  // Rebuild when lightCount changes (baked into shader)
   const { material, uniforms } = useMemo(
-    () => buildMaterial(lightCount, { colorA, colorB, colorC }),
+    () => buildMaterial(lightCount, perItemColors),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [lightCount],
   );
 
-  // Update uniforms
-  useEffect(() => {
-    uniforms.smokeDensity.value = smokeDensity;
-  }, [smokeDensity, uniforms]);
-  useEffect(() => {
-    uniforms.haloRadius.value = haloRadius;
-  }, [haloRadius, uniforms]);
-  useEffect(() => {
-    uniforms.lightIntensity.value = lightIntensity;
-  }, [lightIntensity, uniforms]);
-  useEffect(() => {
-    uniforms.lsSpeed.value = lsSpeed;
-  }, [lsSpeed, uniforms]);
-  useEffect(() => {
-    uniforms.scatterFalloff.value = scatterFalloff;
-  }, [scatterFalloff, uniforms]);
-  useEffect(() => {
-    uniforms.smokeTurbulence.value = smokeTurbulence;
-  }, [smokeTurbulence, uniforms]);
-  useEffect(() => {
-    uniforms.chromaticSpread.value = chromaticSpread;
-  }, [chromaticSpread, uniforms]);
-  useEffect(() => {
-    uniforms.opacity.value = opacity;
-  }, [opacity, uniforms]);
+  useEffect(() => { uniforms.smokeDensity.value = smokeDensity; }, [smokeDensity, uniforms]);
+  useEffect(() => { uniforms.haloRadius.value = haloRadius; }, [haloRadius, uniforms]);
+  useEffect(() => { uniforms.lightIntensity.value = lightIntensity; }, [lightIntensity, uniforms]);
+  useEffect(() => { uniforms.lsSpeed.value = lsSpeed; }, [lsSpeed, uniforms]);
+  useEffect(() => { uniforms.scatterFalloff.value = scatterFalloff; }, [scatterFalloff, uniforms]);
+  useEffect(() => { uniforms.smokeTurbulence.value = smokeTurbulence; }, [smokeTurbulence, uniforms]);
+  useEffect(() => { uniforms.chromaticSpread.value = chromaticSpread; }, [chromaticSpread, uniforms]);
+  useEffect(() => { uniforms.opacity.value = opacity; }, [opacity, uniforms]);
 
   useEffect(() => {
-    setOpacityOverride?.((v) => {
-      uniforms.opacity.value = v;
-    });
+    setOpacityOverride?.((v) => { uniforms.opacity.value = v; });
   }, [setOpacityOverride, uniforms]);
 
-  const colorsKey = JSON.stringify([colorA, colorB, colorC]);
+  const colorsKey = JSON.stringify(perItemColors);
   useEffect(() => {
-    uniforms.colorA.value.set(colorA[0], colorA[1], colorA[2]);
-    uniforms.colorB.value.set(colorB[0], colorB[1], colorB[2]);
-    uniforms.colorC.value.set(colorC[0], colorC[1], colorC[2]);
+    for (let i = 0; i < MAX_LIGHTS; i++) {
+      uniforms.colors[i].value.set(perItemColors[i][0], perItemColors[i][1], perItemColors[i][2]);
+    }
   }, [colorsKey, uniforms]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

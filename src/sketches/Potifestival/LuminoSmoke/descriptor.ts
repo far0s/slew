@@ -1,13 +1,6 @@
 import type { SketchDescriptor } from "@/sketches/types";
 import thumbnail from "@/assets/sketches/luminoSmoke-thumb.png";
 
-/**
- * LuminoSmoke Sketch Descriptor
- *
- * Animated light sources floating in darkness, each emitting volumetric halos
- * that scatter and diffuse through simulated smoke/fog. Designed for DJ backdrops
- * where real smoke machines amplify the effect.
- */
 export const descriptor: SketchDescriptor = {
   thumbnail,
   id: "luminoSmoke",
@@ -21,11 +14,66 @@ export const descriptor: SketchDescriptor = {
     endColor: [0, 255, 160],
     background: [0, 0, 0, 1],
   },
+  dynamicColorRange: {
+    linkedParam: "ls_count",
+    itemPrefix: "color_item",
+  },
   parameters: [
-    // Color params — the 3 light-source colors
     {
-      templateId: "color_primary",
-      label: "Light A Color",
+      templateId: "color_item1",
+      label: "Light 1",
+      group: "sketch",
+      orderHint: 1,
+      min: 0,
+      max: 255,
+      step: 1,
+      defaultValue: 0,
+      inputType: "color",
+      defaultColorValue: [0, 120, 255],
+      description: "Color of light source 1.",
+    },
+    {
+      templateId: "color_item2",
+      label: "Light 2",
+      group: "sketch",
+      orderHint: 2,
+      min: 0,
+      max: 255,
+      step: 1,
+      defaultValue: 0,
+      inputType: "color",
+      defaultColorValue: [255, 0, 180],
+      description: "Color of light source 2.",
+    },
+    {
+      templateId: "color_item3",
+      label: "Light 3",
+      group: "sketch",
+      orderHint: 3,
+      min: 0,
+      max: 255,
+      step: 1,
+      defaultValue: 0,
+      inputType: "color",
+      defaultColorValue: [0, 255, 160],
+      description: "Color of light source 3.",
+    },
+    {
+      templateId: "color_item4",
+      label: "Light 4",
+      group: "sketch",
+      orderHint: 4,
+      min: 0,
+      max: 255,
+      step: 1,
+      defaultValue: 0,
+      inputType: "color",
+      defaultColorValue: [255, 180, 0],
+      description: "Color of light source 4.",
+    },
+    {
+      templateId: "color_item5",
+      label: "Light 5",
       group: "sketch",
       orderHint: 5,
       min: 0,
@@ -33,12 +81,12 @@ export const descriptor: SketchDescriptor = {
       step: 1,
       defaultValue: 0,
       inputType: "color",
-      defaultColorValue: [0, 120, 255],
-      description: "Color of the first light source.",
+      defaultColorValue: [180, 0, 255],
+      description: "Color of light source 5.",
     },
     {
-      templateId: "color_secondary",
-      label: "Light B Color",
+      templateId: "color_item6",
+      label: "Light 6",
       group: "sketch",
       orderHint: 6,
       min: 0,
@@ -46,23 +94,9 @@ export const descriptor: SketchDescriptor = {
       step: 1,
       defaultValue: 0,
       inputType: "color",
-      defaultColorValue: [255, 0, 180],
-      description: "Color of the second light source.",
+      defaultColorValue: [0, 220, 220],
+      description: "Color of light source 6.",
     },
-    {
-      templateId: "color_bg",
-      label: "Light C Color",
-      group: "sketch",
-      orderHint: 7,
-      min: 0,
-      max: 255,
-      step: 1,
-      defaultValue: 0,
-      inputType: "color",
-      defaultColorValue: [0, 255, 160],
-      description: "Color of the third light source.",
-    },
-    // Top 3 — main live controls
     {
       templateId: "smoke_density",
       label: "Smoke Density",
@@ -97,7 +131,6 @@ export const descriptor: SketchDescriptor = {
       defaultValue: 2.5,
       description: "Brightness of the light sources.",
     },
-    // Secondary controls
     {
       templateId: "ls_speed",
       label: "Drift Speed",
