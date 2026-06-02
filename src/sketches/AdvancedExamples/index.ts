@@ -12,6 +12,7 @@ import { descriptor as plasmaDescriptor } from "./Plasma/descriptor";
 import { descriptor as kaleidoscopeDescriptor } from "./Kaleidoscope/descriptor";
 import { descriptor as feedbackTunnelDescriptor } from "./FeedbackTunnel/descriptor";
 import { descriptor as waveformDescriptor } from "./Waveform/descriptor";
+import { descriptor as dvdBounceDescriptor } from "./DvdBounce/descriptor";
 
 export const advancedExamplesGroup: SketchGroup = {
   id: "advancedExamples",
@@ -22,6 +23,7 @@ export const advancedExamplesGroup: SketchGroup = {
     kaleidoscopeDescriptor,
     feedbackTunnelDescriptor,
     waveformDescriptor,
+    dvdBounceDescriptor,
   ],
 };
 
@@ -30,3 +32,4 @@ export { plasmaDescriptor };
 export { kaleidoscopeDescriptor };
 export { feedbackTunnelDescriptor };
 export { waveformDescriptor };
+export { dvdBounceDescriptor };

@@ -1,0 +1,117 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-bottom: 0.5rem;
+}
+
+/* Upload area — full width, 16:9 by default */
+.uploadArea {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.4rem;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  border: 1.5px dashed var(--border-default);
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  box-sizing: border-box;
+}
+
+.uploadArea:hover {
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 8%, transparent);
+  color: var(--text-primary);
+}
+
+.uploadArea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.uploadIcon {
+  font-size: 1.25rem;
+  opacity: 0.6;
+}
+
+/* Full-width preview — height determined by image aspect ratio */
+.preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 5px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  object-fit: contain;
+}
+
+/* Replace / Remove row under the preview */
+.previewActions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.actionBtn {
+  flex: 1;
+  padding: 4px 0;
+  font-size: 0.7rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+  text-align: center;
+}
+
+.actionBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.removeBtn {
+  border-color: color-mix(in srgb, #f87171 40%, var(--border-default));
+  color: #f87171;
+}
+
+.removeBtn:hover {
+  background: color-mix(in srgb, #f87171 12%, transparent);
+  color: #fca5a5;
+  border-color: #f87171;
+}
+
+/* Loading state reuses uploadArea shape */
+.loadingArea {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.4rem;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  box-sizing: border-box;
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-default);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

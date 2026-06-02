@@ -67,6 +67,12 @@ const LazyWaveform = lazy(() =>
   import("./AdvancedExamples/Waveform").then((m) => ({ default: m.Waveform })),
 );
 
+const LazyDvdBounce = lazy(() =>
+  import("./AdvancedExamples/DvdBounce").then((m) => ({
+    default: m.DvdBounce,
+  })),
+);
+
 // Aura (shared by all presets)
 const LazyAura = lazy(() =>
   import("./Aura").then((m) => ({ default: m.Aura })),
@@ -111,6 +117,7 @@ export const LAZY_SKETCH_REGISTRY: Record<string, LazySketchComponent> = {
   kaleidoscope: LazyKaleidoscope,
   feedbackTunnel: LazyFeedbackTunnel,
   waveform: LazyWaveform,
+  dvdBounce: LazyDvdBounce,
   // Aura presets (all use same component)
   auraOg: LazyAura,
   auraRoseGold: LazyAura,

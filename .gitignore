@@ -31,5 +31,6 @@ coverage/
 .osgrep
 
 # Claude Code local state (machine-specific settings + agent worktrees)
+.claude/settings.json
 .claude/settings.local.json
 .claude/worktrees/

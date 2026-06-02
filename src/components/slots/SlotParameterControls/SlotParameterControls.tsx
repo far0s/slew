@@ -9,6 +9,7 @@ import type { ModulationTarget, LfoSource } from "@/inputs/modulation";
 import type { MidiMapping, MidiPickupState } from "@/inputs/midi";
 import { ColorPalette } from "@/components/parameters/ColorPalette";
 import { ParameterControl } from "@/components/parameters/ParameterControl";
+import { ImageInput } from "@/components/parameters/ImageInput";
 import { rgbToHex } from "@/lib/color";
 import { usePresets } from "@/hooks/usePresets";
 import { useSketchThumbnailHover } from "@/components/slots/SketchThumbnailPopover/SketchThumbnailPopover";
@@ -343,6 +344,7 @@ export const SlotParameterControls = forwardRef<SlotParameterControlsHandle, Slo
     for (const template of params) {
       if (template.templateId === "alpha") continue;
       if (template.inputType === "color") continue;
+      if (template.inputType === "image") continue;
       if (lockedParams.has(template.templateId)) continue;
       const paramId = makeSlotParameterId(slotIndex, template.templateId);
       const raw = template.min + Math.random() * (template.max - template.min);
@@ -448,7 +450,20 @@ export const SlotParameterControls = forwardRef<SlotParameterControlsHandle, Slo
 
   const hiddenCount = hiddenParams.size;
 
-  const renderParameterControl = (template: ParameterTemplate, index: number) => {
+  const renderParameterControl = (template: ParameterTemplate, _index: number) => {
+    if (template.inputType === "image") {
+      return (
+        <div key={template.templateId} className={styles.dynamicParamFullWidth}>
+          <ImageInput
+            sketchId={sketchId}
+            templateId={template.templateId}
+            label={template.label}
+          />
+        </div>
+      );
+    }
+
+    const index = _index;
     const paramId = makeSlotParameterId(slotIndex, template.templateId);
     const mainId = template.inputType === "color"
       ? `slot_${slotIndex}_${template.templateId}`
