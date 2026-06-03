@@ -26,8 +26,10 @@ import {
   PerformanceChip,
   ToolbarShortcutsButton,
   ToolbarCaptureFrame,
+  ToolbarManualButton,
 } from "@/components/layout/Toolbar";
 import { ShortcutsModal } from "@/components/layout/ShortcutsModal/ShortcutsModal";
+import { ManualModal } from "@/components/layout/ManualModal";
 import { AudioIndicator } from "@/components/panels/AudioIndicator";
 import { useUndoHistory, applyUndo, applyRedo } from "@/hooks/useUndoHistory";
 import {
@@ -450,6 +452,48 @@ function App() {
   const oscToastShownRef = useRef(false);
   const [showOscBeatToast, setShowOscBeatToast] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+  const [manualAnchor, setManualAnchor] = useState<string | null>(null);
+  const [manualSection, setManualSection] = useState<string | null>(null);
+
+  // Alt key held → highlight all data-help-anchor elements
+  useEffect(() => {
+    const onDown = (e: KeyboardEvent) => {
+      if (e.key === "Alt") document.body.classList.add("alt-help-mode");
+    };
+    const onUp = (e: KeyboardEvent) => {
+      if (e.key === "Alt") document.body.classList.remove("alt-help-mode");
+    };
+    // Also remove on window blur so it doesn't get stuck
+    const onBlur = () => document.body.classList.remove("alt-help-mode");
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup", onUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onDown);
+      window.removeEventListener("keyup", onUp);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, []);
+
+  // Alt+click on any element with data-help-anchor opens manual at that anchor
+  // Optionally pair with data-help-section to force a specific section
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (!e.altKey) return;
+      const target = (e.target as Element).closest("[data-help-anchor]");
+      if (!target) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const anchor = target.getAttribute("data-help-anchor");
+      const section = target.getAttribute("data-help-section");
+      setManualAnchor(anchor);
+      setManualSection(section);
+      setShowManual(true);
+    };
+    window.addEventListener("click", handleClick, { capture: true });
+    return () => window.removeEventListener("click", handleClick, { capture: true });
+  }, []);
 
   // Stable derived props — prevent breaking memo on child components
   const rendererPreviewSlots = useMemo(
@@ -513,6 +557,12 @@ function App() {
         isOpen={showShortcuts}
         onClose={() => setShowShortcuts(false)}
       />
+      <ManualModal
+        isOpen={showManual}
+        onClose={() => setShowManual(false)}
+        initialAnchor={manualAnchor}
+        initialSection={manualSection}
+      />
       {showOscBeatToast && (
         <div className={styles.oscBeatToast} role="status">
           <span className={styles.oscBeatToastBadge}>OSC</span>
@@ -546,6 +596,7 @@ function App() {
         />
         <AudioIndicator />
         <ToolbarTapBpm />
+        <ToolbarManualButton onOpen={() => { setManualAnchor(null); setShowManual(true); }} />
         <ToolbarShortcutsButton onOpen={() => setShowShortcuts(true)} />
       </div>
       <LayoutGroup>

@@ -445,3 +445,33 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* ==========================================================================
+   Alt+click context help highlights
+   ========================================================================== */
+
+body.alt-help-mode [data-help-anchor] {
+  outline: 1.5px solid var(--accent-primary) !important;
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+  cursor: help !important;
+  position: relative;
+}
+
+body.alt-help-mode [data-help-anchor]::after {
+  content: "?";
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 14px;
+  height: 14px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+  background: var(--accent-primary);
+  color: #fff;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+}

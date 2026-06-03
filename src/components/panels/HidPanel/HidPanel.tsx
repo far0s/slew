@@ -247,7 +247,7 @@ export function HidPanel({ className, selectedSlotIndex }: HidPanelProps) {
 
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
-      <div className={styles.header}>
+      <div className={styles.header} data-help-anchor="hid-macropad" data-help-section="controllers">
         <h3 className={styles.title}>Macropad</h3>
         {selectedSlotIndex !== null && selectedSlotIndex !== undefined && (
           <span className={styles.selectedSlot}>

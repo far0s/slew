@@ -61,6 +61,25 @@ The Rust backend handles input processing (OSC, MIDI, Audio, HID), state managem
 
 Both windows share the same frontend bundle; `src/main.tsx` dispatches based on path.
 
+```mermaid
+flowchart TB
+  subgraph Tauri["Tauri Process"]
+    Rust["Rust Backend\n(IPC, inputs, state)"]
+  end
+  subgraph CW["Controls Window  /"]
+    CUI["React UI\n(panels, sliders, MIDI)"]
+  end
+  subgraph RW["Renderer Window  /renderer"]
+    R3F["Three.js / r3f\n(sketches, FX)"]
+    VC["VideoOutputCapture"]
+  end
+  CUI <-->|"invoke / listen\n(Tauri IPC)"| Rust
+  R3F <-->|"emit / listen\n(Tauri events)"| Rust
+  VC -->|"binary pixel data\n(custom URI)"| Rust
+  Rust -->|"Syphon / NDI"| ExtApps["External Apps\n(Resolume, OBS…)"]
+  Rust -.->|"preview frames\n(Tauri events)"| CUI
+```
+
 ---
 
 ## Core Systems
@@ -75,7 +94,30 @@ Central authority managing all visual parameters.
 - Persistence to `parameters.json`
 - Events: `parameter_changed`, `parameters_cleared`
 
-Parameter flow: **Controls UI → Backend → Renderer**
+**Parameter flow:**
+
+```mermaid
+flowchart LR
+  subgraph Inputs
+    UI["Controls UI\n(sliders/knobs)"]
+    MIDI["MIDI CC"]
+    OSC["OSC message"]
+    LFO["Modulation\nEngine"]
+  end
+  subgraph Backend["Rust Backend"]
+    PS["Parameter\nServer\n~60Hz tick"]
+  end
+  subgraph Outputs
+    R["Renderer\n(Three.js)"]
+    P["Controls\nPreview"]
+  end
+  UI -->|"invoke set_parameter"| PS
+  MIDI -->|"CC → mapping"| PS
+  OSC -->|"address → mapping"| PS
+  LFO -->|"tick modulation"| PS
+  PS -->|"emit parameter_changed"| R
+  PS -->|"emit parameter_changed"| P
+```
 
 ### Slot System
 
@@ -92,6 +134,28 @@ Key characteristics:
 - Parameter IDs: `slot_{index}_{templateId}` (e.g., `slot_0_brightness`)
 - Slots layer in index order (slot 0 = back, slot 7 = front)
 - Persistence to `slots.json`
+
+```mermaid
+flowchart TB
+  subgraph Slots["Slot State (up to 4 active)"]
+    S1["Slot A\nsketch + params\nalpha"]
+    S2["Slot B\nsketch + params\nalpha"]
+    SN["Slot …"]
+  end
+  CF["Crossfader\n0 ──────── 1"]
+  subgraph Render["Renderer  (r3f)"]
+    direction LR
+    R1["Sketch A\nopacity = alpha×(1-cf)"]
+    R2["Sketch B\nopacity = alpha×cf"]
+    FX["FX Chain"]
+    Out["Output\n(Syphon / NDI)"]
+  end
+  S1 -->|"params"| R1
+  S2 -->|"params"| R2
+  CF -->|"cf value"| R1
+  CF -->|"cf value"| R2
+  R1 & R2 --> FX --> Out
+```
 
 ### Input Systems
 
@@ -137,9 +201,28 @@ High-performance frame capture from WebGPU/WebGL sent to Rust backends (`video_o
 
 **Data flow:**
 
-```
-WebGPU: render → readRenderTargetPixelsAsync() → flip → binary IPC → Syphon/NDI
-WebGL2: render → PBO ping-pong readPixels → flip → binary IPC → Syphon/NDI
+```mermaid
+flowchart LR
+  subgraph GPU["GPU (Renderer window)"]
+    Sketch["Sketch\n(TSL/WebGPU)"]
+    FX["FX Chain\n(post-processing)"]
+    RT["Render Target"]
+  end
+  subgraph CPU["CPU (Renderer window)"]
+    RB["Async Readback\nreadRenderTargetPixelsAsync\n/ PBO ping-pong"]
+    Flip["Vertical Flip\n(GPU coords → screen)"]
+    IPC["Binary IPC\n(custom URI scheme)"]
+  end
+  subgraph Rust["Rust Backend"]
+    VM["VideoOutputManager"]
+    Sy["Syphon\n(macOS)"]
+    ND["NDI\n(all platforms)"]
+    Sp["Spout\n(Windows, stub)"]
+  end
+  Sketch --> FX --> RT --> RB --> Flip --> IPC --> VM
+  VM --> Sy
+  VM --> ND
+  VM --> Sp
 ```
 
 **Performance:** Stable 60fps at 1080p with Syphon output.

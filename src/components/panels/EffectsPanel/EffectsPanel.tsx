@@ -182,7 +182,7 @@ export function EffectsPanel() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.sectionHeader}>
+      <div className={styles.sectionHeader} data-help-anchor="effects" data-help-section="fx">
         <span className={styles.sectionTitle}>
           Effects
           {effects.length > 0 && (

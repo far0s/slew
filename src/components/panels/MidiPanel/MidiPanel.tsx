@@ -641,7 +641,11 @@ export function MidiPanel({ className, deviceName }: MidiPanelProps) {
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
       {!deviceName && (
-        <div className={styles.header}>
+        <div
+          className={styles.header}
+          data-help-anchor="midi"
+          data-help-section="controllers"
+        >
           <h3 className={styles.title}>MIDI</h3>
         </div>
       )}
@@ -651,7 +655,12 @@ export function MidiPanel({ className, deviceName }: MidiPanelProps) {
 
       <Collapsible.Root open={devicesOpen} onOpenChange={setDevicesOpen}>
         <Collapsible.Trigger asChild>
-          <button type="button" className={styles.sectionHeader}>
+          <button
+            type="button"
+            className={styles.sectionHeader}
+            data-help-anchor="connecting-a-midi-controller"
+            data-help-section="controllers"
+          >
             {devicesOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
             <span>Devices</span>
           </button>
@@ -667,7 +676,12 @@ export function MidiPanel({ className, deviceName }: MidiPanelProps) {
       <Collapsible.Root open={mappingsOpen} onOpenChange={setMappingsOpen}>
         <div className={styles.sectionHeaderWithAction}>
           <Collapsible.Trigger asChild>
-            <button type="button" className={styles.sectionHeader}>
+            <button
+              type="button"
+              className={styles.sectionHeader}
+              data-help-anchor="midi-learn"
+              data-help-section="controllers"
+            >
               {mappingsOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
               <span>Mappings</span>
               {visibleMappings.length > 0 && (

@@ -80,6 +80,20 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
           </div>
 
           <div className={styles.group}>
+            <h4 className={styles.groupHeader}>Help</h4>
+            <div className={styles.rows}>
+              <div className={styles.row}>
+                <span className={styles.label}>Open Manual</span>
+                <kbd className={styles.kbd}>Docs button</kbd>
+              </div>
+              <div className={styles.row}>
+                <span className={styles.label}>Context Help</span>
+                <kbd className={styles.kbd}>⌥ click</kbd>
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.group}>
             <h4 className={styles.groupHeader}>Windows</h4>
             <div className={styles.rows}>
               <div className={styles.row}>

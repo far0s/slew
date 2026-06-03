@@ -8,52 +8,20 @@ Hardware controller layouts and mappings for Slew.
 
 8-channel mixer-style controller with faders, knobs, and LED buttons.
 
+```mermaid
+block-beta
+  columns 9
+  c1["CH 1\nSlot 1"] c2["CH 2\nSlot 2"] c3["CH 3\nSlot 3"] c4["CH 4\nSlot 4"] c5["CH 5\nSlot 5"] c6["CH 6\nSlot 6"] c7["CH 7\nSlot 7"] c8["CH 8\nSlot 8"] m["MASTER"]
+  k1a(("K1\nCC16")) k2a(("K1\nCC20")) k3a(("K1\nCC24")) k4a(("K1\nCC28")) k5a(("K1\nCC46")) k6a(("K1\nCC50")) k7a(("K1\nCC54")) k8a(("K1\nCC58")) sa1[/"SEND\nALL"/]
+  k1b(("K2\nCC17")) k2b(("K2\nCC21")) k3b(("K2\nCC25")) k4b(("K2\nCC29")) k5b(("K2\nCC47")) k6b(("K2\nCC51")) k7b(("K2\nCC55")) k8b(("K2\nCC59")) sa2[/"BANK ◀"/]
+  k1c(("K3\nCC18")) k2c(("K3\nCC22")) k3c(("K3\nCC26")) k4c(("K3\nCC30")) k5c(("K3\nCC48")) k6c(("K3\nCC52")) k7c(("K3\nCC56")) k8c(("K3\nCC60")) sa3[/"BANK ▶"/]
+  mu1["MUTE\nN1"] mu2["MUTE\nN4"] mu3["MUTE\nN7"] mu4["MUTE\nN10"] mu5["MUTE\nN13"] mu6["MUTE\nN16"] mu7["MUTE\nN19"] mu8["MUTE\nN22"] mu9["SENDALL\nN25"]
+  so1["SOLO\nN2"] so2["SOLO\nN5"] so3["SOLO\nN8"] so4["SOLO\nN11"] so5["SOLO\nN14"] so6["SOLO\nN17"] so7["SOLO\nN20"] so8["SOLO\nN23"] so9["SOLO\nN28"]
+  rc1["REC\nN3"] rc2["REC\nN6"] rc3["REC\nN9"] rc4["REC\nN12"] rc5["REC\nN15"] rc6["REC\nN18"] rc7["REC\nN21"] rc8["REC\nN24"] sp[" "]
+  f1[/"α\nCC19"/] f2[/"α\nCC23"/] f3[/"α\nCC27"/] f4[/"α\nCC31"/] f5[/"α\nCC49"/] f6[/"α\nCC53"/] f7[/"α\nCC57"/] f8[/"α\nCC61"/] fm[/"MASTER\nCC62"/]
 ```
-┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                                    AKAI MIDIMIX                                         │
-├─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┤
-│  Col 1  │  Col 2  │  Col 3  │  Col 4  │  Col 5  │  Col 6  │  Col 7  │  Col 8  │ Master  │
-│ (Slot1) │ (Slot2) │ (Slot3) │ (Slot4) │ (Slot5) │ (Slot6) │ (Slot7) │ (Slot8) │         │
-├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
-│  (16)   │  (20)   │  (24)   │  (28)   │  (46)   │  (50)   │  (54)   │  (58)   │ [N25]   │
-│  ◯ K1   │  ◯ K1   │  ◯ K1   │  ◯ K1   │  ◯ K1   │  ◯ K1   │  ◯ K1   │  ◯ K1   │ SEND ALL│
-│  Param1 │  Param1 │  Param1 │  Param1 │  Param1 │  Param1 │  Param1 │  Param1 │  (LED)  │
-├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
-│  (17)   │  (21)   │  (25)   │  (29)   │  (47)   │  (51)   │  (55)   │  (59)   │ [N26]   │
-│  ◯ K2   │  ◯ K2   │  ◯ K2   │  ◯ K2   │  ◯ K2   │  ◯ K2   │  ◯ K2   │  ◯ K2   │ BANK ◀  │
-│  Param2 │  Param2 │  Param2 │  Param2 │  Param2 │  Param2 │  Param2 │  Param2 │  (LED)  │
-├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
-│  (18)   │  (22)   │  (26)   │  (30)   │  (48)   │  (52)   │  (56)   │  (60)   │ [N27]   │
-│  ◯ K3   │  ◯ K3   │  ◯ K3   │  ◯ K3   │  ◯ K3   │  ◯ K3   │  ◯ K3   │  ◯ K3   │ BANK ▶  │
-│  Param3 │  Param3 │  Param3 │  Param3 │  Param3 │  Param3 │  Param3 │  Param3 │  (LED)  │
-├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
-│  [N1]   │  [N4]   │  [N7]   │ [N10]   │ [N13]   │ [N16]   │ [N19]   │ [N22]   │ [N25]   │
-│  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │  ▣ MUTE │ SENDALL │
-│  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │
-├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
-│  [N2]   │  [N5]   │  [N8]   │ [N11]   │ [N14]   │ [N17]   │ [N20]   │ [N23]   │ [N28]   │
-│  ▣ SOLO │  ▣ SOLO │  ▣ SOLO │  ▣ SOLO │  ▣ SOLO │  ▣ SOLO │  ▣ SOLO │  ▣ SOLO │  ▣ SOLO │
-│  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │ Master  │
-├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
-│  [N3]   │  [N6]   │  [N9]   │ [N12]   │ [N15]   │ [N18]   │ [N21]   │ [N24]   │         │
-│  ▣ REC  │  ▣ REC  │  ▣ REC  │  ▣ REC  │  ▣ REC  │  ▣ REC  │  ▣ REC  │  ▣ REC  │         │
-│  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │  (LED)  │         │
-├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
-│   ║     │   ║     │   ║     │   ║     │   ║     │   ║     │   ║     │   ║     │   ║     │
-│   ║     │   ║     │   ║     │   ║     │   ║     │   ║     │   ║     │   ║     │   ║     │
-│  (19)   │  (23)   │  (27)   │  (31)   │  (49)   │  (53)   │  (57)   │  (61)   │  (62)   │
-│  Alpha  │  Alpha  │  Alpha  │  Alpha  │  Alpha  │  Alpha  │  Alpha  │  Alpha  │ All/Mst │
-│   ║     │   ║     │   ║     │   ║     │   ║     │   ║     │   ║     │   ║     │   ║     │
-└─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
 
-Legend:
-  ◯      = Rotary knob (CC)
-  ▣/○    = Button with LED (Note On/Off)
-  ║      = Fader (CC)
-  (XX)   = CC number
-  [NXX]  = Note number
-  [N?]   = Note number TBD (see TODO below)
-```
+Legend: `(( ))` = rotary knob (CC) · `[ ]` = button with LED (Note) · `[/ /]` = fader (CC) · α = Slot Alpha
 
 ### Mappings
 
@@ -111,40 +79,17 @@ On connect:
 
 16-key macropad with 3 rotary encoders. Connected via HID (not MIDI).
 
+```mermaid
+block-beta
+  columns 4
+  e0(("Enc 0\nParam")) e1(("Enc 1\nParam")) e2(("Enc 2\nParam")) sp[" "]
+  k01["K01\nSlot 1"] k02["K02\nSlot 2"] k03["K03\nSlot 3"] k04["K04\nSlot 4"]
+  k05["K05\nSlot 5"] k06["K06\nSlot 6"] k07["K07\nSlot 7"] k08["K08\nSlot 8"]
+  k09["K09"] k10["K10"] k11["K11"] k12["K12\nCrossfade"]
+  k13["K13"] k14["K14"] k15["K15"] k16["K16"]
 ```
-┌───────────────────────────────────────────────┐
-│              DOIO MEGALODON                   │
-│                                               │
-│    ◎ Enc0      ◎ Enc1      ◎ Enc2            │
-│    Param       Param       Param              │
-│    (push)      (push)      (push)             │
-│                                               │
-├───────────┬───────────┬───────────┬───────────┤
-│           │           │           │           │
-│   [K01]   │   [K02]   │   [K03]   │   [K04]   │
-│  Slot 1   │  Slot 2   │  Slot 3   │  Slot 4   │
-│           │           │           │           │
-├───────────┼───────────┼───────────┼───────────┤
-│           │           │           │           │
-│   [K05]   │   [K06]   │   [K07]   │   [K08]   │
-│  Slot 5   │  Slot 6   │  Slot 7   │  Slot 8   │
-│           │           │           │           │
-├───────────┼───────────┼───────────┼───────────┤
-│           │           │           │           │
-│   [K09]   │   [K10]   │   [K11]   │   [K12]   │
-│           │           │           │ Crossfade │
-│           │           │           │  (Action) │
-├───────────┼───────────┼───────────┼───────────┤
-│           │           │           │           │
-│   [K13]   │   [K14]   │   [K15]   │   [K16]   │
-│           │           │           │           │
-│           │           │           │           │
-└───────────┴───────────┴───────────┴───────────┘
 
-Legend:
-  ◎      = Rotary encoder with push button
-  [KXX]  = Key (mechanical switch)
-```
+Legend: `(( ))` = rotary encoder with push · `[ ]` = mechanical key
 
 ### Mappings
 
@@ -175,18 +120,21 @@ Legend:
 
 **Layout:**
 
+```mermaid
+block-beta
+  columns 9
+  t1["91"] t2["92"] t3["93"] t4["94"] t5["95"] t6["96"] t7["97"] t8["98"] sp0[" "]
+  p81["81"] p82["82"] p83["83"] p84["84"] p85["85"] p86["86"] p87["87"] p88["88"] s8["89"]
+  p71["71"] p72["72"] p73["73"] p74["74"] p75["75"] p76["76"] p77["77"] p78["78"] s7["79"]
+  p61["61"] p62["62"] p63["63"] p64["64"] p65["65"] p66["66"] p67["67"] p68["68"] s6["69"]
+  p51["51"] p52["52"] p53["53"] p54["54"] p55["55"] p56["56"] p57["57"] p58["58"] s5["59"]
+  p41["41"] p42["42"] p43["43"] p44["44"] p45["45"] p46["46"] p47["47"] p48["48"] s4["49"]
+  p31["31"] p32["32"] p33["33"] p34["34"] p35["35"] p36["36"] p37["37"] p38["38"] s3["39"]
+  p21["21"] p22["22"] p23["23"] p24["24"] p25["25"] p26["26"] p27["27"] p28["28"] s2["29"]
+  b11["11\nS0α"] b12["12\nS1α"] b13["13\nS2α"] b14["14\nS3α"] b15["15\nS4α"] b16["16\nS5α"] b17["17\nS6α"] b18["18\nS7α"] s1["19"]
 ```
-[ 91][ 92][ 93][ 94][ 95][ 96][ 97][ 98]   ← top row (notes, mk3/X) or CC 104-111 (mk2)
 
-[ 81][ 82][ 83][ 84][ 85][ 86][ 87][ 88] [89]
-[ 71][ 72][ 73][ 74][ 75][ 76][ 77][ 78] [79]
-[ 61][ 62][ 63][ 64][ 65][ 66][ 67][ 68] [69]
-[ 51][ 52][ 53][ 54][ 55][ 56][ 57][ 58] [59]   ← scene launch buttons (right column)
-[ 41][ 42][ 43][ 44][ 45][ 46][ 47][ 48] [49]
-[ 31][ 32][ 33][ 34][ 35][ 36][ 37][ 38] [39]
-[ 21][ 22][ 23][ 24][ 25][ 26][ 27][ 28] [29]
-[ 11][ 12][ 13][ 14][ 15][ 16][ 17][ 18] [19]   ← bottom row (default-mapped)
-```
+Top row = CC 104–111 (mk2) or Notes 91–98 (mk3/X). Right column = scene launch. Bottom row (11–18) auto-mapped to slot alphas.
 
 **Default mappings (bottom row, notes 11–18):**
 
@@ -217,25 +165,16 @@ All four variants share the same startup LED sequence and mapping setup.
 
 16 endless rotary encoders with RGB LED rings, arranged in a 4×4 grid.
 
+```mermaid
+block-beta
+  columns 4
+  e0(("0\nSlot0α")) e1(("1\nSlot1α")) e2(("2\nSlot2α")) e3(("3\nSlot3α"))
+  e4(("4\nSlot4α")) e5(("5\nSlot5α")) e6(("6\nSlot6α")) e7(("7\nSlot7α"))
+  e8(("8\nfree")) e9(("9\nfree")) e10(("10\nfree")) e11(("11\nfree"))
+  e12(("12\nfree")) e13(("13\nfree")) e14(("14\nfree")) e15(("15\nfree"))
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                   MIDI FIGHTER TWISTER                          │
-│                                                                 │
-│  ◎ [0]      ◎ [1]      ◎ [2]      ◎ [3]                       │
-│  Slot0α     Slot1α     Slot2α     Slot3α                       │
-│                                                                 │
-│  ◎ [4]      ◎ [5]      ◎ [6]      ◎ [7]                       │
-│  Slot4α     Slot5α     Slot6α     Slot7α                       │
-│                                                                 │
-│  ◎ [8]      ◎ [9]      ◎ [10]     ◎ [11]                      │
-│  (free)     (free)     (free)     (free)                       │
-│                                                                 │
-│  ◎ [12]     ◎ [13]     ◎ [14]     ◎ [15]                      │
-│  (free)     (free)     (free)     (free)                       │
-│                                                                 │
-Legend:
-  ◎ [N]  = Encoder N (CC N, channel 0) with push button (Note N, channel 1)
-```
+
+Each encoder: CC N ch0 (turn) · Note N ch1 (push). LED ring: CC N ch1, value 0–127.
 
 ### Mappings
 
@@ -266,25 +205,16 @@ On connect:
 
 4×4 RGB button grid, 16 pads. Channel 0 Note On/Off.
 
+```mermaid
+block-beta
+  columns 4
+  p48["48\nfree"] p49["49\nfree"] p50["50\nfree"] p51["51\nfree"]
+  p44["44\nfree"] p45["45\nfree"] p46["46\nfree"] p47["47\nfree"]
+  p40["40\nSlot4α"] p41["41\nSlot5α"] p42["42\nSlot6α"] p43["43\nSlot7α"]
+  p36["36\nSlot0α"] p37["37\nSlot1α"] p38["38\nSlot2α"] p39["39\nSlot3α"]
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                   MIDI FIGHTER SPECTRA                          │
-│                                                                 │
-│  ■ [48]     ■ [49]     ■ [50]     ■ [51]    ← row 3 (top)     │
-│  (free)     (free)     (free)     (free)                       │
-│                                                                 │
-│  ■ [44]     ■ [45]     ■ [46]     ■ [47]    ← row 2           │
-│  (free)     (free)     (free)     (free)                       │
-│                                                                 │
-│  ■ [40]     ■ [41]     ■ [42]     ■ [43]    ← row 1           │
-│  Slot4α     Slot5α     Slot6α     Slot7α                       │
-│                                                                 │
-│  ■ [36]     ■ [37]     ■ [38]     ■ [39]    ← row 0 (bottom)  │
-│  Slot0α     Slot1α     Slot2α     Slot3α                       │
-│                                                                 │
-Legend:
-  ■ [N]  = Pad, Note N on channel 0
-```
+
+Each pad: Note N ch0. LED: Note On ch0 vel=color index, vel=0 off. Bottom row auto-mapped to slot alphas.
 
 ### Mappings
 
@@ -315,23 +245,20 @@ On connect:
 
 8×8 RGB button grid, 64 pads. Channel 0 Note On/Off.
 
+```mermaid
+block-beta
+  columns 8
+  p92["92"] p93["93"] p94["94"] p95["95"] p96["96"] p97["97"] p98["98"] p99["99"]
+  p84["84"] p85["85"] p86["86"] p87["87"] p88["88"] p89["89"] p90["90"] p91["91"]
+  p76["76"] p77["77"] p78["78"] p79["79"] p80["80"] p81["81"] p82["82"] p83["83"]
+  p68["68"] p69["69"] p70["70"] p71["71"] p72["72"] p73["73"] p74["74"] p75["75"]
+  p60["60"] p61["61"] p62["62"] p63["63"] p64["64"] p65["65"] p66["66"] p67["67"]
+  p52["52"] p53["53"] p54["54"] p55["55"] p56["56"] p57["57"] p58["58"] p59["59"]
+  p44["44"] p45["45"] p46["46"] p47["47"] p48["48"] p49["49"] p50["50"] p51["51"]
+  p36["36\nS0α"] p37["37\nS1α"] p38["38\nS2α"] p39["39\nS3α"] p40["40\nS4α"] p41["41\nS5α"] p42["42\nS6α"] p43["43\nS7α"]
 ```
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                            MIDI FIGHTER 64                                          │
-│                                                                                     │
-│  ■[92] ■[93] ■[94] ■[95] ■[96] ■[97] ■[98] ■[99]   ← row 7 (top)                 │
-│  ■[84] ■[85] ■[86] ■[87] ■[88] ■[89] ■[90] ■[91]   ← row 6                       │
-│  ■[76] ■[77] ■[78] ■[79] ■[80] ■[81] ■[82] ■[83]   ← row 5                       │
-│  ■[68] ■[69] ■[70] ■[71] ■[72] ■[73] ■[74] ■[75]   ← row 4                       │
-│  ■[60] ■[61] ■[62] ■[63] ■[64] ■[65] ■[66] ■[67]   ← row 3                       │
-│  ■[52] ■[53] ■[54] ■[55] ■[56] ■[57] ■[58] ■[59]   ← row 2                       │
-│  ■[44] ■[45] ■[46] ■[47] ■[48] ■[49] ■[50] ■[51]   ← row 1                       │
-│  ■[36] ■[37] ■[38] ■[39] ■[40] ■[41] ■[42] ■[43]   ← row 0 (bottom)              │
-│  S0α   S1α   S2α   S3α   S4α   S5α   S6α   S7α                                    │
-│                                                                                     │
-Legend:
-  ■ [N]  = Pad, Note N on channel 0
-```
+
+Each pad: Note N ch0. LED: Note On ch0 vel=color, vel=0 off. Bottom row auto-mapped to slot alphas.
 
 ### Mappings
 

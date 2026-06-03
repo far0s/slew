@@ -747,7 +747,7 @@ export function OscPanel({ className, slots = [] }: OscPanelProps) {
 
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
-      <div className={styles.header}>
+      <div className={styles.header} data-help-anchor="osc" data-help-section="controllers">
         <h3 className={styles.title}>OSC</h3>
         <OscActivityIndicator />
       </div>

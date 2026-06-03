@@ -935,7 +935,7 @@ export function AudioPanel({ className, slots = [] }: AudioPanelProps) {
 
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
-      <div className={styles.header}>
+      <div className={styles.header} data-help-anchor="audio-input" data-help-section="controllers">
         <h3 className={styles.title}>Audio</h3>
         <span
           className={`${styles.statusBadge} ${isRunning ? styles.active : ""}`}

@@ -561,7 +561,7 @@ export const SlotParameterControls = forwardRef<SlotParameterControlsHandle, Slo
         />
       )}
       <div className={styles.presetsSection}>
-        <div className={styles.presetsHeader}>
+        <div className={styles.presetsHeader} data-help-anchor="presets" data-help-section="slots">
           <span className={styles.presetsSectionLabel}>Presets</span>
           {savingPreset ? (
             <div className={styles.presetSaveInline}>
@@ -689,6 +689,8 @@ export const SlotParameterControls = forwardRef<SlotParameterControlsHandle, Slo
                       className={styles.groupHeader}
                       onClick={() => group && toggleGroup(group)}
                       aria-expanded={!isCollapsed}
+                      data-help-anchor={group === "transition" ? "transition-controls-left-panel" : group === "sketch" ? "sketch-parameters" : undefined}
+                      data-help-section={group === "transition" || group === "sketch" ? "slots" : undefined}
                     >
                       <span className={`${styles.groupChevron} ${isCollapsed ? styles.groupChevronCollapsed : ""}`}>
                         ▾

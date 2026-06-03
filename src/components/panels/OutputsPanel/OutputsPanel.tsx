@@ -74,10 +74,12 @@ interface DeviceCardProps {
   device: OutputDevice;
   expanded: boolean;
   onToggle: () => void;
+  helpAnchor?: string;
+  helpSection?: string;
   children: React.ReactNode;
 }
 
-function DeviceCard({ device, expanded, onToggle, children }: DeviceCardProps) {
+function DeviceCard({ device, expanded, onToggle, helpAnchor, helpSection, children }: DeviceCardProps) {
   return (
     <div className={`${styles.deviceCard} ${expanded ? styles.cardExpanded : ""}`}>
       <button
@@ -85,6 +87,8 @@ function DeviceCard({ device, expanded, onToggle, children }: DeviceCardProps) {
         className={styles.cardHeader}
         onClick={onToggle}
         aria-expanded={expanded}
+        data-help-anchor={helpAnchor}
+        data-help-section={helpSection}
       >
         <span className={styles.deviceTypeLabel}>
           {DEVICE_TYPE_LABELS[device.type]}
@@ -130,6 +134,12 @@ function DeviceCard({ device, expanded, onToggle, children }: DeviceCardProps) {
 // Video backend detail (expanded content)
 // ============================================================================
 
+const BACKEND_ANCHORS: Record<string, string> = {
+  syphon: "syphon-macos",
+  ndi: "ndi-all-platforms",
+  spout: "spout-windows-output-not-working",
+};
+
 function VideoBackendDetail({
   backend,
   onToggle,
@@ -140,9 +150,10 @@ function VideoBackendDetail({
   isLoading: boolean;
 }) {
   const description = BACKEND_DESCRIPTIONS[backend.id] ?? "";
+  const anchor = BACKEND_ANCHORS[backend.id];
 
   return (
-    <div className={styles.backendDetail}>
+    <div className={styles.backendDetail} data-help-anchor={anchor} data-help-section="video-output">
       {description && (
         <p className={styles.backendDescription}>{description}</p>
       )}
@@ -241,6 +252,8 @@ export function OutputsPanel() {
             device={device}
             expanded={expandedId === device.id}
             onToggle={() => handleToggle(device.id)}
+            helpAnchor={backend ? BACKEND_ANCHORS[backendId] : undefined}
+            helpSection={backend ? "video-output" : undefined}
           >
             {backend && (
               <VideoBackendDetail

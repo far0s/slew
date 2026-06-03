@@ -63,7 +63,7 @@ export function ModulationPanel({
 
   return (
     <div className={`${styles.container} ${className ?? ""}`}>
-      <div className={styles.header}>
+      <div className={styles.header} data-help-anchor="modulation-lfos" data-help-section="modulation">
         <h3 className={styles.title}>Modulation</h3>
         {lfos.length > 0 && (
           <button
