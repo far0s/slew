@@ -11,6 +11,7 @@ export interface ProjectInfo {
 export interface UseProjectsResult {
   projects: ProjectInfo[];
   isLoading: boolean;
+  error: string | null;
   refresh: () => Promise<void>;
   save: (name: string, frontendState?: string) => Promise<ProjectInfo>;
   load: (name: string) => Promise<void>;
@@ -23,10 +24,16 @@ export interface UseProjectsResult {
 export function useProjects(): UseProjectsResult {
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const result = await invoke<ProjectInfo[]>("list_projects");
-    setProjects(result);
+    try {
+      const result = await invoke<ProjectInfo[]>("list_projects");
+      setProjects(result);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
   }, []);
 
   useEffect(() => {
@@ -81,6 +88,7 @@ export function useProjects(): UseProjectsResult {
   return {
     projects,
     isLoading,
+    error,
     refresh,
     save,
     load,

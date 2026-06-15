@@ -61,4 +61,44 @@ describe("useProjects", () => {
     expect(mockInvoke).toHaveBeenCalledWith("delete_project", { name: "My Set" });
     expect(result.current.projects).toHaveLength(0);
   });
+
+  it("sets error when list_projects fails on mount", async () => {
+    mockInvoke.mockRejectedValueOnce(new Error("backend unavailable"));
+
+    const { result } = renderHook(() => useProjects());
+    await act(async () => {});
+
+    expect(result.current.error).toBe("backend unavailable");
+    expect(result.current.projects).toHaveLength(0);
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it("clears error on successful refresh after failure", async () => {
+    mockInvoke.mockRejectedValueOnce(new Error("backend unavailable")); // mount
+    const { result } = renderHook(() => useProjects());
+    await act(async () => {});
+    expect(result.current.error).toBe("backend unavailable");
+
+    mockInvoke.mockResolvedValueOnce([]); // recovery
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(result.current.error).toBeNull();
+  });
+
+  it("sets error when refresh fails after delete", async () => {
+    mockInvoke.mockResolvedValueOnce([{ name: "A", created_at: "2026-06-01T00:00:00Z", is_autosave: false }]); // mount
+    mockInvoke.mockResolvedValueOnce(undefined); // delete
+    mockInvoke.mockRejectedValueOnce(new Error("disk error")); // refresh after delete
+
+    const { result } = renderHook(() => useProjects());
+    await act(async () => {});
+
+    await act(async () => {
+      await result.current.deleteProject("A");
+    });
+
+    expect(result.current.error).toBe("disk error");
+  });
 });
