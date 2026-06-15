@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { logger } from "@/lib/logger";
 import type { MidiMapping } from "@/inputs/midi";
 import { removeMidiMapping, startMidiLearn } from "@/inputs/midi";
 import {
@@ -273,7 +274,7 @@ export function DeviceSchematic({
     try {
       await removeMidiMapping(parameterId);
     } catch (err) {
-      console.error("[DeviceSchematic] removeMidiMapping failed:", err);
+      logger.error("DeviceSchematic", "removeMidiMapping failed:", err);
     }
   };
 
@@ -285,7 +286,7 @@ export function DeviceSchematic({
     try {
       await startMidiLearn(parameterId, min, max);
     } catch (err) {
-      console.error("[DeviceSchematic] startMidiLearn failed:", err);
+      logger.error("DeviceSchematic", "startMidiLearn failed:", err);
     }
   };
 
