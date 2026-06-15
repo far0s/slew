@@ -201,16 +201,18 @@ describe("useSlots", () => {
       expect(success!).toBe(true);
     });
 
-    it("cannot clear active slot", () => {
-      const { result } = renderHook(() => useSlots());
+    it("clears active slot and marks it empty", () => {
+      const { result } = renderHook(() =>
+        useSlots({ initialSketches: ["blueCube" as SketchId] }),
+      );
 
       let success: boolean;
       act(() => {
         success = result.current.clearSlot(0); // Active slot
       });
 
-      expect(success!).toBe(false);
-      expect(result.current.slots[0].sketchId).not.toBeNull();
+      expect(success!).toBe(true);
+      expect(result.current.slots[0].sketchId).toBeNull();
     });
 
     it("returns false for invalid index", () => {

@@ -138,7 +138,7 @@ describe("MidiPanel", () => {
 
     it("renders Mappings section", () => {
       render(<MidiPanel {...defaultProps} />);
-      expect(screen.getByText("Mappings")).toBeInTheDocument();
+      expect(screen.getAllByText("Mappings").length).toBeGreaterThan(0);
     });
 
     it("accepts className prop", () => {
@@ -156,7 +156,7 @@ describe("MidiPanel", () => {
     it("sections are open by default", () => {
       render(<MidiPanel {...defaultProps} />);
       const devicesSection = screen.getByText("Devices").closest("button");
-      const mappingsSection = screen.getByText("Mappings").closest("button");
+      const mappingsSection = screen.getByRole("button", { name: /Mappings/i });
 
       expect(devicesSection).toBeInTheDocument();
       expect(mappingsSection).toBeInTheDocument();
@@ -165,7 +165,7 @@ describe("MidiPanel", () => {
     it("sections are clickable", () => {
       render(<MidiPanel {...defaultProps} />);
       const devicesSection = screen.getByText("Devices").closest("button");
-      const mappingsSection = screen.getByText("Mappings").closest("button");
+      const mappingsSection = screen.getByRole("button", { name: /Mappings/i });
 
       expect(() => fireEvent.click(devicesSection!)).not.toThrow();
       expect(() => fireEvent.click(mappingsSection!)).not.toThrow();

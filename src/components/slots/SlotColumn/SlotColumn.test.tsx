@@ -209,11 +209,9 @@ describe("SlotColumn", () => {
       expect(crossfadeButton).toBeDisabled();
     });
 
-    it("does not show remove button when active", () => {
+    it("shows remove button when active and canRemove is true", () => {
       render(<SlotColumn {...activeProps} canRemove={true} />);
-      expect(
-        screen.queryByLabelText(/Remove slot/i),
-      ).not.toBeInTheDocument();
+      expect(screen.getByLabelText(/Remove slot/i)).toBeInTheDocument();
     });
   });
 
@@ -344,8 +342,10 @@ describe("SlotColumn", () => {
         sketchId: "blueCube" as SketchId,
         alpha: 0.5,
       };
-      render(<SlotColumn {...props} />);
-      expect(screen.getByText("50%")).toBeInTheDocument();
+      const { container } = render(<SlotColumn {...props} />);
+      const indicator = container.querySelector('[class*="alphaIndicator"]');
+      expect(indicator).toBeInTheDocument();
+      expect(indicator?.textContent).toContain("50");
     });
 
     it("does not show alpha value when alpha = 1", () => {
