@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev -- --features link",
+    "tauri:dev:no-ndi": "tauri dev -- --no-default-features",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",

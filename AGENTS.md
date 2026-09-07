@@ -13,24 +13,6 @@ npm test                   # Watch mode
 npm run test:run           # Single run
 ```
 
-## osgrep (MANDATORY)
-
-Use osgrep for ALL code search. Never use grep or glob.
-
-```bash
-osgrep "natural language query" -m 20
-```
-
-| Complexity             | `-m` value |
-| ---------------------- | ---------- |
-| Simple (1-2 files)     | 10         |
-| Normal (feature, flow) | 20-30      |
-| Complex (debug, arch)  | 30-50      |
-
-For multi-part questions, run parallel osgrep calls instead of one overloaded query.
-
-Other commands: `osgrep trace "fn"`, `osgrep skeleton file.ts`, `osgrep symbols`
-
 ## Documentation
 
 | Document               | Purpose                                          |
