@@ -7,15 +7,14 @@
  */
 
 import { useState, useCallback } from "react";
-import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
-import { motion, AnimatePresence } from "motion/react";
 import { MidiPanel } from "@/components/panels/MidiPanel";
 import { OscPanel } from "@/components/panels/OscPanel";
 import { AudioPanel } from "@/components/panels/AudioPanel";
 import { HidPanel } from "@/components/panels/HidPanel";
 import { useInputDevices } from "@/devices/useInputDevices";
-import type { InputDevice, InputDeviceType, DeviceStatus } from "@/devices/types";
+import type { InputDeviceType, DeviceStatus } from "@/devices/types";
 import type { Slot } from "@/slots/useSlots";
+import { DeviceCard, type DeviceStatusTone } from "@/components/layout/DeviceCard";
 import styles from "./InputsPanel.module.css";
 
 // ============================================================================
@@ -33,76 +32,21 @@ const DEVICE_TYPE_LABELS: Record<InputDeviceType, string> = {
 // Status badge
 // ============================================================================
 
-function StatusLabel({ status }: { status: DeviceStatus }) {
-  const labels: Record<DeviceStatus, string> = {
-    connected: "Connected",
-    active: "Active",
-    disconnected: "Not connected",
-    searching: "Searching…",
-    error: "Error",
-  };
-  return <span className={`${styles.statusLabel} ${styles[`status_${status}`]}`}>{labels[status]}</span>;
-}
+const STATUS_LABELS: Record<DeviceStatus, string> = {
+  connected: "Connected",
+  active: "Active",
+  disconnected: "Not connected",
+  searching: "Searching…",
+  error: "Error",
+};
 
-// ============================================================================
-// Device card
-// ============================================================================
-
-interface DeviceCardProps {
-  device: InputDevice;
-  expanded: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}
-
-function DeviceCard({ device, expanded, onToggle, children }: DeviceCardProps) {
-  return (
-    <div className={`${styles.deviceCard} ${expanded ? styles.cardExpanded : ""}`}>
-      <button
-        type="button"
-        className={styles.cardHeader}
-        onClick={onToggle}
-        aria-expanded={expanded}
-      >
-        <span className={styles.deviceTypeLabel}>
-          {DEVICE_TYPE_LABELS[device.type]}
-        </span>
-
-        <div className={styles.cardInfo}>
-          <span className={styles.cardName}>{device.name}</span>
-          {device.mappingCount > 0 && (
-            <span className={styles.mappingCount}>
-              {device.mappingCount} mapping{device.mappingCount !== 1 ? "s" : ""}
-            </span>
-          )}
-        </div>
-
-        <StatusLabel status={device.status} />
-
-        {expanded ? (
-          <ChevronDownIcon className={styles.chevron} />
-        ) : (
-          <ChevronRightIcon className={styles.chevron} />
-        )}
-      </button>
-
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            key="body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            style={{ overflow: "hidden" }}
-          >
-            <div className={styles.cardBody}>{children}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
+const STATUS_TONES: Record<DeviceStatus, DeviceStatusTone> = {
+  connected: "success",
+  active: "success",
+  disconnected: "muted",
+  searching: "warning",
+  error: "danger",
+};
 
 // ============================================================================
 // Panel
@@ -132,7 +76,11 @@ export function InputsPanel({ slots, macropadSelectedIndex }: InputsPanelProps) 
       {devices.map((device) => (
         <DeviceCard
           key={device.id}
-          device={device}
+          tag={DEVICE_TYPE_LABELS[device.type]}
+          name={device.name}
+          meta={device.mappingCount > 0 ? `${device.mappingCount} mapping${device.mappingCount !== 1 ? "s" : ""}` : undefined}
+          status={STATUS_LABELS[device.status]}
+          statusTone={STATUS_TONES[device.status]}
           expanded={expandedId === device.id}
           onToggle={() => handleToggle(device.id)}
         >

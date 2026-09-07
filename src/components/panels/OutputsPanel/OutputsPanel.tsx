@@ -7,8 +7,6 @@
  */
 
 import { useState, useCallback, useMemo } from "react";
-import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
-import { motion, AnimatePresence } from "motion/react";
 import { WledPanel } from "@/components/panels/WledPanel";
 import {
   useVideoOutputBackends,
@@ -16,6 +14,7 @@ import {
 } from "@/outputs/videoOutput";
 import { useWled } from "@/outputs/wled";
 import type { OutputDevice, OutputDeviceType, DeviceStatus } from "@/devices/types";
+import { DeviceCard, type DeviceStatusTone } from "@/components/layout/DeviceCard";
 import styles from "./OutputsPanel.module.css";
 
 // ============================================================================
@@ -49,86 +48,21 @@ const DEVICE_TYPE_LABELS: Record<OutputDeviceType, string> = {
 // Status label
 // ============================================================================
 
-function StatusLabel({ status }: { status: DeviceStatus }) {
-  const labels: Record<DeviceStatus, string> = {
-    connected: "Connected",
-    active: "Active",
-    disconnected: "Ready",
-    searching: "Searching…",
-    error: "Error",
-  };
-  return (
-    <span
-      className={`${styles.statusLabel} ${styles[`status_${status}`]}`}
-    >
-      {labels[status]}
-    </span>
-  );
-}
+const STATUS_LABELS: Record<DeviceStatus, string> = {
+  connected: "Connected",
+  active: "Active",
+  disconnected: "Ready",
+  searching: "Searching…",
+  error: "Error",
+};
 
-// ============================================================================
-// Device card
-// ============================================================================
-
-interface DeviceCardProps {
-  device: OutputDevice;
-  expanded: boolean;
-  onToggle: () => void;
-  helpAnchor?: string;
-  helpSection?: string;
-  children: React.ReactNode;
-}
-
-function DeviceCard({ device, expanded, onToggle, helpAnchor, helpSection, children }: DeviceCardProps) {
-  return (
-    <div className={`${styles.deviceCard} ${expanded ? styles.cardExpanded : ""}`}>
-      <button
-        type="button"
-        className={styles.cardHeader}
-        onClick={onToggle}
-        aria-expanded={expanded}
-        data-help-anchor={helpAnchor}
-        data-help-section={helpSection}
-      >
-        <span className={styles.deviceTypeLabel}>
-          {DEVICE_TYPE_LABELS[device.type]}
-        </span>
-
-        <div className={styles.cardInfo}>
-          <span className={styles.cardName}>{device.name}</span>
-          {device.mappingCount > 0 && (
-            <span className={styles.mappingCount}>
-              {device.mappingCount} mapping{device.mappingCount !== 1 ? "s" : ""}
-            </span>
-          )}
-        </div>
-
-        <StatusLabel status={device.status} />
-
-        {expanded ? (
-          <ChevronDownIcon className={styles.chevron} />
-        ) : (
-          <ChevronRightIcon className={styles.chevron} />
-        )}
-      </button>
-
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            key="body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            style={{ overflow: "hidden" }}
-          >
-            <div className={styles.cardBody}>{children}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
+const STATUS_TONES: Record<DeviceStatus, DeviceStatusTone> = {
+  connected: "success",
+  active: "success",
+  disconnected: "muted",
+  searching: "warning",
+  error: "danger",
+};
 
 // ============================================================================
 // Video backend detail (expanded content)
@@ -249,7 +183,11 @@ export function OutputsPanel() {
         return (
           <DeviceCard
             key={device.id}
-            device={device}
+            tag={DEVICE_TYPE_LABELS[device.type]}
+            name={device.name}
+            meta={device.mappingCount > 0 ? `${device.mappingCount} mapping${device.mappingCount !== 1 ? "s" : ""}` : undefined}
+            status={STATUS_LABELS[device.status]}
+            statusTone={STATUS_TONES[device.status]}
             expanded={expandedId === device.id}
             onToggle={() => handleToggle(device.id)}
             helpAnchor={backend ? BACKEND_ANCHORS[backendId] : undefined}
