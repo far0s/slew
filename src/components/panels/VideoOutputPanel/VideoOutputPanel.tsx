@@ -1,71 +1,15 @@
 /**
  * VideoOutputPanel
  *
- * Control panel for video output settings organized in three sections:
- * - Renderer: Stats, DPR controls, backend info
- * - Output: Syphon, NDI, Spout backends with toggle controls
- * - Recording: Placeholder for future recording feature
+ * Renderer quality, performance, and preview-stream settings.
  */
 
 import { useState } from "react";
-import {
-  ChevronDownIcon,
-  ChevronRightIcon,
-  QuestionMarkCircledIcon,
-} from "@radix-ui/react-icons";
-import { motion, AnimatePresence } from "motion/react";
+import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { useBufferPoolStats } from "@/outputs/videoOutput";
 import { useRendererSettings } from "@/hooks";
+import { DeviceCard } from "@/components/layout/DeviceCard";
 import styles from "./VideoOutputPanel.module.css";
-
-/**
- * Collapsible section wrapper
- */
-function Section({
-  title,
-  badge,
-  defaultOpen = true,
-  children,
-}: {
-  title: string;
-  badge?: React.ReactNode;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <div className={styles.section}>
-      <button
-        type="button"
-        className={styles.sectionHeader}
-        onClick={() => setIsOpen(!isOpen)}
-        aria-expanded={isOpen}
-      >
-        {isOpen ? (
-          <ChevronDownIcon className={styles.sectionChevron} />
-        ) : (
-          <ChevronRightIcon className={styles.sectionChevron} />
-        )}
-        <span className={styles.sectionTitle}>{title}</span>
-        {badge}
-      </button>
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0, overflow: "hidden" }}
-            animate={{ height: "auto", opacity: 1, overflow: "visible" }}
-            exit={{ height: 0, opacity: 0, overflow: "hidden" }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            className={styles.sectionContent}
-          >
-            {children}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
 
 /**
  * Renderer stats and DPR controls section
@@ -73,6 +17,7 @@ function Section({
 function RendererSection() {
   const { settings, info, setDpr, setPreviewStreamFps } = useRendererSettings();
   const { hitRate } = useBufferPoolStats();
+  const [expanded, setExpanded] = useState(true);
   const [showDprInfo, setShowDprInfo] = useState(false);
   const [showPreviewFpsInfo, setShowPreviewFpsInfo] = useState(false);
 
@@ -95,7 +40,14 @@ function RendererSection() {
   ];
 
   return (
-    <Section title="Renderer">
+    <DeviceCard
+      tag="Video"
+      name="Renderer"
+      status={info ? (info.backend === "webgpu" ? "WebGPU" : "WebGL2") : "Waiting"}
+      statusTone={info ? "success" : "muted"}
+      expanded={expanded}
+      onToggle={() => setExpanded((value) => !value)}
+    >
       <div className={styles.rendererContent}>
         {info ? (
           <>
@@ -277,40 +229,14 @@ function RendererSection() {
           <p className={styles.waitingMessage}>Waiting for Renderer window…</p>
         )}
       </div>
-    </Section>
+    </DeviceCard>
   );
 }
 
-/**
- * Recording placeholder section
- */
-function RecordingSection() {
-  return (
-    <Section
-      title="Recording"
-      badge={<span className={styles.comingSoonBadge}>Coming Soon</span>}
-      defaultOpen={false}
-    >
-      <div className={styles.recordingContent}>
-        <p className={styles.placeholderText}>
-          Recording is not yet available. This feature will allow you to capture
-          your visuals directly to video files.
-        </p>
-      </div>
-    </Section>
-  );
-}
-
-/**
- * VideoOutputPanel
- *
- * Main panel component with three collapsible sections.
- */
 export function VideoOutputPanel() {
   return (
     <div className={styles.container}>
       <RendererSection />
-      <RecordingSection />
     </div>
   );
 }

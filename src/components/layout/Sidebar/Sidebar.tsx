@@ -3,11 +3,14 @@ import { useEventListener } from "@/inputs/shared";
 import * as Tabs from "@radix-ui/react-tabs";
 import { invoke } from "@tauri-apps/api/core";
 import {
+  GearIcon,
   SunIcon,
   MoonIcon,
   MinusIcon,
   PlusIcon,
 } from "@radix-ui/react-icons";
+import { getVersion } from "@tauri-apps/api/app";
+import { DeviceCard } from "@/components/layout/DeviceCard";
 import { InputsPanel } from "@/components/panels/InputsPanel";
 import { OutputsPanel } from "@/components/panels/OutputsPanel";
 import { ModulationPanel } from "@/components/panels/ModulationPanel";
@@ -360,6 +363,31 @@ function UpdateSection() {
   );
 }
 
+function SettingsSection({
+  title,
+  meta,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  meta?: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [expanded, setExpanded] = useState(defaultOpen);
+
+  return (
+    <DeviceCard
+      name={title}
+      meta={meta}
+      expanded={expanded}
+      onToggle={() => setExpanded((value) => !value)}
+    >
+      <div className={styles.settingsSectionBody}>{children}</div>
+    </DeviceCard>
+  );
+}
+
 function TapShortcutDisplay() {
   const [label, setLabel] = useState(() => formatTapShortcut(getTapShortcut()));
 
@@ -382,6 +410,11 @@ export const Sidebar = memo(function Sidebar({
   onHighlightParams,
 }: SidebarProps) {
   const { canUndo, canRedo } = useUndoHistory();
+  const [appVersion, setAppVersion] = useState("");
+
+  useEffect(() => {
+    void getVersion().then(setAppVersion).catch(() => setAppVersion(""));
+  }, []);
   // Window manager for restart and fullscreen functionality
   const {
     isRestarting,
@@ -405,9 +438,12 @@ export const Sidebar = memo(function Sidebar({
     await restartRenderer();
   }, [isRestarting, restartRenderer]);
 
-  const [activeTab, setActiveTab] = useState(
-    () => localStorage.getItem("slew-active-sidebar-tab") ?? "settings",
-  );
+  const [activeTab, setActiveTab] = useState(() => {
+    const stored = localStorage.getItem("slew-active-sidebar-tab");
+    if (stored === "video") return "outputs";
+    if (stored === "appearance") return "settings";
+    return stored ?? "settings";
+  });
 
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
@@ -422,11 +458,8 @@ export const Sidebar = memo(function Sidebar({
   return (
     <Tabs.Root value={activeTab} onValueChange={handleTabChange} className={styles.container}>
       <Tabs.List className={styles.tabList} aria-label="Sidebar tabs">
-        <Tabs.Trigger value="settings" className={styles.tabTrigger}>
-          Settings
-        </Tabs.Trigger>
-        <Tabs.Trigger value="video" className={styles.tabTrigger}>
-          Video
+        <Tabs.Trigger value="projects" className={styles.tabTrigger}>
+          Projects
         </Tabs.Trigger>
         <Tabs.Trigger value="inputs" className={styles.tabTrigger}>
           Inputs
@@ -440,19 +473,39 @@ export const Sidebar = memo(function Sidebar({
         <Tabs.Trigger value="fx" className={styles.tabTrigger}>
           FX
         </Tabs.Trigger>
-        <Tabs.Trigger value="appearance" className={styles.tabTrigger}>
-          Appearance
-        </Tabs.Trigger>
-        <Tabs.Trigger value="projects" className={styles.tabTrigger}>
-          Projects
+        <Tabs.Trigger
+          value="settings"
+          className={`${styles.tabTrigger} ${styles.settingsTab}`}
+          aria-label="Settings"
+          title="Settings"
+        >
+          <GearIcon aria-hidden="true" />
         </Tabs.Trigger>
       </Tabs.List>
 
       <div className={styles.tabBody}>
         <Tabs.Content value="settings" className={styles.tabContent}>
           <div className={styles.settingsPanel}>
-            <div className={styles.settingsSection}>
-              <h4 className={styles.settingsHeader}>Transition Times</h4>
+            <SettingsSection
+              title="Updates"
+              meta={appVersion ? `Version ${appVersion}` : undefined}
+              defaultOpen
+            >
+              <UpdateSection />
+            </SettingsSection>
+
+            <SettingsSection title="Appearance">
+              <div className={styles.settingsSubsection}>
+                <h4 className={styles.settingsHeader}>Theme</h4>
+                <ThemeControls />
+              </div>
+              <div className={styles.settingsSubsection}>
+                <h4 className={styles.settingsHeader}>Layout</h4>
+                <LayoutControls />
+              </div>
+            </SettingsSection>
+
+            <SettingsSection title="Transition Times">
               <p className={styles.settingsDescription}>
                 Control how quickly mute and solo actions fade in/out.
               </p>
@@ -463,15 +516,9 @@ export const Sidebar = memo(function Sidebar({
                   Settings unavailable - parameter store not connected.
                 </p>
               )}
-            </div>
+            </SettingsSection>
 
-            <div className={styles.settingsSection}>
-              <h4 className={styles.settingsHeader}>Updates</h4>
-              <UpdateSection />
-            </div>
-
-            <div className={styles.settingsSection}>
-              <h4 className={styles.settingsHeader}>Actions</h4>
+            <SettingsSection title="Actions">
               <div className={styles.actionsList}>
                 <div className={styles.actionItem}>
                   <span className={styles.actionLabel}>Tap Tempo</span>
@@ -541,12 +588,8 @@ export const Sidebar = memo(function Sidebar({
                   <kbd className={styles.actionShortcut}>⌘⇧C</kbd>
                 </button>
               </div>
-            </div>
+            </SettingsSection>
           </div>
-        </Tabs.Content>
-
-        <Tabs.Content value="video" className={styles.tabContent}>
-          <VideoOutputPanel />
         </Tabs.Content>
 
         <Tabs.Content value="inputs" className={styles.tabContent}>
@@ -554,6 +597,7 @@ export const Sidebar = memo(function Sidebar({
         </Tabs.Content>
 
         <Tabs.Content value="outputs" className={styles.tabContent}>
+          <VideoOutputPanel />
           <OutputsPanel />
         </Tabs.Content>
 
@@ -563,20 +607,6 @@ export const Sidebar = memo(function Sidebar({
 
         <Tabs.Content value="fx" className={styles.tabContent}>
           <EffectsPanel />
-        </Tabs.Content>
-
-        <Tabs.Content value="appearance" className={styles.tabContent}>
-          <div className={styles.settingsPanel}>
-            <div className={styles.settingsSection}>
-              <h4 className={styles.settingsHeader}>Theme</h4>
-              <ThemeControls />
-            </div>
-
-            <div className={styles.settingsSection}>
-              <h4 className={styles.settingsHeader}>Layout</h4>
-              <LayoutControls />
-            </div>
-          </div>
         </Tabs.Content>
 
         <Tabs.Content value="projects" className={styles.tabContent}>

@@ -6,11 +6,11 @@ import styles from "./DeviceCard.module.css";
 export type DeviceStatusTone = "success" | "warning" | "danger" | "muted";
 
 interface DeviceCardProps {
-  tag: string;
+  tag?: string;
   name: string;
   meta?: string;
-  status: string;
-  statusTone: DeviceStatusTone;
+  status?: string;
+  statusTone?: DeviceStatusTone;
   expanded: boolean;
   onToggle: () => void;
   helpAnchor?: string;
@@ -42,12 +42,16 @@ export function DeviceCard({
         data-help-anchor={helpAnchor}
         data-help-section={helpSection}
       >
-        <span className={styles.tag}>{tag}</span>
+        {tag && <span className={styles.tag}>{tag}</span>}
         <span className={styles.info}>
           <span className={styles.name}>{name}</span>
           {meta && <span className={styles.meta}>{meta}</span>}
         </span>
-        <span className={`${styles.status} ${styles[statusTone]}`}>{status}</span>
+        {status && statusTone && (
+          <span className={`${styles.status} ${styles[statusTone]}`}>
+            {status}
+          </span>
+        )}
         {expanded ? (
           <ChevronDownIcon className={styles.chevron} aria-hidden="true" />
         ) : (

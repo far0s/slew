@@ -8,6 +8,10 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => mockInvoke(...args),
 }));
 
+vi.mock("@tauri-apps/api/app", () => ({
+  getVersion: () => Promise.resolve("0.13.0"),
+}));
+
 // Mock motion/react
 vi.mock("motion/react", () => ({
   motion: {
@@ -18,6 +22,7 @@ vi.mock("motion/react", () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
+  useReducedMotion: () => false,
 }));
 
 // Mock panel components
@@ -107,6 +112,7 @@ describe("Sidebar", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
   });
 
   // ===========================================================================
@@ -128,11 +134,11 @@ describe("Sidebar", () => {
       render(<Sidebar {...defaultProps} />);
 
       expect(screen.getByRole("tab", { name: "Settings" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "Video" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Projects" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Inputs" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Outputs" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Mod" })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "Appearance" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "FX" })).toBeInTheDocument();
     });
 
     it("shows Settings tab by default", () => {
@@ -150,12 +156,30 @@ describe("Sidebar", () => {
     it("tabs are clickable", () => {
       render(<Sidebar {...defaultProps} />);
 
-      const tabs = ["Video", "Inputs", "Outputs", "Mod", "Appearance"];
+      const tabs = ["Projects", "Inputs", "Outputs", "Mod", "FX", "Settings"];
 
       tabs.forEach((tabName) => {
         const tab = screen.getByRole("tab", { name: tabName });
         expect(() => fireEvent.click(tab)).not.toThrow();
       });
+    });
+
+    it("moves the retired Video tab state to Outputs", () => {
+      localStorage.setItem("slew-active-sidebar-tab", "video");
+      render(<Sidebar {...defaultProps} />);
+      expect(screen.getByRole("tab", { name: "Outputs" })).toHaveAttribute(
+        "data-state",
+        "active",
+      );
+    });
+
+    it("moves the retired Appearance tab state to Settings", () => {
+      localStorage.setItem("slew-active-sidebar-tab", "appearance");
+      render(<Sidebar {...defaultProps} />);
+      expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute(
+        "data-state",
+        "active",
+      );
     });
   });
 
@@ -171,12 +195,14 @@ describe("Sidebar", () => {
 
     it("shows settings sliders when getValue and setValue provided", () => {
       render(<Sidebar {...defaultProps} />);
+      fireEvent.click(screen.getByRole("button", { name: "Transition Times" }));
       expect(screen.getByTestId("parameter-slider-global_mute_fade_time")).toBeInTheDocument();
       expect(screen.getByTestId("parameter-slider-global_solo_fade_time")).toBeInTheDocument();
     });
 
     it("shows unavailable message when getValue/setValue not provided", () => {
       render(<Sidebar {...defaultProps} getValue={undefined} setValue={undefined} />);
+      fireEvent.click(screen.getByRole("button", { name: "Transition Times" }));
       expect(screen.getByText(/settings unavailable/i)).toBeInTheDocument();
     });
 
@@ -187,6 +213,7 @@ describe("Sidebar", () => {
 
     it("shows all action buttons", () => {
       render(<Sidebar {...defaultProps} />);
+      fireEvent.click(screen.getByRole("button", { name: "Actions" }));
 
       expect(screen.getByText("Toggle Fullscreen (Controls)")).toBeInTheDocument();
       expect(screen.getByText("Toggle Fullscreen (Renderer)")).toBeInTheDocument();
@@ -196,6 +223,7 @@ describe("Sidebar", () => {
 
     it("calls toggleFullscreenControls when button clicked", () => {
       render(<Sidebar {...defaultProps} />);
+      fireEvent.click(screen.getByRole("button", { name: "Actions" }));
       const button = screen.getByText("Toggle Fullscreen (Controls)").closest("button");
 
       fireEvent.click(button!);
@@ -205,6 +233,7 @@ describe("Sidebar", () => {
 
     it("calls toggleFullscreenRenderer when button clicked", () => {
       render(<Sidebar {...defaultProps} />);
+      fireEvent.click(screen.getByRole("button", { name: "Actions" }));
       const button = screen.getByText("Toggle Fullscreen (Renderer)").closest("button");
 
       fireEvent.click(button!);
@@ -215,6 +244,7 @@ describe("Sidebar", () => {
     it("calls restartRenderer when button clicked", async () => {
       mockRestartRenderer.mockResolvedValue(undefined);
       render(<Sidebar {...defaultProps} />);
+      fireEvent.click(screen.getByRole("button", { name: "Actions" }));
       const button = screen.getByText("Restart Renderer").closest("button");
 
       fireEvent.click(button!);
@@ -227,6 +257,7 @@ describe("Sidebar", () => {
     it("calls restartControls when button clicked", async () => {
       mockRestartControls.mockResolvedValue(undefined);
       render(<Sidebar {...defaultProps} />);
+      fireEvent.click(screen.getByRole("button", { name: "Actions" }));
       const button = screen.getByText("Restart Controls").closest("button");
 
       fireEvent.click(button!);
@@ -238,6 +269,7 @@ describe("Sidebar", () => {
 
     it("calls setValue when slider changes", () => {
       render(<Sidebar {...defaultProps} />);
+      fireEvent.click(screen.getByRole("button", { name: "Transition Times" }));
       const muteFadeSlider = within(
         screen.getByTestId("parameter-slider-global_mute_fade_time")
       ).getByRole("slider");
@@ -249,6 +281,7 @@ describe("Sidebar", () => {
 
     it("invokes set_parameter when slider changes", async () => {
       render(<Sidebar {...defaultProps} />);
+      fireEvent.click(screen.getByRole("button", { name: "Transition Times" }));
       const muteFadeSlider = within(
         screen.getByTestId("parameter-slider-global_mute_fade_time")
       ).getByRole("slider");
@@ -273,8 +306,7 @@ describe("Sidebar", () => {
     it("theme mode toggle button exists and is clickable", () => {
       render(<Sidebar {...defaultProps} />);
 
-      // Click Appearance tab
-      fireEvent.click(screen.getByRole("tab", { name: "Appearance" }));
+      fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
 
       const buttons = screen.getAllByRole("button");
       const modeButton = buttons.find((btn) =>
@@ -290,8 +322,7 @@ describe("Sidebar", () => {
     it("theme warmth toggle button exists and is clickable", () => {
       render(<Sidebar {...defaultProps} />);
 
-      // Click Appearance tab
-      fireEvent.click(screen.getByRole("tab", { name: "Appearance" }));
+      fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
 
       const buttons = screen.getAllByRole("button");
       const warmthButton = buttons.find((btn) =>
@@ -307,8 +338,7 @@ describe("Sidebar", () => {
     it("sidebar position toggle button exists and is clickable", () => {
       render(<Sidebar {...defaultProps} />);
 
-      // Click Appearance tab
-      fireEvent.click(screen.getByRole("tab", { name: "Appearance" }));
+      fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
 
       const buttons = screen.getAllByRole("button");
       const positionButton = buttons.find((btn) =>
