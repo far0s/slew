@@ -25,6 +25,7 @@ import {
   PlusIcon,
   CopyIcon,
   ReloadIcon,
+  DotsHorizontalIcon,
 } from "@radix-ui/react-icons";
 import NumberFlow from "@number-flow/react";
 import { motion, AnimatePresence } from "motion/react";
@@ -851,47 +852,49 @@ export const SlotColumn = memo(function SlotColumn({
           >
             {isSuspended ? <PlayIcon /> : <PauseIcon />}
           </button>
-          <button
-            type="button"
-            className={styles.headerIconButton}
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsPreviewHidden((v) => !v);
-            }}
+          <details
+            className={styles.headerMenu}
             onPointerDown={(e) => e.stopPropagation()}
-            title={isPreviewHidden ? "Show preview" : "Hide preview"}
-            aria-label={isPreviewHidden ? "Show preview" : "Hide preview"}
           >
-            {isPreviewHidden ? <EyeOpenIcon /> : <EyeClosedIcon />}
-          </button>
-          {onOpenOverlay && (
-            <button
-              type="button"
+            <summary
               className={styles.headerIconButton}
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenOverlay();
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-              title="Open full editor"
-              aria-label="Open full editor"
+              aria-label={`More actions for slot ${displayNumber}`}
+              title="More actions"
             >
-              <EnterFullScreenIcon />
-            </button>
-          )}
-          {showRemoveButton && (
-            <button
-              type="button"
-              className={styles.headerRemoveButton}
-              onClick={() => {
-                onRemove();
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-              aria-label={`Remove slot ${displayNumber}`}
-            >
-              <Cross2Icon />
-            </button>
-          )}
+              <DotsHorizontalIcon />
+            </summary>
+            <div className={styles.headerMenuContent}>
+              <button
+                type="button"
+                className={styles.headerMenuItem}
+                onClick={() => setIsPreviewHidden((v) => !v)}
+              >
+                {isPreviewHidden ? <EyeOpenIcon /> : <EyeClosedIcon />}
+                {isPreviewHidden ? "Show Preview" : "Hide Preview"}
+              </button>
+              {onOpenOverlay && (
+                <button
+                  type="button"
+                  className={styles.headerMenuItem}
+                  onClick={onOpenOverlay}
+                >
+                  <EnterFullScreenIcon />
+                  Open Full Editor
+                </button>
+              )}
+              {showRemoveButton && (
+                <button
+                  type="button"
+                  className={`${styles.headerMenuItem} ${styles.headerMenuItemDanger}`}
+                  onClick={onRemove}
+                  aria-label={`Remove slot ${displayNumber}`}
+                >
+                  <Cross2Icon />
+                  Remove Slot
+                </button>
+              )}
+            </div>
+          </details>
         </div>
       </div>
 
