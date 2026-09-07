@@ -203,57 +203,6 @@
 }
 
 
-/* ==========================================================================
-   Section Headers (Collapsible)
-   ========================================================================== */
-
-.sectionHeader {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  width: 100%;
-  padding: 0.4rem 0;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 0.72rem;
-  font-weight: 500;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: color 0.15s ease;
-}
-
-.sectionHeader:hover {
-  color: var(--text-primary);
-}
-
-.sectionHeader:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent-primary) 80%, transparent);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-
-.sectionHeader svg {
-  width: 14px;
-  height: 14px;
-  opacity: 0.6;
-}
-
-.sectionHeaderWithAction {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.sectionHeaderWithAction .sectionHeader {
-  flex: 1;
-}
-
-.sectionHeaderWithAction .clearButton {
-  flex-shrink: 0;
-}
-
 .headerAddButton {
   padding: 0.2rem 0.5rem;
   background: color-mix(in srgb, var(--accent-primary) 15%, transparent);

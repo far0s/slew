@@ -11,8 +11,7 @@
  */
 
 import { useState } from "react";
-import * as Collapsible from "@radix-ui/react-collapsible";
-import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
+import { DeviceCard } from "@/components/layout/DeviceCard";
 import {
   useHidDevice,
   useHidEncoderEvents,
@@ -70,18 +69,13 @@ function DebugSection() {
   const { reports: rawReports, clear: clearReports } = useHidRawReports();
 
   return (
-    <Collapsible.Root open={isOpen} onOpenChange={setIsOpen}>
-      <Collapsible.Trigger asChild>
-        <button type="button" className={styles.debugTrigger}>
-          {isOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-          <span>Debug</span>
-          <span className={styles.debugCount}>
-            {keyEvents.length + encoderEvents.length + rawReports.length}
-          </span>
-        </button>
-      </Collapsible.Trigger>
-
-      <Collapsible.Content className={styles.debugContent}>
+    <DeviceCard
+      name="Debug"
+      badge={<span className={styles.debugCount}>{keyEvents.length + encoderEvents.length + rawReports.length}</span>}
+      expanded={isOpen}
+      onToggle={() => setIsOpen((open) => !open)}
+    >
+      <div className={styles.debugContent}>
         {/* Key Events */}
         <div className={styles.debugGroup}>
           <div className={styles.debugGroupHeader}>
@@ -194,8 +188,8 @@ function DebugSection() {
             </div>
           )}
         </div>
-      </Collapsible.Content>
-    </Collapsible.Root>
+      </div>
+    </DeviceCard>
   );
 }
 

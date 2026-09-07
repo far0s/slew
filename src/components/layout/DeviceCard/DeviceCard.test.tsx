@@ -24,4 +24,21 @@ describe("DeviceCard", () => {
     fireEvent.click(button);
     expect(onToggle).toHaveBeenCalledOnce();
   });
+
+  it("keeps header actions separate from the disclosure trigger", () => {
+    render(
+      <DeviceCard
+        name="Mappings"
+        actions={<button type="button">Add</button>}
+        expanded
+        onToggle={vi.fn()}
+      >
+        Details
+      </DeviceCard>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Mappings" });
+    const action = screen.getByRole("button", { name: "Add" });
+    expect(trigger).not.toContainElement(action);
+  });
 });

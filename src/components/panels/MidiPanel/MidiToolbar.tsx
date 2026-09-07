@@ -6,8 +6,7 @@
  */
 
 import { useRef, useState } from "react";
-import * as Collapsible from "@radix-ui/react-collapsible";
-import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
+import { DeviceCard } from "@/components/layout/DeviceCard";
 import {
   exportMidiMappings,
   importMidiMappings,
@@ -119,6 +118,7 @@ function MappingsImportExport() {
 // ============================================================================
 
 function TemplateManager() {
+  const [open, setOpen] = useState(false);
   const [templates, setTemplates] = useState<ControllerTemplateMeta[] | null>(
     null,
   );
@@ -167,25 +167,22 @@ function TemplateManager() {
   };
 
   // Lazy load on first expand
-  const handleOpen = (open: boolean) => {
-    if (open && templates === null) {
+  const handleToggle = () => {
+    const nextOpen = !open;
+    setOpen(nextOpen);
+    if (nextOpen && templates === null) {
       void load();
     }
   };
 
   return (
-    <Collapsible.Root onOpenChange={handleOpen}>
-      <Collapsible.Trigger asChild>
-        <button type="button" className={styles.sectionHeader}>
-          <ChevronRightIcon />
-          <span>Controller Templates</span>
-          {templates !== null && templates.length > 0 && (
-            <span className={styles.mappingsBadge}>{templates.length}</span>
-          )}
-        </button>
-      </Collapsible.Trigger>
-
-      <Collapsible.Content className={styles.sectionContent}>
+    <DeviceCard
+      name="Controller Templates"
+      badge={templates !== null && templates.length > 0 ? <span className={styles.mappingsBadge}>{templates.length}</span> : undefined}
+      expanded={open}
+      onToggle={handleToggle}
+    >
+      <div className={styles.sectionContent}>
         <div className={toolbarStyles.section}>
           {loading && <p className={toolbarStyles.hint}>Loading…</p>}
 
@@ -249,8 +246,8 @@ function TemplateManager() {
 
           {status && <p className={toolbarStyles.statusText}>{status}</p>}
         </div>
-      </Collapsible.Content>
-    </Collapsible.Root>
+      </div>
+    </DeviceCard>
   );
 }
 
@@ -262,18 +259,11 @@ export function MidiToolbar() {
   const [open, setOpen] = useState(false);
 
   return (
-    <Collapsible.Root open={open} onOpenChange={setOpen}>
-      <Collapsible.Trigger asChild>
-        <button type="button" className={styles.sectionHeader}>
-          {open ? <ChevronDownIcon /> : <ChevronRightIcon />}
-          <span>Tools</span>
-        </button>
-      </Collapsible.Trigger>
-
-      <Collapsible.Content className={styles.sectionContent}>
+    <DeviceCard name="Tools" expanded={open} onToggle={() => setOpen((value) => !value)}>
+      <div className={styles.sectionContent}>
         <MappingsImportExport />
         <TemplateManager />
-      </Collapsible.Content>
-    </Collapsible.Root>
+      </div>
+    </DeviceCard>
   );
 }

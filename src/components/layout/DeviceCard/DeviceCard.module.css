@@ -1,11 +1,18 @@
-.card { border-bottom: 1px solid var(--border-subtle); }
+.card { width: 100%; border-bottom: 1px solid var(--border-subtle); }
 .card:last-child { border-bottom: none; }
 
 .header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
   width: 100%;
+  background: transparent;
+}
+.trigger {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
   padding: 0.6rem 0.75rem;
   background: transparent;
   border: none;
@@ -15,8 +22,10 @@
   transition: background-color 100ms ease;
 }
 .header:hover { background: var(--bg-hover); }
-.header:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+.trigger:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
 .expanded .header { background: color-mix(in srgb, var(--accent-primary) 6%, transparent); }
+.expanded .header:hover { background: color-mix(in srgb, var(--accent-primary) 10%, transparent); }
+.actions { display: flex; flex-shrink: 0; align-items: center; gap: 0.25rem; padding-right: 0.75rem; }
 
 .tag {
   flex-shrink: 0;

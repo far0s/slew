@@ -6,9 +6,8 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import * as Collapsible from "@radix-ui/react-collapsible";
-import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import { motion } from "motion/react";
+import { DeviceCard } from "@/components/layout/DeviceCard";
 import {
   useAudioCapture,
   useAudioLevels,
@@ -950,41 +949,25 @@ export function AudioPanel({ className, slots = [] }: AudioPanelProps) {
         <AbletonLinkSection />
       </div>
 
-      <Collapsible.Root open={deviceOpen} onOpenChange={setDeviceOpen}>
-        <Collapsible.Trigger asChild>
-          <button type="button" className={styles.sectionHeader}>
-            {deviceOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Device</span>
-          </button>
-        </Collapsible.Trigger>
-        <Collapsible.Content className={styles.sectionContent}>
+      <DeviceCard name="Device" expanded={deviceOpen} onToggle={() => setDeviceOpen((open) => !open)}>
+        <div className={styles.sectionContent}>
           <DeviceControls />
-        </Collapsible.Content>
-      </Collapsible.Root>
+        </div>
+      </DeviceCard>
 
-      <Collapsible.Root open={levelsOpen} onOpenChange={setLevelsOpen}>
-        <Collapsible.Trigger asChild>
-          <button type="button" className={styles.sectionHeader}>
-            {levelsOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Levels</span>
-          </button>
-        </Collapsible.Trigger>
-        <Collapsible.Content className={styles.sectionContent}>
+      <DeviceCard name="Levels" expanded={levelsOpen} onToggle={() => setLevelsOpen((open) => !open)}>
+        <div className={styles.sectionContent}>
           <LevelsDisplay />
-        </Collapsible.Content>
-      </Collapsible.Root>
+        </div>
+      </DeviceCard>
 
-      <Collapsible.Root open={mappingsOpen} onOpenChange={setMappingsOpen}>
-        <div className={styles.sectionHeaderWithAction}>
-          <Collapsible.Trigger asChild>
-            <button type="button" className={styles.sectionHeader}>
-              {mappingsOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-              <span>Mappings</span>
-              {mappings.length > 0 && (
-                <span className={styles.mappingsBadge}>{mappings.length}</span>
-              )}
-            </button>
-          </Collapsible.Trigger>
+      <DeviceCard
+        name="Mappings"
+        badge={mappings.length > 0 ? <span className={styles.mappingsBadge}>{mappings.length}</span> : undefined}
+        expanded={mappingsOpen}
+        onToggle={() => setMappingsOpen((open) => !open)}
+        actions={
+          <>
           <button
             type="button"
             onClick={(e) => {
@@ -1010,8 +993,10 @@ export function AudioPanel({ className, slots = [] }: AudioPanelProps) {
               Clear All
             </button>
           )}
-        </div>
-        <Collapsible.Content className={styles.sectionContent}>
+          </>
+        }
+      >
+        <div className={styles.sectionContent}>
           {showAddForm ? (
             <div className={styles.mappingsSection}>
               <MappingForm
@@ -1024,8 +1009,8 @@ export function AudioPanel({ className, slots = [] }: AudioPanelProps) {
           ) : (
             <MappingsSection slots={slots} />
           )}
-        </Collapsible.Content>
-      </Collapsible.Root>
+        </div>
+      </DeviceCard>
     </div>
   );
 }

@@ -8,8 +8,7 @@
  */
 
 import { useState, useRef } from "react";
-import * as Collapsible from "@radix-ui/react-collapsible";
-import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
+import { DeviceCard } from "@/components/layout/DeviceCard";
 import {
   useLfos,
   useAudioModulations,
@@ -84,17 +83,13 @@ export function ModulationPanel({
       />
 
       {/* LFOs + Targets Section */}
-      <Collapsible.Root open={lfosOpen} onOpenChange={setLfosOpen}>
-        <div className={styles.sectionHeaderWithAction}>
-          <Collapsible.Trigger asChild>
-            <button type="button" className={styles.sectionHeader}>
-              {lfosOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-              <span>LFOs</span>
-              {lfos.length > 0 && (
-                <span className={styles.sectionBadge}>{lfos.length}</span>
-              )}
-            </button>
-          </Collapsible.Trigger>
+      <DeviceCard
+        name="LFOs"
+        badge={lfos.length > 0 ? <span className={styles.sectionBadge}>{lfos.length}</span> : undefined}
+        expanded={lfosOpen}
+        onToggle={() => setLfosOpen((open) => !open)}
+        actions={
+          <>
           <button
             type="button"
             onClick={(e) => {
@@ -137,26 +132,22 @@ export function ModulationPanel({
               </button>
             </span>
           )}
-        </div>
-        <Collapsible.Content className={styles.sectionContent}>
+          </>
+        }
+      >
+        <div className={styles.sectionContent}>
           <LfosSection slots={slots} addLfoFnRef={addLfoFnRef} onHighlightParams={onHighlightParams} />
-        </Collapsible.Content>
-      </Collapsible.Root>
+        </div>
+      </DeviceCard>
 
       {/* Audio Modulations Section */}
-      <Collapsible.Root open={audioModsOpen} onOpenChange={setAudioModsOpen}>
-        <div className={styles.sectionHeaderWithAction}>
-          <Collapsible.Trigger asChild>
-            <button type="button" className={styles.sectionHeader}>
-              {audioModsOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-              <span>Audio → LFO</span>
-              {audioModulations.length > 0 && (
-                <span className={styles.sectionBadge}>
-                  {audioModulations.length}
-                </span>
-              )}
-            </button>
-          </Collapsible.Trigger>
+      <DeviceCard
+        name="Audio → LFO"
+        badge={audioModulations.length > 0 ? <span className={styles.sectionBadge}>{audioModulations.length}</span> : undefined}
+        expanded={audioModsOpen}
+        onToggle={() => setAudioModsOpen((open) => !open)}
+        actions={
+          <>
           <button
             type="button"
             onClick={(e) => {
@@ -200,8 +191,10 @@ export function ModulationPanel({
               </button>
             </span>
           )}
-        </div>
-        <Collapsible.Content className={styles.sectionContent}>
+          </>
+        }
+      >
+        <div className={styles.sectionContent}>
           <p className={styles.sectionHint}>Route audio signals (level, bass, beat…) to modulate an LFO's rate or depth in real time.</p>
           {showAddAudioMod && lfos.length > 0 ? (
             <AudioModForm
@@ -213,8 +206,8 @@ export function ModulationPanel({
           ) : (
             <AudioModulationsSection />
           )}
-        </Collapsible.Content>
-      </Collapsible.Root>
+        </div>
+      </DeviceCard>
     </div>
   );
 }

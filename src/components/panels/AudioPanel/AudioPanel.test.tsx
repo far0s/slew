@@ -4,6 +4,23 @@ import { AudioPanel, type AudioPanelProps } from "./AudioPanel";
 import type { AudioMapping, AudioDeviceInfo } from "@/inputs/audio";
 import type { Slot } from "@/slots/useSlots";
 
+vi.mock("@/components/layout/DeviceCard", () => ({
+  DeviceCard: ({ name, badge, actions, expanded, onToggle, children }: {
+    name: string;
+    badge?: React.ReactNode;
+    actions?: React.ReactNode;
+    expanded: boolean;
+    onToggle: () => void;
+    children: React.ReactNode;
+  }) => (
+    <div>
+      <button type="button" aria-expanded={expanded} onClick={onToggle}>{name}{badge}</button>
+      {actions}
+      {children}
+    </div>
+  ),
+}));
+
 // Mock motion/react
 vi.mock("motion/react", () => ({
   motion: {

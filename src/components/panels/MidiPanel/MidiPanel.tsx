@@ -7,8 +7,7 @@
  */
 
 import { useState } from "react";
-import * as Collapsible from "@radix-ui/react-collapsible";
-import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
+import { DeviceCard } from "@/components/layout/DeviceCard";
 import {
   useMidiCombinedDevices,
   useMidiMappings,
@@ -545,15 +544,13 @@ function SchematicBrowser() {
 
   return (
     <>
-      <Collapsible.Root open={open} onOpenChange={setOpen}>
-        <Collapsible.Trigger asChild>
-          <button type="button" className={styles.sectionHeader}>
-            {open ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Schematic Browser</span>
-            <span className={styles.mappingsBadge}>{KNOWN_LAYOUTS.length}</span>
-          </button>
-        </Collapsible.Trigger>
-        <Collapsible.Content className={styles.sectionContent}>
+      <DeviceCard
+        name="Schematic Browser"
+        badge={<span className={styles.mappingsBadge}>{KNOWN_LAYOUTS.length}</span>}
+        expanded={open}
+        onToggle={() => setOpen((value) => !value)}
+      >
+        <div className={styles.sectionContent}>
           <div className={styles.schematicBrowserList}>
             {KNOWN_LAYOUTS.map((layout) => (
               <button
@@ -572,8 +569,8 @@ function SchematicBrowser() {
               </button>
             ))}
           </div>
-        </Collapsible.Content>
-      </Collapsible.Root>
+        </div>
+      </DeviceCard>
 
       {preview && (
         <DeviceSchematic
@@ -653,45 +650,30 @@ export function MidiPanel({ className, deviceName }: MidiPanelProps) {
       {/* MIDI Clock strip — always visible */}
       <MidiClockStrip />
 
-      <Collapsible.Root open={devicesOpen} onOpenChange={setDevicesOpen}>
-        <Collapsible.Trigger asChild>
-          <button
-            type="button"
-            className={styles.sectionHeader}
-            data-help-anchor="connecting-a-midi-controller"
-            data-help-section="controllers"
-          >
-            {devicesOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Devices</span>
-          </button>
-        </Collapsible.Trigger>
-        <Collapsible.Content className={styles.sectionContent}>
+      <DeviceCard
+        name="Devices"
+        expanded={devicesOpen}
+        onToggle={() => setDevicesOpen((open) => !open)}
+        helpAnchor="connecting-a-midi-controller"
+        helpSection="controllers"
+      >
+        <div className={styles.sectionContent}>
           <DeviceList
             deviceName={deviceName}
             onViewSchematic={(name) => setSchematicDevice(name)}
           />
-        </Collapsible.Content>
-      </Collapsible.Root>
+        </div>
+      </DeviceCard>
 
-      <Collapsible.Root open={mappingsOpen} onOpenChange={setMappingsOpen}>
-        <div className={styles.sectionHeaderWithAction}>
-          <Collapsible.Trigger asChild>
-            <button
-              type="button"
-              className={styles.sectionHeader}
-              data-help-anchor="midi-learn"
-              data-help-section="controllers"
-            >
-              {mappingsOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-              <span>Mappings</span>
-              {visibleMappings.length > 0 && (
-                <span className={styles.mappingsBadge}>
-                  {visibleMappings.length}
-                </span>
-              )}
-            </button>
-          </Collapsible.Trigger>
-          {!deviceName && visibleMappings.length > 0 && (
+      <DeviceCard
+        name="Mappings"
+        badge={visibleMappings.length > 0 ? <span className={styles.mappingsBadge}>{visibleMappings.length}</span> : undefined}
+        expanded={mappingsOpen}
+        onToggle={() => setMappingsOpen((open) => !open)}
+        helpAnchor="midi-learn"
+        helpSection="controllers"
+        actions={
+          !deviceName && visibleMappings.length > 0 && (
             <button
               type="button"
               onClick={(e) => {
@@ -703,14 +685,15 @@ export function MidiPanel({ className, deviceName }: MidiPanelProps) {
             >
               Clear All
             </button>
-          )}
-        </div>
-        <Collapsible.Content className={styles.sectionContent}>
+          )
+        }
+      >
+        <div className={styles.sectionContent}>
           <MappingsList
             deviceInputId={deviceName !== undefined ? scopedInputId : undefined}
           />
-        </Collapsible.Content>
-      </Collapsible.Root>
+        </div>
+      </DeviceCard>
 
       {/* Device schematic modal */}
       {schematicDevice && (

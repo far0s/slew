@@ -6,8 +6,7 @@
  */
 
 import { useState, useMemo, useEffect } from "react";
-import * as Collapsible from "@radix-ui/react-collapsible";
-import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
+import { DeviceCard } from "@/components/layout/DeviceCard";
 import {
   useOscServer,
   useOscMappings,
@@ -752,14 +751,8 @@ export function OscPanel({ className, slots = [] }: OscPanelProps) {
         <OscActivityIndicator />
       </div>
 
-      <Collapsible.Root open={serverOpen} onOpenChange={setServerOpen}>
-        <Collapsible.Trigger asChild>
-          <button type="button" className={styles.sectionHeader}>
-            {serverOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Server</span>
-          </button>
-        </Collapsible.Trigger>
-        <Collapsible.Content className={styles.sectionContent}>
+      <DeviceCard name="Server" expanded={serverOpen} onToggle={() => setServerOpen((open) => !open)}>
+        <div className={styles.sectionContent}>
           {isRunning && port && (
             <p className={styles.serverInfoLine}>
               Send OSC UDP to{" "}
@@ -767,61 +760,37 @@ export function OscPanel({ className, slots = [] }: OscPanelProps) {
             </p>
           )}
           <ServerControls />
-        </Collapsible.Content>
-      </Collapsible.Root>
+        </div>
+      </DeviceCard>
 
-      <Collapsible.Root open={beatInputOpen} onOpenChange={setBeatInputOpen}>
-        <Collapsible.Trigger asChild>
-          <button type="button" className={styles.sectionHeader}>
-            {beatInputOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Beat Input</span>
-          </button>
-        </Collapsible.Trigger>
-        <Collapsible.Content className={styles.sectionContent}>
+      <DeviceCard name="Beat Input" expanded={beatInputOpen} onToggle={() => setBeatInputOpen((open) => !open)}>
+        <div className={styles.sectionContent}>
           <BeatInputSection port={isRunning ? port : null} />
-        </Collapsible.Content>
-      </Collapsible.Root>
+        </div>
+      </DeviceCard>
 
-      <Collapsible.Root open={outputOpen} onOpenChange={setOutputOpen}>
-        <Collapsible.Trigger asChild>
-          <button type="button" className={styles.sectionHeader}>
-            {outputOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Output</span>
-          </button>
-        </Collapsible.Trigger>
-        <Collapsible.Content className={styles.sectionContent}>
+      <DeviceCard name="Output" expanded={outputOpen} onToggle={() => setOutputOpen((open) => !open)}>
+        <div className={styles.sectionContent}>
           <OutputSection />
-        </Collapsible.Content>
-      </Collapsible.Root>
+        </div>
+      </DeviceCard>
 
-      <Collapsible.Root open={messagesOpen} onOpenChange={setMessagesOpen}>
-        <Collapsible.Trigger asChild>
-          <button type="button" className={styles.sectionHeader}>
-            {messagesOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Recent Messages</span>
-          </button>
-        </Collapsible.Trigger>
-        <Collapsible.Content className={styles.sectionContent}>
+      <DeviceCard name="Recent Messages" expanded={messagesOpen} onToggle={() => setMessagesOpen((open) => !open)}>
+        <div className={styles.sectionContent}>
           <RecentMessages />
-        </Collapsible.Content>
-      </Collapsible.Root>
+        </div>
+      </DeviceCard>
 
-      <Collapsible.Root open={mappingsOpen} onOpenChange={setMappingsOpen}>
-        <Collapsible.Trigger asChild>
-          <button type="button" className={styles.sectionHeader}>
-            {mappingsOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <span>Mappings</span>
-          </button>
-        </Collapsible.Trigger>
-        <Collapsible.Content className={styles.sectionContent}>
+      <DeviceCard name="Mappings" expanded={mappingsOpen} onToggle={() => setMappingsOpen((open) => !open)}>
+        <div className={styles.sectionContent}>
           <p className={styles.mappingsNote}>
             Map any OSC address to a parameter. Reserved{" "}
             <code className={styles.inlineCode}>/slew/*</code> addresses are
             handled automatically.
           </p>
           <MappingsList slots={slots} />
-        </Collapsible.Content>
-      </Collapsible.Root>
+        </div>
+      </DeviceCard>
     </div>
   );
 }

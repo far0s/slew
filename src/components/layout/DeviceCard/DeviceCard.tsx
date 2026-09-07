@@ -11,6 +11,8 @@ interface DeviceCardProps {
   meta?: string;
   status?: string;
   statusTone?: DeviceStatusTone;
+  badge?: ReactNode;
+  actions?: ReactNode;
   expanded: boolean;
   onToggle: () => void;
   helpAnchor?: string;
@@ -24,6 +26,8 @@ export function DeviceCard({
   meta,
   status,
   statusTone,
+  badge,
+  actions,
   expanded,
   onToggle,
   helpAnchor,
@@ -34,30 +38,34 @@ export function DeviceCard({
 
   return (
     <div className={`${styles.card} ${expanded ? styles.expanded : ""}`}>
-      <button
-        type="button"
-        className={styles.header}
-        onClick={onToggle}
-        aria-expanded={expanded}
-        data-help-anchor={helpAnchor}
-        data-help-section={helpSection}
-      >
-        {tag && <span className={styles.tag}>{tag}</span>}
-        <span className={styles.info}>
-          <span className={styles.name}>{name}</span>
-          {meta && <span className={styles.meta}>{meta}</span>}
-        </span>
-        {status && statusTone && (
-          <span className={`${styles.status} ${styles[statusTone]}`}>
-            {status}
+      <div className={styles.header}>
+        <button
+          type="button"
+          className={styles.trigger}
+          onClick={onToggle}
+          aria-expanded={expanded}
+          data-help-anchor={helpAnchor}
+          data-help-section={helpSection}
+        >
+          {tag && <span className={styles.tag}>{tag}</span>}
+          <span className={styles.info}>
+            <span className={styles.name}>{name}</span>
+            {meta && <span className={styles.meta}>{meta}</span>}
           </span>
-        )}
-        {expanded ? (
-          <ChevronDownIcon className={styles.chevron} aria-hidden="true" />
-        ) : (
-          <ChevronRightIcon className={styles.chevron} aria-hidden="true" />
-        )}
-      </button>
+          {badge}
+          {status && statusTone && (
+            <span className={`${styles.status} ${styles[statusTone]}`}>
+              {status}
+            </span>
+          )}
+          {expanded ? (
+            <ChevronDownIcon className={styles.chevron} aria-hidden="true" />
+          ) : (
+            <ChevronRightIcon className={styles.chevron} aria-hidden="true" />
+          )}
+        </button>
+        {actions && <div className={styles.actions}>{actions}</div>}
+      </div>
       <AnimatePresence initial={false}>
         {expanded && (
           <motion.div

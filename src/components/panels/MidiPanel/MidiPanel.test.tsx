@@ -3,6 +3,23 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MidiPanel, type MidiPanelProps } from "./MidiPanel";
 import type { MidiCombinedDeviceInfo, MidiMapping } from "@/inputs/midi";
 
+vi.mock("@/components/layout/DeviceCard", () => ({
+  DeviceCard: ({ name, badge, actions, expanded, onToggle, children }: {
+    name: string;
+    badge?: React.ReactNode;
+    actions?: React.ReactNode;
+    expanded: boolean;
+    onToggle: () => void;
+    children: React.ReactNode;
+  }) => (
+    <div>
+      <button type="button" aria-expanded={expanded} onClick={onToggle}>{name}{badge}</button>
+      {actions}
+      {children}
+    </div>
+  ),
+}));
+
 // Mock Radix Collapsible
 vi.mock("@radix-ui/react-collapsible", () => ({
   Root: ({ children, open }: { children: React.ReactNode; open: boolean }) => (
