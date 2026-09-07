@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { logger } from "@/lib/logger";
-import { LayoutGroup, motion } from "motion/react";
+import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useSlots } from "@/slots/useSlots";
 import {
   useParameterStore,
@@ -67,6 +67,7 @@ import type { BpmSourceChangedEvent } from "@/inputs/bpmSource";
 import styles from "./App.module.css";
 
 function App() {
+  const reduceMotion = useReducedMotion();
   const slotState = useSlots({
     minSlots: 1,
     maxSlots: 8,
@@ -603,9 +604,9 @@ function App() {
         <main className={styles.main}>
           <motion.div
             className={styles.scenesArea}
-            layout
+            layout={!reduceMotion}
             layoutDependency={sidebarPosition}
-            transition={{ type: "spring", stiffness: 400, damping: 35 }}
+            transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 35 }}
             style={{ order: sidebarPosition === "left" ? 2 : 1 }}
           >
             <SlotsArea
@@ -648,9 +649,9 @@ function App() {
           <motion.aside
             className={styles.sidebar}
             aria-label="Preview and debug"
-            layout
+            layout={!reduceMotion}
             layoutDependency={sidebarPosition}
-            transition={{ type: "spring", stiffness: 400, damping: 35 }}
+            transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 35 }}
             style={{ order: sidebarPosition === "left" ? 1 : 2 }}
           >
             <RendererPreview

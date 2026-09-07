@@ -28,7 +28,7 @@ import {
   DotsHorizontalIcon,
 } from "@radix-ui/react-icons";
 import NumberFlow from "@number-flow/react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import type { SketchId, SketchProps, SketchGroup } from "@/sketches";
 import {
   SKETCH_GROUPS,
@@ -654,6 +654,7 @@ export const SlotColumn = memo(function SlotColumn({
   onDragStart,
   layoutDependency,
 }: SlotColumnProps) {
+  const reduceMotion = useReducedMotion();
   const params = useMemo(
     () =>
       sketchId && getSlotSketchParams
@@ -797,17 +798,21 @@ export const SlotColumn = memo(function SlotColumn({
     <motion.article
       className={columnClassNames}
       aria-label={`Slot ${displayNumber}${isMacropadSelected ? " (macropad selected)" : ""}`}
-      initial={MOTION_INITIAL}
+      initial={reduceMotion ? false : MOTION_INITIAL}
       animate={
         isDragging
           ? { opacity: 1, scale: 1, x: dragOffsetX }
           : MOTION_ANIMATE_IDLE
       }
-      exit={MOTION_EXIT}
+      exit={reduceMotion ? undefined : MOTION_EXIT}
       transition={
-        isDragging ? MOTION_TRANSITION_DRAG : MOTION_TRANSITION_NORMAL
+        reduceMotion
+          ? MOTION_TRANSITION_DRAG
+          : isDragging
+            ? MOTION_TRANSITION_DRAG
+            : MOTION_TRANSITION_NORMAL
       }
-      layout={!isDragging}
+      layout={!reduceMotion && !isDragging}
       layoutDependency={layoutDependency}
       style={isDragging ? MOTION_STYLE_DRAGGING : MOTION_STYLE_IDLE}
       onPointerDown={onDragStart}

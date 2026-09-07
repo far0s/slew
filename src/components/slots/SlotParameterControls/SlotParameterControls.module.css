@@ -222,7 +222,8 @@
   transition: max-width 0.15s ease;
 }
 
-.presetChipWrap:hover .presetChipActions {
+.presetChipWrap:hover .presetChipActions,
+.presetChipWrap:focus-within .presetChipActions {
   max-width: 3rem;
 }
 
@@ -244,6 +245,17 @@
 .presetChipActionBtn:hover {
   color: var(--text-secondary);
   background: var(--bg-hover);
+}
+
+.presetAddBtn:focus-visible,
+.presetSaveConfirmBtn:focus-visible,
+.presetSaveCancelBtn:focus-visible,
+.presetChip:focus-visible,
+.presetChipActionBtn:focus-visible,
+.showHiddenChip:focus-visible,
+.groupHeader:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .presetChipActionBtn svg {
@@ -374,4 +386,3 @@
   transition: opacity 120ms ease, max-height 160ms ease 100ms;
   pointer-events: none;
 }
-
