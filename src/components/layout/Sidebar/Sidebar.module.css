@@ -11,7 +11,7 @@
 
 .tabList {
   display: flex;
-  flex-flow: row wrap;
+  flex-flow: row nowrap;
   justify-content: flex-start;
   gap: 0.25rem;
   padding: 0.25rem;
@@ -23,7 +23,7 @@
 }
 
 .tabTrigger {
-  flex: 0 1 min-content;
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -61,7 +61,7 @@
 
 .settingsTab {
   flex: 0 0 auto;
-  width: 1.75rem;
+  width: 2.5rem;
   padding-inline: 0;
 }
 

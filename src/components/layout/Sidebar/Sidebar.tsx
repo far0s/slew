@@ -461,11 +461,21 @@ export const Sidebar = memo(function Sidebar({
         <Tabs.Trigger value="projects" className={styles.tabTrigger}>
           Projects
         </Tabs.Trigger>
-        <Tabs.Trigger value="inputs" className={styles.tabTrigger}>
-          Inputs
+        <Tabs.Trigger
+          value="inputs"
+          className={styles.tabTrigger}
+          aria-label="Inputs"
+          title="Inputs"
+        >
+          IN
         </Tabs.Trigger>
-        <Tabs.Trigger value="outputs" className={styles.tabTrigger}>
-          Outputs
+        <Tabs.Trigger
+          value="outputs"
+          className={styles.tabTrigger}
+          aria-label="Outputs"
+          title="Outputs"
+        >
+          OUT
         </Tabs.Trigger>
         <Tabs.Trigger value="mod" className={styles.tabTrigger}>
           Mod
